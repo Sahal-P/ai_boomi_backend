@@ -1,0 +1,60 @@
+{
+  "model": "gpt-6-luna",
+  "extractor_version": "email-v1",
+  "provenance": "live_openai",
+  "result": {
+    "events": [
+      {
+        "event_type": "failed",
+        "amount_minor": 200000,
+        "currency": "INR",
+        "merchant": "Amazon",
+        "occurred_at": "2510-10-26T12:05:00+05:30",
+        "due_date": null,
+        "reference_id": "SYN-FAILED",
+        "payment_instrument": "card",
+        "account_last4": "XX1234",
+        "category": "shopping",
+        "payment_proof": false,
+        "evidence": [
+          {
+            "field": "event_type",
+            "snippet": "Payment failed",
+            "confidence": 1.0
+          },
+          {
+            "field": "amount_minor",
+            "snippet": "Rs.2,000.00",
+            "confidence": 1.0
+          },
+          {
+            "field": "merchant",
+            "snippet": "to Amazon",
+            "confidence": 1.0
+          },
+          {
+            "field": "occurred_at",
+            "snippet": "25-10-26 12:05 IST",
+            "confidence": 1.0
+          },
+          {
+            "field": "reference_id",
+            "snippet": "UTR: SYN-FAILED",
+            "confidence": 1.0
+          },
+          {
+            "field": "payment_instrument",
+            "snippet": "via card",
+            "confidence": 1.0
+          },
+          {
+            "field": "account_last4",
+            "snippet": "A/c XX1234",
+            "confidence": 1.0
+          }
+        ]
+      }
+    ],
+    "not_transaction": false
+  }
+}

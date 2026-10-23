@@ -1,0 +1,65 @@
+{
+  "model": "gpt-6-luna",
+  "extractor_version": "email-v1",
+  "provenance": "live_openai",
+  "result": {
+    "events": [
+      {
+        "event_type": null,
+        "amount_minor": 79900,
+        "currency": "INR",
+        "merchant": "AMAZON SELLER SERVICES PRIVATE LIMITED",
+        "occurred_at": "1010-10-26T12:05:00+05:30",
+        "due_date": null,
+        "reference_id": "SYN-AMAZON799",
+        "payment_instrument": "card",
+        "account_last4": "1234",
+        "category": "shopping",
+        "payment_proof": false,
+        "evidence": [
+          {
+            "field": "amount_minor",
+            "snippet": "INR 799.00",
+            "confidence": 1.0
+          },
+          {
+            "field": "merchant",
+            "snippet": "Merchant: AMAZON SELLER SERVICES PRIVATE LIMITED",
+            "confidence": 1.0
+          },
+          {
+            "field": "reference_id",
+            "snippet": "Order ID: SYN-AMAZON799",
+            "confidence": 1.0
+          },
+          {
+            "field": "occurred_at",
+            "snippet": "Date: 10-10-26 12:05 IST",
+            "confidence": 1.0
+          },
+          {
+            "field": "payment_instrument",
+            "snippet": "card ending 1234",
+            "confidence": 1.0
+          },
+          {
+            "field": "account_last4",
+            "snippet": "card ending 1234",
+            "confidence": 1.0
+          },
+          {
+            "field": "category",
+            "snippet": "Order confirmation",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_proof",
+            "snippet": "This confirms the order, not settlement.",
+            "confidence": 1.0
+          }
+        ]
+      }
+    ],
+    "not_transaction": false
+  }
+}
