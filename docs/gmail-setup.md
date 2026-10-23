@@ -194,14 +194,21 @@ The human completed Google Cloud SDK login with the requested account. Enabling
 it. The configured Cloud project is active. The Fernet key is present in the private
 secrets file and A2 backend env; the secrets file is mode 600.
 
-The OAuth registration wizard is prepared with **FinBoy Dev**, External/Testing,
-and the human's chosen support/contact address. Its final Google API Services User
-Data Policy agreement, Continue, and Create steps await human action. The initial
-Cloud Console loading/script problem resolved after project selection and releasing
-Chrome's debugging connection; native Chrome controls successfully filled the wizard.
-Test-user configuration, scopes, and OAuth client credentials still follow creation.
-No OAuth client credentials have been created or copied, and no credential JSON was
-downloaded. Live Gmail consent/import/revocation and inbox seeding remain unverified.
-The seeder command resolves correctly and exits with a fixed configuration message
-until the OAuth client credentials are supplied. These external steps and A1's
-pipeline/fixture merge remain necessary before the end-to-end demo is ready.
+The human completed OAuth registration for **FinBoy Dev** with the chosen support
+and contact address. Audience is **External / Testing**, and the chosen demo Gmail
+account is saved as a test user. Data Access contains exactly `gmail.readonly` and
+`gmail.insert`; the application's authorization URL requests only `gmail.readonly`.
+
+The **FinBoy Dev local web** client was created with all three loopback callbacks
+listed above. Its client ID and secret are in the private secrets file and A2 API
+env, both mode 600. Two downloaded JSON copies were verified against those saved
+credentials and callback URIs, then deleted. macOS blocked terminal access to Downloads;
+Finder moved just those files into the private folder for verification and cleanup.
+The initial Cloud Console loading problem resolved after project selection and
+releasing Chrome's debugging connection; native controls completed the configuration.
+
+The running API now returns a 307 to Google from the authorize endpoint, with an
+HttpOnly state cookie and `Cache-Control: no-store`. A real insert-only seeder
+consent is pending human completion. Live Gmail consent/import/revocation and inbox
+seeding remain unverified at this checkpoint. A1's pipeline and fixture merge also
+remain necessary before the end-to-end extraction demo is ready.
