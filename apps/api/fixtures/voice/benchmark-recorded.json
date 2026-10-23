@@ -1,0 +1,118 @@
+{
+  "mode": "live_stt",
+  "intent_cases": 28,
+  "intent_passed": 28,
+  "intent_failed_ids": [],
+  "synthetic_audio_count": 6,
+  "human_recording_count": 0,
+  "live_stt_calls": 6,
+  "samples": [
+    {
+      "id": "number-en",
+      "language": "en",
+      "synthetic": true,
+      "live_generated": true,
+      "tts_recorded_latency_ms": 4677,
+      "stt_status": "passed",
+      "spoken_number_human_intelligibility": "not_measured",
+      "media_status": "passed",
+      "stt_latency_ms": 2002,
+      "language_correct": true,
+      "exact_transcript": true,
+      "word_error_rate": 0.0,
+      "spoken_number_machine_check": true
+    },
+    {
+      "id": "number-hi",
+      "language": "hi",
+      "synthetic": true,
+      "live_generated": true,
+      "tts_recorded_latency_ms": 3136,
+      "stt_status": "passed",
+      "spoken_number_human_intelligibility": "not_measured",
+      "media_status": "passed",
+      "stt_latency_ms": 1807,
+      "language_correct": true,
+      "exact_transcript": false,
+      "word_error_rate": 0.0833,
+      "spoken_number_machine_check": true
+    },
+    {
+      "id": "number-ml",
+      "language": "ml",
+      "synthetic": true,
+      "live_generated": true,
+      "tts_recorded_latency_ms": 4501,
+      "stt_status": "passed",
+      "spoken_number_human_intelligibility": "not_measured",
+      "media_status": "passed",
+      "stt_latency_ms": 3014,
+      "language_correct": true,
+      "exact_transcript": true,
+      "word_error_rate": 0.0,
+      "spoken_number_machine_check": true
+    },
+    {
+      "id": "question-en",
+      "language": "en",
+      "synthetic": true,
+      "live_generated": true,
+      "tts_recorded_latency_ms": 2065,
+      "stt_status": "passed",
+      "spoken_number_human_intelligibility": "not_measured",
+      "media_status": "passed",
+      "stt_latency_ms": 1286,
+      "language_correct": true,
+      "exact_transcript": true,
+      "word_error_rate": 0.0,
+      "intent_correct": true
+    },
+    {
+      "id": "question-hi",
+      "language": "hi",
+      "synthetic": true,
+      "live_generated": true,
+      "tts_recorded_latency_ms": 1623,
+      "stt_status": "passed",
+      "spoken_number_human_intelligibility": "not_measured",
+      "media_status": "passed",
+      "stt_latency_ms": 1921,
+      "language_correct": true,
+      "exact_transcript": true,
+      "word_error_rate": 0.0,
+      "intent_correct": true
+    },
+    {
+      "id": "question-ml",
+      "language": "ml",
+      "synthetic": true,
+      "live_generated": true,
+      "tts_recorded_latency_ms": 3540,
+      "stt_status": "passed",
+      "spoken_number_human_intelligibility": "not_measured",
+      "media_status": "passed",
+      "stt_latency_ms": 857,
+      "language_correct": true,
+      "exact_transcript": true,
+      "word_error_rate": 0.0,
+      "intent_correct": true
+    }
+  ],
+  "live_tts_generation": [
+    {
+      "language": "en",
+      "status": "passed",
+      "latency_ms": 2065
+    },
+    {
+      "language": "hi",
+      "status": "passed",
+      "latency_ms": 1623
+    },
+    {
+      "language": "ml",
+      "status": "passed",
+      "latency_ms": 3540
+    }
+  ]
+}
