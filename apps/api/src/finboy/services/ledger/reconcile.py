@@ -1,12 +1,19 @@
 """Review actions run inside the caller's transaction and never commit implicitly."""
 
+from typing import Literal, get_args
 from uuid import UUID
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from finboy.core.clock import now_ist
-from finboy.db.models.ledger import Commitment, SourceEvent, Transaction, TransactionRevision
+from finboy.db.models.ledger import (
+    Category,
+    Commitment,
+    SourceEvent,
+    Transaction,
+    TransactionRevision,
+)
 
 
 def _get(session: Session, user_id: UUID, transaction_id: UUID) -> Transaction:
@@ -63,7 +70,7 @@ def merge_transactions(session: Session, *, user_id: UUID, keep_id: UUID, merge_
         return
     if (
         keep.status in {"merged", "rejected", "failed"}
-        or merge.status == "merged"
+        or merge.status in {"merged", "rejected", "failed"}
         or keep.direction != merge.direction
         or keep.currency != merge.currency
         or ({keep.kind, merge.kind} & {"refund", "reversal"} and keep.kind != merge.kind)
@@ -132,6 +139,7 @@ def merge_transactions(session: Session, *, user_id: UUID, keep_id: UUID, merge_
     merge.updated_at = now_ist()
     if keep.possible_duplicate_of_id == merge_id:
         keep.possible_duplicate_of_id = None
+    _lock_fields(session, keep, {"status", "dedupe"}, "manual_merge")
     keep.updated_at = now_ist()
     session.flush()
 
@@ -141,6 +149,8 @@ def keep_separate(session: Session, *, user_id: UUID, transaction_id: UUID) -> N
     if item.status in {"merged", "rejected", "failed"}:
         raise ValueError("invalid_review_action")
     partner = item.possible_duplicate_of_id
+    if partner is None and "dedupe" in (item.user_locked_fields or []):
+        return
     revision(
         session,
         item,
@@ -182,5 +192,92 @@ def keep_separate(session: Session, *, user_id: UUID, transaction_id: UUID) -> N
             changed_by="user",
         )
         item.review_reason = "low_confidence"
+    item.updated_at = now_ist()
+    session.flush()
+
+
+def _lock_fields(session: Session, item: Transaction, fields: set[str], reason: str) -> None:
+    locked = sorted(set(item.user_locked_fields or []) | fields)
+    revision(
+        session,
+        item,
+        "user_locked_fields",
+        item.user_locked_fields,
+        locked,
+        reason=reason,
+        changed_by="user",
+    )
+    item.user_locked_fields = locked
+
+
+def correct_transaction(
+    session: Session,
+    *,
+    user_id: UUID,
+    transaction_id: UUID,
+    category: Category | None = None,
+    merchant: str | None = None,
+    amount_minor: int | None = None,
+) -> None:
+    if category is not None and category not in get_args(Category):
+        raise ValueError("invalid_correction")
+    if merchant is not None and (
+        not merchant.strip() or len(merchant) > 160 or any(ord(char) < 32 for char in merchant)
+    ):
+        raise ValueError("invalid_correction")
+    if amount_minor is not None and (
+        type(amount_minor) is not int or not 0 < amount_minor <= 10**14
+    ):
+        raise ValueError("invalid_correction")
+    changes = {
+        key: value
+        for key, value in {
+            "category": category,
+            "merchant": merchant.strip() if merchant is not None else None,
+            "amount_minor": amount_minor,
+        }.items()
+        if value is not None
+    }
+    if not changes:
+        raise ValueError("invalid_correction")
+    item = _get(session, user_id, transaction_id)
+    if item.status in {"merged", "rejected", "failed"}:
+        raise ValueError("invalid_review_action")
+    for field, value in changes.items():
+        revision(
+            session,
+            item,
+            field,
+            getattr(item, field),
+            value,
+            reason="user_correction",
+            changed_by="user",
+        )
+        setattr(item, field, value)
+    _lock_fields(session, item, set(changes), "user_correction")
+    item.updated_at = now_ist()
+    session.flush()
+
+
+def set_review_status(
+    session: Session,
+    *,
+    user_id: UUID,
+    transaction_id: UUID,
+    status: Literal["confirmed", "rejected"],
+) -> None:
+    if status not in {"confirmed", "rejected"}:
+        raise ValueError("invalid_review_action")
+    item = _get(session, user_id, transaction_id)
+    if item.status in {"merged", "failed"} or item.status == "rejected" and status == "confirmed":
+        raise ValueError("invalid_review_action")
+    reason = "user_confirmation" if status == "confirmed" else "user_rejection"
+    revision(session, item, "status", item.status, status, reason=reason, changed_by="user")
+    revision(
+        session, item, "review_reason", item.review_reason, None, reason=reason, changed_by="user"
+    )
+    item.status = status
+    item.review_reason = None
+    _lock_fields(session, item, {"status", "review_reason"}, reason)
     item.updated_at = now_ist()
     session.flush()

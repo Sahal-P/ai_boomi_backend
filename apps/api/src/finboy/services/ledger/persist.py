@@ -104,13 +104,23 @@ def _fingerprint(event: Event) -> str:
     return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
 
-def _set_confidence(session: Session, transaction: Transaction, confidence: Confidence) -> None:
+def _set_confidence(
+    session: Session,
+    transaction: Transaction,
+    confidence: Confidence,
+    *,
+    preserve_status: bool = False,
+) -> None:
     locked = set(transaction.user_locked_fields or [])
     updates = {
         "confidence": Decimal(str(confidence.value)),
         "confidence_factors": confidence.factors,
     }
-    if not user_controls_status(session, transaction) and transaction.status != "failed":
+    if (
+        not preserve_status
+        and not user_controls_status(session, transaction)
+        and transaction.status != "failed"
+    ):
         updates.update(status=confidence.status, review_reason=confidence.review_reason)
     for field, value in updates.items():
         if field not in locked:
@@ -125,6 +135,38 @@ def _set_confidence(session: Session, transaction: Transaction, confidence: Conf
             )
             setattr(transaction, field, value)
     transaction.updated_at = now_ist()
+
+
+def refresh_review_confidence(session: Session, *, user_id: UUID, transaction_id: UUID) -> None:
+    """Moved merge evidence changes confidence, while the user's chosen status stays locked."""
+    transaction = session.scalar(
+        select(Transaction).where(Transaction.user_id == user_id, Transaction.id == transaction_id)
+    )
+    if transaction is None:
+        raise ValueError("transaction_not_found")
+    sources = list(
+        session.scalars(
+            select(SourceEvent)
+            .where(SourceEvent.user_id == user_id, SourceEvent.transaction_id == transaction_id)
+            .order_by(SourceEvent.created_at, SourceEvent.id)
+        )
+    )
+    if not sources:
+        return
+    chosen = next((row for row in sources if "payment_proof" in row.evidence), sources[0])
+    best = as_event(chosen)
+    sender = session.scalar(
+        select(EmailSource).where(
+            EmailSource.user_id == user_id, EmailSource.id == chosen.email_source_id
+        )
+    )
+    confidence = confidence_for(
+        best,
+        trusted=trusted_domain(sender.sender_domain) if sender else False,
+        source_count=len({row.email_source_id for row in sources}),
+        agreement=all(claims_agree(best, as_event(row)) for row in sources),
+    )
+    _set_confidence(session, transaction, confidence, preserve_status=True)
 
 
 def _commitment(
@@ -202,9 +244,26 @@ def refresh_links(session: Session, user_id: UUID) -> None:
             )
             transaction.linked_transaction_id = target
     commitments = session.scalars(
-        select(Commitment).where(Commitment.user_id == user_id, Commitment.status == "upcoming")
+        select(Commitment).where(
+            Commitment.user_id == user_id, Commitment.status.in_(["upcoming", "paid"])
+        )
     )
     for commitment in commitments:
+        if commitment.status == "paid":
+            paid = next(
+                (tx for tx in transactions if tx.id == commitment.paid_transaction_id), None
+            )
+            # A user rejecting/correcting the recorded payment reopens the obligation.
+            # Merchant/category edits alone retain an explicit paid link.
+            if paid is not None and (
+                paid.status == "confirmed"
+                and paid.direction == "out"
+                and paid.kind != "transfer"
+                and paid.amount_minor == commitment.amount_minor
+            ):
+                continue
+            commitment.status = "upcoming"
+            commitment.paid_transaction_id = None
         candidates = [
             tx
             for tx in transactions
