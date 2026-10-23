@@ -210,6 +210,7 @@ async def test_private_cross_host_authorization_sets_cookie_on_callback_host(
     from cryptography.fernet import Fernet
     from finboy.core.access import password_hash
     from finboy.core.config import Settings
+    from finboy.main import create_app
 
     google_double(monkeypatch)
     scheduled = []
@@ -219,7 +220,7 @@ async def test_private_cross_host_authorization_sets_cookie_on_callback_host(
     frontend = "https://household.example.test"
     backend = "https://api.example.test"
     callback = backend + "/api/v1/connections/gmail/callback"
-    mail_app.state.settings = Settings.model_validate(
+    settings = Settings.model_validate(
         mail_settings.model_dump()
         | {
             "environment": "production",
@@ -230,8 +231,12 @@ async def test_private_cross_host_authorization_sets_cookie_on_callback_host(
             "household_password_hash": password_hash("synthetic-password"),
         }
     )
+    app = create_app(settings)
+    app.state.engine.dispose()
+    app.state.engine = mail_app.state.engine
+    app.dependency_overrides.update(mail_app.dependency_overrides)
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=mail_app), base_url=frontend
+        transport=httpx.ASGITransport(app=app), base_url=frontend
     ) as client:
         authorize_path = "/api/v1/connections/gmail/authorize"
         assert (await client.get(authorize_path)).status_code == 401
