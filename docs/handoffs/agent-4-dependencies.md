@@ -56,3 +56,12 @@ expects 0002_phase1; A2 integration hit a local connection timeout under concurr
 machine load. All seven Agent 4 PostgreSQL tests pass. Please update allowed
 finboy_p1–p5 database guards and head checks in shared integration work. Agent 4
 will not modify old owners' test files.
+
+## Live transport state update
+
+Existing Meta app's restricted callback is active and app-to-WABA subscription is
+verified. Human renewed the temporary token; both WhatsApp permissions and expected
+assets are valid. Actual expiry: 24 October 2026 03:30 IST. Credential values remain
+only in private files. Phone checks pending. The frozen branch intentionally retains
+Agent 3 placeholders; assembled-runtime STT/TTS/ledger answer QA must follow its
+handoff. Final owned checks: 76 unit/HTTP tests + 9 PostgreSQL tests pass.
