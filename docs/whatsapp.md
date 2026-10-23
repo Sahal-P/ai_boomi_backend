@@ -42,8 +42,13 @@ reviewed in FinBoy on the demo computer; local web URLs are removed from phone r
   table. The explicitly specified Hotel Arya correction was applied through the
   local review API; English/Hindi/Malayalam assistant HTTP answers each returned
   the correct corrected food fact. No WhatsApp ledger mutation was introduced.
-- No audio receipt or successful WhatsApp ledger/audio answer has arrived yet.
-  Actual incoming media/STT and delivered synthesized MP3 remain pending.
+- Latest read-only metadata confirms a second real inbound text completed on the
+  assembled shared-assistant runtime, language `en`, no error. Its text reply reached
+  **read**. Together with the earlier fallback, two text deliveries are READ. Question
+  and answer contents were not retained or printed.
+- There is still **no audio receipt or audio delivery**. The human explicitly deferred
+  voice acceptance. Actual incoming media/STT and delivered/playable synthesized MP3
+  remain unverified; an ambiguous combined text/voice confirmation is not audio proof.
 
 ## Private settings
 

@@ -113,3 +113,12 @@ ledger/assistant answers in en/hi/ml passed in the isolated assembled verifier.
 Existing approved ingress/runtime/ports are left intact for integration coordination;
 no further live voice message was sent or synthesized by this deferred check. Resume
 the human phone voice acceptance only when the human requests it.
+
+## Latest text delivery evidence
+
+Read-only PostgreSQL verification now shows one additional real inbound text receipt
+`completed`, language `en`, no error, and two total text deliveries at provider READ
+(the earlier unavailable fallback plus the new shared-assistant response). No audio
+receipt or delivery exists. No raw question, answer, body or identifiers were read
+into the report. The human's explicit voice deferral still controls acceptance; the
+coordinator's ambiguous combined text/voice confirmation does not establish audio.
