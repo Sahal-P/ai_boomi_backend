@@ -30,10 +30,19 @@ reviewed in FinBoy on the demo computer; local web URLs are removed from phone r
   a fresh GET confirmed this existing app. These checks do not establish delivery.
 - Public synthetic signature/unknown-sender probe returned 200 without a receipt;
   tampered exact bytes returned 403. No message was sent by those probes.
-- Inbound text/audio, media retrieval, and delivered phone replies remain pending.
-  Agent 3's shared services
-  are unavailable placeholders in this frozen branch. No successful live ledger
-  answer, STT/TTS, audio upload, or phone delivery is claimed from mocks.
+- A real allowlisted text question reached the signed webhook. The frozen runtime
+  correctly recorded `assistant_unavailable` and sent its truthful text fallback;
+  Meta's delivery callback reached **read**. This is a real text transport result,
+  not a successful ledger answer or a claim from mocks.
+- Follow-up verification uses the fixed assembled commit `cbd2ed2` in the separate
+  managed `finboy-whatsapp-live` worktree, still API 8014 and database finboy_p4.
+  No moving integration HEAD or other agent's runtime was changed. Its actual demo
+  import processed all 42 synthetic emails; actual money APIs matched the truth
+  table. The explicitly specified Hotel Arya correction was applied through the
+  local review API; English/Hindi/Malayalam assistant HTTP answers each returned
+  the correct corrected food fact. No WhatsApp ledger mutation was introduced.
+- No audio receipt or successful WhatsApp ledger/audio answer has arrived yet.
+  Actual incoming media/STT and delivered synthesized MP3 remain pending.
 
 ## Private settings
 
@@ -220,3 +229,12 @@ Meta pages were read in Chrome on 24 October because the search fetcher returned
 - [Service messages and delivery status](https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/send-messages)
 - [App subscriptions API](https://developers.facebook.com/docs/graph-api/reference/app/subscriptions/)
 - [Meta's WABA subscription API example](https://www.postman.com/meta/whatsapp-business-platform/request/26gui66/subscribe-to-a-waba)
+
+## Post-handoff integration observations
+
+The assembled service adds a fixed `InvalidAudio(ValueError)` input exception.
+The channel's original frozen placeholder only raised ProviderUnavailable. Agent 5
+is asked in the dependency handoff to catch the integrated InvalidAudio boundary for
+both STT and TTS; otherwise invalid audio takes the generic interrupted-work failure
+path without its helpful text fallback. This does not affect the verified text
+round trip. No Agent 5 source was edited after ownership handoff.
