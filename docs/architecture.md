@@ -1,102 +1,90 @@
-# Phase 0 architecture
+# Phase 1 architecture
 
-FinBoy is a two-application monorepo, sized for a 20-hour hackathon. pnpm manages
-the web workspace and root commands; uv manages the Python workspace and its
-single API package. Each ecosystem has one root lockfile.
+FinBoy keeps one FastAPI app, one Next.js App Router app, PostgreSQL, and one
+lockfile per ecosystem. [The shared contract](phase1/contract.md) defines scope,
+interfaces, ownership, isolated ports/databases, and the demo truth table.
 
 ```mermaid
 flowchart LR
-  Browser[Next.js landing page] -->|GET /api/v1/health| Routes[FastAPI api/v1]
-  Routes --> Health[Health service]
-  Health --> Session[SQLAlchemy session]
+  Browser[Next.js landing and app shell] --> Client[Domain clients / lib/api]
+  Client -->|HTTP / runtime zod validation| Routes[FastAPI api/v1]
+  Routes --> Services[Mail / ingestion / ledger / money / assistant / privacy]
+  Services --> Session[SQLAlchemy sessions]
   Session --> Postgres[(PostgreSQL)]
-  Alembic[Alembic migrations] --> Postgres
+  Alembic[Reviewed Alembic migrations] --> Postgres
+  Services -. backend only / future features .-> Providers[Google / OpenAI]
 ```
 
-## Backend boundaries
+The diagram shows Phase 1 boundaries. Only health works end to end in the scaffold;
+domain routers are empty and ingestion, reconciliation, and money interfaces raise
+`NotImplementedError`. App routes contain headings and accessible navigation.
+No authentication, provider calls, ingestion, money calculations, or demo data are
+implemented here. The root evaluation/seed scripts point to modules their owners
+will add. Synthetic fixtures belong in `apps/api/fixtures/`.
 
-- `api` translates HTTP requests/responses and declares versioned Pydantic contracts.
-- `services` holds application logic. The health service executes `SELECT 1` and
-  maps database failure to a safe degraded status. It has no HTTP dependency.
-- `db` provides typed SQLAlchemy 2 metadata, an engine per application, and a session
-  per request. Blocking work runs in FastAPI's thread pool through synchronous
-  routes. The engine uses pre-ping, bounded connection/pool/statement timeouts, and
-  hidden SQL parameters. Sessions close without automatically committing writes.
-- `core` owns validated settings, a JSON log formatter, request context middleware,
-  and centralized error responses. `create_app` assembles these parts; its lifespan
-  disposes of the engine on shutdown. Importing modules does not open a database.
+## Backend
 
-The health endpoint is a readiness check: `200` means both the API and database
-respond; `503` means the API responds but the database is unavailable. It does not
-verify the migration revision; `db:current` and `db:check` cover that separately.
-Application startup remains possible during a database outage so readiness and
-the landing shell can explain the failure.
+- `api` owns HTTP contracts and translates requests/responses; synchronous routes
+  run blocking database work in FastAPI's thread pool.
+- `services` owns business logic and write transaction boundaries. Future ingestion
+  uses `BackgroundTasks` and `import_runs` counters, with no additional queue service.
+  LLMs interpret; deterministic money services calculate; users review uncertainty.
+- `db` owns the engine, request sessions, typed models, and metadata. Sessions close
+  without auto-commit. Alembic imports every model; only reviewed migrations change
+  schema. `0002_phase1` creates 11 tables, seeds the local user Arun, and preserves
+  UUIDs, integer paise, INR checks, timezone-aware timestamps, JSONB evidence, and
+  reconciliation links. No raw email body column exists. See contract §5 for details.
+- `core` owns settings, IST clock, allowlisted structured logging, error envelopes,
+  and request context. `today_ist()` honors the demo date only outside production;
+  `now_ist()` always returns real time for audit records.
 
-Alembic alone changes schema. The initial no-op revision establishes migration
-history and its version table without inventing financial domain models. Future
-models must inherit `Base` and be imported in `alembic/env.py` before autogeneration.
+Application construction opens no database connection. Lifespan disposes the
+engine. Health returns uncached `200/ok/connected` or `503/degraded/unavailable`;
+it checks connectivity, while Alembic commands check migration state.
 
-## Frontend boundaries
+## Frontend
 
-The layout and landing page are Server Components. Only the live connection panel
-is a Client Component. The page is safe to prerender and build without a running
-backend. Fonts are packaged locally; builds do not fetch Google Fonts.
+Pages/layouts are Server Components. The landing connection panel uses a small
+hook for initial, 30-second, and manual refresh plus cancellation. It renders
+checking, connected, degraded, and offline states.
 
-`lib/api.ts` owns the public backend URL, an explicitly typed health contract,
-runtime response validation, a five-second abort timeout, and safe client errors.
-It accepts only consistent `200/ok/connected` or `503/degraded/unavailable` results.
-There is no generic request framework or unchecked JSON assertion.
+`src/lib/api/http.ts` owns `requestJson(path, schema, init)`, backend URL validation,
+zod response validation, safe `ApiError`, a five-second default timeout,
+`credentials: "omit"`, and uncached requests. Optional status schemas support the
+health endpoint's consistent 200/503 contract. Each domain gets its own module;
+`health.ts` is implemented. Components remain presentational.
 
-`hooks/use-health.ts` owns connection state, initial/30-second/manual refresh, and
-request cancellation on refresh/unmount. UI components render checking, connected,
-degraded, and offline states. Browser requests exercise the real API and CORS;
-there is no mock status or proxy that hides connectivity problems.
+The `(app)` route group provides minimal navigation and placeholders without
+changing `/`. Theme tokens and local Geist fonts preserve the landing design.
+The requested shadcn components are installed for subsequent feature owners.
 
-Tailwind theme tokens define off-white, charcoal, and emerald colors. shadcn/ui
-components live in the repository, configured through `components.json`. Lucide
-provides icons. The illustration is decorative HTML/CSS with no financial data.
+## Configuration and privacy
 
-## Configuration, privacy, and errors
+Local env files are ignored; committed examples contain blank integration values
+and public local database settings. Secrets belong only in
+`~/.config/finboy/secrets.env` and ignored env files. OpenAI and OAuth secrets never
+enter browser bundles. Configured Fernet keys are validated; a configured
+`WEB_APP_URL` must match a CORS origin. Integration settings remain optional so
+health and scaffold builds need no credentials.
 
-Compose, FastAPI, and Next.js each load their own local environment file. Examples
-are committed; local files are ignored. Settings and database URLs are secret
-types. CORS allows exact configured origins and no credentials. Local services
-bind only to loopback.
+CORS permits explicit origins, GET/POST/PATCH/DELETE/OPTIONS, no credentials, and
+exposes generated request IDs. Local listeners bind to loopback. Logs allow only
+operational fields, including import run/stage/count/provider/outcome/model/latency.
+Bodies, query strings, tokens, SQL parameters, and raw exception text stay redacted.
+Existing errors keep the same safe envelope and request ID.
 
-Request middleware generates its own UUID, returns it as `X-Request-ID`, and logs
-only method, route **template**, status, and duration. Unmatched paths are a fixed
-label. Unexpected exceptions are caught before the server can print their content;
-the response contains a generic message and the request ID. HTTP exception details
-and validation input are also redacted. Third-party log messages and tracebacks
-are omitted by the formatter to avoid accidentally exposing sensitive input.
+## Parallel work and verification
 
-`OPENAI_API_KEY` is an unused backend-only placeholder. No OpenAI SDK or call is
-needed in Phase 0. Future AI logic must live in backend services and never expose
-keys or financial records through browser code, responses, or logs.
+Follow contract §3–4. Each agent uses its assigned ports and database on the shared
+Postgres container; never stop it during parallel work. Root scripts accept
+`API_PORT` / `WEB_PORT`; each worktree must also update CORS and backend URLs.
+The integrator owns shared dependencies, core, migration baseline, and HTTP helper.
 
-## Verification and deliberate limits
+`pnpm check` runs lint, unit/client tests, and strict types; `pnpm build` checks the
+production build. Database checks use a local disposable database, reviewed Alembic
+upgrades, drift checks, and integration tests whose constraint probes roll back.
+Browser checks cover desktop/mobile navigation and the health panel's four states.
 
-`pnpm check` covers Ruff formatting/lint, pytest with direct HTTPX ASGI requests,
-typed client contract tests, ESLint, and strict TypeScript checks. Integration tests
-exercise local PostgreSQL and the baseline revision. `pnpm build` independently
-checks the production Next.js build. Browser checks cover responsive layout and
-the live health connection, including failure and recovery.
-
-There is no authentication, user data, capture flow, extraction, WhatsApp, ledger,
-dashboard, forecast, queue, cache, or deployment infrastructure. Those require a
-separate phase. Keep business logic out of API routes and UI; introduce shared
-packages or additional services only when concrete requirements justify them.
-
-## Official references
-
-- [Next.js App Router installation](https://nextjs.org/docs/app/getting-started/installation)
-- [FastAPI settings](https://fastapi.tiangolo.com/advanced/settings/)
-- [Pydantic Settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/)
-- [SQLAlchemy 2.1 sessions](https://docs.sqlalchemy.org/en/21/orm/session_basics.html)
-- [Alembic tutorial](https://alembic.sqlalchemy.org/en/latest/tutorial.html)
-- [shadcn/ui for Next.js](https://ui.shadcn.com/docs/installation/next)
-- [Tailwind CSS installation](https://tailwindcss.com/docs/installation/framework-guides/nextjs)
-- [uv workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/)
-- [pnpm workspace settings](https://pnpm.io/settings)
-- [typescript-eslint supported versions](https://typescript-eslint.io/users/dependency-versions/)
-- [PostgreSQL supported versions](https://www.postgresql.org/support/versioning/)
+See [verification](verification.md) for actual outcomes. Scope excludes product
+login, Outlook, IMAP, WhatsApp, bank APIs, Gmail watch, security recommendations,
+model training, and deployment. New services or shared packages need a concrete use.

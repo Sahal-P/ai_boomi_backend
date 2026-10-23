@@ -215,6 +215,52 @@ disclaimer_key (`cash_flow_model_not_investment_advice`).
 - estimated unallocated = income − outflows − upcoming
 - simulation remaining = unallocated − proposed monthly amount
 
+### Pre-flight interface clarifications
+
+These fill in previously unspecified types so all agents share one scaffold:
+
+- `LOCAL_USER_ID` is exported by `core/config.py`. Blank optional integration env
+  values become `None`; no credential/model is needed for health. A configured
+  `WEB_APP_URL` must match a CORS origin. `now_ist()` is always real, timezone-aware
+  IST; only `today_ist()` uses the non-production demo date.
+- `PeriodSpec` (in `services/money/engine.py`): `kind` defaults to `current_month`
+  with no year/month; `kind="month"` requires integer `year` (1–9999) and `month`
+  (1–12). Period start/end/as_of are inclusive IST `date` values. `Category` and
+  `TransactionStatus` are closed Literal aliases exported from `db/models/ledger.py`.
+- `CategoryTotal`: category, amount_minor, currency=`INR`, transaction_count.
+  `CommitmentView`: id, kind, label, amount_minor, currency, due_date, status,
+  confidence, nullable source_event_id and paid_transaction_id.
+- `TransactionView` (list/evidence summary): id, direction, kind, amount_minor,
+  currency, merchant, category, occurred_at, status, confidence; nullable
+  review_reason, reference_id, payment_instrument, account_last4,
+  possible_duplicate_of_id, linked_transaction_id, merged_into_id. Detail API
+  evidence/history are separate models owned by A4. View confidence serializes as
+  a JSON number; SQL confidence uses `Decimal`.
+- `MoneySummary` includes currency=`INR`; count fields are nonnegative integers.
+  `SimulationLine.label_key` is one of `tracked_income`, `confirmed_outflows`,
+  `upcoming_commitments`, `proposed_monthly`; sign is `+` or `-`.
+  `CashFlowSimulation.proposed_monthly_minor` is positive. Remaining amounts and
+  net category/outflow amounts may be negative. All collections are explicit lists.
+- SQL model placement: `core.py` = User; `mail.py` = MailConnection, OAuthState,
+  ImportRun, AuditEvent; `ledger.py` = EmailSource, SourceEvent, Transaction,
+  TransactionRevision, Commitment, ExtractionCache. AuditEvent's Python attribute
+  is `event_metadata` because SQLAlchemy reserves `metadata`; SQL remains `metadata`.
+- UUIDs get Python `uuid4` defaults; creation timestamps default to database `now()`;
+  transactions.updated_at is initialized once and must be updated by write services.
+  Nullable columns are the explicit nullable fields above, lifecycle timestamps
+  (last_synced_at, revoked_at, used_at, started_at, finished_at), optional event
+  merchant/date/reference/instrument/account fields, and transaction reference/
+  instrument/account fields. Other columns are required. JSON revision values may
+  contain JSON null. Confidence is numeric(4,3) within 0–1; import counters cannot
+  be negative. All FKs restrict deletion except the specified email→event cascade;
+  privacy services must delete dependent rows in order and clear self links.
+  `import_runs.error_code` is NULL or one of `configuration_missing`,
+  `authorization_failed`, `provider_unavailable`, `invalid_upload`,
+  `extraction_failed`, `import_failed` (no provider exception text).
+  Useful indexes cover user/date, user/status, FK traversal, fingerprint, reference.
+- `requestJson` accepts optional `timeoutMs` and `statusSchemas` in its init. Health
+  uses exact schemas for 200 and 503; other clients reject non-success statuses.
+
 ## 7. HTTP API (`/api/v1`, JSON, existing error envelope, `Cache-Control: no-store`)
 
 Amounts are `*_minor` integers + `currency: "INR"`; timestamps ISO 8601.

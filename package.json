@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "concurrently --kill-others --names api,web --prefix-colors green,cyan \"pnpm dev:api\" \"pnpm dev:web\"",
-    "dev:api": "uv run --package finboy-api uvicorn finboy.main:create_app --factory --reload --reload-dir apps/api/src --host 127.0.0.1 --port 8000 --no-access-log --log-config apps/api/logging.json",
-    "dev:web": "pnpm --filter @finboy/web dev",
+    "dev:api": "uv run --package finboy-api uvicorn finboy.main:create_app --factory --reload --reload-dir apps/api/src --host 127.0.0.1 --port ${API_PORT:-8000} --no-access-log --log-config apps/api/logging.json",
+    "dev:web": "pnpm --filter @finboy/web dev --port ${WEB_PORT:-3000}",
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down",
     "db:migrate": "uv run --package finboy-api alembic -c apps/api/alembic.ini upgrade head",
@@ -24,10 +24,15 @@
     "typecheck": "pnpm --filter @finboy/web typecheck",
     "check": "pnpm lint && pnpm test && pnpm typecheck",
     "build": "pnpm --filter @finboy/web build",
-    "start:web": "pnpm --filter @finboy/web start",
+    "start:web": "pnpm --filter @finboy/web start --port ${WEB_PORT:-3000}",
     "test:api": "uv run pytest apps/api/tests -m 'not integration'",
     "test:web": "pnpm --filter @finboy/web test",
-    "env:setup": "node scripts/setup.mjs"
+    "env:setup": "node scripts/setup.mjs",
+    "eval:extraction": "uv run --package finboy-api python -m finboy.services.ingestion.evaluate",
+    "demo:render-mailbox": "uv run --package finboy-api python -m finboy.services.ingestion.render_demo_mailbox",
+    "seed:fixture-ledger": "uv run --package finboy-api python -m finboy.services.money.seed_fixture_ledger",
+    "seed:gmail-demo-inbox": "uv run --package finboy-api python -m finboy.services.mail.seed_demo_inbox",
+    "voice:benchmark": "uv run --package finboy-api python -m finboy.services.speech.benchmark"
   },
   "devDependencies": {
     "concurrently": "10.0.6"

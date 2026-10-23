@@ -1,10 +1,11 @@
 from alembic import context
 from finboy.core.config import Settings
 from finboy.core.logging import configure_logging
+from finboy.db import models as models
 from finboy.db.base import Base
 from sqlalchemy import create_engine, pool
 
-# Import future ORM model modules here so autogeneration sees their tables.
+# Keep every model imported so Alembic sees the complete schema.
 settings = Settings()
 configure_logging(settings.log_level)
 target_metadata = Base.metadata

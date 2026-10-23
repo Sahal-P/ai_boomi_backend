@@ -2,14 +2,15 @@
 
 ## Scope and architecture
 
-- Phase 0 is the foundation only. Do not add authentication, transaction capture,
-  AI extraction, WhatsApp, ledger, dashboards, or forecasting without a new request.
+- Phase 1 builds what `docs/phase1/contract.md` defines; everything in its
+  out-of-scope list still needs a new request.
 - Keep one FastAPI application in `apps/api` and one Next.js App Router application
   in `apps/web`. PostgreSQL is the only persistent service.
 - API routes own HTTP contracts, `services` own business logic, `db` owns SQLAlchemy
   sessions and metadata, and `core` owns settings, errors, and logging.
 - Keep UI components presentational. Put backend communication and runtime response
-  validation in `apps/web/src/lib/api.ts` and connection state in a small hook.
+  validation in `apps/web/src/lib/api/` (one module per domain, shared helper in
+  `http.ts`) and connection state in a small hook.
 - Prefer simple functions and explicit types. Avoid generic repositories, service
   containers, microservices, or shared packages until there is a real need.
 - Use Alembic for schema changes; never call `metadata.create_all()` at startup.
@@ -53,3 +54,10 @@
   loading, connected, degraded, and offline behavior when relevant.
 - Update setup/architecture documentation when commands, settings, or boundaries
   change. Report commands, actual outcomes, and any remaining verification limits.
+
+## Parallel work
+
+- Follow the ownership table, ports, and per-agent databases in
+  `docs/phase1/contract.md`.
+- Never stop the shared PostgreSQL container (`db:down` or Compose down).
+- Secrets live only in `~/.config/finboy/secrets.env` and gitignored env files.

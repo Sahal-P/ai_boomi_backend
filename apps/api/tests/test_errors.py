@@ -93,3 +93,28 @@ async def test_cors_allows_only_configured_origin(client: AsyncClient) -> None:
     assert allowed.headers["access-control-allow-origin"] == "http://localhost:3000"
     assert blocked.status_code == 400
     assert "access-control-allow-origin" not in blocked.headers
+
+
+@pytest.mark.parametrize("method", ["GET", "POST", "PATCH", "DELETE", "OPTIONS"])
+async def test_cors_phase1_methods_without_credentials(client: AsyncClient, method: str) -> None:
+    response = await client.options(
+        "/api/v1/transactions",
+        headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": method},
+    )
+    assert response.status_code == 200
+    assert set(response.headers["access-control-allow-methods"].split(", ")) == {
+        "GET",
+        "POST",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    }
+    assert "access-control-allow-credentials" not in response.headers
+
+
+async def test_cors_rejects_unapproved_method(client: AsyncClient) -> None:
+    response = await client.options(
+        "/api/v1/transactions",
+        headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "PUT"},
+    )
+    assert response.status_code == 400

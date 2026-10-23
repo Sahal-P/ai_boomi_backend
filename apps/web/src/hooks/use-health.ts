@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getHealth, type HealthResponse } from "@/lib/api";
+import { getHealth, type HealthResponse } from "@/lib/api/health";
 
 type ConnectionState =
   | { state: "checking" }

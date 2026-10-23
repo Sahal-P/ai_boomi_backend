@@ -1,8 +1,10 @@
 # FinBoy
 
 An AI-powered personal finance copilot for Indian users. This repository contains
-the **Phase 0 foundation**: a modular API, a responsive landing shell, and a local
-PostgreSQL development environment. AI integration belongs to a later phase.
+the **Phase 1 scaffold**: reviewed schema, shared service contracts, empty domain
+routers, and placeholder app pages. The landing page and live health check work;
+Gmail, ingestion, ledger calculations, voice, and product UX await their owners.
+The source of truth is [the Phase 1 contract](docs/phase1/contract.md).
 
 ## Stack
 
@@ -63,7 +65,7 @@ PostgreSQL and preserves the named data volume.
 | File | Purpose |
 | --- | --- |
 | `.env` | Compose: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` |
-| `apps/api/.env` | Backend: `DATABASE_URL`, `ENVIRONMENT`, `LOG_LEVEL`, `CORS_ORIGINS` |
+| `apps/api/.env` | Backend: database, CORS, clock, and optional integration settings (below) |
 | `apps/web/.env.local` | Public frontend setting: `NEXT_PUBLIC_API_URL` |
 
 The API loads its `.env` from `apps/api` regardless of the current directory.
@@ -71,8 +73,19 @@ Process environment variables take precedence. `DATABASE_URL` must use the
 `postgresql+psycopg://` scheme. `CORS_ORIGINS` is a JSON array of exact origins.
 Both `localhost:3000` and `127.0.0.1:3000` are allowed by the example.
 
-`OPENAI_API_KEY` is an empty, backend-only placeholder. No OpenAI dependency or
-API calls are implemented. Never put secrets into `NEXT_PUBLIC_*`: Next.js embeds
+Integration placeholders are blank in `apps/api/.env.example` and optional until
+features are enabled. `OPENAI_API_KEY`, `OPENAI_EXTRACTION_MODEL`,
+`OPENAI_ASSISTANT_MODEL`, and `OPENAI_TRANSCRIBE_MODEL` configure the backend SDK;
+no API calls are implemented in the scaffold. Verify model IDs in official docs.
+`GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`,
+`GOOGLE_OAUTH_REDIRECT_URI`, and `GOOGLE_CLOUD_PROJECT` configure Google services.
+`TOKEN_ENCRYPTION_KEY` must be a valid Fernet key when set. Secrets are masked types.
+`WEB_APP_URL`, when set, must match an exact CORS origin. `DEMO_TODAY` is an optional
+ISO date for business dates in IST and is ignored in production; real timestamps
+always use the actual clock. Keep secrets in `~/.config/finboy/secrets.env` (chmod
+600) and gitignored env files; setup does not read that secrets file automatically.
+
+ Never put secrets into `NEXT_PUBLIC_*`: Next.js embeds
 those values into browser JavaScript at **build time**. Restart development or
 rebuild production after changing the public API URL.
 
@@ -86,21 +99,35 @@ database roles. Stop the service before changing its host port.
 | Command | Purpose |
 | --- | --- |
 | `pnpm dev` | Run API and web together; stop both if either exits |
-| `pnpm dev:api` / `pnpm dev:web` | Run one development server |
+| `pnpm dev:api` / `pnpm dev:web` | Run one server; `API_PORT` / `WEB_PORT` default to 8000 / 3000 |
 | `pnpm db:up` / `pnpm db:down` | Start / stop local PostgreSQL, keeping data |
 | `pnpm db:migrate` | Apply Alembic migrations to head |
 | `pnpm db:current` / `pnpm db:check` | Show revision / check ORM schema drift |
 | `pnpm check` | Backend/frontend lint, unit tests, frontend type checks |
 | `pnpm test:api` / `pnpm test:web` | Backend unit tests / typed health-client tests |
-| `pnpm test:integration` | Read-only tests against local PostgreSQL after migration |
+| `pnpm test:integration` | Local disposable PostgreSQL schema/constraint tests (writes roll back) |
 | `pnpm lint:api` / `pnpm lint:web` | Ruff lint + format check / ESLint |
 | `pnpm format:api` | Format Python sources and tests |
 | `pnpm typecheck` | Generate Next route types, then run strict TypeScript checks |
 | `pnpm build` / `pnpm start:web` | Build / serve the production frontend |
 
-Backend unit tests require no running database. Integration tests require
-`pnpm db:up && pnpm db:migrate`; they verify connectivity, the migration baseline,
-and the real HTTP health contract without creating domain records.
+Backend unit tests require no running database. Integration tests require a local
+disposable database with migrations applied; synthetic constraint probes roll back.
+The shared Compose container must stay running during parallel work.
+Follow [parallel setup, ownership, ports, and databases](docs/phase1/contract.md#3-runtime-isolation-for-parallel-agents)
+before starting agents. For example: `API_PORT=8001 WEB_PORT=3001 pnpm dev` after
+updating that worktree's database URL, CORS origins, web URL, and public API URL.
+
+The following commands are wired to owner modules that are **not implemented yet**;
+they intentionally fail with module-not-found until the corresponding agent adds them:
+
+| Command | Owner / purpose |
+| --- | --- |
+| `pnpm eval:extraction` | A1 / extraction evaluation |
+| `pnpm demo:render-mailbox` | A1 / render synthetic email fixtures |
+| `pnpm seed:fixture-ledger` | A4 / seed the development ledger |
+| `pnpm seed:gmail-demo-inbox` | A2 / populate the dedicated demo inbox |
+| `pnpm voice:benchmark` | A3 / voice evaluation |
 
 To add a future database migration after defining/importing models:
 
@@ -112,8 +139,12 @@ pnpm db:check
 pnpm test:integration
 ```
 
-No tables are created by application startup. Phase 0's baseline migration creates
-only Alembic's revision table; there are no financial or authentication tables.
+No tables are created by application startup. Migration `0002_phase1` creates the
+11 contract tables and seeds Arun (`00000000-0000-0000-0000-000000000001`). There
+is no product login. Domain service bodies raise `NotImplementedError`; empty
+routers expose no domain endpoints yet. App navigation links to placeholder pages
+at `/dashboard`, `/transactions`, `/review`, `/assistant`, `/connect`, `/privacy`,
+and `/import/[runId]`.
 
 Add a shadcn component only when needed:
 
@@ -162,11 +193,12 @@ apps/api/
     services/        # Application logic
   alembic/           # Reviewed schema migrations
   tests/             # Unit/HTTP contracts and local integration tests
+  fixtures/          # Synthetic demo_mailbox/, llm_cassettes/, voice/ (owners add data)
 apps/web/
   src/app/           # Next.js routes, layout, styles, icon
   src/components/    # Landing UI and owned shadcn components
   src/hooks/         # Connection state and refresh lifecycle
-  src/lib/           # Typed API client and utilities
+  src/lib/api/       # Domain clients; shared zod requestJson helper
 docs/architecture.md
 AGENTS.md
 compose.yaml
@@ -174,8 +206,8 @@ compose.yaml
 
 See [architecture](docs/architecture.md) and [engineering rules](AGENTS.md).
 Completed checks and observed results are recorded in [verification](docs/verification.md).
-Phase 0 intentionally stops before authentication, transaction capture, extraction,
-WhatsApp, ledger, dashboards, forecasting, or any AI integration.
+The contract defines the remaining Phase 1 work and its out-of-scope list.
+This pre-flight implements no domain features.
 
 ## Troubleshooting
 

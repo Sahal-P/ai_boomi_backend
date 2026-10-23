@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ApiError, getHealth } from "./api.ts";
+import { ApiError } from "./http.ts";
+import { getHealth } from "./health.ts";
 
 const healthy = {
   service: "finboy-api",
@@ -69,4 +70,12 @@ test("health client propagates an unreachable backend", async (t) => {
     throw new TypeError("Network error");
   });
   await assert.rejects(getHealth(), TypeError);
+});
+
+test("health client rejects status/body mismatches in both directions", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => Response.json(healthy, { status: 503 }));
+  await assert.rejects(getHealth(), ApiError);
+  t.mock.method(globalThis, "fetch", async () =>
+    Response.json({ ...healthy, status: "degraded", database: "unavailable" }));
+  await assert.rejects(getHealth(), ApiError);
 });

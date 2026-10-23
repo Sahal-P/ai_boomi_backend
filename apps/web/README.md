@@ -13,6 +13,10 @@ pnpm typecheck
 pnpm build
 ```
 
-`src/lib/api.ts` owns backend communication and response validation;
+`src/lib/api/` owns backend communication and zod response validation
+(one module per domain, shared `http.ts` helper);
 `src/hooks/use-health.ts` owns connection state. The landing page contains no
 financial data or product features beyond a live backend connection check.
+
+Phase 1 app routes are placeholders under `src/app/(app)/`. Domain owners implement
+their features against [the shared contract](../../docs/phase1/contract.md).

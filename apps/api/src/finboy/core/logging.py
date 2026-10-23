@@ -14,7 +14,21 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "event": record.msg if record.name.startswith("finboy") else "server.event",
         }
-        for field in ("request_id", "method", "route", "status_code", "duration_ms", "error_type"):
+        for field in (
+            "request_id",
+            "method",
+            "route",
+            "status_code",
+            "duration_ms",
+            "error_type",
+            "import_run_id",
+            "stage",
+            "count",
+            "provider",
+            "outcome",
+            "model",
+            "latency_ms",
+        ):
             if hasattr(record, field):
                 payload[field] = getattr(record, field)
         return json.dumps(payload)
