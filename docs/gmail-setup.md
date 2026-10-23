@@ -194,11 +194,12 @@ The human completed Google Cloud SDK login with the requested account. Enabling
 it. The configured Cloud project is active. The Fernet key is present in the private
 secrets file and A2 backend env; the secrets file is mode 600.
 
-OAuth branding, audience/test-user configuration, scopes, and client credentials
-remain pending. In the correct Chrome profile, Cloud Console reported that Google
-Auth Platform was not configured; its registration page and project picker then
-failed to populate, with the sanitized browser error
-`TypeError: Cannot read properties of undefined (reading 'reference')`.
+The OAuth registration wizard is prepared with **FinBoy Dev**, External/Testing,
+and the human's chosen support/contact address. Its final Google API Services User
+Data Policy agreement, Continue, and Create steps await human action. The initial
+Cloud Console loading/script problem resolved after project selection and releasing
+Chrome's debugging connection; native Chrome controls successfully filled the wizard.
+Test-user configuration, scopes, and OAuth client credentials still follow creation.
 No OAuth client credentials have been created or copied, and no credential JSON was
 downloaded. Live Gmail consent/import/revocation and inbox seeding remain unverified.
 The seeder command resolves correctly and exits with a fixed configuration message
