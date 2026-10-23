@@ -15,6 +15,7 @@ from finboy.core.languages import Language
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppDelivery, WhatsAppReceipt
 from finboy.services.assistant import service as assistant
 from finboy.services.speech import service as speech
+from finboy.services.speech.media import InvalidAudio
 from finboy.services.whatsapp import receipts
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
@@ -167,10 +168,10 @@ def process_question(
                     display_style=preferred or "auto",
                     settings=settings,
                 )
-            except (ProviderUnavailable, MetaUnavailable) as exc:
+            except (ProviderUnavailable, MetaUnavailable, InvalidAudio) as exc:
                 code = (
                     "invalid_audio"
-                    if isinstance(exc, InvalidMedia)
+                    if isinstance(exc, (InvalidMedia, InvalidAudio))
                     or (isinstance(exc, ProviderUnavailable) and exc.code == "invalid_audio")
                     else "assistant_unavailable"
                 )
@@ -205,7 +206,7 @@ def process_question(
                         raise InvalidMedia
                     media_id = client.upload_audio(audio_reply.data)
                     send_reply(session, config, client, receipt, question, media_id=media_id)
-                except ProviderUnavailable, MetaUnavailable:
+                except ProviderUnavailable, MetaUnavailable, InvalidAudio:
                     # Correct text has already been sent. Never fabricate an audio attachment.
                     logger.info("whatsapp.audio_unavailable", extra={"outcome": "text_only"})
             receipts.finish(

@@ -7,6 +7,7 @@ from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppReceipt
 from finboy.services.assistant.models import AssistantAnswer
+from finboy.services.speech.media import InvalidAudio
 from finboy.services.speech.models import SynthesizedAudio, Transcript
 from finboy.services.whatsapp import processor
 from finboy.services.whatsapp.config import ChannelConfig
@@ -93,11 +94,13 @@ def test_shared_assistant_and_speech_routing(
     meta.close.assert_called_once()
 
 
-@pytest.mark.parametrize("fault", ["stt", "tts", "media", "assistant"])
+@pytest.mark.parametrize("fault", ["stt", "tts", "media", "assistant", "invalid_audio"])
 def test_provider_failure_keeps_correct_text_when_available(
     monkeypatch: pytest.MonkeyPatch, config: ChannelConfig, wa_settings: Settings, fault: str
 ) -> None:
     factory, receipt, _, meta, send, ask, transcribe, speak, finish = harness(monkeypatch)
+    if fault == "invalid_audio":
+        transcribe.side_effect = InvalidAudio()
     if fault == "stt":
         transcribe.side_effect = ProviderUnavailable("speech_unavailable")
     if fault == "tts":
