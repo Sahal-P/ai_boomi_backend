@@ -27,6 +27,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 request, 500, "internal_error", "An unexpected error occurred."
             )
 
+        response.headers["Cache-Control"] = "no-store"
         response.headers["X-Request-ID"] = request.state.request_id
         logger.info(
             "request.completed",

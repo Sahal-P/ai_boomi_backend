@@ -32,6 +32,8 @@
     "demo:render-mailbox": "uv run --package finboy-api python -m finboy.services.ingestion.render_demo_mailbox",
     "seed:fixture-ledger": "uv run --package finboy-api python -m finboy.services.money.seed_fixture_ledger",
     "seed:gmail-demo-inbox": "uv run --package finboy-api python -m finboy.services.mail.seed_demo_inbox",
+    "dev:whatsapp-ingress": "uv run --package finboy-api python -m finboy.services.whatsapp.ingress --api-port ${API_PORT:-8015} --port ${WHATSAPP_INGRESS_PORT:-8095}",
+    "test:system": "uv run pytest apps/api/tests/system -m integration",
     "voice:benchmark": "uv run --package finboy-api python -m finboy.services.speech.benchmark"
   },
   "devDependencies": {

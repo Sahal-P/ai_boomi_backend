@@ -30,9 +30,16 @@ def storage(monkeypatch):
     engine = create_engine(settings.database_url.get_secret_value(), hide_parameters=True)
     assert engine.url.host in {"localhost", "127.0.0.1"}
     assert settings.environment != "production"
-    assert engine.url.database in {"finboy", "finboy_a1", "finboy_test"}, (
-        "Use a local test database"
-    )
+    assert engine.url.database in {
+        "finboy",
+        "finboy_a1",
+        "finboy_test",
+        "finboy_p1",
+        "finboy_p2",
+        "finboy_p3",
+        "finboy_p4",
+        "finboy_p5",
+    }, "Use a local test database"
     factory = sessionmaker(engine, expire_on_commit=False)
     user_id, run_id = uuid4(), uuid4()
     monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "rules")

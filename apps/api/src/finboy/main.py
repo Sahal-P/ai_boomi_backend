@@ -1,17 +1,21 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 
 from finboy import __version__
 from finboy.api.router import api_router
+from finboy.core.clock import now_ist
 from finboy.core.config import Settings
 from finboy.core.errors import register_error_handlers
 from finboy.core.logging import configure_logging
 from finboy.core.middleware import RequestContextMiddleware
 from finboy.db.session import build_engine
+from finboy.services.whatsapp.receipts import interrupt_stale
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +28,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         logger.info("application.started")
+        if settings.whatsapp_enabled:
+            try:
+                with Session(engine) as session:
+                    interrupt_stale(session, before=now_ist() - timedelta(minutes=10))
+            except Exception:
+                # Readiness remains truthful if database/migrations are unavailable.
+                logger.warning("whatsapp.startup_recovery_unavailable")
         try:
             yield
         finally:

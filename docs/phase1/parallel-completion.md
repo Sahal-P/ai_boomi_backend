@@ -65,7 +65,7 @@ OCR, WhatsApp expense capture, or WhatsApp ledger mutations.
 
 - Language = `en | hi | ml`; DisplayStyle = `auto | en | hi | hinglish | ml | manglish`.
   Shared aliases live in `core/languages.py`.
-- English/Hindi TTS: Chatterbox through Resemble; human account setup in the
+- English/Hindi TTS: Resemble Ultra (later explicit human choice supersedes Chatterbox); human account setup in the
   hello404lab Chrome profile. Verify actual API entitlement, model, voice, codec,
   and a small synthetic sample using official docs. No cloning/training.
 - Malayalam TTS: an actually available Gemini TTS model/voice; verify a synthetic
@@ -175,8 +175,18 @@ to purchase any security.” Actual bank balances may differ from tracked record
 
 Run pnpm check, build, db:migrate, db:check, test:integration, eval:extraction (offline),
 voice:benchmark. Browser: 1440×1000, 390×844, 320×740; loading/empty/error/offline,
-keyboard/mic denied/no-WebGL. Actual Resemble English/Hindi, Gemini Malayalam MP3,
+keyboard/mic denied/no-WebGL. Actual Resemble Ultra English/Hindi, Gemini Malayalam MP3,
 and approved-phone received WhatsApp text/voice reply are required live criteria.
 Graph HTTP 200 and mocked tests alone do not establish delivery/provider success.
 No mass rerecording or costly live evaluation without necessity. Commit synthetic
 fixtures only. Final report distinguishes every incomplete live criterion.
+
+
+## Later provider decision recorded at integration
+
+Agent 3's final handoff records explicit human approval: “Use Resemble Ultra credit
+no replicate is needed.” This supersedes the initial Chatterbox requirement; no
+Replicate subscription/token/adapter is needed. Verified voices: Lucy en-US
+`fb2d2858`, Fatima Hindi `af3b3fad`; model `resemble-ultra`. Verified Malayalam:
+Gemini `gemini-3.8-flash-tts` / Kore. These are handoff live checks; integration will
+verify shared-service responses and actual browser/phone acceptance separately.

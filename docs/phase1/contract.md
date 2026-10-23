@@ -42,7 +42,7 @@ FinBoy's tracked records. It is not a recommendation to purchase any security."
 | Gmail API | Scope `https://www.googleapis.com/auth/gmail.readonly` only. OAuth app in **Testing** with test users. Testing-mode refresh tokens expire after 7 days: reconnect before the demo. |
 | mailparser | Python stdlib `email` (`policy.default`) + HTML-to-text. |
 | GPT-Transcribe / OpenAI | Backend only. Model IDs come from settings (`OPENAI_*_MODEL`), verified in official OpenAI docs; never hardcoded from memory. |
-| TTS routing (completion round) | Resemble/Chatterbox for en/hi; verified available Gemini TTS for ml. Backend-only, no cloning/training. See parallel-completion.md. |
+| TTS routing (completion round) | Resemble Ultra for en/hi (later human choice); verified available Gemini TTS for ml. Backend-only, no cloning/training. See parallel-completion.md. |
 | Raw email retention | Never store raw bodies. Keep metadata, hashes, and short evidence snippets (≤ 80 chars per field). |
 | Report's demo numbers | Inconsistent in the report; §8 is the single source of truth. |
 
