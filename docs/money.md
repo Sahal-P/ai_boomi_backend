@@ -79,7 +79,9 @@ The money review service owns commit/rollback and uses the same per-user advisor
 transaction lock as A1 ingestion, followed by the existing ledger row locks.
 Category/merchant/amount corrections and status decisions create user revisions and
 `user_locked_fields`. Confirm/reject, merge, and keep-separate call ledger services;
-merge redirects source evidence, refund links, and paid commitments. Keep-separate
+merge redirects source evidence, refund links, and paid commitments. Merge refreshes
+confidence and source counts from actual moved evidence while locking the kept
+record's status/dedupe choice. Keep-separate
 locks dedupe without confirming uncertain financial claims. A rejected or amount-
 corrected payment reopens its paid obligation when the payment no longer qualifies;
 merchant/category edits retain the existing paid link. Dismissed commitments stay

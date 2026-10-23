@@ -139,6 +139,7 @@ def merge_transactions(session: Session, *, user_id: UUID, keep_id: UUID, merge_
     merge.updated_at = now_ist()
     if keep.possible_duplicate_of_id == merge_id:
         keep.possible_duplicate_of_id = None
+    _lock_fields(session, keep, {"status", "dedupe"}, "manual_merge")
     keep.updated_at = now_ist()
     session.flush()
 

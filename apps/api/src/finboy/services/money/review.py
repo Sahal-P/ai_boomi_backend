@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from finboy.db.models.mail import AuditEvent
-from finboy.services.ledger.persist import refresh_links
+from finboy.services.ledger.persist import refresh_links, refresh_review_confidence
 from finboy.services.ledger.reconcile import (
     correct_transaction,
     keep_separate,
@@ -51,6 +51,7 @@ def review_transaction(
             )
         elif action == "merge" and keep_id is not None:
             merge_transactions(session, user_id=user_id, keep_id=keep_id, merge_id=transaction_id)
+            refresh_review_confidence(session, user_id=user_id, transaction_id=keep_id)
         elif action == "keep-separate":
             keep_separate(session, user_id=user_id, transaction_id=transaction_id)
         else:
