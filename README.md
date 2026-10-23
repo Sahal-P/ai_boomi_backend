@@ -1,10 +1,13 @@
 # FinBoy
 
-An AI-powered personal finance copilot for Indian users. This repository contains
-the **Phase 1 scaffold**: reviewed schema, shared service contracts, empty domain
-routers, and placeholder app pages. The landing page and live health check work;
-Gmail, ingestion, ledger calculations, voice, and product UX await their owners.
-The source of truth is [the Phase 1 contract](docs/phase1/contract.md).
+An AI-powered personal finance copilot for Indian users. The integration branch
+combines implemented extraction/ledger persistence and Gmail/import/privacy flows.
+The active [parallel completion contract](docs/phase1/parallel-completion.md) defines
+money APIs, product UI, English/Hindi/Malayalam assistant and voice, and WhatsApp
+questions about the email-derived ledger. Provider features are complete only after
+live verification; bootstrap assistant/speech implementations explicitly report unavailable.
+The original [Phase 1 contract](docs/phase1/contract.md) retains its frozen financial
+models, ingestion interfaces, Gmail HTTP contracts, and privacy rules.
 
 ## Stack
 

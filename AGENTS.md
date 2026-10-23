@@ -2,8 +2,10 @@
 
 ## Scope and architecture
 
-- Phase 1 builds what `docs/phase1/contract.md` defines; everything in its
-  out-of-scope list still needs a new request.
+- Phase 1 includes the authorized completion round in
+  `docs/phase1/parallel-completion.md`, which supersedes conflicting scope,
+  ownership, language, provider, and runtime sections of the original contract.
+  All other boundaries in `docs/phase1/contract.md` remain binding.
 - Keep one FastAPI application in `apps/api` and one Next.js App Router application
   in `apps/web`. PostgreSQL is the only persistent service.
 - API routes own HTTP contracts, `services` own business logic, `db` owns SQLAlchemy
@@ -58,6 +60,6 @@
 ## Parallel work
 
 - Follow the ownership table, ports, and per-agent databases in
-  `docs/phase1/contract.md`.
+  `docs/phase1/parallel-completion.md` for this completion round.
 - Never stop the shared PostgreSQL container (`db:down` or Compose down).
 - Secrets live only in `~/.config/finboy/secrets.env` and gitignored env files.

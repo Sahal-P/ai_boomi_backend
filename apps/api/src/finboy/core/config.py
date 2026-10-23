@@ -4,7 +4,7 @@ from typing import Literal
 from uuid import UUID
 
 from cryptography.fernet import Fernet
-from pydantic import AnyHttpUrl, SecretStr, field_validator, model_validator
+from pydantic import AnyHttpUrl, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
@@ -39,7 +39,57 @@ class Settings(BaseSettings):
     web_app_url: AnyHttpUrl | None = None
     demo_today: date | None = None
 
+    # Provider model/voice IDs are configured only after a synthetic live capability check.
+    resemble_tts_base_url: AnyHttpUrl = "https://f.cluster.resemble.ai"
+    gemini_tts_base_url: AnyHttpUrl = "https://generativelanguage.googleapis.com/v1beta"
+    ffprobe_binary: str = "ffprobe"
+    resemble_api_key: SecretStr | None = None
+    resemble_project_uuid: str | None = None
+    resemble_voice_uuid_en: str | None = None
+    resemble_voice_uuid_hi: str | None = None
+    resemble_tts_model: str | None = None
+    gemini_api_key: SecretStr | None = None
+    gemini_tts_model: str | None = None
+    gemini_tts_voice: str | None = None
+    assistant_timeout_seconds: float = Field(default=30, ge=1, le=60)
+    speech_timeout_seconds: float = Field(default=30, ge=1, le=60)
+    provider_max_retries: int = Field(default=1, ge=0, le=3)
+    speech_max_audio_bytes: int = Field(default=3 * 1024 * 1024, ge=1, le=3 * 1024 * 1024)
+    speech_max_duration_seconds: int = Field(default=30, ge=1, le=30)
+    speech_max_text_characters: int = Field(default=600, ge=1, le=600)
+    ffmpeg_binary: str = "ffmpeg"
+
+    whatsapp_enabled: bool = False
+    whatsapp_app_id: str | None = None
+    whatsapp_app_secret: SecretStr | None = None
+    whatsapp_verify_token: SecretStr | None = None
+    whatsapp_access_token: SecretStr | None = None
+    whatsapp_phone_number_id: SecretStr | None = None
+    whatsapp_business_account_id: SecretStr | None = None
+    whatsapp_graph_api_version: str | None = None
+    # JSON object: approved provider sender identifier -> local user UUID. Never log or return it.
+    whatsapp_sender_allowlist_json: SecretStr | None = None
+    whatsapp_timeout_seconds: float = Field(default=15, ge=1, le=60)
+    whatsapp_max_webhook_bytes: int = Field(default=256 * 1024, ge=1, le=1024 * 1024)
+    whatsapp_ingress_port: int = Field(default=8095, ge=1024, le=65535)
+
     @field_validator(
+        "resemble_api_key",
+        "resemble_project_uuid",
+        "resemble_voice_uuid_en",
+        "resemble_voice_uuid_hi",
+        "resemble_tts_model",
+        "gemini_api_key",
+        "gemini_tts_model",
+        "gemini_tts_voice",
+        "whatsapp_app_id",
+        "whatsapp_app_secret",
+        "whatsapp_verify_token",
+        "whatsapp_access_token",
+        "whatsapp_phone_number_id",
+        "whatsapp_business_account_id",
+        "whatsapp_graph_api_version",
+        "whatsapp_sender_allowlist_json",
         "openai_api_key",
         "openai_extraction_model",
         "openai_assistant_model",
@@ -56,6 +106,19 @@ class Settings(BaseSettings):
     @classmethod
     def empty_optional_value(cls, value: object) -> object:
         return None if value == "" else value
+
+    @field_validator("resemble_tts_base_url", "gemini_tts_base_url")
+    @classmethod
+    def require_provider_url(cls, value: AnyHttpUrl) -> AnyHttpUrl:
+        if (
+            value.scheme != "https"
+            or value.username
+            or value.password
+            or value.query
+            or value.fragment
+        ):
+            raise ValueError("Provider base URLs must use HTTPS without credentials or queries")
+        return value
 
     @field_validator("token_encryption_key")
     @classmethod

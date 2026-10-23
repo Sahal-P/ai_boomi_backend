@@ -7,6 +7,25 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
 
+class ProviderUnavailable(Exception):
+    """Fixed operational code; provider exception details must never cross this boundary."""
+
+    def __init__(self, code: str = "provider_unavailable") -> None:
+        self.code = (
+            code
+            if code
+            in {
+                "provider_unavailable",
+                "assistant_unavailable",
+                "speech_unavailable",
+                "configuration_missing",
+                "invalid_audio",
+            }
+            else "provider_unavailable"
+        )
+        super().__init__(self.code)
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str
@@ -25,6 +44,12 @@ def error_response(request: Request, status: int, code: str, message: str) -> JS
 
 
 def register_error_handlers(app: FastAPI) -> None:
+    @app.exception_handler(ProviderUnavailable)
+    async def handle_provider_unavailable(
+        request: Request, exc: ProviderUnavailable
+    ) -> JSONResponse:
+        return error_response(request, 503, exc.code, "This service is currently unavailable.")
+
     @app.exception_handler(HTTPException)
     async def handle_http_error(request: Request, exc: HTTPException) -> JSONResponse:
         # Custom exception detail can contain input; expose only a standard HTTP phrase.

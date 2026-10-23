@@ -1,5 +1,10 @@
 # FinBoy Phase 1 — shared contract
 
+**24 October completion round:** [parallel-completion.md](parallel-completion.md)
+supersedes conflicting ownership/runtime/provider/language/scope sections below.
+English, Hindi, Malayalam voice/text and read-only WhatsApp questions are authorized.
+Money, ingestion, Gmail/import/privacy, and security contracts remain unchanged.
+
 Every Phase 1 agent builds against this file. If code and this file disagree, this file
 wins until the integrator changes it. Prompts: `00-preflight.md` (serial, first), then
 `01`–`04` in parallel.
@@ -20,7 +25,7 @@ ledger → deterministic money engine → dashboard + Malayalam/Manglish/English
 
 **LLMs understand. Code calculates. Users approve uncertainty.**
 
-Out of scope: product login, Outlook/Graph, IMAP, Nylas, WhatsApp, bank APIs, Gmail
+Out of scope: product login, Outlook/Graph, IMAP, Nylas, WhatsApp capture/mutations, bank APIs, Gmail
 Pub/Sub watch, fund/stock recommendations, model training, deployment.
 
 Language rules: never say "bank balance"; say **"Estimated unallocated amount"** and
@@ -37,7 +42,7 @@ FinBoy's tracked records. It is not a recommendation to purchase any security."
 | Gmail API | Scope `https://www.googleapis.com/auth/gmail.readonly` only. OAuth app in **Testing** with test users. Testing-mode refresh tokens expire after 7 days: reconnect before the demo. |
 | mailparser | Python stdlib `email` (`policy.default`) + HTML-to-text. |
 | GPT-Transcribe / OpenAI | Backend only. Model IDs come from settings (`OPENAI_*_MODEL`), verified in official OpenAI docs; never hardcoded from memory. |
-| Google Cloud TTS `ml-IN` | Yes (and `en-IN` for English). Prefer ADC credentials; never put keys in URLs. |
+| TTS routing (completion round) | Resemble/Chatterbox for en/hi; verified available Gemini TTS for ml. Backend-only, no cloning/training. See parallel-completion.md. |
 | Raw email retention | Never store raw bodies. Keep metadata, hashes, and short evidence snippets (≤ 80 chars per field). |
 | Report's demo numbers | Inconsistent in the report; §8 is the single source of truth. |
 
