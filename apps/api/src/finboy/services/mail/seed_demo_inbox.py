@@ -5,6 +5,7 @@ import base64
 import json
 import os
 import secrets
+import time
 import webbrowser
 from email import policy
 from email.parser import BytesParser
@@ -32,17 +33,27 @@ def one_time_access(google: GoogleClient) -> str:
     received: dict[str, str] = {}
 
     class Callback(BaseHTTPRequestHandler):
+        def setup(self) -> None:
+            super().setup()
+            self.connection.settimeout(2)
+
         def log_message(self, *_args: object) -> None:
             pass
 
         def do_GET(self) -> None:
             query = parse_qs(urlsplit(self.path).query)
             valid = secrets.compare_digest(query.get("state", [""])[0], state)
-            if urlsplit(self.path).path != "/callback" or not valid:
+            code, error = query.get("code", [""])[0], query.get("error", [""])[0]
+            if (
+                urlsplit(self.path).path != "/callback"
+                or not valid
+                or not (code or error)
+                or len(code) > 4096
+            ):
                 self.send_error(400, "Invalid callback")
                 return
-            received["code"] = query.get("code", [""])[0]
-            received["error"] = query.get("error", [""])[0]
+            received["code"] = code
+            received["error"] = error
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
@@ -50,8 +61,13 @@ def one_time_access(google: GoogleClient) -> str:
             self.end_headers()
             self.wfile.write(b"FinBoy seeder consent received. You can close this tab.")
 
-    with HTTPServer(("127.0.0.1", 8767), Callback) as server:
-        server.timeout = 300
+    class QuietServer(HTTPServer):
+        def handle_error(self, _request: object, _client_address: object) -> None:
+            # Browser disconnects/preconnects must never print callback request details.
+            pass
+
+    with QuietServer(("127.0.0.1", 8767), Callback) as server:
+        server.timeout = 1
         url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(
             {
                 "client_id": google.client_id,
@@ -69,7 +85,11 @@ def one_time_access(google: GoogleClient) -> str:
         if not webbrowser.open(url):
             raise MailError("oauth_failed")
         print("Complete the insert-only consent in Chrome using the demo Gmail account.")
-        server.handle_request()
+        deadline = time.monotonic() + 300
+        # Browsers can preconnect or request a favicon before the OAuth callback.
+        # Keep listening until a validated callback arrives or the consent window expires.
+        while not received and time.monotonic() < deadline:
+            server.handle_request()
     if received.get("error") or not received.get("code"):
         raise MailError("consent_denied")
     tokens = google.exchange(received["code"], verifier)
