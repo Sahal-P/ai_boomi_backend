@@ -1,0 +1,108 @@
+{
+  "model": "gpt-6-luna",
+  "extractor_version": "email-v2",
+  "provenance": "live_openai",
+  "result": {
+    "events": [
+      {
+        "event_type": "debit",
+        "amount_minor": 184000,
+        "currency": "INR",
+        "merchant": "Amazon",
+        "occurred_at": "2626-10-26T12:05:00+05:30",
+        "due_date": null,
+        "reference_id": "SYN-REVIEWORDER",
+        "payment_instrument": "card",
+        "account_last4": "1234",
+        "category": "shopping",
+        "payment_proof": false,
+        "evidence": [
+          {
+            "field": "event_type",
+            "snippet": "Order confirmation",
+            "confidence": 0.99
+          },
+          {
+            "field": "amount_minor",
+            "snippet": "INR 1,840.00",
+            "confidence": 1.0
+          },
+          {
+            "field": "merchant",
+            "snippet": "Merchant: Amazon",
+            "confidence": 1.0
+          },
+          {
+            "field": "occurred_at",
+            "snippet": "Date: 26-10-26 12:05 IST",
+            "confidence": 1.0
+          },
+          {
+            "field": "reference_id",
+            "snippet": "Order ID: SYN-REVIEWORDER",
+            "confidence": 1.0
+          },
+          {
+            "field": "payment_instrument",
+            "snippet": "card ending 1234",
+            "confidence": 0.99
+          },
+          {
+            "field": "account_last4",
+            "snippet": "card ending 1234",
+            "confidence": 1.0
+          },
+          {
+            "field": "category",
+            "snippet": "Merchant: Amazon",
+            "confidence": 0.75
+          },
+          {
+            "field": "payment_proof",
+            "snippet": "This confirms the order, not settlement.",
+            "confidence": 1.0
+          }
+        ],
+        "field_confidence": [
+          {
+            "field": "event_type",
+            "confidence": 0.99
+          },
+          {
+            "field": "amount_minor",
+            "confidence": 1.0
+          },
+          {
+            "field": "merchant",
+            "confidence": 1.0
+          },
+          {
+            "field": "occurred_at",
+            "confidence": 1.0
+          },
+          {
+            "field": "reference_id",
+            "confidence": 1.0
+          },
+          {
+            "field": "payment_instrument",
+            "confidence": 0.99
+          },
+          {
+            "field": "account_last4",
+            "confidence": 1.0
+          },
+          {
+            "field": "category",
+            "confidence": 0.75
+          },
+          {
+            "field": "payment_proof",
+            "confidence": 1.0
+          }
+        ]
+      }
+    ],
+    "not_transaction": false
+  }
+}

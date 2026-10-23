@@ -1,0 +1,99 @@
+{
+  "model": "gpt-6-luna",
+  "extractor_version": "email-v2",
+  "provenance": "live_openai",
+  "result": {
+    "events": [
+      {
+        "event_type": "reversal",
+        "amount_minor": 35000,
+        "currency": "INR",
+        "merchant": "Metro",
+        "occurred_at": "2310-10-23T12:05:00+05:30",
+        "due_date": null,
+        "reference_id": "SYN-REVERSED350",
+        "payment_instrument": "card",
+        "account_last4": "XX1234",
+        "category": null,
+        "payment_proof": true,
+        "evidence": [
+          {
+            "field": "event_type",
+            "snippet": "Reversed and credited",
+            "confidence": 0.99
+          },
+          {
+            "field": "amount_minor",
+            "snippet": "INR 350.00",
+            "confidence": 0.99
+          },
+          {
+            "field": "merchant",
+            "snippet": "from Metro",
+            "confidence": 0.98
+          },
+          {
+            "field": "occurred_at",
+            "snippet": "23-10-26 12:05 IST",
+            "confidence": 0.99
+          },
+          {
+            "field": "reference_id",
+            "snippet": "UTR: SYN-REVERSED350",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_instrument",
+            "snippet": "via card",
+            "confidence": 0.98
+          },
+          {
+            "field": "account_last4",
+            "snippet": "A/c XX1234",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_proof",
+            "snippet": "Reversed and credited INR 350.00",
+            "confidence": 0.99
+          }
+        ],
+        "field_confidence": [
+          {
+            "field": "event_type",
+            "confidence": 0.99
+          },
+          {
+            "field": "amount_minor",
+            "confidence": 0.99
+          },
+          {
+            "field": "merchant",
+            "confidence": 0.98
+          },
+          {
+            "field": "occurred_at",
+            "confidence": 0.99
+          },
+          {
+            "field": "reference_id",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_instrument",
+            "confidence": 0.98
+          },
+          {
+            "field": "account_last4",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_proof",
+            "confidence": 0.99
+          }
+        ]
+      }
+    ],
+    "not_transaction": false
+  }
+}

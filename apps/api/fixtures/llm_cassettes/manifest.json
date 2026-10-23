@@ -1,0 +1,9 @@
+{
+  "model": "gpt-6-luna",
+  "extractor_version": "email-v2",
+  "recorded_on": "2026-10-23",
+  "anchor": "2026-10-28",
+  "financial_responses": 36,
+  "provenance": "live_openai",
+  "notes": "Only minimized synthetic financial candidates were transmitted. Six non-financial messages were rejected locally. Rerendering dates requires recording new cassettes."
+}

@@ -1,0 +1,108 @@
+{
+  "model": "gpt-6-luna",
+  "extractor_version": "email-v2",
+  "provenance": "live_openai",
+  "result": {
+    "events": [
+      {
+        "event_type": "debit",
+        "amount_minor": 1500000,
+        "currency": "INR",
+        "merchant": "Rent landlord",
+        "occurred_at": "0210-10-26T12:05:00+05:30",
+        "due_date": null,
+        "reference_id": "SYN-RENT",
+        "payment_instrument": "card",
+        "account_last4": "1234",
+        "category": "rent",
+        "payment_proof": false,
+        "evidence": [
+          {
+            "field": "event_type",
+            "snippet": "invoice",
+            "confidence": 0.8
+          },
+          {
+            "field": "amount_minor",
+            "snippet": "Rs.15,000.00",
+            "confidence": 0.99
+          },
+          {
+            "field": "merchant",
+            "snippet": "Merchant: Rent landlord",
+            "confidence": 0.99
+          },
+          {
+            "field": "occurred_at",
+            "snippet": "Date: 02-10-26 12:05 IST",
+            "confidence": 0.99
+          },
+          {
+            "field": "reference_id",
+            "snippet": "Order ID: SYN-RENT",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_instrument",
+            "snippet": "card ending 1234",
+            "confidence": 0.95
+          },
+          {
+            "field": "account_last4",
+            "snippet": "card ending 1234",
+            "confidence": 0.99
+          },
+          {
+            "field": "category",
+            "snippet": "Merchant: Rent landlord",
+            "confidence": 0.95
+          },
+          {
+            "field": "payment_proof",
+            "snippet": "This confirms the order, not settlement.",
+            "confidence": 0.99
+          }
+        ],
+        "field_confidence": [
+          {
+            "field": "event_type",
+            "confidence": 0.8
+          },
+          {
+            "field": "amount_minor",
+            "confidence": 0.99
+          },
+          {
+            "field": "merchant",
+            "confidence": 0.99
+          },
+          {
+            "field": "occurred_at",
+            "confidence": 0.99
+          },
+          {
+            "field": "reference_id",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_instrument",
+            "confidence": 0.95
+          },
+          {
+            "field": "account_last4",
+            "confidence": 0.99
+          },
+          {
+            "field": "category",
+            "confidence": 0.95
+          },
+          {
+            "field": "payment_proof",
+            "confidence": 0.99
+          }
+        ]
+      }
+    ],
+    "not_transaction": false
+  }
+}
