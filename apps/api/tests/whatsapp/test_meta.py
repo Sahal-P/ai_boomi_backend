@@ -126,6 +126,7 @@ def test_send_has_no_automatic_retry_and_uncertain_outcomes(
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(request)
         assert json.loads(request.content)["text"]["preview_url"] is False
+        assert json.loads(request.content)["to"] == "+919000000001"
         if fault == "timeout":
             raise httpx.ReadTimeout("private text and token")
         if fault == "malformed":

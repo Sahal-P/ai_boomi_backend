@@ -167,6 +167,9 @@ def test_send_state_and_no_retry(
                 session, config, [], [replace_status(status, "delivered", recipient="919000000099")]
             )
             assert session.scalar(select(WhatsAppDelivery.provider_status)) is None
+            admit(session, config, [], [replace_status(status, "sent")])
+            admit(session, config, [], [replace_status(status, "failed")])
+            assert session.scalar(select(WhatsAppDelivery.provider_status)) == "failed"
             admit(session, config, [], [status])
             admit(session, config, [], [replace_status(status, "sent")])
             assert session.scalar(select(WhatsAppDelivery.provider_status)) == "read"
@@ -203,3 +206,107 @@ def test_storage_has_no_content_and_constraints(
                 }
                 session.add(WhatsAppReceipt(**values))
                 session.flush()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("kind", ["text", "audio"])
+async def test_concurrent_http_duplicates_run_shared_services_once(
+    factory: sessionmaker[Session],
+    config: ChannelConfig,
+    wa_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+) -> None:
+    import asyncio
+    import hashlib
+    import hmac
+    import json
+    from threading import Lock
+
+    from finboy.main import create_app
+    from finboy.services.assistant.models import AssistantAnswer
+    from finboy.services.speech.models import SynthesizedAudio, Transcript
+    from finboy.services.whatsapp import processor
+    from finboy.services.whatsapp.meta import DownloadedAudio
+    from httpx import ASGITransport, AsyncClient
+
+    from .conftest import payload
+
+    calls = {"ask": 0, "send": 0, "stt": 0, "tts": 0}
+    lock = Lock()
+
+    class Client:
+        def __init__(self, _config: ChannelConfig) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
+        def send(self, *_args, **_kwargs) -> str:
+            with lock:
+                calls["send"] += 1
+                return "wamid.outbound." + str(calls["send"])
+
+        def download_audio(self, *_args) -> DownloadedAudio:
+            return DownloadedAudio(b"synthetic audio", "audio/ogg")
+
+        def upload_audio(self, _data: bytes) -> str:
+            return "12345"
+
+    def answer(*_args, **_kwargs) -> AssistantAnswer:
+        with lock:
+            calls["ask"] += 1
+        return AssistantAnswer(
+            intent="synthetic",
+            policy="answer",
+            display_text="Synthetic answer",
+            speech_text="Synthetic answer",
+            speech_language="ml",
+            facts=[],
+            simulation=None,
+            evidence_transactions=[],
+            warnings=[],
+        )
+
+    def stt(**_kwargs) -> Transcript:
+        calls["stt"] += 1
+        return Transcript(transcript="synthetic question", detected_language="ml")
+
+    def tts(**_kwargs) -> SynthesizedAudio:
+        calls["tts"] += 1
+        return SynthesizedAudio(b"synthetic mp3")
+
+    monkeypatch.setattr(processor, "MetaClient", Client)
+    monkeypatch.setattr(processor.assistant, "answer_question", answer)
+    monkeypatch.setattr(processor.speech, "transcribe_audio", stt)
+    monkeypatch.setattr(processor.speech, "synthesize_speech", tts)
+    settings = wa_settings.model_copy(update={"database_url": Settings().database_url})
+    app = create_app(settings)
+    raw = json.dumps(payload(kind=kind, message_id="wamid." + uuid4().hex)).encode()
+    signature = "sha256=" + hmac.new(config.app_secret.encode(), raw, hashlib.sha256).hexdigest()
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            replies = await asyncio.gather(
+                *[
+                    client.post(
+                        "/api/v1/whatsapp/webhook",
+                        content=raw,
+                        headers={
+                            "Content-Type": "application/json",
+                            "X-Hub-Signature-256": signature,
+                        },
+                    )
+                    for _ in range(2)
+                ]
+            )
+        assert [reply.status_code for reply in replies] == [200, 200]
+        assert calls["ask"] == 1
+        assert calls["send"] == (2 if kind == "audio" else 1)
+        assert calls["stt"] == calls["tts"] == (1 if kind == "audio" else 0)
+        with factory() as session:
+            assert session.scalar(select(WhatsAppReceipt.state)) == "completed"
+            assert (
+                session.scalar(select(func.count()).select_from(WhatsAppDelivery)) == calls["send"]
+            )
+    finally:
+        app.state.engine.dispose()

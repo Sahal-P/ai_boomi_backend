@@ -7,6 +7,8 @@ import httpx
 import uvicorn
 from starlette.types import Receive, Scope, Send
 
+from finboy.core.config import API_ROOT
+
 WEBHOOK_PATH = "/api/v1/whatsapp/webhook"
 MAX_BODY = 262144
 FORWARDED_HEADERS = {b"content-type", b"content-length", b"x-hub-signature-256"}
@@ -102,6 +104,7 @@ def main() -> None:
         access_log=False,
         lifespan="off",
         server_header=False,
+        log_config=str(API_ROOT / "logging.json"),
     )
 
 

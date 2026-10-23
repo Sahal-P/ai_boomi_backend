@@ -121,7 +121,7 @@ def admit(
         if row is None or row[1] != config.digest("sender", status.recipient_id):
             continue
         delivery = row[0]
-        rank = {None: 0, "sent": 1, "failed": 1, "delivered": 2, "read": 3}
+        rank = {None: 0, "sent": 1, "failed": 2, "delivered": 3, "read": 4}
         if rank[status.status] > rank[delivery.provider_status] or delivery.provider_status is None:
             delivery.provider_status = status.status
             delivery.updated_at = now

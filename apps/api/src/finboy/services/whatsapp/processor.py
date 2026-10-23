@@ -1,6 +1,7 @@
 """Channel orchestration calls the shared assistant and speech service boundaries."""
 
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -20,6 +21,17 @@ from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable, SendUnknown
 
 logger = logging.getLogger(__name__)
+
+
+def phone_text(text: str) -> str:
+    """A phone cannot open the local unauthenticated review app on the demo computer."""
+    return re.sub(
+        r"https?://(?:localhost|127(?:\.[0-9]{1,3}){3}|0\.0\.0\.0|\[::1\])"
+        r"(?=[:/\s)]|$)[^\s)]*",
+        "the FinBoy review screen on the demo computer",
+        text,
+        flags=re.IGNORECASE,
+    )
 
 
 def language(value: str | None) -> Language | None:
@@ -177,7 +189,7 @@ def process_question(
                 send_reply(session, config, client, receipt, question, text=response)
                 receipts.finish(session, receipt_id, error=code)
                 return
-            response = answer.display_text
+            response = phone_text(answer.display_text)
             if len(response) > 4096:
                 response = (
                     "Please view this answer in FinBoy on the demo computer. "

@@ -65,7 +65,10 @@ class MetaClient:
         self.config = config
         self.base = f"https://graph.facebook.com/{config.version}"
         self.client = httpx.Client(
-            headers={"Authorization": f"Bearer {config.access_token}"},
+            headers={
+                "Authorization": f"Bearer {config.access_token}",
+                "Accept-Encoding": "identity",
+            },
             timeout=config.timeout,
             follow_redirects=False,
             transport=transport,
@@ -83,6 +86,8 @@ class MetaClient:
             with self.client.stream(method, url, **kwargs) as response:
                 if response.status_code >= 300:
                     raise MetaUnavailable
+                if response.headers.get("content-encoding", "identity").lower() != "identity":
+                    raise InvalidMedia
                 length = response.headers.get("content-length")
                 if length and (not length.isdigit() or int(length) > limit):
                     raise InvalidMedia
@@ -145,7 +150,7 @@ class MetaClient:
         payload: dict[str, object] = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
-            "to": recipient,
+            "to": "+" + recipient,
         }
         if text is not None:
             if not 1 <= len(text) <= 4096:

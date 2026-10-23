@@ -159,3 +159,12 @@ def test_unexpected_failure_log_redaction(
     assert "whatsapp.processing_failed" in caplog.text
     assert "sensitive" not in caplog.text and "private" not in caplog.text
     assert not send.called
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["http://127.0.0.1:3014/review", "http://localhost:3000/review", "http://[::1]:3000/review"],
+)
+def test_phone_answers_direct_review_to_demo_computer(url: str) -> None:
+    response = processor.phone_text("Please review at " + url + ".")
+    assert "http" not in response and "demo computer" in response
