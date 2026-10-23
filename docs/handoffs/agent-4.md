@@ -121,3 +121,31 @@ proves the assembled ledger/assistant connection, not WhatsApp audio delivery.
 A new assembled boundary issue (InvalidAudio exception adaptation) is requested in
 agent-4-dependencies.md for Agent 5, which now owns final integration source edits.
 Voice note and six language text/voice phone cases remain pending; no fake success.
+
+Agent 5 coordination follow-up: consumed explicitly supplied narrow InvalidAudio
+fix b651d69 only in the isolated live verifier (local 249a1e8 on cbd2ed2). Processor
+22/22 and assembled pnpm check pass (365 Python unit + 10 web + strict TS). Source
+branch is unchanged; no moving integration HEAD was followed. Fresh English text/
+voice phone question remains awaited; only the earlier fallback reply is READ.
+
+Assembled verifier `pnpm build` also passed after the narrow audio-error fix.
+
+## Human decision — voice verification deferred
+
+On 24 October 2026 the human explicitly selected **Keep the voice check pending**.
+Do not wait for or request another voice recording in this round. WhatsApp incoming
+audio, STT/TTS response and actual phone audio playback remain unverified. The real
+text fallback round trip remains verified through Meta READ status; actual local
+ledger/assistant answers in en/hi/ml passed in the isolated assembled verifier.
+Existing approved ingress/runtime/ports are left intact for integration coordination;
+no further live voice message was sent or synthesized by this deferred check. Resume
+the human phone voice acceptance only when the human requests it.
+
+## Latest text delivery evidence
+
+Read-only PostgreSQL verification now shows one additional real inbound text receipt
+`completed`, language `en`, no error, and two total text deliveries at provider READ
+(the earlier unavailable fallback plus the new shared-assistant response). No audio
+receipt or delivery exists. No raw question, answer, body or identifiers were read
+into the report. The human's explicit voice deferral still controls acceptance; the
+coordinator's ambiguous combined text/voice confirmation does not establish audio.

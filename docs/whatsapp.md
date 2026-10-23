@@ -34,15 +34,21 @@ reviewed in FinBoy on the demo computer; local web URLs are removed from phone r
   correctly recorded `assistant_unavailable` and sent its truthful text fallback;
   Meta's delivery callback reached **read**. This is a real text transport result,
   not a successful ledger answer or a claim from mocks.
-- Follow-up verification uses the fixed assembled commit `cbd2ed2` in the separate
+- Follow-up verification uses fixed assembled commit `cbd2ed2` plus Agent 5's narrow
+  `b651d69` audio-error fix (local verifier head `249a1e8`) in the separate
   managed `finboy-whatsapp-live` worktree, still API 8014 and database finboy_p4.
   No moving integration HEAD or other agent's runtime was changed. Its actual demo
   import processed all 42 synthetic emails; actual money APIs matched the truth
   table. The explicitly specified Hotel Arya correction was applied through the
   local review API; English/Hindi/Malayalam assistant HTTP answers each returned
   the correct corrected food fact. No WhatsApp ledger mutation was introduced.
-- No audio receipt or successful WhatsApp ledger/audio answer has arrived yet.
-  Actual incoming media/STT and delivered synthesized MP3 remain pending.
+- Latest read-only metadata confirms a second real inbound text completed on the
+  assembled shared-assistant runtime, language `en`, no error. Its text reply reached
+  **read**. Together with the earlier fallback, two text deliveries are READ. Question
+  and answer contents were not retained or printed.
+- There is still **no audio receipt or audio delivery**. The human explicitly deferred
+  voice acceptance. Actual incoming media/STT and delivered/playable synthesized MP3
+  remain unverified; an ambiguous combined text/voice confirmation is not audio proof.
 
 ## Private settings
 
@@ -233,8 +239,19 @@ Meta pages were read in Chrome on 24 October because the search fetcher returned
 ## Post-handoff integration observations
 
 The assembled service adds a fixed `InvalidAudio(ValueError)` input exception.
-The channel's original frozen placeholder only raised ProviderUnavailable. Agent 5
-is asked in the dependency handoff to catch the integrated InvalidAudio boundary for
-both STT and TTS; otherwise invalid audio takes the generic interrupted-work failure
-path without its helpful text fallback. This does not affect the verified text
-round trip. No Agent 5 source was edited after ownership handoff.
+Agent 5 fixed its STT/TTS text-fallback handling in narrow commit `b651d69`. That
+explicit shared fix was consumed only in the temporary live verifier (`249a1e8`),
+without changing the original frozen-base source branch. Focused processor tests
+22/22 and assembled `pnpm check` (365 backend unit tests, 10 web tests, strict TS)
+pass. No Agent 5 checkout/runtime/source was edited after ownership handoff.
+
+## Human decision — voice verification deferred
+
+On 24 October 2026 the human explicitly selected **Keep the voice check pending**.
+Do not wait for or request another voice recording in this round. WhatsApp incoming
+audio, STT/TTS response and actual phone audio playback remain unverified. The real
+text fallback round trip remains verified through Meta READ status; actual local
+ledger/assistant answers in en/hi/ml passed in the isolated assembled verifier.
+Existing approved ingress/runtime/ports are left intact for integration coordination;
+no further live voice message was sent or synthesized by this deferred check. Resume
+the human phone voice acceptance only when the human requests it.

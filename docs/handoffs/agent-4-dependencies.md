@@ -85,3 +85,40 @@ routes remain loopback-only behind the same restricted 8094 ingress. All 42 synt
 emails imported through the actual demo endpoint; summary truth and corrected food
 facts verified via actual assistant HTTP for en/hi/ml. No moving HEAD or Agent 5
 checkout/runtime was modified. Voice-note request is pending with the human.
+
+### InvalidAudio request resolved
+
+Agent 5 provided narrow b651d69 and explicitly requested consumption in the temporary
+live verifier. Cherry-picked onto fixed cbd2ed2 as local verifier head 249a1e8;
+22 focused processor tests and assembled pnpm check (365 backend unit, 10 web, TS)
+pass. Original feat/finboy-whatsapp source stays frozen-base; no source refresh.
+
+Additional test isolation observation: after a real phone receipt exists in the
+disposable DB, old WhatsApp integration assertions select/count whole tables rather
+than the synthetic binding/receipt. They should scope to each test's keyed binding
+hash/known receipt IDs before rerunning against a DB that contains live transport
+metadata. Teardown already deletes only synthetic metadata. Do not delete real
+phone receipts just to satisfy the empty-table assumptions. No PG suite was run
+against the active imported ledger/phone metadata during these live follow-ups.
+
+Assembled verifier `pnpm build` also passed after the narrow audio-error fix.
+
+## Human decision — voice verification deferred
+
+On 24 October 2026 the human explicitly selected **Keep the voice check pending**.
+Do not wait for or request another voice recording in this round. WhatsApp incoming
+audio, STT/TTS response and actual phone audio playback remain unverified. The real
+text fallback round trip remains verified through Meta READ status; actual local
+ledger/assistant answers in en/hi/ml passed in the isolated assembled verifier.
+Existing approved ingress/runtime/ports are left intact for integration coordination;
+no further live voice message was sent or synthesized by this deferred check. Resume
+the human phone voice acceptance only when the human requests it.
+
+## Latest text delivery evidence
+
+Read-only PostgreSQL verification now shows one additional real inbound text receipt
+`completed`, language `en`, no error, and two total text deliveries at provider READ
+(the earlier unavailable fallback plus the new shared-assistant response). No audio
+receipt or delivery exists. No raw question, answer, body or identifiers were read
+into the report. The human's explicit voice deferral still controls acceptance; the
+coordinator's ambiguous combined text/voice confirmation does not establish audio.
