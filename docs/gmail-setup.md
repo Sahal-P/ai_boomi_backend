@@ -165,7 +165,7 @@ correctly produces `failed / import_failed` until its implementation is merged.
 ### A2 verification observed on 23 October 2026
 
 - `uv sync --locked --all-packages` and `pnpm install --frozen-lockfile`: passed.
-- `pnpm check`: passed, including 86 backend unit tests and 10 web client tests,
+- `pnpm check`: passed, including 92 backend unit tests and 10 web client tests,
   Ruff, ESLint, and strict TypeScript checks.
 - `pnpm build`: passed; `/connect`, `/import/[runId]`, and `/privacy` compiled.
 - `pnpm db:migrate`: passed against local `finboy_a2`, at `0002_phase1`.
@@ -208,7 +208,13 @@ The initial Cloud Console loading problem resolved after project selection and
 releasing Chrome's debugging connection; native controls completed the configuration.
 
 The running API now returns a 307 to Google from the authorize endpoint, with an
-HttpOnly state cookie and `Cache-Control: no-store`. A real insert-only seeder
-consent is pending human completion. Live Gmail consent/import/revocation and inbox
-seeding remain unverified at this checkpoint. A1's pipeline and fixture merge also
-remain necessary before the end-to-end extraction demo is ready.
+HttpOnly state cookie and `Cache-Control: no-store`. The human completed insert-only
+seeder consent and `pnpm seed:gmail-demo-inbox --directory <synthetic-inputs>` inserted
+three synthetic messages successfully. The private manifest has three Message-ID
+hashes and mode 600. A live callback issue exposed during this check was fixed: the
+temporary receiver now waits for a validated callback, tolerating incidental browser
+connections and favicon requests; six focused tests cover that behavior.
+
+The application's separate read-only Gmail consent is pending human completion.
+Live application import/revocation remains unverified at this checkpoint. A1's
+pipeline and fixture merge remain necessary before the extraction demo is ready.
