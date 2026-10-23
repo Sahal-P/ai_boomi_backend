@@ -38,3 +38,21 @@ transport metadata; full future user deletion must delete bindings first.
 Sender/content HMAC hashes use the existing stable TOKEN_ENCRYPTION_KEY with domain
 separation. Preserve that key across restarts/credential refreshes; no additional
 setting is needed. Never use rotating Meta access token as the hash key.
+
+## Local verification update
+
+Agent 4 implements the stateless restricted ASGI ingress in owned
+`services/whatsapp/ingress.py`. Run `uv run python -m
+finboy.services.whatsapp.ingress --api-port 8014 --port 8094`; no new FastAPI app.
+It is locally verified to deny all product routes/other methods. The temporary
+ngrok tunnel points only to this proxy, with `--inspect=false --log=false`.
+Agent 5 should review/consume this implementation and use --api-port 8015 or 8000
+only after environment verification; do not create a duplicate ingress.
+
+`pnpm check` passed (207 Python unit tests, 10 web tests, strict TS). Build passed.
+`pnpm test:integration`: 11 passed; 1 failed/5 errors in baseline tests. Four A1
+fixtures reject finboy_p4 via the old database-name allowlist; baseline revision test
+expects 0002_phase1; A2 integration hit a local connection timeout under concurrent
+machine load. All seven Agent 4 PostgreSQL tests pass. Please update allowed
+finboy_p1–p5 database guards and head checks in shared integration work. Agent 4
+will not modify old owners' test files.
