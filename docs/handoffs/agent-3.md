@@ -69,9 +69,11 @@ financial calculation and performs no PostgreSQL writes/migrations.
 
 No product UI changed. Responsive keyboard/loading/offline/microphone-denied and
 real human microphone tests remain for Agent 2/final integration. Human recording
-count is **0**; real recordings must stay ignored and require approval. Human
-number-listening feedback is pending; automated numeric recognition is not a human
-intelligibility score. WhatsApp end-to-end delivery belongs to Agent 4/integration.
+count is **0**; real recordings must stay ignored and require approval. Human listening feedback arrived after the initial handoff: on 24 October 2026
+(IST), the user confirmed **“All three clear”** for the English, Hindi and Malayalam
+synthetic ₹7,860 number clips. The recorded benchmark now includes this separate
+human confirmation. This covers those three clips only; human recording count
+remains zero. WhatsApp end-to-end delivery belongs to Agent 4/integration.
 
 Resemble/Gemini provider features have actual playable synthetic live verification;
 this does not establish all accents, real microphones or real-finance speech quality.
