@@ -111,7 +111,7 @@ microphone and Gmail acceptance limitations remain recorded in handoffs/agent-5.
   timer is active and initial pg_restore archive listing passed; full restore drill
   and off-host recovery copy remain operator follow-ups. Server retains ~10GB free.
 
-Remaining human acceptance: household browser login; live Gmail consent/import/revoke
+Remaining human acceptance: live Gmail consent/import/revoke
 on the deployed callback; browser microphone and chooser checks from the prior handoff.
 WhatsApp remains deliberately disabled in production. English phone text acceptance
 belongs to the previous local verifier; live voice remains explicitly deferred.
@@ -127,3 +127,13 @@ Cross-host Gmail tests also exercise household login, the one-use handoff, callb
 cookie domain, mocked Google exchange/import scheduling, replay/expiry rejection,
 and unauthenticated finance-route rejection. These are automated checks; live Google
 consent and actual Gmail import must still be recorded separately.
+
+Repair verification: `pnpm check` passed 377 backend unit tests, 19 web tests,
+lint and strict TypeScript. `NEXT_PUBLIC_API_URL=/ pnpm build` passed. The API
+release is `/opt/finboy/releases/7bf4587`; only finboy.service was restarted after
+a successful private backup. Public HTTPS health is 200, unauthenticated finance
+and Gmail authorization requests remain 401, and existing Finind, nginx and
+PostgreSQL services stayed active. No schema changes or production test suites.
+The human signed in; the repaired live Connect page rendered at 1440×1000,
+390×844 and 320×740, and Connect Gmail reached Google's account chooser with the
+direct backend callback. Google consent/import remains pending human completion.
