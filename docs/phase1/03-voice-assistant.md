@@ -75,6 +75,14 @@ built from the §8 truth table in your tests. Never compute money yourself.
   warning and the disclaimer.
 - Accessible: `aria-live` status, keyboard operable, visible focus, works at 390 px width.
 
+## Design system
+
+The UI is a light, 3D, premium system (docs/design-system.md, live at `/styleguide` in
+dev). Build your screens from its tokens, `components/ui` primitives, motion primitives
+and `<SceneSlot>` scenes; do not add colours, shadows, fonts, animation libraries or WebGL
+canvases of your own. The app shell, landing page and primitives belong to D.
+Use the `voice-orb` scene for /assistant: pass `state` (idle/listening/thinking/speaking) and a `level` ref fed from the mic/TTS analyser.
+
 ## Done when
 
 - Against fakes: each §8 line gives the right intent and policy, and the correct

@@ -1,36 +1,24 @@
-import Link from "next/link";
-import type { ReactNode } from "react";
+import { ViewTransition, type ReactNode } from "react";
 
-const navigation = [
-  ["Dashboard", "/dashboard"],
-  ["Transactions", "/transactions"],
-  ["Review", "/review"],
-  ["Assistant", "/assistant"],
-  ["Connect", "/connect"],
-  ["Privacy", "/privacy"],
-] as const;
+import { AppNav } from "@/components/app-shell/app-nav";
+import { SceneLayerMount } from "@/components/three/scene-slot";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-8">
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:underline">
+    <div className="bg-aurora relative min-h-screen">
+      <a
+        href="#main-content"
+        className="sr-only rounded-full bg-ink px-4 py-3 text-white focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50"
+      >
         Skip to content
       </a>
-      <header className="mb-10 flex flex-wrap items-center gap-6 border-b pb-6">
-        <Link href="/" className="text-xl font-semibold">FinBoy</Link>
-        <nav aria-label="Main navigation">
-          <ul className="flex flex-wrap gap-x-5 gap-y-3">
-            {navigation.map(([label, href]) => (
-              <li key={href}>
-                <Link className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4" href={href}>
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
-      <main id="main-content" tabIndex={-1}>{children}</main>
+      <AppNav />
+      <SceneLayerMount />
+      <main id="main-content" tabIndex={-1} className="px-4 pt-24 pb-28 outline-none sm:px-8 lg:pt-10 lg:pr-10 lg:pb-12 lg:pl-[300px]">
+        <div className="mx-auto max-w-6xl">
+          <ViewTransition default="page">{children}</ViewTransition>
+        </div>
+      </main>
     </div>
   );
 }

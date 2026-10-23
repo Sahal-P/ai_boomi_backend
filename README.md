@@ -2,7 +2,8 @@
 
 An AI-powered personal finance copilot for Indian users. This repository contains
 the **Phase 1 scaffold**: reviewed schema, shared service contracts, empty domain
-routers, and placeholder app pages. The landing page and live health check work;
+routers, and placeholder app pages. The 3D marketing site, app shell and design system
+work ([design system](docs/design-system.md), live at `/styleguide` in dev);
 Gmail, ingestion, ledger calculations, voice, and product UX await their owners.
 The source of truth is [the Phase 1 contract](docs/phase1/contract.md).
 
@@ -10,7 +11,9 @@ The source of truth is [the Phase 1 contract](docs/phase1/contract.md).
 
 - Python 3.15.1, FastAPI, Pydantic v2 / pydantic-settings, uv
 - Next.js 16.4.2 App Router, React 19.3, strict TypeScript, Tailwind CSS 4
-- shadcn/ui (Radix Nova), Lucide, locally served Geist variable font
+- shadcn/ui (Radix Nova), Lucide, Plus Jakarta Sans + Anek Malayalam (self-hosted)
+- three.js r186, React Three Fiber 9, drei, postprocessing (lazy-loaded WebGL), GSAP +
+  ScrollTrigger, Motion, Lenis
 - PostgreSQL 18.6, SQLAlchemy 2.1, psycopg 3, Alembic
 - Ruff, pytest + HTTPX ASGI transport, ESLint 10, Node's built-in test runner
 
@@ -47,9 +50,10 @@ pnpm dev
 with private file permissions. It preserves files that already exist. The example
 values work together without editing; they are public local development values.
 
-Open [FinBoy](http://127.0.0.1:3000). The connection panel calls FastAPI directly
-from the browser and checks PostgreSQL, on load, on manual refresh, and every
-30 seconds. The page remains usable if the API or database is unavailable.
+Open [FinBoy](http://127.0.0.1:3000) for the 3D landing page, or
+[the app](http://127.0.0.1:3000/dashboard). The app sidebar shows live API/PostgreSQL
+status (checked on load and every 30 seconds) and stays usable when the backend is down.
+Append `?quality=high|medium|low` to pin the 3D quality tier while testing.
 
 - Web: <http://127.0.0.1:3000> (also accessible as `localhost:3000`)
 - API health: <http://127.0.0.1:8000/api/v1/health>
@@ -196,7 +200,7 @@ apps/api/
   fixtures/          # Synthetic demo_mailbox/, llm_cassettes/, voice/ (owners add data)
 apps/web/
   src/app/           # Next.js routes, layout, styles, icon
-  src/components/    # Landing UI and owned shadcn components
+  src/components/    # ui/ primitives, marketing/, app-shell/, motion/, three/ (WebGL scenes)
   src/hooks/         # Connection state and refresh lifecycle
   src/lib/api/       # Domain clients; shared zod requestJson helper
 docs/architecture.md

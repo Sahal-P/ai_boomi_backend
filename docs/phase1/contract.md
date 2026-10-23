@@ -92,7 +92,8 @@ stop and ask the human to do that step in Chrome, then continue. Never type pass
 | A1 | `api/services/ingestion/**`, `api/services/ledger/**`, `api/db/models/ledger.py`, `apps/api/fixtures/demo_mailbox/**`, `apps/api/fixtures/llm_cassettes/**`, `apps/api/tests/ingestion/**`, `apps/api/tests/ledger/**`, `docs/extraction.md` |
 | A2 | `api/services/mail/**`, `api/services/imports/**`, `api/services/privacy/**`, `api/db/models/mail.py`, `api/api/v1/connections.py`, `api/api/v1/imports.py`, `api/api/v1/privacy.py`, `apps/api/tests/mail/**`, `web/app/(app)/connect/**`, `web/app/(app)/import/**`, `web/app/(app)/privacy/**`, `web/components/mail/**`, `web/lib/api/mail.ts`, `web/hooks/use-import-run.ts`, `web/hooks/use-connections.ts`, `docs/gmail-setup.md` |
 | A3 | `api/services/assistant/**`, `api/services/speech/**`, `api/api/v1/assistant.py`, `apps/api/tests/assistant/**`, `apps/api/fixtures/voice/**`, `web/app/(app)/assistant/**`, `web/components/assistant/**`, `web/lib/api/assistant.ts`, `web/hooks/use-voice-recorder.ts`, `web/hooks/use-assistant.ts`, `docs/voice.md` |
-| A4 | `api/services/money/**`, `api/api/v1/money.py`, `api/api/v1/transactions.py`, `apps/api/tests/money/**`, `web/app/(app)/layout.tsx`, `web/app/(app)/dashboard/**`, `web/app/(app)/transactions/**`, `web/app/(app)/review/**`, `web/app/page.tsx`, `web/components/app-shell/**`, `web/components/money/**`, `web/components/ui/**`, `web/lib/api/money.ts`, `web/lib/api/transactions.ts`, `web/hooks/use-money*.ts`, `web/hooks/use-transactions.ts`, `apps/web/package.json`, `docs/demo-runbook.md` |
+| A4 | `api/services/money/**`, `api/api/v1/money.py`, `api/api/v1/transactions.py`, `apps/api/tests/money/**`, `web/app/(app)/dashboard/**`, `web/app/(app)/transactions/**`, `web/app/(app)/review/**`, `web/components/money/**`, `web/lib/api/money.ts`, `web/lib/api/transactions.ts`, `web/hooks/use-money*.ts`, `web/hooks/use-transactions.ts`, `docs/demo-runbook.md` |
+| D (design & 3D) | `web/app/globals.css`, `web/app/layout.tsx`, `web/app/icon.svg`, `web/app/page.tsx`, `web/app/(app)/layout.tsx`, `web/app/styleguide/**`, `web/components/brand.tsx`, `web/components/ui/**`, `web/components/three/**`, `web/components/motion/**`, `web/components/marketing/**`, `web/components/app-shell/**`, `apps/web/package.json`, `docs/design-system.md` |
 
 Rules:
 
@@ -102,7 +103,11 @@ Rules:
   `apps/api/alembic/versions/0003_aN_<slug>.py` with `down_revision = "0002_phase1"`.
   The integrator merges Alembic heads.
 - New Python dependency? Only if essential; list it in your report (integrator re-locks).
-- Only A4 adds npm dependencies or shadcn components. Pre-flight installs the base set.
+- Only D adds npm dependencies. Any agent may add a missing shadcn component as a new
+  file in `web/components/ui/`, restyled to the tokens; D owns changes to existing ones.
+- **Design system (all UI work):** follow `docs/design-system.md`. Compose the tokens,
+  `components/ui` primitives, motion primitives and `<SceneSlot>` 3D scenes; no ad-hoc
+  colours, shadows, fonts or new WebGL canvases. Preview everything at `/styleguide`.
 - Commit small, descriptive commits on your branch. Rebase on `main` before handing off.
 
 ## 5. Database schema (migration `0002_phase1`, created by pre-flight)

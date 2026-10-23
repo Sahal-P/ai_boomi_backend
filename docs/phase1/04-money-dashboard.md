@@ -10,8 +10,8 @@ rules, §7 API, §8 truth table), `README.md`, `apps/web/AGENTS.md` (read the bu
 Next.js docs before writing Next.js code). Do not delegate to subagents.
 
 **Workspace:** branch `phase1/a4-money` in your own git worktree. API 8004, web 3004,
-database `finboy_a4` (contract §3). You only write files A4 owns (contract §4). You are
-the only agent allowed to add npm dependencies or shadcn components. A1's
+database `finboy_a4` (contract §4 lists what you own; the app shell, landing page and
+UI primitives belong to D, the design workstream). A1's
 `merge_transactions` / `keep_separate` are stubs on your branch: call them per §6 and
 use test doubles in tests.
 
@@ -40,9 +40,8 @@ use test doubles in tests.
 ## Build — frontend (presentational components; data in `lib/api/money.ts`,
 `lib/api/transactions.ts`, and small hooks)
 
-1. **App shell** `(app)/layout.tsx`: nav for Dashboard, Transactions, Review (with
-   pending count badge), Assistant, Connect, Privacy; mobile-friendly; skip link.
-   Landing page CTA → `/connect`.
+1. **App shell:** already built by D (`(app)/layout.tsx`, glass sidebar + mobile tab bar).
+   Your screens render inside it; ask D for shell changes (e.g. a review-count badge).
 2. **Dashboard:** greeting ("Good morning, Arun"); cards for Tracked income, Tracked
    outflows, Upcoming commitments, **Estimated unallocated** with "Based on
    email-derived and confirmed records. Your actual bank balance may differ.";
@@ -67,8 +66,16 @@ use test doubles in tests.
   correction → Malayalam voice question → ₹5,000 SIP simulation → privacy), the voice
   lines, expected numbers at each step, `DEMO_TODAY`, reset commands, and fallbacks
   (demo mailbox, `.eml` upload) if Google OAuth fails.
-- Visual quality: match the existing landing design tokens (off-white, charcoal,
-  emerald, Geist); Indian currency formatting with `Intl.NumberFormat("en-IN")`.
+- Visual quality: follow `docs/design-system.md` (light 3D system, `/styleguide`);
+  Indian currency formatting via `AnimatedAmount` / `formatRupees`.
+
+## Design system
+
+The UI is a light, 3D, premium system (docs/design-system.md, live at `/styleguide` in
+dev). Build your screens from its tokens, `components/ui` primitives, motion primitives
+and `<SceneSlot>` scenes; do not add colours, shadows, fonts, animation libraries or WebGL
+canvases of your own. The app shell, landing page and primitives belong to D.
+Suggested scenes: `check-orb` for confirm moments, `coin-swirl` with `merge` for duplicate merges, `coin-stack` for the simulator. Format money with `AnimatedAmount`/`formatRupees`.
 
 ## Done when
 

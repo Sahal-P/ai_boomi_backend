@@ -78,6 +78,14 @@ doubles in your tests.
   list, plain statements of what is stored, what is not, and that financial emails are
   never used to train models.
 
+## Design system
+
+The UI is a light, 3D, premium system (docs/design-system.md, live at `/styleguide` in
+dev). Build your screens from its tokens, `components/ui` primitives, motion primitives
+and `<SceneSlot>` scenes; do not add colours, shadows, fonts, animation libraries or WebGL
+canvases of your own. The app shell, landing page and primitives belong to D.
+Suggested scenes: `inbox-slab` on /connect, `coin-swirl` (`loop`) while an import runs, `privacy-vault` on /privacy.
+
 ## Done when
 
 - Live flow works in Chrome with the demo Gmail account: connect → consent → import

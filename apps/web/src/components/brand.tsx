@@ -1,18 +1,37 @@
-import { Asterisk } from "lucide-react";
+import Link from "next/link";
 
-export function Brand() {
+import { cn } from "@/lib/utils";
+
+/**
+ * Faceted violet gem with a ₹ — reads as "money, refined" at 20–40 px.
+ * Built from CSS gradients (no SVG ids), so any number of instances render even when
+ * one of them sits inside a hidden subtree.
+ */
+export function BrandMark({ className }: { className?: string }) {
   return (
-    <a
-      href="#"
-      aria-label="FinBoy home"
-      className="inline-flex items-center gap-2.5"
-    >
-      <span className="flex size-9 items-center justify-center rounded-xl bg-foreground text-background">
-        <Asterisk className="size-6" strokeWidth={2.3} aria-hidden="true" />
-      </span>
-      <span className="text-[1.6rem] font-semibold tracking-[-0.065em]">
-        finboy<span className="text-primary">.</span>
-      </span>
-    </a>
+    <span aria-hidden="true" className={cn("relative inline-grid size-8 shrink-0 place-items-center", className)}>
+      <span className="absolute inset-[14%] rotate-45 rounded-[32%] bg-[linear-gradient(200deg,#9b6bff,#7a4dff_50%,#d63af9)] shadow-[0_4px_12px_-4px_rgba(122,77,255,0.7)]" />
+      <span className="absolute inset-[14%] rotate-45 rounded-[32%] bg-[linear-gradient(135deg,rgba(255,255,255,0.4),rgba(255,255,255,0)_55%)]" />
+      <svg
+        viewBox="0 0 24 24"
+        className="relative size-[42%]"
+        fill="none"
+        stroke="#ffffff"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M6 3h12M6 8h12M6 13h3M9 13c6.667 0 6.667-10 0-10M6 13l8.5 8" />
+      </svg>
+    </span>
+  );
+}
+
+export function Brand({ href = "/", className }: { href?: string; className?: string }) {
+  return (
+    <Link href={href} aria-label="FinBoy home" className={cn("inline-flex items-center gap-2", className)}>
+      <BrandMark />
+      <span className="text-[1.45rem] font-bold tracking-[-0.05em] text-ink">finboy</span>
+    </Link>
   );
 }

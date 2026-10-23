@@ -44,9 +44,13 @@ it checks connectivity, while Alembic commands check migration state.
 
 ## Frontend
 
-Pages/layouts are Server Components. The landing connection panel uses a small
-hook for initial, 30-second, and manual refresh plus cancellation. It renders
-checking, connected, degraded, and offline states.
+Pages/layouts are Server Components with small client islands. The visual system,
+motion primitives and 3D architecture are documented in [design-system.md](design-system.md).
+WebGL is client-only and lazy: the marketing hero owns one canvas (shadows + bloom), and a
+single shared transparent canvas renders every `<SceneSlot>` through drei Views, loading
+three.js only when a slot nears the viewport. Without WebGL, CSS posters remain.
+The app sidebar's connection status uses a small hook for initial, 30-second, and manual
+refresh plus cancellation, rendering checking, connected, degraded, and offline states.
 
 `src/lib/api/http.ts` owns `requestJson(path, schema, init)`, backend URL validation,
 zod response validation, safe `ApiError`, a five-second default timeout,
@@ -54,9 +58,9 @@ zod response validation, safe `ApiError`, a five-second default timeout,
 health endpoint's consistent 200/503 contract. Each domain gets its own module;
 `health.ts` is implemented. Components remain presentational.
 
-The `(app)` route group provides minimal navigation and placeholders without
-changing `/`. Theme tokens and local Geist fonts preserve the landing design.
-The requested shadcn components are installed for subsequent feature owners.
+The `(app)` route group provides the glass app shell (sidebar, mobile tab bar, route
+view transitions) around placeholder pages owned by the feature agents. Shadcn
+primitives are restyled to the design tokens for every feature owner.
 
 ## Configuration and privacy
 
