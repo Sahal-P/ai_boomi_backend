@@ -9,7 +9,7 @@ from finboy.services.money.engine import CashFlowSimulation, TransactionView
 
 
 class AssistantFact(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     key: str
     amount_minor: int | None = None
     count: int | None = None
@@ -17,7 +17,7 @@ class AssistantFact(BaseModel):
 
 
 class AssistantAnswer(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     intent: str
     policy: Literal["answer", "decline", "clarify"]
     display_text: str
@@ -30,12 +30,12 @@ class AssistantAnswer(BaseModel):
 
 
 class AskRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     text: str = Field(min_length=1, max_length=2000)
     display_style: DisplayStyle = "auto"
 
 
 class SpeakRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     text: str = Field(min_length=1, max_length=600)
     language: Language

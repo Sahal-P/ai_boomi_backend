@@ -1,0 +1,3 @@
+# Human recordings, transcripts, and local reports never enter Git.
+real/
+reports.local*.json

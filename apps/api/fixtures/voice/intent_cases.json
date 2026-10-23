@@ -1,0 +1,198 @@
+[
+  {
+    "id": "en-01",
+    "language": "en",
+    "text": "How much did I spend on food this month?",
+    "intent": "spending_query",
+    "category": "food_dining"
+  },
+  {
+    "id": "en-02",
+    "language": "en",
+    "text": "What income was recorded this month?",
+    "intent": "income_query",
+    "category": null
+  },
+  {
+    "id": "en-03",
+    "language": "en",
+    "text": "What is my estimated unallocated amount?",
+    "intent": "unallocated_query",
+    "category": null
+  },
+  {
+    "id": "en-04",
+    "language": "en",
+    "text": "What bills are upcoming this month?",
+    "intent": "upcoming_commitments",
+    "category": null
+  },
+  {
+    "id": "en-05",
+    "language": "en",
+    "text": "Would a 5000 monthly SIP fit the tracked cash flow?",
+    "intent": "affordability_check",
+    "category": null
+  },
+  {
+    "id": "en-06",
+    "language": "en",
+    "text": "What is SIP?",
+    "intent": "education",
+    "category": null
+  },
+  {
+    "id": "hi-01",
+    "language": "hi",
+    "text": "इस महीने खाने पर कितना खर्च हुआ?",
+    "intent": "spending_query",
+    "category": "food_dining"
+  },
+  {
+    "id": "hi-02",
+    "language": "hi",
+    "text": "इस महीने कितनी आय दर्ज हुई?",
+    "intent": "income_query",
+    "category": null
+  },
+  {
+    "id": "hi-03",
+    "language": "hi",
+    "text": "मेरा अनुमानित अनावंटित पैसा कितना है?",
+    "intent": "unallocated_query",
+    "category": null
+  },
+  {
+    "id": "hi-04",
+    "language": "hi",
+    "text": "आने वाले बिल कितने हैं?",
+    "intent": "upcoming_commitments",
+    "category": null
+  },
+  {
+    "id": "hi-05",
+    "language": "hi",
+    "text": "क्या 5000 की मासिक एसआईपी दर्ज नकदी प्रवाह में संभव है?",
+    "intent": "affordability_check",
+    "category": null
+  },
+  {
+    "id": "hi-06",
+    "language": "hi",
+    "text": "एसआईपी क्या है?",
+    "intent": "education",
+    "category": null
+  },
+  {
+    "id": "ml-01",
+    "language": "ml",
+    "text": "ഈ മാസം ഭക്ഷണത്തിന് എത്ര ചെലവായി?",
+    "intent": "spending_query",
+    "category": "food_dining"
+  },
+  {
+    "id": "ml-02",
+    "language": "ml",
+    "text": "ഈ മാസം രേഖപ്പെടുത്തിയ വരുമാനം എത്ര?",
+    "intent": "income_query",
+    "category": null
+  },
+  {
+    "id": "ml-03",
+    "language": "ml",
+    "text": "കണക്കാക്കിയ നീക്കിവയ്ക്കാത്ത തുക എത്രയാണ്?",
+    "intent": "unallocated_query",
+    "category": null
+  },
+  {
+    "id": "ml-04",
+    "language": "ml",
+    "text": "വരാനിരിക്കുന്ന ബില്ലുകൾ എത്രയാണ്?",
+    "intent": "upcoming_commitments",
+    "category": null
+  },
+  {
+    "id": "ml-05",
+    "language": "ml",
+    "text": "5000 രൂപയുടെ പ്രതിമാസ എസ്‌ഐപി രേഖപ്പെടുത്തിയ പണമൊഴുക്കിൽ സാധ്യമാണോ?",
+    "intent": "affordability_check",
+    "category": null
+  },
+  {
+    "id": "ml-06",
+    "language": "ml",
+    "text": "എസ്‌ഐപി എന്താണ്?",
+    "intent": "education",
+    "category": null
+  },
+  {
+    "id": "extra-01",
+    "language": "manglish",
+    "text": "Ee masam foodinu ethra poyi?",
+    "intent": "spending_query",
+    "category": "food_dining"
+  },
+  {
+    "id": "extra-02",
+    "language": "hinglish",
+    "text": "Is mahine khane par kitna kharch hua?",
+    "intent": "spending_query",
+    "category": "food_dining"
+  },
+  {
+    "id": "extra-03",
+    "language": "en",
+    "text": "Which mutual fund should I buy?",
+    "intent": "regulated_advice",
+    "category": null
+  },
+  {
+    "id": "extra-04",
+    "language": "hi",
+    "text": "कौन सा शेयर खरीदना चाहिए?",
+    "intent": "regulated_advice",
+    "category": null
+  },
+  {
+    "id": "extra-05",
+    "language": "ml",
+    "text": "ഏത് ഫണ്ട് വാങ്ങണം?",
+    "intent": "regulated_advice",
+    "category": null
+  },
+  {
+    "id": "extra-06",
+    "language": "en",
+    "text": "What is the weather tomorrow?",
+    "intent": "out_of_scope",
+    "category": null
+  },
+  {
+    "id": "extra-07",
+    "language": "hi",
+    "text": "कल मौसम कैसा होगा?",
+    "intent": "out_of_scope",
+    "category": null
+  },
+  {
+    "id": "extra-08",
+    "language": "ml",
+    "text": "നാളെ കാലാവസ്ഥ എങ്ങനെയിരിക്കും?",
+    "intent": "out_of_scope",
+    "category": null
+  },
+  {
+    "id": "extra-09",
+    "language": "en",
+    "text": "Show Swiggy transactions this month",
+    "intent": "merchant_lookup",
+    "category": null
+  },
+  {
+    "id": "extra-10",
+    "language": "en",
+    "text": "Simulate a 5000 monthly commitment",
+    "intent": "savings_simulation",
+    "category": null
+  }
+]

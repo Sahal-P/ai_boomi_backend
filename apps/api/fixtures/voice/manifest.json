@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "samples": [
+    {
+      "id": "number-en",
+      "language": "en",
+      "text": "Hello. Seven thousand eight hundred sixty rupees.",
+      "path": "number-en.mp3",
+      "synthetic": true,
+      "live_generated": true,
+      "human_approved": false,
+      "provider": "resemble",
+      "model": "resemble-ultra",
+      "voice": "Lucy",
+      "tts_latency_ms": 4677,
+      "number_words": "seven thousand eight hundred sixty",
+      "amount_minor": 786000
+    },
+    {
+      "id": "number-hi",
+      "language": "hi",
+      "text": "नमस्ते। सात हज़ार आठ सौ साठ रुपये।",
+      "path": "number-hi.mp3",
+      "synthetic": true,
+      "live_generated": true,
+      "human_approved": false,
+      "provider": "resemble",
+      "model": "resemble-ultra",
+      "voice": "Fatima",
+      "tts_latency_ms": 3136,
+      "number_words": "सात हज़ार आठ सौ साठ",
+      "amount_minor": 786000
+    },
+    {
+      "id": "number-ml",
+      "language": "ml",
+      "text": "നമസ്കാരം. ഏഴായിരത്തി എണ്ണൂറ്റി അറുപത് രൂപ.",
+      "path": "number-ml.mp3",
+      "synthetic": true,
+      "live_generated": true,
+      "human_approved": false,
+      "provider": "gemini",
+      "model": "gemini-3.8-flash-tts",
+      "voice": "Kore",
+      "tts_latency_ms": 4501,
+      "number_words": "ഏഴായിരത്തി എണ്ണൂറ്റി അറുപത്",
+      "amount_minor": 786000
+    },
+    {
+      "id": "question-en",
+      "language": "en",
+      "text": "How much did I spend on food this month?",
+      "path": "question-en.mp3",
+      "synthetic": true,
+      "live_generated": true,
+      "human_approved": false,
+      "provider": "resemble",
+      "model": "resemble-ultra",
+      "voice": "Lucy",
+      "tts_latency_ms": 2065,
+      "intent": "spending_query"
+    },
+    {
+      "id": "question-hi",
+      "language": "hi",
+      "text": "इस महीने खाने पर कितना खर्च हुआ?",
+      "path": "question-hi.mp3",
+      "synthetic": true,
+      "live_generated": true,
+      "human_approved": false,
+      "provider": "resemble",
+      "model": "resemble-ultra",
+      "voice": "Fatima",
+      "tts_latency_ms": 1623,
+      "intent": "spending_query"
+    },
+    {
+      "id": "question-ml",
+      "language": "ml",
+      "text": "ഈ മാസം ഭക്ഷണത്തിന് എത്ര ചെലവായി?",
+      "path": "question-ml.mp3",
+      "synthetic": true,
+      "live_generated": true,
+      "human_approved": false,
+      "provider": "gemini",
+      "model": "gemini-3.8-flash-tts",
+      "voice": "Kore",
+      "tts_latency_ms": 3540,
+      "intent": "spending_query"
+    }
+  ]
+}
