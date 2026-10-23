@@ -121,3 +121,11 @@ proves the assembled ledger/assistant connection, not WhatsApp audio delivery.
 A new assembled boundary issue (InvalidAudio exception adaptation) is requested in
 agent-4-dependencies.md for Agent 5, which now owns final integration source edits.
 Voice note and six language text/voice phone cases remain pending; no fake success.
+
+Agent 5 coordination follow-up: consumed explicitly supplied narrow InvalidAudio
+fix b651d69 only in the isolated live verifier (local 249a1e8 on cbd2ed2). Processor
+22/22 and assembled pnpm check pass (365 Python unit + 10 web + strict TS). Source
+branch is unchanged; no moving integration HEAD was followed. Fresh English text/
+voice phone question remains awaited; only the earlier fallback reply is READ.
+
+Assembled verifier `pnpm build` also passed after the narrow audio-error fix.

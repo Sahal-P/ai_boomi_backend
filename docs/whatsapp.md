@@ -34,7 +34,8 @@ reviewed in FinBoy on the demo computer; local web URLs are removed from phone r
   correctly recorded `assistant_unavailable` and sent its truthful text fallback;
   Meta's delivery callback reached **read**. This is a real text transport result,
   not a successful ledger answer or a claim from mocks.
-- Follow-up verification uses the fixed assembled commit `cbd2ed2` in the separate
+- Follow-up verification uses fixed assembled commit `cbd2ed2` plus Agent 5's narrow
+  `b651d69` audio-error fix (local verifier head `249a1e8`) in the separate
   managed `finboy-whatsapp-live` worktree, still API 8014 and database finboy_p4.
   No moving integration HEAD or other agent's runtime was changed. Its actual demo
   import processed all 42 synthetic emails; actual money APIs matched the truth
@@ -233,8 +234,8 @@ Meta pages were read in Chrome on 24 October because the search fetcher returned
 ## Post-handoff integration observations
 
 The assembled service adds a fixed `InvalidAudio(ValueError)` input exception.
-The channel's original frozen placeholder only raised ProviderUnavailable. Agent 5
-is asked in the dependency handoff to catch the integrated InvalidAudio boundary for
-both STT and TTS; otherwise invalid audio takes the generic interrupted-work failure
-path without its helpful text fallback. This does not affect the verified text
-round trip. No Agent 5 source was edited after ownership handoff.
+Agent 5 fixed its STT/TTS text-fallback handling in narrow commit `b651d69`. That
+explicit shared fix was consumed only in the temporary live verifier (`249a1e8`),
+without changing the original frozen-base source branch. Focused processor tests
+22/22 and assembled `pnpm check` (365 backend unit tests, 10 web tests, strict TS)
+pass. No Agent 5 checkout/runtime/source was edited after ownership handoff.
