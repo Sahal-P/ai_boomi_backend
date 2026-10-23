@@ -9,7 +9,7 @@ const steps: Array<{ number: string; title: string; body: string; spec: SceneSpe
   {
     number: "01",
     title: "Connect Gmail, read-only",
-    body: "FinBoy asks for read access and only looks at money mail — bank alerts, receipts, bills. Nothing else is opened.",
+    body: "FinBoy uses sender and keyword filters to scan recent likely financial mail — bank alerts, receipts and bills.",
     spec: { name: "inbox-slab" },
     tint: "from-[#f3efff] to-white",
   },

@@ -50,8 +50,8 @@ export function Hero() {
           className="rise-in mt-7 max-w-[30rem] text-[1.0625rem] leading-relaxed text-ink-soft"
           style={delay(0.55)}
         >
-          FinBoy turns bank alerts, receipts and bills into a verified money timeline — then
-          answers your questions in Malayalam, Manglish or English.
+          FinBoy turns bank alerts, receipts and bills into a tracked money timeline — then
+          answers your questions in Hindi, English, Malayalam and supported romanized text.
         </p>
         <div className="rise-in mt-9 flex flex-wrap items-center gap-3" style={delay(0.7)}>
           <Link
