@@ -100,3 +100,24 @@ again. Restart instructions and public denial checks are in `docs/whatsapp.md`.
   cleanup, and never blindly resend an unknown outbound delivery.
 
 Agent 5 may take final integration edit ownership after consuming this handoff.
+
+## Follow-up live evidence after 37556b0
+
+Human initiated the phone test. One real allowlisted text question arrived and the
+signed webhook acknowledged it; frozen assistant unavailable was recorded truthfully.
+Its fallback text was accepted and a real provider callback advanced to READ. No
+raw question/phone/response was retained. No audio receipt has arrived yet.
+
+For the remaining voice check, created a separate managed verification worktree at
+**fixed assembled commit cbd2ed2**, finboy-whatsapp-live/ai_boom. It uses Agent 4's
+8014/3014/finboy_p4 isolation and refreshed private credentials. The original source
+branch and Agent 5's running 8015/finboy_p5 checkout were not changed. Migration and
+drift checks pass. Actual imports/demo processed 42 emails using existing offline
+recordings; actual summary matched the truth table; the authorized synthetic Hotel
+Arya correction was applied through the local review API. Actual assistant HTTP en,
+hi, ml responses each returned the corrected food fact with policy=answer. This
+proves the assembled ledger/assistant connection, not WhatsApp audio delivery.
+
+A new assembled boundary issue (InvalidAudio exception adaptation) is requested in
+agent-4-dependencies.md for Agent 5, which now owns final integration source edits.
+Voice note and six language text/voice phone cases remain pending; no fake success.

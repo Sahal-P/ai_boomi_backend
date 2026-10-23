@@ -65,3 +65,23 @@ assets are valid. Actual expiry: 24 October 2026 03:30 IST. Credential values re
 only in private files. Phone checks pending. The frozen branch intentionally retains
 Agent 3 placeholders; assembled-runtime STT/TTS/ledger answer QA must follow its
 handoff. Final owned checks: 76 unit/HTTP tests + 9 PostgreSQL tests pass.
+
+## Post-handoff assembled-service exception adaptation
+
+Read fixed assembled commit cbd2ed2. Agent 3's service now exposes
+`InvalidAudio(ValueError)` from services/speech/media.py, while the bootstrap only
+raised ProviderUnavailable. Please adapt owned final integration WhatsApp processor
+STT catch and TTS catch to include that exact exception (or an explicit shared
+input-error boundary) and add a regression test. Currently malformed/over-duration
+audio falls to the generic processing_failed handler rather than the helpful text
+fallback. No simultaneous source edit was made by Agent 4 after handoff.
+
+Actual text phone transport now verified: one signed inbound text question, fixed
+assistant_unavailable fallback from frozen runtime, Meta provider status READ. No
+audio receipt yet. A separate managed verification worktree at fixed cbd2ed2 now
+serves 8014/finboy_p4 with the actual assembled assistant/speech. Its private config
+uses Agent 3's verified model/stock voice IDs and the refreshed Meta token; financial
+routes remain loopback-only behind the same restricted 8094 ingress. All 42 synthetic
+emails imported through the actual demo endpoint; summary truth and corrected food
+facts verified via actual assistant HTTP for en/hi/ml. No moving HEAD or Agent 5
+checkout/runtime was modified. Voice-note request is pending with the human.
