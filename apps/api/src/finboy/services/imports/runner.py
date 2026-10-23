@@ -1,0 +1,155 @@
+"""Background import orchestration; all progress writes use independent sessions."""
+
+from collections.abc import Iterable, Iterator
+from uuid import UUID, uuid4
+
+from finboy.core.clock import now_ist
+from finboy.core.config import LOCAL_USER_ID, Settings
+from finboy.db.models.mail import ImportRun, MailConnection
+from finboy.services.imports.locking import import_lock
+from finboy.services.ingestion.pipeline import InboundMessage, IngestionStats, ingest_messages
+from finboy.services.mail.fetch import fetch_messages
+from finboy.services.mail.oauth import OAuthConfig
+from finboy.services.mail.security import MailError, decrypt
+from finboy.services.privacy.audit import audit
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session, sessionmaker
+
+COUNTERS = tuple(IngestionStats.__dataclass_fields__)
+
+
+def create_run(session: Session, *, mode: str, connection_id: UUID | None = None) -> ImportRun:
+    # Serializes admission for this local user's runs (including simultaneous HTTP requests).
+    # Existing active jobs are not duplicated by repeated clicks.
+    from finboy.db.models.core import User
+
+    session.scalar(select(User).where(User.id == LOCAL_USER_ID).with_for_update())
+    existing = session.scalar(
+        select(ImportRun.id).where(
+            ImportRun.user_id == LOCAL_USER_ID, ImportRun.status.in_(["queued", "running"])
+        )
+    )
+    if existing:
+        raise MailError("import_busy")
+    run = ImportRun(
+        id=uuid4(),
+        user_id=LOCAL_USER_ID,
+        mode=mode,
+        mail_connection_id=connection_id,
+        status="queued",
+    )
+    session.add(run)
+    session.flush()
+    audit(session, "import.started", "import", run.id, mode=mode)
+    session.commit()
+    return run
+
+
+def run_import(
+    engine: Engine,
+    settings: Settings,
+    run_id: UUID,
+    messages: Iterable[InboundMessage] | None = None,
+) -> None:
+    factory = sessionmaker(engine, expire_on_commit=False)
+    scanned = [0, 0]
+
+    def progress(stats: IngestionStats) -> None:
+        with factory.begin() as session:
+            run = session.get(ImportRun, run_id)
+            if run is None or run.status != "running":
+                raise MailError("import_cancelled")
+            for counter in COUNTERS:
+                value = max(0, getattr(stats, counter))
+                if counter == "headers_checked":
+                    value = max(value, scanned[0])
+                elif counter == "candidates_found":
+                    value = max(value, scanned[1])
+                setattr(run, counter, max(getattr(run, counter), value))
+
+    def scan(headers: int, candidates: int) -> None:
+        scanned[:] = [headers, candidates]
+        progress(IngestionStats())
+
+    def active() -> None:
+        with factory() as session:
+            run = session.get(ImportRun, run_id)
+            if run is None or run.status != "running":
+                raise MailError("import_cancelled")
+            if run.mail_connection_id:
+                connection = session.get(MailConnection, run.mail_connection_id)
+                if connection is None or connection.status != "active":
+                    raise MailError("import_cancelled")
+
+    def guarded(inbound: Iterable[InboundMessage]) -> Iterator[InboundMessage]:
+        for message in inbound:
+            active()
+            yield message
+
+    google = None
+    try:
+        with import_lock(engine):
+            with factory.begin() as session:
+                run = session.get(ImportRun, run_id)
+                if run is None or run.status != "queued":
+                    return
+                run.status = "running"
+                run.started_at = now_ist()
+                connection_id = run.mail_connection_id
+                if connection_id:
+                    config = OAuthConfig.from_settings(settings)
+                    connection = session.get(MailConnection, connection_id)
+                    if (
+                        connection is None
+                        or connection.status != "active"
+                        or connection.encrypted_refresh_token is None
+                    ):
+                        raise MailError("connection_inactive")
+                    refresh_token = decrypt(
+                        config.encryption_key, connection.encrypted_refresh_token
+                    )
+                    google = config.google()
+                    messages = fetch_messages(
+                        google,
+                        refresh_token=refresh_token,
+                        connection_id=connection_id,
+                        on_scan=scan,
+                        ensure_active=active,
+                    )
+            if messages is None:
+                raise MailError("import_failed")
+            stats = ingest_messages(
+                factory,
+                user_id=LOCAL_USER_ID,
+                import_run_id=run_id,
+                messages=guarded(messages),
+                on_progress=progress,
+            )
+            progress(stats)
+            active()
+            with factory.begin() as session:
+                run = session.get(ImportRun, run_id)
+                if run is None:
+                    return
+                run.status = "completed"
+                run.finished_at = now_ist()
+                if run.mail_connection_id:
+                    connection = session.get(MailConnection, run.mail_connection_id)
+                    if connection is not None:
+                        connection.last_synced_at = now_ist()
+                audit(session, "import.completed", "import", run.id, mode=run.mode)
+    except Exception as exc:
+        code = exc.code if isinstance(exc, MailError) else "import_failed"
+        with factory.begin() as session:
+            run = session.get(ImportRun, run_id)
+            if run is not None:
+                run.status, run.error_code, run.finished_at = "failed", code, now_ist()
+                audit(session, "import.failed", "import", run.id, mode=run.mode)
+                if code == "reconnect_required" and run.mail_connection_id:
+                    connection = session.get(MailConnection, run.mail_connection_id)
+                    if connection and connection.status not in {"revoked", "paused"}:
+                        connection.status = "error"
+                        audit(session, "gmail.reconnect_required", "connection", connection.id)
+    finally:
+        if google:
+            google.close()
