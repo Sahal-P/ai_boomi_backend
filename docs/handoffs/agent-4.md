@@ -129,3 +129,14 @@ branch is unchanged; no moving integration HEAD was followed. Fresh English text
 voice phone question remains awaited; only the earlier fallback reply is READ.
 
 Assembled verifier `pnpm build` also passed after the narrow audio-error fix.
+
+## Human decision — voice verification deferred
+
+On 24 October 2026 the human explicitly selected **Keep the voice check pending**.
+Do not wait for or request another voice recording in this round. WhatsApp incoming
+audio, STT/TTS response and actual phone audio playback remain unverified. The real
+text fallback round trip remains verified through Meta READ status; actual local
+ledger/assistant answers in en/hi/ml passed in the isolated assembled verifier.
+Existing approved ingress/runtime/ports are left intact for integration coordination;
+no further live voice message was sent or synthesized by this deferred check. Resume
+the human phone voice acceptance only when the human requests it.

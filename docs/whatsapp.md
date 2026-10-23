@@ -239,3 +239,14 @@ explicit shared fix was consumed only in the temporary live verifier (`249a1e8`)
 without changing the original frozen-base source branch. Focused processor tests
 22/22 and assembled `pnpm check` (365 backend unit tests, 10 web tests, strict TS)
 pass. No Agent 5 checkout/runtime/source was edited after ownership handoff.
+
+## Human decision — voice verification deferred
+
+On 24 October 2026 the human explicitly selected **Keep the voice check pending**.
+Do not wait for or request another voice recording in this round. WhatsApp incoming
+audio, STT/TTS response and actual phone audio playback remain unverified. The real
+text fallback round trip remains verified through Meta READ status; actual local
+ledger/assistant answers in en/hi/ml passed in the isolated assembled verifier.
+Existing approved ingress/runtime/ports are left intact for integration coordination;
+no further live voice message was sent or synthesized by this deferred check. Resume
+the human phone voice acceptance only when the human requests it.
