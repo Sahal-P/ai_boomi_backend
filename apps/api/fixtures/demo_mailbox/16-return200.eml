@@ -1,0 +1,14 @@
+From: FinBoy Synthetic <notify@alerts.hdfcbank.test>
+To: arun@demo.invalid
+Subject: Account activity alert
+Date: Thu, 15 Oct 2026 12:05:00 +0530
+Message-ID: <synthetic-return200@finboy.invalid>
+X-FinBoy-Synthetic: 1
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><head><style>.hidden{display:none}</style></head><body><p>Dear Arun,</p=
+><p>Debited INR 200.00 to Amazon on 15-10-26 12:05 IST;</p><p>A/c XX1234 via =
+card; UTR: SYN-RETURN200.</p><p>Unsubscribe</p><a href=3D"https://tracking.in=
+valid/abc">tracking</a></body></html>

@@ -1,0 +1,15 @@
+From: FinBoy Synthetic <notify@amazon.test>
+To: arun@demo.invalid
+Subject: Order confirmation
+Date: Tue, 06 Oct 2026 12:05:00 +0530
+Message-ID: <synthetic-duplicate34@finboy.invalid>
+X-FinBoy-Synthetic: 1
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><head><style>.hidden{display:none}</style></head><body><p>Dear Arun,</p=
+><p>Order confirmation: =E2=82=B95,000.00; Merchant: Existing SIP;</p><p>Orde=
+r ID: SYN-SIP; Date: 06-10-26 12:05 IST; card ending 1234.</p><p>This confirm=
+s the order, not settlement.</p><p>Unsubscribe</p><a href=3D"https://tracking=
+.invalid/abc">tracking</a></body></html>

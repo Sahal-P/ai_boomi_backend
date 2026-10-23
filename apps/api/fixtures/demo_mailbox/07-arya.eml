@@ -1,0 +1,14 @@
+From: FinBoy Synthetic <notify@alerts.hdfcbank.test>
+To: arun@demo.invalid
+Subject: Account activity alert
+Date: Tue, 13 Oct 2026 12:05:00 +0530
+Message-ID: <synthetic-arya@finboy.invalid>
+X-FinBoy-Synthetic: 1
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><head><style>.hidden{display:none}</style></head><body><p>Dear Arun,</p=
+><p>Debited INR 1,250.00 to HOTEL ARYA on 13-10-26 12:05 IST;</p><p>A/c XX123=
+4 via card; UTR: SYN-ARYA.</p><p>Unsubscribe</p><a href=3D"https://tracking.i=
+nvalid/abc">tracking</a></body></html>

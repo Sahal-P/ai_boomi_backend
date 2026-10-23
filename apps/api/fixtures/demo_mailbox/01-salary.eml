@@ -1,0 +1,14 @@
+From: FinBoy Synthetic <notify@alerts.hdfcbank.test>
+To: arun@demo.invalid
+Subject: Account activity alert
+Date: Thu, 01 Oct 2026 12:05:00 +0530
+Message-ID: <synthetic-salary@finboy.invalid>
+X-FinBoy-Synthetic: 1
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><head><style>.hidden{display:none}</style></head><body><p>Dear Arun,</p=
+><p>Salary credited INR 62,000.00 from Synthetic Works on 01-10-26 12:05 IST;=
+</p><p>A/c XX1234 via card; UTR: SYN-SALARY.</p><p>Unsubscribe</p><a href=3D"=
+https://tracking.invalid/abc">tracking</a></body></html>

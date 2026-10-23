@@ -1,0 +1,14 @@
+From: FinBoy Synthetic <notify@bills.local.test>
+To: arun@demo.invalid
+Subject: Your monthly bill
+Date: Wed, 28 Oct 2026 12:05:00 +0530
+Message-ID: <synthetic-electricity@finboy.invalid>
+X-FinBoy-Synthetic: 1
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><head><style>.hidden{display:none}</style></head><body><p>Dear Arun,</p=
+><p>Bill amount INR 1,850.00 due 29-10-26; Biller: Electricity;</p><p>Ref: SY=
+N-ELECTRICITY; Account XX1234.</p><p>Date: 28-10-26 12:05 IST.</p><p>Unsubscr=
+ibe</p><a href=3D"https://tracking.invalid/abc">tracking</a></body></html>

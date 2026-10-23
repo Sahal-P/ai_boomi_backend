@@ -1,0 +1,16 @@
+From: FinBoy Synthetic <notify@alerts.hdfcbank.test>
+To: arun@demo.invalid
+Subject: Account activity alert
+Date: Thu, 08 Oct 2026 12:05:00 +0530
+Message-ID: <synthetic-cafe@finboy.invalid>
+X-FinBoy-Synthetic: 1
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+
+Dear Arun,
+Debited ₹1,600.00 to Coconut Cafe on 08-10-26 12:05 IST;
+A/c XX1234 via card; UTR: SYN-CAFE.
+--
+Synthetic service footer https://tracking.invalid/abc
+> Previous message: INR 9,999 debited
