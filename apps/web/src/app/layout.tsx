@@ -1,12 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FinBoy — A little more clarity",
+  title: "FinBoy — Your inbox already knows your money",
   description:
-    "Meet FinBoy, an AI-powered personal finance copilot thoughtfully built for India. An early preview of a clearer money journey.",
+    "FinBoy turns bank alerts, receipts and bills into a verified money timeline, then answers your questions in Hindi, English, Malayalam or romanized input.",
   applicationName: "FinBoy",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f5f4fb",
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

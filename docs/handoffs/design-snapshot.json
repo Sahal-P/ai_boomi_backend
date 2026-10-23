@@ -1,0 +1,255 @@
+{
+  "source_worktree": "/Users/sahal/Dev/FourNotFour/ai_boom-design-3d",
+  "source_branch": "phase1/d-design-3d",
+  "uncommitted_snapshot": true,
+  "files": [
+    {
+      "path": "apps/web/src/components/three/hero/floor-spill.ts",
+      "sha256": "07f83ffee04bca5acfa4dc19a3f058cbd5938d55159ee8102bc860b3deeaafa9"
+    },
+    {
+      "path": "apps/web/src/components/three/hero/hero-canvas.tsx",
+      "sha256": "94b9e0041fef813c8752ce7f8d19042cfc0634b72c4c7e44cdb4a10d82d264d2"
+    },
+    {
+      "path": "apps/web/src/components/three/hero/hero-scene.tsx",
+      "sha256": "edaac046b15a79616a0942426eefe6203272c18c4fd5a9a8595bbe354d116775"
+    },
+    {
+      "path": "apps/web/src/components/three/hero/track.ts",
+      "sha256": "4ccbc7f4ffa807925c5890645bcf60b12c67d4dd691fe9f1512ea91f8a54a316"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/adaptive-quality.tsx",
+      "sha256": "81cdeb53cbe6bc053ece47363b6a7faf915cf0b5d3643ae21fcb4add23602fee"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/assets.ts",
+      "sha256": "5473d84b93e6ead779cee297fe5861decf43cc7d96570d1553eb8a61ecce716f"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/frameloop.tsx",
+      "sha256": "f9fb2b060d792aed7f421ce3822f14eba54e9709850707cfbe59a0b803cd28d6"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/materials.ts",
+      "sha256": "dd1eb68ba982de512c2e6474c4eb92d6742c34b9fe6b7fc8c79743fad6d72ab3"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/quality.ts",
+      "sha256": "b0e5a6510ec1b76c83d5ccb8ad7919daa0a0462fd05237990a2cf009be26e830"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/random.ts",
+      "sha256": "92fdc3ba8169ded281758198bdedd4a22a8e18002b1f3cb9468ab314e6b40727"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/soft-shadows.ts",
+      "sha256": "c79fea4de0628a70b019ed92d190ced7587571f2425b1285f8298befde663775"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/textures.ts",
+      "sha256": "fb7a45db07cd3ac09f5b491e2c3853105a5777074bebb95450840e7fa132b188"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/tone.ts",
+      "sha256": "b3b4bfbe8a6334c145f1b4d29852854bcac0c5b4fc3855f01dc0ab1bac8be950"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/use-reflections.ts",
+      "sha256": "8eaa8126071da00bff7dc1274e63752d6052208d2e5cb03a03ac85b614d4bb3a"
+    },
+    {
+      "path": "apps/web/src/components/three/lib/webgl.ts",
+      "sha256": "c6859666c2447ff729fef16710b4f926b2520f08e5625b63d96f6608a1ccac80"
+    },
+    {
+      "path": "apps/web/src/components/three/scene-layer.tsx",
+      "sha256": "e21d758e37c2c494173cb1670da9e27f7c2a6f59ba2246397fcbe5da2402ef88"
+    },
+    {
+      "path": "apps/web/src/components/three/scene-slot.tsx",
+      "sha256": "61f53672a52e6823eb010a09454cf2419b26e66ed9fd8dcf7f97816757461a2b"
+    },
+    {
+      "path": "apps/web/src/components/three/scene-spec.ts",
+      "sha256": "39996a2778917a0fc6a48aa9396924469c7ae8a77da5a5df3a05363fdcb5a338"
+    },
+    {
+      "path": "apps/web/src/components/three/scene-view.tsx",
+      "sha256": "f7d1cf16bbfd40090d7d215248246ae14c42dddbc6712a7b6b972ac6dd9cb6fc"
+    },
+    {
+      "path": "apps/web/src/components/three/scenes/check-orb.tsx",
+      "sha256": "93586d0a1fdf499236b9f509e354e6cf52babcd9ed3ca5200bd892327145ca21"
+    },
+    {
+      "path": "apps/web/src/components/three/scenes/coin-stack.tsx",
+      "sha256": "5dc8374a2f49a536ac74ac31a2e9a9892adf44bf7a6ccf2e97675bfb5a739146"
+    },
+    {
+      "path": "apps/web/src/components/three/scenes/coin-swirl.tsx",
+      "sha256": "e119e2903779ee815d4dd8a898f4a6ea0d59ee907dd2e63b3e9e96df021a4576"
+    },
+    {
+      "path": "apps/web/src/components/three/scenes/inbox-slab.tsx",
+      "sha256": "da57e5297d5cae3be460239acedabbf421b0031053552ac0eec1a7129056c6b8"
+    },
+    {
+      "path": "apps/web/src/components/three/scenes/privacy-vault.tsx",
+      "sha256": "e76f978d7834561ebd103dff8eecbd5d17062329f1b7d0a039f35a0d08af2df5"
+    },
+    {
+      "path": "apps/web/src/components/three/scenes/ribbon.tsx",
+      "sha256": "23ccca95b66c92c2d3b2a96f546f3ed2f3fc3e0480102877f863da1f0973e3b4"
+    },
+    {
+      "path": "apps/web/src/components/three/scenes/voice-orb.tsx",
+      "sha256": "23c16bceb39130145f7f43a06462568df1f11f15736a4da5005cb08deb0075d3"
+    },
+    {
+      "path": "apps/web/src/components/three/studio-environment.tsx",
+      "sha256": "fdf90f5e923a841f1273fb84482c938b0e17b70c48322472486d9f2f303bfcf5"
+    },
+    {
+      "path": "apps/web/src/components/three/webgl-boundary.tsx",
+      "sha256": "41fe5dda13d59f056b69b6a43d20e8703c9fc21aa0862df1dcfd6ac0bf922813"
+    },
+    {
+      "path": "apps/web/src/components/motion/animated-amount.tsx",
+      "sha256": "046cf3ac83fc1186bef76417a9e0866725606be007b6be02c3a1041f366d617c"
+    },
+    {
+      "path": "apps/web/src/components/motion/gsap.ts",
+      "sha256": "13b639bf223375b4e1098264cf402d6fb12d063c7c5b3ad5c267aca6f562d14e"
+    },
+    {
+      "path": "apps/web/src/components/motion/reveal.tsx",
+      "sha256": "b4f580f71c6fc6bbcd6b0d157d74597bd2ad003b0c1726ac1ea833c4324f79b5"
+    },
+    {
+      "path": "apps/web/src/components/motion/smooth-scroll.tsx",
+      "sha256": "4dd8947c31aa09d0de4a7787209b12562eb5909a82dbc8bd93d32e0a8bd04fe7"
+    },
+    {
+      "path": "apps/web/src/components/motion/tilt-card.tsx",
+      "sha256": "20167b182a1fd72fef0e0f9fbbc471cd2d665c320297e44a8b0235b0552272ad"
+    },
+    {
+      "path": "apps/web/src/components/marketing/final-cta.tsx",
+      "sha256": "2c4253096edbd1bc2415f1ab18021bf9a3e151808f7e90b40ad0be90f6994a72"
+    },
+    {
+      "path": "apps/web/src/components/marketing/hero-stage.tsx",
+      "sha256": "f7485886f162b505a5ecc42b15b629b5cba888ed61fe004db2c834aa4ecaefb8"
+    },
+    {
+      "path": "apps/web/src/components/marketing/hero.tsx",
+      "sha256": "d368c06139d22a3c92704840f0f329f0807bb2a971d99134a9c9521e25f4ab5b"
+    },
+    {
+      "path": "apps/web/src/components/marketing/how-it-works.tsx",
+      "sha256": "7ca8f71a820736b1bc39337e26a444057c482f9faabfd9b5af37541948874541"
+    },
+    {
+      "path": "apps/web/src/components/marketing/product-mosaic.tsx",
+      "sha256": "d84d2048cea6d6f6ef6e21ad37c7efd14788c9e4bf61272697b453b973e54a94"
+    },
+    {
+      "path": "apps/web/src/components/marketing/section-heading.tsx",
+      "sha256": "0e4cdedf98650571db5880c96fbb09a3705101867e99a99c7a7e635bdc24bb1f"
+    },
+    {
+      "path": "apps/web/src/components/marketing/simulator-section.tsx",
+      "sha256": "0b724d045a5b0ad05d75366dbf7f1ad80338b1a6230839a2111dabb0c388dc9c"
+    },
+    {
+      "path": "apps/web/src/components/marketing/site-nav.tsx",
+      "sha256": "e5397d2dd54e02c156053ab6aabf681827910d34dddc53f379cdfc771c5ffe6c"
+    },
+    {
+      "path": "apps/web/src/components/marketing/sources-marquee.tsx",
+      "sha256": "bfa5a723093f27b587f8551d4c1dd24aaced6acccbaf7e3b5f8c87fceab147c9"
+    },
+    {
+      "path": "apps/web/src/components/marketing/trust-section.tsx",
+      "sha256": "59cd93fd3538cd1dfdf68aba4fb1c11358098c6f0e9f81a00d5de117c4a0a35b"
+    },
+    {
+      "path": "apps/web/src/components/marketing/voice-section.tsx",
+      "sha256": "f0548932f5c4f46e4a9b724dec10bef01b3bd6fd8c631529f8cd4d4bc2f77df3"
+    },
+    {
+      "path": "apps/web/src/components/app-shell/app-nav.tsx",
+      "sha256": "12a3d805d84773fa409e2472348a7a8d8f4a8a2f8650cc323ef14d4826e91163"
+    },
+    {
+      "path": "apps/web/public/models/check-dome.glb",
+      "sha256": "8947b42430beca6b9ed2b6b01dbd24a416653f3c574856a23ad121a217f087d3"
+    },
+    {
+      "path": "apps/web/public/models/coin.glb",
+      "sha256": "b61e2ce977f657dfdcc3b220a0d8352b6d4d30e7019a4f01acbb035ea06ac7f1"
+    },
+    {
+      "path": "apps/web/scripts/3d/build-assets.mjs",
+      "sha256": "c0de6be700e6c5c2a29f0d90dc3c1054c589ae118ac29c11c3aa780f5d7ebcea"
+    },
+    {
+      "path": "apps/web/scripts/3d/build_assets.py",
+      "sha256": "ced70004227c65bd01a1648339f2be87ddd41d91f2f5bea462559a7b0bfe627a"
+    },
+    {
+      "path": "apps/web/src/app/globals.css",
+      "sha256": "aaf53bc9128e5fd5710abb850d2afa7375d6f62a0a959db17a90a12116161e3c"
+    },
+    {
+      "path": "apps/web/src/app/icon.svg",
+      "sha256": "6753e0fd2c1ac093d886d261fe09d41a77f570dda79090a2d5d62ddaef19a379"
+    },
+    {
+      "path": "apps/web/src/app/layout.tsx",
+      "sha256": "e736ea2585e38bdcd01f0a531b86d011dcc4876f7a0a269bde7ea6e81cd05e64"
+    },
+    {
+      "path": "apps/web/src/app/page.tsx",
+      "sha256": "699152fda619d9aa99521a09657cc0295b0a5227e72df548c3a0f99520dc0642"
+    },
+    {
+      "path": "apps/web/src/app/(app)/layout.tsx",
+      "sha256": "081d0d91f3646542dfeffac5dbb4afeb58d05ee716c3cdf04cb8585cbce15f6c"
+    },
+    {
+      "path": "apps/web/src/components/brand.tsx",
+      "sha256": "ebc90e12ae1e2201b31ff286bfac8795265afd57430c13d28886ebb27a475159"
+    },
+    {
+      "path": "apps/web/src/components/ui/button.tsx",
+      "sha256": "c80a947572f355af49c2e532705bfcf461faaae7eef27c3575ec5c0757c33f01"
+    },
+    {
+      "path": "apps/web/src/components/ui/badge.tsx",
+      "sha256": "9ef900f9ffc6864b7deee9e49985cc05326fc5f0ee84bf7c8bb45d040d169c3a"
+    },
+    {
+      "path": "apps/web/src/components/ui/card.tsx",
+      "sha256": "0bbb10d03406e1072b7ce2c62939252fdfaf199fb853efcfc7a5f8ad497391d2"
+    },
+    {
+      "path": "apps/web/src/components/ui/input.tsx",
+      "sha256": "1e29d2a92d8ec96c63f7bfa1ad48f51be592a698b7f5691cad9d074a6420a1b8"
+    },
+    {
+      "path": "apps/web/package.json",
+      "sha256": "cd27313e26957af3534017efbf48456403d7a6fb3dd120eafa2a95626e07ffcf"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "8c2198a9d3a478018588678da8b013a1f0b612fda1b5ab5d49f81b2d90083036"
+    },
+    {
+      "path": "docs/design-system.md",
+      "sha256": "516d8ba8538e9e1fbe43783696f38bc4645a127b74c0f500e439fa527ff0c983"
+    }
+  ]
+}

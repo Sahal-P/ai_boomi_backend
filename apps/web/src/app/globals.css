@@ -1,7 +1,9 @@
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/anek-malayalam";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "lenis/dist/lenis.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -10,41 +12,140 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--foreground);
-  --color-popover: var(--card);
+  --color-popover: var(--popover);
   --color-popover-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--primary);
-  --color-muted: var(--secondary);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--secondary);
+  --color-accent: var(--accent);
   --color-accent-foreground: var(--foreground);
-  --color-destructive: #b53c35;
+  --color-destructive: var(--destructive);
   --color-border: var(--border);
-  --color-input: var(--border);
-  --color-ring: var(--primary);
-  --font-sans: "Geist Variable", Arial, Helvetica, sans-serif;
-  --font-heading: "Geist Variable", Arial, Helvetica, sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, monospace;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.25rem;
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-canvas: var(--canvas);
+  --color-lilac: var(--lilac);
+  --color-periwinkle: var(--periwinkle);
+  --color-blush: var(--blush);
+  --color-sun: var(--sun);
+  --color-violet: var(--violet);
+  --color-violet-deep: var(--violet-deep);
+  --color-orchid: var(--orchid);
+  --color-magenta: var(--magenta);
+  --color-neon: var(--neon);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-sky: var(--sky);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+
+  --font-sans:
+    "Plus Jakarta Sans Variable", "Anek Malayalam Variable", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-heading:
+    "Plus Jakarta Sans Variable", "Anek Malayalam Variable", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-malayalam:
+    "Anek Malayalam Variable", "Plus Jakarta Sans Variable", ui-sans-serif,
+    sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+  --radius-3xl: 2.25rem;
+
+  --shadow-hairline: 0 0 0 1px rgb(20 16 60 / 0.06);
+  --shadow-soft:
+    0 1px 2px rgb(20 16 60 / 0.04), 0 10px 28px -14px rgb(76 52 170 / 0.2);
+  --shadow-lift:
+    0 1px 2px rgb(20 16 60 / 0.05), 0 22px 44px -22px rgb(76 52 170 / 0.3),
+    0 56px 96px -56px rgb(76 52 170 / 0.34);
+  --shadow-glow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35), 0 12px 32px -12px rgb(109 74 255 / 0.6);
+
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-quint: cubic-bezier(0.83, 0, 0.17, 1);
+
+  --animate-drift-diagonal: drift-diagonal 60s linear infinite;
+  --animate-shine: shine 2.8s var(--ease-in-out-quint) infinite;
+  --animate-float-slow: float-slow 9s ease-in-out infinite;
+
+  @keyframes drift-diagonal {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, -50%, 0);
+    }
+  }
+  @keyframes shine {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+  @keyframes float-slow {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(0, -10px, 0);
+    }
+  }
 }
 
 :root {
   color-scheme: light;
-  --background: #f8f9f4;
-  --foreground: #242e29;
-  --card: #fffefa;
-  --primary: #116149;
+
+  --ink: #14122b;
+  --ink-soft: #57546e;
+  --ink-subtle: #8c89a3;
+  --canvas: #f5f4fb;
+  --lilac: #e9e3ff;
+  --periwinkle: #dde6ff;
+  --blush: #fbe3f1;
+  --sun: #fff4e6;
+  --violet: #6d4aff;
+  --violet-deep: #4b2fd1;
+  --orchid: #9b5cff;
+  --magenta: #d63af9;
+  --neon: #b26bff;
+  --gold: #f2b544;
+  --gold-soft: #ffd27a;
+  --sky: #3e7bfa;
+  --positive: #0e9f6e;
+  --negative: #e5484d;
+  --warning: #d97706;
+
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --popover: #ffffff;
+  --primary: var(--violet);
   --primary-foreground: #ffffff;
-  --secondary: #eaf0e8;
-  --muted-foreground: #657068;
-  --border: #dfe4db;
-  --radius: 0.75rem;
+  --secondary: #efecfa;
+  --muted: #f0eef8;
+  --muted-foreground: var(--ink-soft);
+  --accent: #ebe6ff;
+  --destructive: var(--negative);
+  --border: rgb(20 16 60 / 0.08);
+  --input: rgb(20 16 60 / 0.12);
+  --ring: #8b6bff;
+  --radius: 1rem;
 }
 
 @layer base {
@@ -53,49 +154,176 @@
   }
   html {
     @apply font-sans;
-    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
   }
   body {
     @apply bg-background text-foreground antialiased;
   }
   ::selection {
-    background: #d9e8cd;
-    color: #164a37;
+    background: #ddd3ff;
+    color: var(--violet-deep);
   }
   a,
   button {
     -webkit-tap-highlight-color: transparent;
   }
-  a:focus-visible,
-  button:focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 5px;
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 4px;
   }
   button:not(:disabled) {
     cursor: pointer;
   }
+  :lang(ml) {
+    font-family: var(--font-malayalam);
+  }
 }
 
 @layer components {
-  .clarity-art {
-    overflow: clip;
+  /* Frosted glass surface used by nav, sheets, and floating panels. */
+  .glass {
+    background: rgb(255 255 255 / 0.62);
+    border: 1px solid rgb(255 255 255 / 0.75);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      0 1px 2px rgb(20 16 60 / 0.04),
+      0 14px 36px -18px rgb(76 52 170 / 0.24);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+  }
+  .surface {
+    background: #ffffff;
+    box-shadow: var(--shadow-hairline), var(--shadow-soft);
   }
   .eyebrow {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.13em;
-    line-height: 1.7;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.16em;
+    line-height: 1.6;
+    text-transform: uppercase;
   }
-  .clarity-paper {
-    box-shadow: 0 18px 38px -28px #233e2f55;
+  .text-gradient {
+    background: linear-gradient(
+      100deg,
+      var(--violet-deep) 0%,
+      var(--violet) 35%,
+      var(--magenta) 100%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
   }
-  .art-orbit {
-    transform: rotate(-27deg);
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .bg-aurora {
+    background:
+      radial-gradient(60rem 38rem at 88% -12%, rgb(233 227 255 / 0.95), transparent 62%),
+      radial-gradient(48rem 34rem at -12% 18%, rgb(221 230 255 / 0.85), transparent 60%),
+      radial-gradient(44rem 30rem at 55% 112%, rgb(251 227 241 / 0.8), transparent 62%),
+      var(--canvas);
+  }
+  /* Static film grain; keeps large light gradients from banding and adds print texture. */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.06 0 0 0 0 0.2 0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  .mask-fade-edges {
+    mask-image: radial-gradient(ellipse 72% 68% at 50% 50%, #000 52%, transparent 100%);
+  }
+  /* CSS-only entrance for above-the-fold copy: paints without waiting for hydration. */
+  .rise-in {
+    animation: rise-in 1.2s var(--ease-out-expo) both;
+  }
+  .line-mask {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.1em;
+    margin-bottom: -0.1em;
+  }
+  .line-up {
+    display: block;
+    animation: line-up 1.3s var(--ease-out-expo) both;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+/* App route transitions (React <ViewTransition default="page">). */
+::view-transition-old(.page) {
+  animation: page-out 160ms ease-out both;
+}
+::view-transition-new(.page) {
+  animation: page-in 520ms var(--ease-out-expo) both;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+    filter: blur(6px);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes scroll-cue {
+  from {
+    transform: translate3d(0, -100%, 0);
+  }
+  to {
+    transform: translate3d(0, 200%, 0);
+  }
+}
+
+@keyframes line-up {
+  from {
+    transform: translate3d(0, 108%, 0);
+  }
+  to {
+    transform: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

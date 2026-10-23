@@ -10,7 +10,7 @@ export class ApiError extends Error {
   }
 }
 
-function apiBaseUrl(): string {
+export function apiBaseUrl(): string {
   const value = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
   try {
     const url = new URL(value);
