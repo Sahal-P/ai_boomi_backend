@@ -48,7 +48,7 @@ export async function speechFor(
 ): Promise<Blob> {
   const response = await fetch(`${apiBaseUrl()}/api/v1/assistant/speak`, {
     method: "POST",
-    credentials: "omit",
+    credentials: apiBaseUrl() === "" ? "same-origin" : "omit",
     cache: "no-store",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

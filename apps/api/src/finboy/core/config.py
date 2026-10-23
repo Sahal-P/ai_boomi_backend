@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     token_encryption_key: SecretStr | None = None
     web_app_url: AnyHttpUrl | None = None
     demo_today: date | None = None
+    household_password_hash: SecretStr | None = None
+    web_session_key: SecretStr | None = None
 
     # Provider model/voice IDs are configured only after a synthetic live capability check.
     resemble_tts_base_url: AnyHttpUrl = "https://f.cluster.resemble.ai"
@@ -101,6 +103,8 @@ class Settings(BaseSettings):
         "token_encryption_key",
         "web_app_url",
         "demo_today",
+        "household_password_hash",
+        "web_session_key",
         mode="before",
     )
     @classmethod
@@ -137,6 +141,23 @@ class Settings(BaseSettings):
             and str(self.web_app_url).rstrip("/") not in self.allowed_origins
         ):
             raise ValueError("WEB_APP_URL must be one of CORS_ORIGINS")
+        return self
+
+    @model_validator(mode="after")
+    def require_production_access(self) -> Settings:
+        if self.environment == "production":
+            if not self.household_password_hash or not self.web_session_key or not self.web_app_url:
+                raise ValueError("Production requires household access settings")
+            if self.web_app_url.scheme != "https":
+                raise ValueError("Production requires an HTTPS web origin")
+            try:
+                Fernet(self.web_session_key.get_secret_value().encode("ascii"))
+                from finboy.core.access import valid_password_hash
+
+                if not valid_password_hash(self.household_password_hash.get_secret_value()):
+                    raise ValueError
+            except ValueError, UnicodeError:
+                raise ValueError("Production requires valid household access settings") from None
         return self
 
     @field_validator("database_url")

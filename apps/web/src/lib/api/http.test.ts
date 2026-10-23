@@ -52,3 +52,19 @@ test("requestJson propagates caller cancellation and timeout", async (t) => {
 test("requestJson rejects external paths", async () => {
   await assert.rejects(requestJson("//untrusted.example", schema), ApiError);
 });
+
+test("same-origin production proxy sends only first-party cookies", async (t) => {
+  const previous = process.env.NEXT_PUBLIC_API_URL;
+  process.env.NEXT_PUBLIC_API_URL = "/";
+  t.after(() => {
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_API_URL;
+    else process.env.NEXT_PUBLIC_API_URL = previous;
+  });
+  t.mock.method(globalThis, "fetch", async (input: string, init: RequestInit) => {
+    assert.equal(input, "/api/v1/example");
+    assert.equal(init.credentials, "same-origin");
+    assert.equal(init.cache, "no-store");
+    return Response.json({ count: 3 });
+  });
+  assert.deepEqual(await requestJson("/api/v1/example", schema), { count: 3 });
+});

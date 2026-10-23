@@ -12,6 +12,7 @@ export class ApiError extends Error {
 
 export function apiBaseUrl(): string {
   const value = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+  if (value === "/") return "";
   try {
     const url = new URL(value);
     if (
@@ -52,7 +53,7 @@ export async function requestJson<T>(
     ...requestInit,
     headers,
     cache: "no-store",
-    credentials: "omit",
+    credentials: apiBaseUrl() === "" ? "same-origin" : "omit",
     signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
   });
   const responseSchema = statusSchemas ? statusSchemas[response.status] : schema;

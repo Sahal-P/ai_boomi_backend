@@ -1,7 +1,9 @@
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
+from cryptography.fernet import Fernet
 from finboy.core import clock
+from finboy.core.access import password_hash
 from finboy.core.config import Settings
 
 
@@ -15,6 +17,10 @@ def test_demo_today_applies_only_outside_production(
         database_url="postgresql+psycopg://test:test@localhost/finboy_test",
         environment=environment,
         demo_today="2026-10-28",
+        web_app_url="https://household.example.test",
+        cors_origins=["https://household.example.test"],
+        household_password_hash=password_hash("synthetic-clock-test"),
+        web_session_key=Fernet.generate_key().decode(),
     )
     monkeypatch.setattr(clock, "Settings", lambda: settings)
     real_now = datetime(2026, 11, 1, 0, 15, tzinfo=clock.IST)

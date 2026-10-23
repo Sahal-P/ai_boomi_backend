@@ -1,0 +1,25 @@
+[Unit]
+Description=FinBoy private household API
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=finboy
+Group=finboy
+WorkingDirectory=/opt/finboy/current
+EnvironmentFile=/etc/finboy/production.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/finboy/current/.venv/bin/uvicorn finboy.main:create_app --factory --host 127.0.0.1 --port 8020 --workers 1 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-access-log --log-config apps/api/logging.json
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=120
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/finboy
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

@@ -1,11 +1,12 @@
 import { ViewTransition, type ReactNode } from "react";
 
 import { AppNav } from "@/components/app-shell/app-nav";
+import { HouseholdGate } from "@/components/app-shell/household-gate";
 import { SceneLayerMount } from "@/components/three/scene-slot";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-aurora relative min-h-screen">
+    <HouseholdGate><div className="bg-aurora relative min-h-screen">
       <a
         href="#main-content"
         className="sr-only rounded-full bg-ink px-4 py-3 text-white focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50"
@@ -19,6 +20,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <ViewTransition default="page">{children}</ViewTransition>
         </div>
       </main>
-    </div>
+    </div></HouseholdGate>
   );
 }

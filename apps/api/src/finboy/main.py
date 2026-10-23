@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from finboy import __version__
 from finboy.api.router import api_router
+from finboy.core.access import HouseholdAccessMiddleware, LoginThrottle
 from finboy.core.clock import now_ist
 from finboy.core.config import Settings
 from finboy.core.errors import register_error_handlers
@@ -41,10 +42,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             engine.dispose()
             logger.info("application.stopped")
 
-    app = FastAPI(title="FinBoy API", version=__version__, lifespan=lifespan)
+    production = settings.environment == "production"
+    app = FastAPI(
+        title="FinBoy API",
+        version=__version__,
+        lifespan=lifespan,
+        docs_url=None if production else "/docs",
+        redoc_url=None if production else "/redoc",
+        openapi_url=None if production else "/openapi.json",
+    )
     app.state.engine = engine
     app.state.settings = settings
+    app.state.login_throttle = LoginThrottle()
     register_error_handlers(app)
+    app.add_middleware(HouseholdAccessMiddleware)
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(
         CORSMiddleware,
