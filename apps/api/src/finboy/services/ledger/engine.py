@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 
+from finboy.core.clock import IST
 from finboy.services.ingestion.types import Event
 from finboy.services.ledger.categories import category_for
 from finboy.services.ledger.confidence import Confidence, confidence_for
-from finboy.services.ledger.matching import choose_match, original_for
+from finboy.services.ledger.matching import choose_match, claims_agree, direction, original_for
 
 
 @dataclass
@@ -15,6 +16,7 @@ class Canonical:
     category: str
     linked_index: int | None = None
     possible_index: int | None = None
+    agreement: bool = True
 
 
 @dataclass
@@ -39,12 +41,16 @@ class Ledger:
             if source in existing.sources:
                 return
             existing.sources.add(source)
+            existing.agreement = existing.agreement and claims_agree(existing.event, event)
             # A settled notification supplies stronger evidence than a receipt.
             if event.payment_proof and not existing.event.payment_proof:
                 existing.event = event
                 existing.trusted = trusted
             existing.confidence = confidence_for(
-                existing.event, trusted=existing.trusted, source_count=len(existing.sources)
+                existing.event,
+                trusted=existing.trusted,
+                source_count=len(existing.sources),
+                agreement=existing.agreement,
             )
             self.duplicates += 1
         else:
@@ -69,13 +75,17 @@ class Ledger:
             record.linked_index = original_for(record.event, events)
 
     def commitment_paid(self, event: Event) -> bool:
-        return any(
-            record.event.payment_proof
+        candidates = [
+            record
+            for record in self.records
+            if record.event.payment_proof
+            and direction(record.event) == "out"
+            and record.event.event_type not in {"failed", "transfer"}
             and record.confidence.status == "confirmed"
             and record.event.amount_minor == event.amount_minor
             and record.event.merchant == event.merchant
             and record.event.occurred_at
             and event.due_date
-            and abs((record.event.occurred_at.date() - event.due_date).days) <= 7
-            for record in self.records
-        )
+            and abs((record.event.occurred_at.astimezone(IST).date() - event.due_date).days) <= 7
+        ]
+        return len(candidates) == 1

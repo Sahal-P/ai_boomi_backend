@@ -1,0 +1,108 @@
+{
+  "model": "gpt-6-luna",
+  "extractor_version": "email-v2",
+  "provenance": "live_openai",
+  "result": {
+    "events": [
+      {
+        "event_type": "emi_due",
+        "amount_minor": 650000,
+        "currency": "INR",
+        "merchant": "Synthetic Loan EMI",
+        "occurred_at": "2810-10-26T12:05:00+05:30",
+        "due_date": "3010-10-26",
+        "reference_id": "SYN-EMI",
+        "payment_instrument": null,
+        "account_last4": "XX1234",
+        "category": "loan_emi",
+        "payment_proof": false,
+        "evidence": [
+          {
+            "field": "event_type",
+            "snippet": "EMI amount Rs.6,500.00 due",
+            "confidence": 0.99
+          },
+          {
+            "field": "amount_minor",
+            "snippet": "Rs.6,500.00",
+            "confidence": 0.99
+          },
+          {
+            "field": "merchant",
+            "snippet": "Biller: Synthetic Loan EMI",
+            "confidence": 0.99
+          },
+          {
+            "field": "occurred_at",
+            "snippet": "Date: 28-10-26 12:05 IST",
+            "confidence": 0.99
+          },
+          {
+            "field": "due_date",
+            "snippet": "due 30-10-26",
+            "confidence": 0.99
+          },
+          {
+            "field": "reference_id",
+            "snippet": "Ref: SYN-EMI",
+            "confidence": 0.99
+          },
+          {
+            "field": "account_last4",
+            "snippet": "Account XX1234",
+            "confidence": 0.99
+          },
+          {
+            "field": "category",
+            "snippet": "EMI amount Rs.6,500.00",
+            "confidence": 0.95
+          },
+          {
+            "field": "payment_proof",
+            "snippet": "EMI amount Rs.6,500.00 due",
+            "confidence": 0.99
+          }
+        ],
+        "field_confidence": [
+          {
+            "field": "event_type",
+            "confidence": 0.99
+          },
+          {
+            "field": "amount_minor",
+            "confidence": 0.99
+          },
+          {
+            "field": "merchant",
+            "confidence": 0.99
+          },
+          {
+            "field": "occurred_at",
+            "confidence": 0.99
+          },
+          {
+            "field": "due_date",
+            "confidence": 0.99
+          },
+          {
+            "field": "reference_id",
+            "confidence": 0.99
+          },
+          {
+            "field": "account_last4",
+            "confidence": 0.99
+          },
+          {
+            "field": "category",
+            "confidence": 0.95
+          },
+          {
+            "field": "payment_proof",
+            "confidence": 0.99
+          }
+        ]
+      }
+    ],
+    "not_transaction": false
+  }
+}

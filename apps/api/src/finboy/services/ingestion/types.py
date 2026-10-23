@@ -57,11 +57,11 @@ class Event(BaseModel):
     event_type: EventType
     amount_minor: int = Field(gt=0, le=10**14)
     currency: Literal["INR"] = "INR"
-    merchant: str | None = None
+    merchant: str | None = Field(default=None, max_length=160)
     occurred_at: datetime | None = None
     due_date: date | None = None
-    reference_id: str | None = None
-    payment_instrument: str | None = None
+    reference_id: str | None = Field(default=None, max_length=128)
+    payment_instrument: str | None = Field(default=None, max_length=32)
     account_last4: str | None = Field(default=None, pattern=r"^\d{4}$")
     category: Category | None = None
     payment_proof: bool = False

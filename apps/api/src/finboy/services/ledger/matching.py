@@ -30,6 +30,18 @@ def compatible(left: Event, right: Event) -> bool:
     )
 
 
+def claims_agree(left: Event, right: Event) -> bool:
+    if left.amount_minor != right.amount_minor or left.currency != right.currency:
+        return False
+    if left.account_last4 and right.account_last4 and left.account_last4 != right.account_last4:
+        return False
+    if left.merchant and right.merchant:
+        return (normalize_merchant(left.merchant) or "").casefold() == (
+            normalize_merchant(right.merchant) or ""
+        ).casefold()
+    return True
+
+
 @dataclass(frozen=True)
 class Match:
     index: int | None = None
@@ -38,11 +50,7 @@ class Match:
 
 
 def choose_match(event: Event, existing: list[Event], *, excluded: set[int] | None = None) -> Match:
-    indices = [
-        i
-        for i, item in enumerate(existing)
-        if i not in (excluded or set()) and compatible(event, item)
-    ]
+    indices = [i for i, item in enumerate(existing) if compatible(event, item)]
     refs = [
         i for i in indices if event.reference_id and event.reference_id == existing[i].reference_id
     ]
@@ -58,7 +66,8 @@ def choose_match(event: Event, existing: list[Event], *, excluded: set[int] | No
     equal = [
         i
         for i in indices
-        if existing[i].amount_minor == event.amount_minor
+        if i not in (excluded or set())
+        and existing[i].amount_minor == event.amount_minor
         and existing[i].currency == event.currency
         and event.occurred_at
         and existing[i].occurred_at

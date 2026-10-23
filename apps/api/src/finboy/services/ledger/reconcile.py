@@ -81,12 +81,28 @@ def merge_transactions(session: Session, *, user_id: UUID, keep_id: UUID, merge_
         reason="manual_merge",
         changed_by="user",
     )
+    kept_sources = [
+        str(value)
+        for value in session.scalars(
+            select(SourceEvent.id).where(
+                SourceEvent.user_id == user_id, SourceEvent.transaction_id == keep_id
+            )
+        )
+    ]
+    merged_sources = [
+        str(value)
+        for value in session.scalars(
+            select(SourceEvent.id).where(
+                SourceEvent.user_id == user_id, SourceEvent.transaction_id == merge_id
+            )
+        )
+    ]
     revision(
         session,
         keep,
-        "sources",
-        [str(keep_id)],
-        [str(keep_id), str(merge_id)],
+        "source_event_ids",
+        kept_sources,
+        kept_sources + merged_sources,
         reason="manual_merge",
         changed_by="user",
     )
@@ -144,9 +160,27 @@ def keep_separate(session: Session, *, user_id: UUID, transaction_id: UUID) -> N
         changed_by="user",
     )
     item.possible_duplicate_of_id = None
+    revision(
+        session,
+        item,
+        "user_locked_fields",
+        item.user_locked_fields,
+        sorted(set(item.user_locked_fields or []) | {"dedupe"}),
+        reason="keep_separate",
+        changed_by="user",
+    )
     item.user_locked_fields = sorted(set(item.user_locked_fields or []) | {"dedupe"})
     if item.review_reason == "possible_duplicate":
         # Separation resolves identity only. Explicit confirmation still belongs to the user.
+        revision(
+            session,
+            item,
+            "review_reason",
+            item.review_reason,
+            "low_confidence",
+            reason="keep_separate",
+            changed_by="user",
+        )
         item.review_reason = "low_confidence"
     item.updated_at = now_ist()
     session.flush()

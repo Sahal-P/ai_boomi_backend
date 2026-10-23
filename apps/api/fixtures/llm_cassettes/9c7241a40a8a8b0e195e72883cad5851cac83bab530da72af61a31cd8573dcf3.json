@@ -1,0 +1,108 @@
+{
+  "model": "gpt-6-luna",
+  "extractor_version": "email-v2",
+  "provenance": "live_openai",
+  "result": {
+    "events": [
+      {
+        "event_type": "investment",
+        "amount_minor": 500000,
+        "currency": "INR",
+        "merchant": "Existing SIP",
+        "occurred_at": "0610-10-26T12:05:00+05:30",
+        "due_date": null,
+        "reference_id": "SYN-SIP",
+        "payment_instrument": "card",
+        "account_last4": "1234",
+        "category": "investments",
+        "payment_proof": false,
+        "evidence": [
+          {
+            "field": "event_type",
+            "snippet": "Order confirmation",
+            "confidence": 0.99
+          },
+          {
+            "field": "amount_minor",
+            "snippet": "\u20b95,000.00",
+            "confidence": 0.99
+          },
+          {
+            "field": "merchant",
+            "snippet": "Merchant: Existing SIP",
+            "confidence": 0.99
+          },
+          {
+            "field": "occurred_at",
+            "snippet": "Date: 06-10-26 12:05 IST",
+            "confidence": 0.99
+          },
+          {
+            "field": "reference_id",
+            "snippet": "Order ID: SYN-SIP",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_instrument",
+            "snippet": "card ending 1234",
+            "confidence": 0.93
+          },
+          {
+            "field": "account_last4",
+            "snippet": "card ending 1234",
+            "confidence": 0.99
+          },
+          {
+            "field": "category",
+            "snippet": "Existing SIP",
+            "confidence": 0.88
+          },
+          {
+            "field": "payment_proof",
+            "snippet": "This confirms the order, not settlement.",
+            "confidence": 0.99
+          }
+        ],
+        "field_confidence": [
+          {
+            "field": "event_type",
+            "confidence": 0.99
+          },
+          {
+            "field": "amount_minor",
+            "confidence": 0.99
+          },
+          {
+            "field": "merchant",
+            "confidence": 0.99
+          },
+          {
+            "field": "occurred_at",
+            "confidence": 0.99
+          },
+          {
+            "field": "reference_id",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_instrument",
+            "confidence": 0.93
+          },
+          {
+            "field": "account_last4",
+            "confidence": 0.99
+          },
+          {
+            "field": "category",
+            "confidence": 0.88
+          },
+          {
+            "field": "payment_proof",
+            "confidence": 0.99
+          }
+        ]
+      }
+    ],
+    "not_transaction": false
+  }
+}

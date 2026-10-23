@@ -14,6 +14,8 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def storage(monkeypatch):
+    import json
+
     from finboy.db.models.core import User
     from finboy.db.models.ledger import (
         Commitment,
@@ -27,10 +29,15 @@ def storage(monkeypatch):
     settings = Settings()
     engine = create_engine(settings.database_url.get_secret_value(), hide_parameters=True)
     assert engine.url.host in {"localhost", "127.0.0.1"}
-    assert engine.url.database in {"finboy_a1", "finboy_test"}, "Use A1's disposable local database"
+    assert settings.environment != "production"
+    assert engine.url.database in {"finboy", "finboy_a1", "finboy_test"}, (
+        "Use a local test database"
+    )
     factory = sessionmaker(engine, expire_on_commit=False)
     user_id, run_id = uuid4(), uuid4()
     monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "rules")
+    manifest = json.loads((MAILBOX.parent / "llm_cassettes" / "manifest.json").read_text())
+    monkeypatch.setenv("OPENAI_EXTRACTION_MODEL", manifest["model"])
     with factory.begin() as session:
         session.add(User(id=user_id, display_name="Synthetic ingestion test"))
         session.flush()
@@ -113,6 +120,14 @@ def test_full_mailbox_idempotency_locks_and_links(storage):
     with factory.begin() as session:
         txs = list(session.scalars(select(Transaction).where(Transaction.user_id == user_id)))
         assert len(txs) == 26
+        confirmed = [tx for tx in txs if tx.status == "confirmed"]
+        income = sum(tx.amount_minor for tx in confirmed if tx.kind in {"salary", "income_other"})
+        outflows = sum(
+            tx.amount_minor for tx in confirmed if tx.direction == "out" and tx.kind != "transfer"
+        )
+        returns = sum(tx.amount_minor for tx in confirmed if tx.kind in {"refund", "reversal"})
+        assert income == 6200000 and outflows - returns == 3742000
+        assert sum(tx.amount_minor for tx in txs if tx.status == "needs_review") == 234000
         assert sum(tx.linked_transaction_id is not None for tx in txs) == 3
         assert sum(tx.status == "failed" for tx in txs) == 1
         assert (
@@ -241,7 +256,7 @@ def test_merge_keep_separate_and_tenant_scope(storage):
         )
 
 
-def test_failure_is_atomic_and_next_message_commits(storage, monkeypatch):
+def test_failure_is_atomic_and_next_message_commits(storage, monkeypatch, caplog):
     from finboy.db.models.ledger import EmailSource, Transaction
     from finboy.services.ingestion import pipeline
 
@@ -264,6 +279,7 @@ def test_failure_is_atomic_and_next_message_commits(storage, monkeypatch):
         messages=[inbound(MAILBOX / "01-salary.eml"), inbound(MAILBOX / "02-rent.eml")],
     )
     assert stats.failed == 1 and stats.transactions_created == 1 and stats.events_extracted == 1
+    assert "private email content" not in caplog.text
     with factory() as session:
         assert (
             session.scalar(
@@ -277,3 +293,45 @@ def test_failure_is_atomic_and_next_message_commits(storage, monkeypatch):
             )
             == 1
         )
+
+
+def test_structured_cache_reused_without_network(storage, monkeypatch):
+    from finboy.db.models.ledger import ExtractionCache
+    from finboy.services.ingestion import pipeline
+    from finboy.services.ingestion.llm import cache_key
+    from finboy.services.ingestion.normalize import normalize
+
+    factory, user_id, run_id = storage
+    monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "offline")
+    message = inbound(MAILBOX / "01-salary.eml")
+    key = cache_key(normalize(message.raw_rfc822), Settings().openai_extraction_model)
+    with factory() as session:
+        already_existed = (
+            session.scalar(select(ExtractionCache.id).where(ExtractionCache.cache_key == key))
+            is not None
+        )
+    try:
+        first = pipeline.ingest_messages(
+            factory, user_id=user_id, import_run_id=run_id, messages=[message]
+        )
+        assert first.transactions_created == 1 and first.failed == 0
+        with factory() as session:
+            cached = session.scalar(select(ExtractionCache).where(ExtractionCache.cache_key == key))
+            assert cached is not None and set(cached.result) == {"events", "not_transaction"}
+
+        def unexpected(*args, **kwargs):
+            raise AssertionError("cache should avoid extractor calls")
+
+        monkeypatch.setattr(pipeline, "cassette_extract", unexpected)
+        monkeypatch.setattr(pipeline, "live_extract", unexpected)
+        again = pipeline.ingest_messages(
+            factory,
+            user_id=user_id,
+            import_run_id=run_id,
+            messages=[type(message)(message.source, "cache-reimport", message.raw_rfc822)],
+        )
+        assert again.failed == 0 and again.duplicates_merged == 1
+    finally:
+        if not already_existed:
+            with factory.begin() as session:
+                session.execute(delete(ExtractionCache).where(ExtractionCache.cache_key == key))

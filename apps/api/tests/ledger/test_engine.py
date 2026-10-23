@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from finboy.core.config import Settings
 from finboy.services.ingestion.evaluate import evaluate
 from finboy.services.ingestion.types import Event
 from finboy.services.ledger.confidence import confidence_for
@@ -24,7 +25,14 @@ def event(**changes):
 
 
 def test_rules_oracle():
-    result = evaluate(rules_only=True)
+    result = evaluate(
+        rules_only=True,
+        settings=Settings(
+            _env_file=None,
+            database_url="postgresql+psycopg://test:test@127.0.0.1:1/finboy_test",
+            environment="test",
+        ),
+    )
     assert result["passed"], result
 
 
@@ -78,3 +86,37 @@ def test_reverse_order_refund_link_and_receipt_dedupe():
     assert ledger.records[1].confidence.status == "confirmed"
     ledger.add(event(), "bank", True)
     assert ledger.duplicates == 1
+
+
+def test_disagreement_does_not_raise_confidence_and_separation_allows_exact_reimport():
+    ledger = Ledger()
+    ledger.add(event(), "bank", True)
+    ledger.add(event(merchant="Bookshop"), "receipt", True)
+    assert ledger.records[0].confidence.status == "needs_review"
+    assert ledger.records[0].confidence.factors["cross_source_agreement"] == 0
+    assert choose_match(event(), [event()], excluded={0}).index == 0
+    assert choose_match(event(reference_id=None), [event()], excluded={0}).index is None
+
+
+def test_evaluator_reports_a_direction_error(monkeypatch):
+    from finboy.services.ingestion import evaluate as evaluator
+
+    original = evaluator.prepare
+
+    def flipped(*args, **kwargs):
+        prepared = original(*args, **kwargs)
+        for item in prepared.extraction.events:
+            if item.event_type == "salary":
+                item.event_type = "debit"
+        return prepared
+
+    monkeypatch.setattr(evaluator, "prepare", flipped)
+    result = evaluator.evaluate(
+        rules_only=True,
+        settings=Settings(
+            _env_file=None,
+            database_url="postgresql+psycopg://test:test@127.0.0.1:1/finboy_test",
+            environment="test",
+        ),
+    )
+    assert not result["passed"] and result["direction_errors"] == 1

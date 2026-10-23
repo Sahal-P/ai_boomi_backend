@@ -112,12 +112,84 @@ def test_recording_contains_only_structured_output(tmp_path):
         llm.cassette_extract(message, "other-model", tmp_path)
 
 
-def test_offline_live_cassettes_match_truth_table(monkeypatch):
+def test_offline_live_cassettes_match_truth_table():
     from finboy.services.ingestion import evaluate
 
-    class OfflineSettings(Settings):
-        openai_extraction_model: str = "gpt-6-luna"
-
-    monkeypatch.setattr(evaluate, "Settings", OfflineSettings)
-    result = evaluate.evaluate()
+    result = evaluate.evaluate(
+        settings=Settings(
+            _env_file=None,
+            database_url="postgresql+psycopg://test:test@127.0.0.1:1/finboy_test",
+            environment="test",
+            openai_extraction_model=None,
+        )
+    )
     assert result["passed"], result
+
+
+def test_llm_amount_evidence_must_match_the_value():
+    message = NormalizedMessage("example.test", "s", None, "Debited INR 799.", "h")
+    result = llm.LLMResult.model_validate(
+        {
+            "not_transaction": False,
+            "events": [
+                {
+                    "event_type": "debit",
+                    "amount_minor": 99999900,
+                    "currency": "INR",
+                    "merchant": None,
+                    "occurred_at": None,
+                    "due_date": None,
+                    "reference_id": None,
+                    "payment_instrument": None,
+                    "account_last4": None,
+                    "category": None,
+                    "payment_proof": True,
+                    "evidence": [
+                        {"field": "event_type", "snippet": "Debited", "confidence": 1},
+                        {"field": "amount_minor", "snippet": "INR 799", "confidence": 1},
+                    ],
+                }
+            ],
+        }
+    )
+    assert not llm.supported_events(result, message).events
+
+
+def test_global_live_concurrency_is_bounded(monkeypatch):
+    import sys
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    lock = threading.Lock()
+    active = peak = 0
+
+    def parse(**kwargs):
+        nonlocal active, peak
+        with lock:
+            active += 1
+            peak = max(active, peak)
+        time.sleep(0.02)
+        with lock:
+            active -= 1
+        return SimpleNamespace(output_parsed=llm.LLMResult(events=[], not_transaction=True))
+
+    class Client:
+        def __init__(self, **kwargs):
+            self.responses = SimpleNamespace(parse=parse)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=Client))
+    settings = SimpleNamespace(
+        openai_api_key=SimpleNamespace(get_secret_value=lambda: "local-test-key"),
+        openai_extraction_model="configured-model",
+    )
+    message = NormalizedMessage("example.test", "s", None, "Synthetic input", "h")
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        list(pool.map(lambda _: llm.live_extract(message, settings), range(12)))
+    assert 1 < peak <= 4

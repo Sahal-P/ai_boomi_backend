@@ -59,6 +59,13 @@ def test_html_plain_preference_and_minimization():
     assert "bad" not in html.text and "tracker" not in html.text and "₹799" in html.text
     assert len(message("a" * 20000).text) == MAX_TEXT
     assert "[address]" in minimize("unknown@upi.test")
+    assert minimize("Account: 1234 5678 9012 3456") == "Account: XXXXXXXXXXXX3456"
+    quoted = message("<p>Debit INR 799</p><blockquote>Credit INR 9999</blockquote>", html=True)
+    assert "9999" not in quoted.text
+    first = minimize("UTR: 123456789012")
+    second = minimize("UTR: 999999999012")
+    assert first != second and "12345678" not in first
+    assert first == minimize("UTR: 123456789012")
 
 
 def test_dates_evidence_and_reference():

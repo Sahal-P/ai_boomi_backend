@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from finboy.core.clock import now_ist
+from finboy.core.clock import IST, now_ist
 from finboy.db.models.ledger import (
     Commitment,
     EmailSource,
@@ -18,7 +18,13 @@ from finboy.services.ingestion.classifier import trusted_domain
 from finboy.services.ingestion.types import Event
 from finboy.services.ledger.categories import category_for, normalize_merchant
 from finboy.services.ledger.confidence import Confidence, confidence_for
-from finboy.services.ledger.matching import choose_match, direction, kind, original_for
+from finboy.services.ledger.matching import (
+    choose_match,
+    claims_agree,
+    direction,
+    kind,
+    original_for,
+)
 from finboy.services.ledger.reconcile import revision
 
 
@@ -37,7 +43,9 @@ def as_event(row: SourceEvent) -> Event:
         evidence=row.evidence,
         field_confidence=row.field_confidence,
         payment_proof="payment_proof" in row.evidence,
-        rule_fields=list(row.evidence) if row.extraction_method == "rule" else [],
+        rule_fields=row.extractor_id.partition(";fields=")[2].split(",")
+        if ";fields=" in row.extractor_id
+        else [],
     )
 
 
@@ -75,7 +83,7 @@ def _source_event(
         payment_instrument=event.payment_instrument,
         account_last4=event.account_last4,
         extraction_method=event.extraction_method,
-        extractor_id=event.extractor_id,
+        extractor_id=event.extractor_id + ";fields=" + ",".join(sorted(event.rule_fields)),
         evidence={k: v[:80] for k, v in event.evidence.items()},
         field_confidence=event.field_confidence,
     )
@@ -205,7 +213,7 @@ def refresh_links(session: Session, user_id: UUID) -> None:
             and tx.kind != "transfer"
             and tx.amount_minor == commitment.amount_minor
             and tx.merchant == commitment.label
-            and abs((tx.occurred_at.date() - commitment.due_date).days) <= 7
+            and abs((tx.occurred_at.astimezone(IST).date() - commitment.due_date).days) <= 7
         ]
         if len(candidates) == 1:
             commitment.status = "paid"
@@ -267,6 +275,7 @@ def persist_event(
             best,
             trusted=trusted_domain(sender.sender_domain) if sender else False,
             source_count=len({item.email_source_id for item in sources}),
+            agreement=all(claims_agree(best, as_event(item)) for item in sources),
         )
         if event.payment_proof and not existing_events[match.index].payment_proof:
             locked = set(transaction.user_locked_fields or [])
@@ -275,6 +284,9 @@ def persist_event(
                 "merchant": normalize_merchant(event.merchant) or "Unknown",
                 "category": category_for(event),
                 "occurred_at": event.occurred_at or fallback_time,
+                "reference_id": event.reference_id,
+                "payment_instrument": event.payment_instrument,
+                "account_last4": event.account_last4,
             }.items():
                 if field not in locked:
                     old = getattr(transaction, field)

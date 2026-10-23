@@ -12,7 +12,9 @@ class Confidence:
     review_reason: str | None
 
 
-def confidence_for(event: Event, *, trusted: bool, source_count: int = 1) -> Confidence:
+def confidence_for(
+    event: Event, *, trusted: bool, source_count: int = 1, agreement: bool = True
+) -> Confidence:
     # A missing second source is unavailable evidence, not evidence of disagreement.
     # Normalize over applicable weights; a known disagreement receives zero instead.
     factors: dict[str, float | int | None] = {
@@ -23,7 +25,7 @@ def confidence_for(event: Event, *, trusted: bool, source_count: int = 1) -> Con
         if {"amount_minor", "occurred_at"} <= set(event.rule_fields)
         else 0,
         "unique_reference": 0.20 if event.reference_id else 0,
-        "cross_source_agreement": 0.15 if source_count > 1 else None,
+        "cross_source_agreement": (0.15 if agreement else 0) if source_count > 1 else None,
         "merchant_category_quality": 0.15
         if event.merchant and category_for(event) != "other"
         else 0,

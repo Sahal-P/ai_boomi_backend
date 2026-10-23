@@ -68,7 +68,17 @@ def extract_rules(message: NormalizedMessage) -> Extraction:
     for field in ("merchant", "reference_id", "account_last4", "payment_instrument"):
         match = matches[field]
         if match:
-            setattr(event, field, match[field].strip())
+            value = match[field].strip()
+            limit = {
+                "merchant": 160,
+                "reference_id": 128,
+                "account_last4": 4,
+                "payment_instrument": 32,
+            }[field]
+            if len(value) > limit:
+                event.evidence.pop(field, None)
+                continue
+            setattr(event, field, value)
     when = matches["occurred_at"]
     if when:
         try:

@@ -1,0 +1,108 @@
+{
+  "model": "gpt-6-luna",
+  "extractor_version": "email-v2",
+  "provenance": "live_openai",
+  "result": {
+    "events": [
+      {
+        "event_type": "debit",
+        "amount_minor": 160000,
+        "currency": "INR",
+        "merchant": "Coconut Cafe",
+        "occurred_at": "0810-10-26T12:05:00+05:30",
+        "due_date": null,
+        "reference_id": "SYN-CAFE",
+        "payment_instrument": "card",
+        "account_last4": "XX1234",
+        "category": "food_dining",
+        "payment_proof": true,
+        "evidence": [
+          {
+            "field": "event_type",
+            "snippet": "Debited \u20b91,600.00",
+            "confidence": 0.99
+          },
+          {
+            "field": "amount_minor",
+            "snippet": "\u20b91,600.00",
+            "confidence": 0.99
+          },
+          {
+            "field": "merchant",
+            "snippet": "to Coconut Cafe",
+            "confidence": 0.99
+          },
+          {
+            "field": "occurred_at",
+            "snippet": "08-10-26 12:05 IST",
+            "confidence": 0.99
+          },
+          {
+            "field": "reference_id",
+            "snippet": "UTR: SYN-CAFE",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_instrument",
+            "snippet": "via card",
+            "confidence": 0.99
+          },
+          {
+            "field": "account_last4",
+            "snippet": "A/c XX1234",
+            "confidence": 0.99
+          },
+          {
+            "field": "category",
+            "snippet": "to Coconut Cafe",
+            "confidence": 0.75
+          },
+          {
+            "field": "payment_proof",
+            "snippet": "Debited \u20b91,600.00",
+            "confidence": 0.99
+          }
+        ],
+        "field_confidence": [
+          {
+            "field": "event_type",
+            "confidence": 0.99
+          },
+          {
+            "field": "amount_minor",
+            "confidence": 0.99
+          },
+          {
+            "field": "merchant",
+            "confidence": 0.99
+          },
+          {
+            "field": "occurred_at",
+            "confidence": 0.99
+          },
+          {
+            "field": "reference_id",
+            "confidence": 0.99
+          },
+          {
+            "field": "payment_instrument",
+            "confidence": 0.99
+          },
+          {
+            "field": "account_last4",
+            "confidence": 0.99
+          },
+          {
+            "field": "category",
+            "confidence": 0.75
+          },
+          {
+            "field": "payment_proof",
+            "confidence": 0.99
+          }
+        ]
+      }
+    ],
+    "not_transaction": false
+  }
+}

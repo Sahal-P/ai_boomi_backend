@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from finboy.core.clock import now_ist
 from finboy.core.config import Settings
 from finboy.db.models.ledger import EmailSource, ExtractionCache, SourceEvent, Transaction
-from finboy.db.models.mail import ImportRun
+from finboy.db.models.mail import ImportRun, MailConnection
 from finboy.services.ingestion.classifier import classify, trusted_domain
 from finboy.services.ingestion.extract import Prepared
 from finboy.services.ingestion.llm import (
@@ -131,6 +131,16 @@ def _persist_message(
     )
     if existing is not None:
         return delta, set()
+    if (
+        inbound.mail_connection_id is not None
+        and session.scalar(
+            select(MailConnection.id).where(
+                MailConnection.id == inbound.mail_connection_id, MailConnection.user_id == user_id
+            )
+        )
+        is None
+    ):
+        raise ValueError("mail_connection_not_found")
     source = EmailSource(
         user_id=user_id,
         import_run_id=import_run_id,
@@ -147,15 +157,21 @@ def _persist_message(
         processing_status="failed"
         if item is None
         else "skipped"
-        if item.extraction.not_transaction or not item.extraction.events
+        if item.extraction.not_transaction
+        else "failed"
+        if not item.extraction.events
         else "extracted",
     )
     session.add(source)
     session.flush()
     if item is None:
         delta.failed = 1
-    elif item.extraction.not_transaction or not item.extraction.events:
+    elif item.extraction.not_transaction:
         delta.non_financial_skipped = 1
+    elif not item.extraction.events:
+        # No positive amount/direction claim exists to put into a ledger review row.
+        delta.candidates_found = 1
+        delta.failed = 1
     else:
         delta.candidates_found = 1
         for event in item.extraction.events:

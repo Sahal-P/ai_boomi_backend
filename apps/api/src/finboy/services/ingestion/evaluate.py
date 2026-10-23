@@ -7,14 +7,20 @@ from concurrent.futures import ThreadPoolExecutor
 
 from finboy.core.config import Settings
 from finboy.services.ingestion.extract import prepare, record_prepared
-from finboy.services.ingestion.render_demo_mailbox import MAILBOX
+from finboy.services.ingestion.normalize import minimize
+from finboy.services.ingestion.render_demo_mailbox import FIXTURES, MAILBOX
 from finboy.services.ledger.categories import normalize_merchant
 from finboy.services.ledger.engine import Ledger
 from finboy.services.ledger.matching import direction, kind
 
 
-def evaluate(*, live: bool = False, rules_only: bool = False) -> dict[str, object]:
-    settings = Settings()
+def evaluate(
+    *, live: bool = False, rules_only: bool = False, settings: Settings | None = None
+) -> dict[str, object]:
+    settings = settings or Settings()
+    if not settings.openai_extraction_model and not rules_only:
+        manifest = json.loads((FIXTURES / "llm_cassettes" / "manifest.json").read_text())
+        settings = settings.model_copy(update={"openai_extraction_model": manifest["model"]})
     oracle = json.loads((MAILBOX / "expected_ledger.json").read_text())
     paths = sorted(MAILBOX.glob("*.eml"))
     mode = "live" if live else "rules" if rules_only else "offline"
@@ -40,6 +46,15 @@ def evaluate(*, live: bool = False, rules_only: bool = False) -> dict[str, objec
             if record.event.reference_id == wanted["reference_id"]
             and record.event.event_type == wanted["event_type"]
         ]
+        if not candidates:
+            # Diagnose direction/type errors instead of only reporting a missing identity.
+            candidates = [
+                i
+                for i, record in enumerate(actual)
+                if i not in matched and record.event.reference_id == wanted["reference_id"]
+            ]
+            if len(candidates) == 1:
+                errors.append("event_type")
         if len(candidates) != 1:
             errors.append("canonical_identity")
             continue
@@ -59,6 +74,15 @@ def evaluate(*, live: bool = False, rules_only: bool = False) -> dict[str, objec
             errors.append("source_count")
         if record.category != wanted["category"]:
             errors.append("category")
+        if normalize_merchant(record.event.merchant) != normalize_merchant(
+            minimize(wanted["merchant"])
+        ):
+            errors.append("merchant")
+        if (
+            not record.event.occurred_at
+            or record.event.occurred_at.isoformat() != wanted["occurred_at"]
+        ):
+            errors.append("occurred_at")
         link = record.linked_index
         linked_ref = next(
             (row["reference_id"] for row in expected if row["id"] == wanted["linked_to"]), None
@@ -75,6 +99,12 @@ def evaluate(*, live: bool = False, rules_only: bool = False) -> dict[str, objec
         for record in confirmed
         if kind(record.event) in {"salary", "income_other"}
     )
+    direction_totals = {
+        value: sum(
+            record.event.amount_minor for record in confirmed if direction(record.event) == value
+        )
+        for value in ("in", "out")
+    }
     categories: dict[str, int] = defaultdict(int)
     for record in confirmed:
         event = record.event
@@ -130,6 +160,7 @@ def evaluate(*, live: bool = False, rules_only: bool = False) -> dict[str, objec
         "canonical_count": len(actual),
         "expected_canonical_count": len(expected),
         "income_minor": income,
+        "confirmed_totals_by_direction_minor": direction_totals,
         "outflows_minor": sum(categories.values()),
         "categories_after_correction": dict(categories),
         "upcoming_minor": upcoming,
