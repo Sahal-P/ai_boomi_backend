@@ -77,6 +77,13 @@ async def test_mock_google_callback_runs_real_pipeline_then_revokes(assembled_ap
         assert run["transactions_created"] == 26 and run["failed"] == 0
         connection = (await client.get("/api/v1/connections")).json()[0]
         assert connection["status"] == "active" and connection["last_synced_at"]
+        # A second mode may independently evidence the same canonical obligations.
+        upload = await client.post(
+            "/api/v1/imports/eml",
+            files=[("files", (path.name, path.read_bytes(), "message/rfc822")) for path in paths],
+        )
+        uploaded = (await client.get("/api/v1/imports/" + upload.json()["import_run_id"])).json()
+        assert uploaded["status"] == "completed" and uploaded["transactions_created"] == 0
         invalid_grant = True
         sync = await client.post(f"/api/v1/connections/{connection['id']}/sync")
         failed = (await client.get("/api/v1/imports/" + sync.json()["import_run_id"])).json()
@@ -84,7 +91,13 @@ async def test_mock_google_callback_runs_real_pipeline_then_revokes(assembled_ap
         assert (await client.get("/api/v1/connections")).json()[0]["status"] == "error"
         result = await client.delete(f"/api/v1/connections/{connection['id']}?delete_data=true")
         assert result.status_code == 200
+        assert len((await client.get("/api/v1/transactions")).json()) == 26
+        summary = (await client.get("/api/v1/money/summary")).json()
+        assert summary["upcoming_commitments_minor"] == 980000
+        assert summary["estimated_unallocated_minor"] == 1478000
+        assert (await client.delete("/api/v1/privacy/imported-data")).status_code == 200
         assert (await client.get("/api/v1/transactions")).json() == []
+        assert (await client.get("/api/v1/money/summary")).json()["upcoming_commitments_minor"] == 0
     with Session(engine) as session:
         row = session.scalar(select(MailConnection).where(MailConnection.user_id == user))
         assert row.status == "revoked" and row.encrypted_refresh_token is None

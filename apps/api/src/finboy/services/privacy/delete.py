@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from finboy.core.clock import now_ist
@@ -34,12 +34,34 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
             )
         )
     )
-    # Commitments must precede event/source removal because the FK is not cascading.
-    session.execute(
-        delete(Commitment).where(
+    # A canonical obligation may also be evidenced by a remaining import mode/account.
+    # Re-anchor it before removing its first source; otherwise scoped disconnect could
+    # erase a bill still supported by another imported notification.
+    for commitment in session.scalars(
+        select(Commitment).where(
             Commitment.user_id == LOCAL_USER_ID, Commitment.source_event_id.in_(events)
         )
-    )
+    ):
+        replacement = session.scalar(
+            select(SourceEvent.id)
+            .where(
+                SourceEvent.user_id == LOCAL_USER_ID,
+                SourceEvent.email_source_id.not_in(sources),
+                SourceEvent.event_type == ("emi_due" if commitment.kind == "emi" else "bill_due"),
+                SourceEvent.amount_minor == commitment.amount_minor,
+                SourceEvent.currency == commitment.currency,
+                SourceEvent.due_date == commitment.due_date,
+                func.coalesce(SourceEvent.merchant_normalized, "Unidentified obligation")
+                == commitment.label,
+            )
+            .order_by(SourceEvent.created_at, SourceEvent.id)
+            .limit(1)
+        )
+        if replacement is None:
+            session.delete(commitment)
+        else:
+            commitment.source_event_id = replacement
+    session.flush()
     session.execute(delete(SourceEvent).where(SourceEvent.id.in_(events)))
     session.execute(delete(EmailSource).where(*source_filter))
     remaining = select(SourceEvent.transaction_id).where(SourceEvent.transaction_id.is_not(None))

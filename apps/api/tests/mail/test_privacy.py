@@ -377,3 +377,39 @@ async def test_privacy_delete_endpoint_keeps_audit(mail_app):
         events = (await client.get("/api/v1/privacy/audit-events")).json()
         assert events[0]["event_type"] == "data.deleted"
         assert "event_metadata" not in events[0]
+
+
+def test_scoped_delete_preserves_obligation_with_another_source(mail_factory, mail_settings):
+    with mail_factory.begin() as session:
+        first = new_connection(session, mail_settings)
+        second = new_connection(session, mail_settings, "b")
+        transaction = make_transaction(session)
+        original = make_source(session, first, transaction)
+        replacement = make_source(session, second, transaction)
+        for event in (original, replacement):
+            event.transaction_id = None
+            event.event_type = "bill_due"
+            event.due_date = date(2026, 10, 30)
+            event.merchant_normalized = "Synthetic bill"
+        commitment = Commitment(
+            id=uuid4(),
+            user_id=LOCAL_USER_ID,
+            kind="bill",
+            label="Synthetic bill",
+            amount_minor=100,
+            currency="INR",
+            due_date=date(2026, 10, 30),
+            status="upcoming",
+            source_event_id=original.id,
+            confidence=Decimal("0.9"),
+        )
+        session.add(commitment)
+        session.flush()
+        delete_imported_data(session, connection_id=first.id)
+        session.flush()
+        assert commitment.source_event_id == replacement.id
+        assert session.get(Commitment, commitment.id) is not None
+        assert session.get(SourceEvent, original.id) is None
+        delete_imported_data(session, connection_id=second.id)
+        session.flush()
+        assert session.get(Commitment, commitment.id) is None
