@@ -202,7 +202,10 @@ punctuation normalization. All three number phrases preserved ₹7,860 in the au
 check. All 28 text intents passed. Final benchmark provider failures: **0 of 6 STT**
 and **0 of 3 fresh TTS generation calls**. Earlier provider discovery exposed the
 base64-whitespace adapter bug; it was fixed and regression-tested before this run.
-Human spoken-number intelligibility is **not measured** pending listening feedback.
+Human listening confirmation: on 24 October 2026 (IST), the user answered
+**“All three clear”** when asked whether the English, Hindi and Malayalam synthetic
+number clips clearly say ₹7,860. This validates these three clips only; it does not
+measure real-microphone transcription or broader pronunciation quality.
 One separate live structured-intent paraphrase classified meals as food spending
 correctly in 3,429 ms. Initial macOS-generated en/hi STT smoke inputs are separate
 from this six-sample provider corpus and do not count as provider TTS verification.

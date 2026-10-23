@@ -14,7 +14,7 @@
       "live_generated": true,
       "tts_recorded_latency_ms": 4677,
       "stt_status": "passed",
-      "spoken_number_human_intelligibility": "not_measured",
+      "spoken_number_human_intelligibility": "confirmed_clear_by_human",
       "media_status": "passed",
       "stt_latency_ms": 2002,
       "language_correct": true,
@@ -29,7 +29,7 @@
       "live_generated": true,
       "tts_recorded_latency_ms": 3136,
       "stt_status": "passed",
-      "spoken_number_human_intelligibility": "not_measured",
+      "spoken_number_human_intelligibility": "confirmed_clear_by_human",
       "media_status": "passed",
       "stt_latency_ms": 1807,
       "language_correct": true,
@@ -44,7 +44,7 @@
       "live_generated": true,
       "tts_recorded_latency_ms": 4501,
       "stt_status": "passed",
-      "spoken_number_human_intelligibility": "not_measured",
+      "spoken_number_human_intelligibility": "confirmed_clear_by_human",
       "media_status": "passed",
       "stt_latency_ms": 3014,
       "language_correct": true,
@@ -114,5 +114,17 @@
       "status": "passed",
       "latency_ms": 3540
     }
-  ]
+  ],
+  "human_listening_review": {
+    "date_ist": "2026-10-24",
+    "reviewer": "human_user",
+    "sample_ids": [
+      "number-en",
+      "number-hi",
+      "number-ml"
+    ],
+    "expected_amount_minor": 786000,
+    "verdict": "All three clear",
+    "scope": "Listening confirmation for the three synthetic number clips only"
+  }
 }
