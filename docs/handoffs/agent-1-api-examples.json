@@ -1,0 +1,1160 @@
+{
+  "_provenance": "Rendered 42-message mailbox ingested by the real A1 rules pipeline into finboy_p1; all data synthetic.",
+  "_types": {
+    "money_summary": "MoneySummary",
+    "transactions": "TransactionView[]",
+    "transaction_detail": "TransactionDetail",
+    "corrected_detail": "TransactionDetail",
+    "commitments": "CommitmentView[]",
+    "simulation": "CashFlowSimulation",
+    "errors": "ErrorResponse"
+  },
+  "requests": {
+    "summary": "/api/v1/money/summary?period=current_month",
+    "explicit_month": "/api/v1/transactions?period=month&year=2026&month=10&status=confirmed&category=food_dining&q=swiggy&limit=50",
+    "correction": {
+      "category": "food_dining"
+    },
+    "simulation": {
+      "monthly_amount_minor": 500000,
+      "label": "Monthly SIP"
+    },
+    "merge": {
+      "keep_id": "7cc151ef-db09-45da-8b50-ac03f9cc7b25"
+    },
+    "merge_semantics": "POST /transactions/{merge_id}/merge keeps keep_id; response detail is for merge_id (status merged)."
+  },
+  "money_summary_before_correction": {
+    "period_start": "2026-10-01",
+    "period_end": "2026-10-31",
+    "as_of": "2026-10-28",
+    "currency": "INR",
+    "tracked_income_minor": 6200000,
+    "confirmed_outflows_minor": 3742000,
+    "upcoming_commitments_minor": 980000,
+    "estimated_unallocated_minor": 1478000,
+    "pending_review_count": 2,
+    "pending_review_minor": 234000,
+    "income_transaction_count": 1,
+    "outflow_transaction_count": 21,
+    "commitment_count": 3,
+    "categories": [
+      {
+        "category": "food_dining",
+        "amount_minor": 661000,
+        "currency": "INR",
+        "transaction_count": 4
+      },
+      {
+        "category": "groceries",
+        "amount_minor": 328000,
+        "currency": "INR",
+        "transaction_count": 2
+      },
+      {
+        "category": "investments",
+        "amount_minor": 500000,
+        "currency": "INR",
+        "transaction_count": 1
+      },
+      {
+        "category": "rent",
+        "amount_minor": 1500000,
+        "currency": "INR",
+        "transaction_count": 1
+      },
+      {
+        "category": "shopping",
+        "amount_minor": 264000,
+        "currency": "INR",
+        "transaction_count": 6
+      },
+      {
+        "category": "subscriptions",
+        "amount_minor": 150000,
+        "currency": "INR",
+        "transaction_count": 2
+      },
+      {
+        "category": "transport",
+        "amount_minor": 214000,
+        "currency": "INR",
+        "transaction_count": 4
+      },
+      {
+        "category": "travel",
+        "amount_minor": 125000,
+        "currency": "INR",
+        "transaction_count": 1
+      }
+    ],
+    "evidence_transaction_ids": [
+      "fb822698-d79b-4130-acac-9ddb35e8f37f",
+      "4b88e111-b4d7-4b21-8ec8-3ba41a9f0cac",
+      "ba63d434-8239-4d61-9387-acc5915f51c8",
+      "da101009-3f8a-479a-8ff1-206dcf15d67d",
+      "23a32f20-85bd-4b36-8ae3-cc12498e04f4",
+      "0d14e0bb-9ab8-45a0-89ea-7aeb20ae669c",
+      "cc1ef358-9153-4387-ae75-f33beec94a02",
+      "16e3d881-072c-487f-83e5-a1ed77a16655",
+      "7cc151ef-db09-45da-8b50-ac03f9cc7b25",
+      "8357478b-c338-4521-8de3-d7f17165d94c",
+      "501f87f0-d3b5-4a17-9c7b-b564c042bf5f",
+      "9ff8106a-65b3-40d6-8eb5-e1477901ce7f",
+      "dda85003-abe4-495a-bbd9-e97a22fc88a4",
+      "4affdeab-c413-4206-8e55-b32ce667c1af",
+      "d3977f2c-1e80-4efd-be0d-4ad19a7d23bc",
+      "68b7bce1-07c6-41a3-a513-7234725a28cd",
+      "71c303ab-4b06-4854-83b9-6ed35479547a",
+      "80d4c7a2-2234-411e-b3e4-7ae61bc49755",
+      "8b0603a4-7596-4092-9d6f-40b20ccfaa34",
+      "7d231248-c661-4bf5-b06a-2776fd309a0c",
+      "6c0c1729-ef94-474a-b98c-5d75ebfebb2b",
+      "4afc602b-a7de-4aa3-b0ea-94e2cf73a9f5"
+    ]
+  },
+  "money_summary": {
+    "period_start": "2026-10-01",
+    "period_end": "2026-10-31",
+    "as_of": "2026-10-28",
+    "currency": "INR",
+    "tracked_income_minor": 6200000,
+    "confirmed_outflows_minor": 3742000,
+    "upcoming_commitments_minor": 980000,
+    "estimated_unallocated_minor": 1478000,
+    "pending_review_count": 2,
+    "pending_review_minor": 234000,
+    "income_transaction_count": 1,
+    "outflow_transaction_count": 21,
+    "commitment_count": 3,
+    "categories": [
+      {
+        "category": "food_dining",
+        "amount_minor": 786000,
+        "currency": "INR",
+        "transaction_count": 5
+      },
+      {
+        "category": "groceries",
+        "amount_minor": 328000,
+        "currency": "INR",
+        "transaction_count": 2
+      },
+      {
+        "category": "investments",
+        "amount_minor": 500000,
+        "currency": "INR",
+        "transaction_count": 1
+      },
+      {
+        "category": "rent",
+        "amount_minor": 1500000,
+        "currency": "INR",
+        "transaction_count": 1
+      },
+      {
+        "category": "shopping",
+        "amount_minor": 264000,
+        "currency": "INR",
+        "transaction_count": 6
+      },
+      {
+        "category": "subscriptions",
+        "amount_minor": 150000,
+        "currency": "INR",
+        "transaction_count": 2
+      },
+      {
+        "category": "transport",
+        "amount_minor": 214000,
+        "currency": "INR",
+        "transaction_count": 4
+      }
+    ],
+    "evidence_transaction_ids": [
+      "fb822698-d79b-4130-acac-9ddb35e8f37f",
+      "4b88e111-b4d7-4b21-8ec8-3ba41a9f0cac",
+      "ba63d434-8239-4d61-9387-acc5915f51c8",
+      "da101009-3f8a-479a-8ff1-206dcf15d67d",
+      "23a32f20-85bd-4b36-8ae3-cc12498e04f4",
+      "0d14e0bb-9ab8-45a0-89ea-7aeb20ae669c",
+      "cc1ef358-9153-4387-ae75-f33beec94a02",
+      "16e3d881-072c-487f-83e5-a1ed77a16655",
+      "7cc151ef-db09-45da-8b50-ac03f9cc7b25",
+      "8357478b-c338-4521-8de3-d7f17165d94c",
+      "501f87f0-d3b5-4a17-9c7b-b564c042bf5f",
+      "9ff8106a-65b3-40d6-8eb5-e1477901ce7f",
+      "dda85003-abe4-495a-bbd9-e97a22fc88a4",
+      "4affdeab-c413-4206-8e55-b32ce667c1af",
+      "d3977f2c-1e80-4efd-be0d-4ad19a7d23bc",
+      "68b7bce1-07c6-41a3-a513-7234725a28cd",
+      "71c303ab-4b06-4854-83b9-6ed35479547a",
+      "80d4c7a2-2234-411e-b3e4-7ae61bc49755",
+      "8b0603a4-7596-4092-9d6f-40b20ccfaa34",
+      "7d231248-c661-4bf5-b06a-2776fd309a0c",
+      "6c0c1729-ef94-474a-b98c-5d75ebfebb2b",
+      "4afc602b-a7de-4aa3-b0ea-94e2cf73a9f5"
+    ]
+  },
+  "transactions": [
+    {
+      "id": "8efca130-1f2a-4f0a-b9d2-889f6fde4792",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 50000,
+      "currency": "INR",
+      "merchant": "Unknown VPA [address]",
+      "category": "other",
+      "occurred_at": "2026-10-27T06:35:00Z",
+      "status": "needs_review",
+      "confidence": 0.824,
+      "review_reason": "merchant_uncertain",
+      "reference_id": "SYN-REVIEWVPA",
+      "payment_instrument": "UPI",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "1715cf6a-0860-4a59-88f5-7dbef5b00635",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 184000,
+      "currency": "INR",
+      "merchant": "Amazon",
+      "category": "shopping",
+      "occurred_at": "2026-10-26T06:35:00Z",
+      "status": "needs_review",
+      "confidence": 1.0,
+      "review_reason": "unverified_payment",
+      "reference_id": "SYN-REVIEWORDER",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "94b1fd04-218d-45cf-a2ce-016cbd869cf7",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 200000,
+      "currency": "INR",
+      "merchant": "Amazon",
+      "category": "shopping",
+      "occurred_at": "2026-10-25T06:35:00Z",
+      "status": "failed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-FAILED",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "9fea2cf0-d9a1-40fb-9fac-e30ff239edbc",
+      "direction": "out",
+      "kind": "transfer",
+      "amount_minor": 450000,
+      "currency": "INR",
+      "merchant": "Credit Card",
+      "category": "transfer",
+      "occurred_at": "2026-10-24T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-CARDBILL",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "4afc602b-a7de-4aa3-b0ea-94e2cf73a9f5",
+      "direction": "in",
+      "kind": "reversal",
+      "amount_minor": 35000,
+      "currency": "INR",
+      "merchant": "Metro",
+      "category": "transport",
+      "occurred_at": "2026-10-23T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-REVERSED350",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": "6c0c1729-ef94-474a-b98c-5d75ebfebb2b",
+      "merged_into_id": null
+    },
+    {
+      "id": "6c0c1729-ef94-474a-b98c-5d75ebfebb2b",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 35000,
+      "currency": "INR",
+      "merchant": "Metro",
+      "category": "transport",
+      "occurred_at": "2026-10-22T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-REVERSED350",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "7d231248-c661-4bf5-b06a-2776fd309a0c",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 120000,
+      "currency": "INR",
+      "merchant": "Uber",
+      "category": "transport",
+      "occurred_at": "2026-10-21T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-UBER",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "8b0603a4-7596-4092-9d6f-40b20ccfaa34",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 50100,
+      "currency": "INR",
+      "merchant": "Music subscription",
+      "category": "subscriptions",
+      "occurred_at": "2026-10-20T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-MUSIC",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "80d4c7a2-2234-411e-b3e4-7ae61bc49755",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 99900,
+      "currency": "INR",
+      "merchant": "Netflix subscription",
+      "category": "subscriptions",
+      "occurred_at": "2026-10-19T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-NETFLIX",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "71c303ab-4b06-4854-83b9-6ed35479547a",
+      "direction": "in",
+      "kind": "refund",
+      "amount_minor": 20000,
+      "currency": "INR",
+      "merchant": "Amazon",
+      "category": "shopping",
+      "occurred_at": "2026-10-18T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-RETURN200",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": "4affdeab-c413-4206-8e55-b32ce667c1af",
+      "merged_into_id": null
+    },
+    {
+      "id": "68b7bce1-07c6-41a3-a513-7234725a28cd",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 148000,
+      "currency": "INR",
+      "merchant": "Corner Grocer",
+      "category": "groceries",
+      "occurred_at": "2026-10-17T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-GROCERY2",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "d3977f2c-1e80-4efd-be0d-4ad19a7d23bc",
+      "direction": "in",
+      "kind": "refund",
+      "amount_minor": 120000,
+      "currency": "INR",
+      "merchant": "Myntra",
+      "category": "shopping",
+      "occurred_at": "2026-10-16T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-RETURN1200",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": "dda85003-abe4-495a-bbd9-e97a22fc88a4",
+      "merged_into_id": null
+    },
+    {
+      "id": "4affdeab-c413-4206-8e55-b32ce667c1af",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 20000,
+      "currency": "INR",
+      "merchant": "Amazon",
+      "category": "shopping",
+      "occurred_at": "2026-10-15T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-RETURN200",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "dda85003-abe4-495a-bbd9-e97a22fc88a4",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 120000,
+      "currency": "INR",
+      "merchant": "Myntra",
+      "category": "shopping",
+      "occurred_at": "2026-10-14T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-RETURN1200",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "9ff8106a-65b3-40d6-8eb5-e1477901ce7f",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 125000,
+      "currency": "INR",
+      "merchant": "HOTEL ARYA",
+      "category": "food_dining",
+      "occurred_at": "2026-10-13T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-ARYA",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "501f87f0-d3b5-4a17-9c7b-b564c042bf5f",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 184100,
+      "currency": "INR",
+      "merchant": "Bookshop",
+      "category": "shopping",
+      "occurred_at": "2026-10-12T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-BOOKSHOP",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "8357478b-c338-4521-8de3-d7f17165d94c",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 100000,
+      "currency": "INR",
+      "merchant": "Office Canteen",
+      "category": "food_dining",
+      "occurred_at": "2026-10-11T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-CANTEEN",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "7cc151ef-db09-45da-8b50-ac03f9cc7b25",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 79900,
+      "currency": "INR",
+      "merchant": "Amazon",
+      "category": "shopping",
+      "occurred_at": "2026-10-10T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-AMAZON799",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "16e3d881-072c-487f-83e5-a1ed77a16655",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 160000,
+      "currency": "INR",
+      "merchant": "Coconut Cafe",
+      "category": "food_dining",
+      "occurred_at": "2026-10-08T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-CAFE",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "cc1ef358-9153-4387-ae75-f33beec94a02",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 94000,
+      "currency": "INR",
+      "merchant": "Metro",
+      "category": "transport",
+      "occurred_at": "2026-10-07T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-METRO",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "0d14e0bb-9ab8-45a0-89ea-7aeb20ae669c",
+      "direction": "out",
+      "kind": "investment",
+      "amount_minor": 500000,
+      "currency": "INR",
+      "merchant": "Existing SIP",
+      "category": "investments",
+      "occurred_at": "2026-10-06T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-SIP",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "23a32f20-85bd-4b36-8ae3-cc12498e04f4",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 180000,
+      "currency": "INR",
+      "merchant": "Zomato",
+      "category": "food_dining",
+      "occurred_at": "2026-10-05T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-ZOMATO",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "da101009-3f8a-479a-8ff1-206dcf15d67d",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 180000,
+      "currency": "INR",
+      "merchant": "Freshmart",
+      "category": "groceries",
+      "occurred_at": "2026-10-04T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-GROCERY1",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "ba63d434-8239-4d61-9387-acc5915f51c8",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 221000,
+      "currency": "INR",
+      "merchant": "Swiggy",
+      "category": "food_dining",
+      "occurred_at": "2026-10-03T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-SWIGGY",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "4b88e111-b4d7-4b21-8ec8-3ba41a9f0cac",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 1500000,
+      "currency": "INR",
+      "merchant": "Rent landlord",
+      "category": "rent",
+      "occurred_at": "2026-10-02T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-RENT",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    {
+      "id": "fb822698-d79b-4130-acac-9ddb35e8f37f",
+      "direction": "in",
+      "kind": "salary",
+      "amount_minor": 6200000,
+      "currency": "INR",
+      "merchant": "Synthetic Works",
+      "category": "salary",
+      "occurred_at": "2026-10-01T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-SALARY",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    }
+  ],
+  "transaction_detail": {
+    "transaction": {
+      "id": "7cc151ef-db09-45da-8b50-ac03f9cc7b25",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 79900,
+      "currency": "INR",
+      "merchant": "Amazon",
+      "category": "shopping",
+      "occurred_at": "2026-10-10T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-AMAZON799",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    "sources": [
+      {
+        "id": "9a97e638-ffda-4b4a-b31f-fc244e37532d",
+        "email_source_id": "130c6ab5-4521-4600-b97a-3ed001e7f7aa",
+        "source": "demo_mailbox",
+        "sender_domain": "amazon.test",
+        "received_at": "2026-10-10T06:35:00Z",
+        "classification": "merchant_receipt",
+        "event_type": "debit",
+        "amount_minor": 79900,
+        "currency": "INR",
+        "merchant": "Amazon",
+        "occurred_at": "2026-10-10T06:35:00Z",
+        "due_date": null,
+        "extraction_method": "rule",
+        "extractor_id": "rules-v1;fields=account_last4,amount_minor,event_type,merchant,occurred_at,payment_instrument,reference_id",
+        "evidence": {
+          "account_last4": "ending 1234",
+          "amount_minor": "\u20b9799.00",
+          "event_type": "Your invoice\nDear Arun,\nYour invoice: \u20b9799.00; Merchant: AMAZON SELLER SERVICES ",
+          "merchant": "Merchant: AMAZON SELLER SERVICES PRIVATE LIMITED",
+          "occurred_at": "Date: 10-10-26 12:05",
+          "payment_instrument": "card",
+          "reference_id": "Order ID: SYN-AMAZON799"
+        },
+        "field_confidence": {
+          "merchant": 1.0,
+          "event_type": 1.0,
+          "occurred_at": 1.0,
+          "amount_minor": 1.0,
+          "reference_id": 1.0,
+          "account_last4": 1.0,
+          "payment_instrument": 1.0
+        }
+      },
+      {
+        "id": "c459a906-f095-4d61-aa00-0fa7b4d25404",
+        "email_source_id": "4dfaaaf7-d511-4f74-a2c8-be4c2ca1403c",
+        "source": "demo_mailbox",
+        "sender_domain": "alerts.hdfcbank.test",
+        "received_at": "2026-10-10T06:35:00Z",
+        "classification": "card_alert",
+        "event_type": "debit",
+        "amount_minor": 79900,
+        "currency": "INR",
+        "merchant": "Amazon",
+        "occurred_at": "2026-10-10T06:35:00Z",
+        "due_date": null,
+        "extraction_method": "rule",
+        "extractor_id": "rules-v1;fields=account_last4,amount_minor,event_type,merchant,occurred_at,payment_instrument,payment_proof,reference_id",
+        "evidence": {
+          "account_last4": "XX1234",
+          "amount_minor": "Rs.799.00",
+          "event_type": "Debited Rs.799.00 to AMAZON SELLER SERVICES PRIVATE LIMITED on 10-10-26 12:05 IS",
+          "merchant": "to AMAZON SELLER SERVICES PRIVATE LIMITED",
+          "occurred_at": "on 10-10-26 12:05",
+          "payment_instrument": "card",
+          "payment_proof": "Debited Rs.799.00 to AMAZON SELLER SERVICES PRIVATE LIMITED on 10-10-26 12:05 IS",
+          "reference_id": "UTR: SYN-AMAZON799"
+        },
+        "field_confidence": {
+          "merchant": 1.0,
+          "event_type": 1.0,
+          "occurred_at": 1.0,
+          "amount_minor": 1.0,
+          "reference_id": 1.0,
+          "account_last4": 1.0,
+          "payment_proof": 1.0,
+          "payment_instrument": 1.0
+        }
+      },
+      {
+        "id": "f7ac0bdb-2fc4-46f4-9bc9-cadab5f4047c",
+        "email_source_id": "bb73d767-b537-45fa-9f02-1a4834826172",
+        "source": "demo_mailbox",
+        "sender_domain": "amazon.test",
+        "received_at": "2026-10-10T06:35:00Z",
+        "classification": "order_confirmation",
+        "event_type": "debit",
+        "amount_minor": 79900,
+        "currency": "INR",
+        "merchant": "Amazon",
+        "occurred_at": "2026-10-10T06:35:00Z",
+        "due_date": null,
+        "extraction_method": "rule",
+        "extractor_id": "rules-v1;fields=account_last4,amount_minor,event_type,merchant,occurred_at,payment_instrument,reference_id",
+        "evidence": {
+          "account_last4": "ending 1234",
+          "amount_minor": "INR 799.00",
+          "event_type": "Order confirmation\n\nDear Arun,\n\nOrder confirmation: INR 799.00; Merchant: AMAZON",
+          "merchant": "Merchant: AMAZON SELLER SERVICES PRIVATE LIMITED",
+          "occurred_at": "Date: 10-10-26 12:05",
+          "payment_instrument": "card",
+          "reference_id": "Order ID: SYN-AMAZON799"
+        },
+        "field_confidence": {
+          "merchant": 1.0,
+          "event_type": 1.0,
+          "occurred_at": 1.0,
+          "amount_minor": 1.0,
+          "reference_id": 1.0,
+          "account_last4": 1.0,
+          "payment_instrument": 1.0
+        }
+      }
+    ],
+    "confidence_factors": {
+      "source_count": 3,
+      "unique_reference": 0.2,
+      "cross_source_agreement": 0.15,
+      "trusted_sender_template": 0.25,
+      "deterministic_amount_date": 0.25,
+      "merchant_category_quality": 0.15
+    },
+    "revisions": [
+      {
+        "id": "0cac4800-e22d-4086-ac41-5dd6811571ff",
+        "field": "confidence",
+        "old_value": "1.000",
+        "new_value": "1.0",
+        "changed_by": "system",
+        "reason": "evidence_reconciled",
+        "changed_at": "2026-10-23T20:04:38.471313Z"
+      },
+      {
+        "id": "bd88b2cf-3fdc-466c-90f4-e761c53750d6",
+        "field": "confidence_factors",
+        "old_value": {
+          "source_count": 1,
+          "unique_reference": 0.2,
+          "cross_source_agreement": null,
+          "trusted_sender_template": 0.25,
+          "deterministic_amount_date": 0.25,
+          "merchant_category_quality": 0.15
+        },
+        "new_value": {
+          "source_count": 2,
+          "unique_reference": 0.2,
+          "cross_source_agreement": 0.15,
+          "trusted_sender_template": 0.25,
+          "deterministic_amount_date": 0.25,
+          "merchant_category_quality": 0.15
+        },
+        "changed_by": "system",
+        "reason": "evidence_reconciled",
+        "changed_at": "2026-10-23T20:04:38.471313Z"
+      },
+      {
+        "id": "1f2efbdf-96ee-477c-82c8-2a6661f52b39",
+        "field": "confidence",
+        "old_value": "1.000",
+        "new_value": "1.0",
+        "changed_by": "system",
+        "reason": "evidence_reconciled",
+        "changed_at": "2026-10-23T20:04:38.571461Z"
+      },
+      {
+        "id": "b8ee87f5-49bd-42ec-a8ea-5c648a77ea14",
+        "field": "confidence_factors",
+        "old_value": {
+          "source_count": 2,
+          "unique_reference": 0.2,
+          "cross_source_agreement": 0.15,
+          "trusted_sender_template": 0.25,
+          "deterministic_amount_date": 0.25,
+          "merchant_category_quality": 0.15
+        },
+        "new_value": {
+          "source_count": 3,
+          "unique_reference": 0.2,
+          "cross_source_agreement": 0.15,
+          "trusted_sender_template": 0.25,
+          "deterministic_amount_date": 0.25,
+          "merchant_category_quality": 0.15
+        },
+        "changed_by": "system",
+        "reason": "evidence_reconciled",
+        "changed_at": "2026-10-23T20:04:38.571461Z"
+      }
+    ]
+  },
+  "corrected_detail": {
+    "transaction": {
+      "id": "9ff8106a-65b3-40d6-8eb5-e1477901ce7f",
+      "direction": "out",
+      "kind": "purchase",
+      "amount_minor": 125000,
+      "currency": "INR",
+      "merchant": "HOTEL ARYA",
+      "category": "food_dining",
+      "occurred_at": "2026-10-13T06:35:00Z",
+      "status": "confirmed",
+      "confidence": 1.0,
+      "review_reason": null,
+      "reference_id": "SYN-ARYA",
+      "payment_instrument": "card",
+      "account_last4": "1234",
+      "possible_duplicate_of_id": null,
+      "linked_transaction_id": null,
+      "merged_into_id": null
+    },
+    "sources": [
+      {
+        "id": "d7ce6593-97b6-4c32-a2c5-4dcb5b32b06d",
+        "email_source_id": "f17da735-f007-4690-980b-b61b76ed8491",
+        "source": "demo_mailbox",
+        "sender_domain": "alerts.hdfcbank.test",
+        "received_at": "2026-10-13T06:35:00Z",
+        "classification": "card_alert",
+        "event_type": "debit",
+        "amount_minor": 125000,
+        "currency": "INR",
+        "merchant": "HOTEL ARYA",
+        "occurred_at": "2026-10-13T06:35:00Z",
+        "due_date": null,
+        "extraction_method": "rule",
+        "extractor_id": "rules-v1;fields=account_last4,amount_minor,event_type,merchant,occurred_at,payment_instrument,payment_proof,reference_id",
+        "evidence": {
+          "account_last4": "XX1234",
+          "amount_minor": "INR 1,250.00",
+          "event_type": "Debited INR 1,250.00 to HOTEL ARYA on 13-10-26 12:05 IST;",
+          "merchant": "to HOTEL ARYA",
+          "occurred_at": "on 13-10-26 12:05",
+          "payment_instrument": "card",
+          "payment_proof": "Debited INR 1,250.00 to HOTEL ARYA on 13-10-26 12:05 IST;",
+          "reference_id": "UTR: SYN-ARYA"
+        },
+        "field_confidence": {
+          "merchant": 1.0,
+          "event_type": 1.0,
+          "occurred_at": 1.0,
+          "amount_minor": 1.0,
+          "reference_id": 1.0,
+          "account_last4": 1.0,
+          "payment_proof": 1.0,
+          "payment_instrument": 1.0
+        }
+      }
+    ],
+    "confidence_factors": {
+      "source_count": 1,
+      "unique_reference": 0.2,
+      "cross_source_agreement": null,
+      "trusted_sender_template": 0.25,
+      "deterministic_amount_date": 0.25,
+      "merchant_category_quality": 0.15
+    },
+    "revisions": [
+      {
+        "id": "bb23edc1-f719-48e5-9beb-1841cf92531d",
+        "field": "category",
+        "old_value": "travel",
+        "new_value": "food_dining",
+        "changed_by": "user",
+        "reason": "user_correction",
+        "changed_at": "2026-10-23T20:04:40.171402Z"
+      },
+      {
+        "id": "ca3590ad-5a7f-4c75-8f56-cdac96d55123",
+        "field": "user_locked_fields",
+        "old_value": [],
+        "new_value": [
+          "category"
+        ],
+        "changed_by": "user",
+        "reason": "user_correction",
+        "changed_at": "2026-10-23T20:04:40.171402Z"
+      }
+    ]
+  },
+  "commitments": [
+    {
+      "id": "3e32553d-0714-43ae-8289-b228c95e628d",
+      "kind": "bill",
+      "label": "Electricity",
+      "amount_minor": 185000,
+      "currency": "INR",
+      "due_date": "2026-10-29",
+      "status": "upcoming",
+      "confidence": 1.0,
+      "source_event_id": "6ca7bee1-43b5-4237-bdb8-743976b43132",
+      "paid_transaction_id": null
+    },
+    {
+      "id": "33c5941f-cc6f-4d98-87f2-904bc7cd300a",
+      "kind": "emi",
+      "label": "Synthetic Loan EMI",
+      "amount_minor": 650000,
+      "currency": "INR",
+      "due_date": "2026-10-30",
+      "status": "upcoming",
+      "confidence": 1.0,
+      "source_event_id": "d9fdf77f-9767-4447-b144-41bcab7439a1",
+      "paid_transaction_id": null
+    },
+    {
+      "id": "7f662b8a-d18e-4fb6-989c-89c7f190a2f0",
+      "kind": "bill",
+      "label": "Internet",
+      "amount_minor": 145000,
+      "currency": "INR",
+      "due_date": "2026-10-31",
+      "status": "upcoming",
+      "confidence": 1.0,
+      "source_event_id": "9892a134-e9dc-403b-8eda-4c2777cf9db8",
+      "paid_transaction_id": null
+    }
+  ],
+  "simulation": {
+    "summary": {
+      "period_start": "2026-10-01",
+      "period_end": "2026-10-31",
+      "as_of": "2026-10-28",
+      "currency": "INR",
+      "tracked_income_minor": 6200000,
+      "confirmed_outflows_minor": 3742000,
+      "upcoming_commitments_minor": 980000,
+      "estimated_unallocated_minor": 1478000,
+      "pending_review_count": 2,
+      "pending_review_minor": 234000,
+      "income_transaction_count": 1,
+      "outflow_transaction_count": 21,
+      "commitment_count": 3,
+      "categories": [
+        {
+          "category": "food_dining",
+          "amount_minor": 786000,
+          "currency": "INR",
+          "transaction_count": 5
+        },
+        {
+          "category": "groceries",
+          "amount_minor": 328000,
+          "currency": "INR",
+          "transaction_count": 2
+        },
+        {
+          "category": "investments",
+          "amount_minor": 500000,
+          "currency": "INR",
+          "transaction_count": 1
+        },
+        {
+          "category": "rent",
+          "amount_minor": 1500000,
+          "currency": "INR",
+          "transaction_count": 1
+        },
+        {
+          "category": "shopping",
+          "amount_minor": 264000,
+          "currency": "INR",
+          "transaction_count": 6
+        },
+        {
+          "category": "subscriptions",
+          "amount_minor": 150000,
+          "currency": "INR",
+          "transaction_count": 2
+        },
+        {
+          "category": "transport",
+          "amount_minor": 214000,
+          "currency": "INR",
+          "transaction_count": 4
+        }
+      ],
+      "evidence_transaction_ids": [
+        "fb822698-d79b-4130-acac-9ddb35e8f37f",
+        "4b88e111-b4d7-4b21-8ec8-3ba41a9f0cac",
+        "ba63d434-8239-4d61-9387-acc5915f51c8",
+        "da101009-3f8a-479a-8ff1-206dcf15d67d",
+        "23a32f20-85bd-4b36-8ae3-cc12498e04f4",
+        "0d14e0bb-9ab8-45a0-89ea-7aeb20ae669c",
+        "cc1ef358-9153-4387-ae75-f33beec94a02",
+        "16e3d881-072c-487f-83e5-a1ed77a16655",
+        "7cc151ef-db09-45da-8b50-ac03f9cc7b25",
+        "8357478b-c338-4521-8de3-d7f17165d94c",
+        "501f87f0-d3b5-4a17-9c7b-b564c042bf5f",
+        "9ff8106a-65b3-40d6-8eb5-e1477901ce7f",
+        "dda85003-abe4-495a-bbd9-e97a22fc88a4",
+        "4affdeab-c413-4206-8e55-b32ce667c1af",
+        "d3977f2c-1e80-4efd-be0d-4ad19a7d23bc",
+        "68b7bce1-07c6-41a3-a513-7234725a28cd",
+        "71c303ab-4b06-4854-83b9-6ed35479547a",
+        "80d4c7a2-2234-411e-b3e4-7ae61bc49755",
+        "8b0603a4-7596-4092-9d6f-40b20ccfaa34",
+        "7d231248-c661-4bf5-b06a-2776fd309a0c",
+        "6c0c1729-ef94-474a-b98c-5d75ebfebb2b",
+        "4afc602b-a7de-4aa3-b0ea-94e2cf73a9f5"
+      ]
+    },
+    "proposed_monthly_minor": 500000,
+    "remaining_after_proposal_minor": 978000,
+    "lines": [
+      {
+        "label_key": "tracked_income",
+        "amount_minor": 6200000,
+        "sign": "+"
+      },
+      {
+        "label_key": "confirmed_outflows",
+        "amount_minor": 3742000,
+        "sign": "-"
+      },
+      {
+        "label_key": "upcoming_commitments",
+        "amount_minor": 980000,
+        "sign": "-"
+      },
+      {
+        "label_key": "proposed_monthly",
+        "amount_minor": 500000,
+        "sign": "-"
+      }
+    ],
+    "warnings": [
+      "pending_review_items",
+      "incomplete_coverage"
+    ],
+    "disclaimer_key": "cash_flow_model_not_investment_advice"
+  },
+  "errors": {
+    "invalid_request_422": {
+      "error": {
+        "code": "validation_error",
+        "message": "Request validation failed.",
+        "request_id": "a576d3debd45426b9843c5f64a791bf0"
+      }
+    },
+    "not_found_404": {
+      "error": {
+        "code": "http_error",
+        "message": "Not Found",
+        "request_id": "e2e0ef6d9412463fb81ef4c2daeb543a"
+      }
+    },
+    "conflict_409": {
+      "error": {
+        "code": "http_error",
+        "message": "Conflict",
+        "request_id": "2d8d9e4bf2284fe69f5abb746aa6094f"
+      }
+    }
+  }
+}

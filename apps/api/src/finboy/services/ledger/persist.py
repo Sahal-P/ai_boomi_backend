@@ -202,9 +202,26 @@ def refresh_links(session: Session, user_id: UUID) -> None:
             )
             transaction.linked_transaction_id = target
     commitments = session.scalars(
-        select(Commitment).where(Commitment.user_id == user_id, Commitment.status == "upcoming")
+        select(Commitment).where(
+            Commitment.user_id == user_id, Commitment.status.in_(["upcoming", "paid"])
+        )
     )
     for commitment in commitments:
+        if commitment.status == "paid":
+            paid = next(
+                (tx for tx in transactions if tx.id == commitment.paid_transaction_id), None
+            )
+            # A user rejecting/correcting the recorded payment reopens the obligation.
+            # Merchant/category edits alone retain an explicit paid link.
+            if paid is not None and (
+                paid.status == "confirmed"
+                and paid.direction == "out"
+                and paid.kind != "transfer"
+                and paid.amount_minor == commitment.amount_minor
+            ):
+                continue
+            commitment.status = "upcoming"
+            commitment.paid_transaction_id = None
         candidates = [
             tx
             for tx in transactions
