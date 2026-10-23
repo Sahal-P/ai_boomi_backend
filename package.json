@@ -34,7 +34,12 @@
     "seed:gmail-demo-inbox": "uv run --package finboy-api python -m finboy.services.mail.seed_demo_inbox",
     "dev:whatsapp-ingress": "uv run --package finboy-api python -m finboy.services.whatsapp.ingress --api-port ${API_PORT:-8015} --port ${WHATSAPP_INGRESS_PORT:-8095}",
     "test:system": "uv run pytest apps/api/tests/system -m integration",
-    "voice:benchmark": "uv run --package finboy-api python -m finboy.services.speech.benchmark"
+    "voice:benchmark": "uv run --package finboy-api python -m finboy.services.speech.benchmark",
+    "final:check-env": "uv run --package finboy-api python -m finboy.core.final_runtime check",
+    "final:db:migrate": "uv run --package finboy-api python -m finboy.core.final_runtime migrate",
+    "dev:final-api": "uv run --package finboy-api python -m finboy.core.final_runtime api",
+    "build:final-web": "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000 pnpm build",
+    "start:final-web": "WEB_PORT=3000 pnpm start:web"
   },
   "devDependencies": {
     "concurrently": "10.0.6"

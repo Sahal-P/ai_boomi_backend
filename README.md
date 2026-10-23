@@ -1,224 +1,134 @@
 # FinBoy
 
-An AI-powered personal finance copilot for Indian users. The integration branch
-combines implemented extraction/ledger persistence and Gmail/import/privacy flows.
-The active [parallel completion contract](docs/phase1/parallel-completion.md) defines
-money APIs, product UI, English/Hindi/Malayalam assistant and voice, and WhatsApp
-questions about the email-derived ledger. Provider features are complete only after
-live verification; bootstrap assistant/speech implementations explicitly report unavailable.
-The original [Phase 1 contract](docs/phase1/contract.md) retains its frozen financial
-models, ingestion interfaces, Gmail HTTP contracts, and privacy rules.
+FinBoy imports Gmail, saved `.eml` files, or a synthetic demo mailbox into an
+evidence-backed ledger. A deterministic money engine provides tracked income,
+confirmed net spending, commitments and cash-flow simulations. Review/correction,
+privacy controls, and an English/Hindi/Malayalam text/voice assistant share the same
+records. WhatsApp supports approved-sender ledger QUESTIONS only.
 
-## Stack
+The assembled completion branch is **feat/finboy-integration**, not main. Its frozen
+baseline **feat/finboy-ready-base** is
+`fd618aef74336279e587748b216374d20cc892ad`. See
+[parallel completion](docs/phase1/parallel-completion.md), the frozen
+[financial/API contract](docs/phase1/contract.md), and
+[demo runbook](docs/demo-runbook.md). Read the final handoff for remaining live
+acceptance gaps; provider configuration alone never means completion.
 
-- Python 3.15.1, FastAPI, Pydantic v2 / pydantic-settings, uv
-- Next.js 16.4.2 App Router, React 19.3, strict TypeScript, Tailwind CSS 4
-- shadcn/ui (Radix Nova), Lucide, locally served Geist variable font
-- PostgreSQL 18.6, SQLAlchemy 2.1, psycopg 3, Alembic
-- Ruff, pytest + HTTPX ASGI transport, ESLint 10, Node's built-in test runner
+## Stack and boundaries
 
-Exact dependency versions are recorded in `uv.lock` and `pnpm-lock.yaml`.
-TypeScript 6.0.3 is the current stable compiler line supported by typescript-eslint;
-TypeScript 7 is intentionally deferred until that parser supports it.
+- Python 3.15.1, uv, FastAPI/Pydantic v2, SQLAlchemy 2, Alembic, PostgreSQL.
+- Next.js App Router, React, strict TypeScript, pnpm, Tailwind/shadcn, Lucide.
+- Preserved premium design: local fonts, GSAP/motion, lazy R3F/three scenes with
+  DOM-first controls, reduced motion and no-WebGL fallback.
+- Backend-only OpenAI extraction/intent/STT; Resemble Ultra English/Hindi (human's
+  final provider choice), verified Gemini Malayalam TTS. System ffmpeg/ffprobe
+  validate/transcode real media to MP3. No cloning or training.
+- One API, one web app, PostgreSQL as the only persistent service. Stateless
+  webhook-only ingress may forward exactly GET/POST /api/v1/whatsapp/webhook.
+  Money/privacy/product APIs remain loopback-only and never enter a public tunnel.
 
-## Prerequisites
+Money stays integer paise in INR and dates use IST. No login, bank API, WhatsApp
+capture/OCR/mutations, stock/fund recommendations, production deployment, or training.
+“Estimated unallocated amount” comes from email-derived and confirmed records;
+actual bank balances may differ. Simulations are not investment recommendations.
 
-- Node.js **24 LTS** recommended (`.node-version`); Node 22.18–26 is supported.
-- **pnpm 12.15.0**, pinned in `package.json`. Install using the
-  [official pnpm instructions](https://pnpm.io/installation), or use Corepack if
-  available: `corepack prepare pnpm@12.15.0 --activate`.
-- A current [uv installation](https://docs.astral.sh/uv/getting-started/installation/).
-  uv installs the pinned Python interpreter. If an older uv cannot find Python
-  3.15.1, upgrade uv through the package manager that installed it.
-- Docker Desktop / Docker Engine running with the Compose v2 plugin.
+## Local setup
 
-## First run
-
-Run from the repository root:
+Use Node 24 LTS (engines allow 22.18–26), pinned pnpm 12.15.0, uv, Docker Compose,
+and ffmpeg/ffprobe for voice. Exact packages are in uv.lock and pnpm-lock.yaml.
 
 ```sh
-uv python install
 uv sync --locked --all-packages
 pnpm install --frozen-lockfile
 pnpm env:setup
 pnpm db:up
+# Integration round's disposable database; already-exists is harmless:
+docker compose exec -T postgres createdb -U finboy finboy_p5
 pnpm db:migrate
-pnpm dev
+FINBOY_EXTRACTION_MODE=offline API_PORT=8015 WEB_PORT=3015 pnpm dev
 ```
 
-`pnpm env:setup` copies the three environment examples to their local counterparts
-with private file permissions. It preserves files that already exist. The example
-values work together without editing; they are public local development values.
+Before migrating, set the ignored backend env to local database **finboy_p5** on
+127.0.0.1:5433, exact CORS origins localhost:3015 and 127.0.0.1:3015,
+WEB_APP_URL=http://127.0.0.1:3015, DEMO_TODAY=2026-10-28. Web env sets
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8015. Preserve the development database role.
+Other agents use their own databases/ports as documented. Never stop the shared
+PostgreSQL container or delete its volume during parallel work.
 
-Open [FinBoy](http://127.0.0.1:3000). The connection panel calls FastAPI directly
-from the browser and checks PostgreSQL, on load, on manual refresh, and every
-30 seconds. The page remains usable if the API or database is unavailable.
+`pnpm env:setup` creates private ignored env files without overwriting existing
+ones. Secrets belong only in ~/.config/finboy/secrets.env and ignored backend env,
+mode 600. No secret values go in NEXT_PUBLIC variables, source, logs or screenshots.
+Copy only required private settings directly; never print them. All model/voice IDs
+are backend settings; missing providers give explicit unavailable/text-only states.
 
-- Web: <http://127.0.0.1:3000> (also accessible as `localhost:3000`)
-- API health: <http://127.0.0.1:8000/api/v1/health>
-- Interactive API docs: <http://127.0.0.1:8000/docs>
-- PostgreSQL: `127.0.0.1:5433`, database/user `finboy`
+The demo uses 42 synthetic messages and actual recorded extraction responses.
+`FINBOY_EXTRACTION_MODE=offline` replays recordings (model must match the manifest);
+`rules` uses deterministic extraction. Normal configured imports can use live
+extraction. Do not rerecord or invoke costly live evaluation without necessity.
 
-All services bind to loopback. PostgreSQL uses port 5433 to avoid an existing local
-server on 5432. Ctrl+C stops the development servers. `pnpm db:down` stops
-PostgreSQL and preserves the named data volume.
-
-## Environment
-
-| File | Purpose |
-| --- | --- |
-| `.env` | Compose: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` |
-| `apps/api/.env` | Backend: database, CORS, clock, and optional integration settings (below) |
-| `apps/web/.env.local` | Public frontend setting: `NEXT_PUBLIC_API_URL` |
-
-The API loads its `.env` from `apps/api` regardless of the current directory.
-Process environment variables take precedence. `DATABASE_URL` must use the
-`postgresql+psycopg://` scheme. `CORS_ORIGINS` is a JSON array of exact origins.
-Both `localhost:3000` and `127.0.0.1:3000` are allowed by the example.
-
-Integration placeholders are blank in `apps/api/.env.example` and optional until
-features are enabled. `OPENAI_API_KEY`, `OPENAI_EXTRACTION_MODEL`,
-`OPENAI_ASSISTANT_MODEL`, and `OPENAI_TRANSCRIBE_MODEL` configure the backend SDK;
-no API calls are implemented in the scaffold. Verify model IDs in official docs.
-`GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`,
-`GOOGLE_OAUTH_REDIRECT_URI`, and `GOOGLE_CLOUD_PROJECT` configure Google services.
-`TOKEN_ENCRYPTION_KEY` must be a valid Fernet key when set. Secrets are masked types.
-`WEB_APP_URL`, when set, must match an exact CORS origin. `DEMO_TODAY` is an optional
-ISO date for business dates in IST and is ignored in production; real timestamps
-always use the actual clock. Keep secrets in `~/.config/finboy/secrets.env` (chmod
-600) and gitignored env files; setup does not read that secrets file automatically.
-
- Never put secrets into `NEXT_PUBLIC_*`: Next.js embeds
-those values into browser JavaScript at **build time**. Restart development or
-rebuild production after changing the public API URL.
-
-If changing the database user, password, database, or port, update both the root
-Compose settings and the backend URL. PostgreSQL initialization variables apply
-only when the volume is first created; changing `.env` does not modify existing
-database roles. Stop the service before changing its host port.
-
-## Development commands
+## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `pnpm dev` | Run API and web together; stop both if either exits |
-| `pnpm dev:api` / `pnpm dev:web` | Run one server; `API_PORT` / `WEB_PORT` default to 8000 / 3000 |
-| `pnpm db:up` / `pnpm db:down` | Start / stop local PostgreSQL, keeping data |
-| `pnpm db:migrate` | Apply Alembic migrations to head |
-| `pnpm db:current` / `pnpm db:check` | Show revision / check ORM schema drift |
-| `pnpm check` | Backend/frontend lint, unit tests, frontend type checks |
-| `pnpm test:api` / `pnpm test:web` | Backend unit tests / typed health-client tests |
-| `pnpm test:integration` | Local disposable PostgreSQL schema/constraint tests (writes roll back) |
-| `pnpm lint:api` / `pnpm lint:web` | Ruff lint + format check / ESLint |
-| `pnpm format:api` | Format Python sources and tests |
-| `pnpm typecheck` | Generate Next route types, then run strict TypeScript checks |
-| `pnpm build` / `pnpm start:web` | Build / serve the production frontend |
+| pnpm check / pnpm build | Lint, unit tests, strict web types / production build |
+| pnpm db:migrate / pnpm db:check | Additive migrations / schema drift check |
+| pnpm test:integration | Real local PostgreSQL persistence/HTTP/concurrency tests |
+| pnpm test:system | Actual imports → finance → multilingual assistant → privacy tests |
+| pnpm eval:extraction | Offline strict recorded extraction evaluation |
+| pnpm voice:benchmark | Offline intent and actual fixture-media validation |
+| pnpm demo:render-mailbox --anchor 2026-10-28 | Render synthetic mailbox; does not seed SQL totals |
+| pnpm seed:gmail-demo-inbox | Separate insert-only OAuth seeder; human consent |
+| pnpm dev:whatsapp-ingress | Exact webhook-only loopback proxy (API_PORT / WHATSAPP_INGRESS_PORT) |
+| pnpm final:check-env | Explicitly validate final local finboy/8000/3000 setup |
+| pnpm final:db:migrate | Apply additive migrations to reviewed final local finboy |
+| pnpm dev:final-api | Start assembled API on registered Gmail callback 8000 |
+| pnpm build:final-web / pnpm start:final-web | Build for API 8000 / serve web 3000 |
 
-Backend unit tests require no running database. Integration tests require a local
-disposable database with migrations applied; synthetic constraint probes roll back.
-The shared Compose container must stay running during parallel work.
-Follow [parallel setup, ownership, ports, and databases](docs/phase1/contract.md#3-runtime-isolation-for-parallel-agents)
-before starting agents. For example: `API_PORT=8001 WEB_PORT=3001 pnpm dev` after
-updating that worktree's database URL, CORS origins, web URL, and public API URL.
+Final launch does not rewrite p5 env. It refuses production/remote/unexpected
+settings. Review the runbook before using it and preserve other running ports.
+No startup creates tables; 0002_phase1 seeds the local user, 0003_whatsapp adds
+only minimal consent/receipt/delivery metadata. Product records must be generated
+through the actual import pipeline, never by inserting expected demo totals.
 
-The following commands are wired to owner modules that are **not implemented yet**;
-they intentionally fail with module-not-found until the corresponding agent adds them:
+Open /connect → Load demo mailbox. Progress reports real work; then dashboard,
+transactions, review and assistant consume actual stored records. Sources/evidence
+and user revision history remain inspectable. Re-import is idempotent and preserves
+user decisions. Privacy deletion removes imported evidence/orphaned ledger records
+and extraction cache, preserving audit history. Use it on the reviewed disposable
+application environment when resetting the demo; do not drop databases/tables.
 
-| Command | Owner / purpose |
-| --- | --- |
-| `pnpm eval:extraction` | A1 / extraction evaluation |
-| `pnpm demo:render-mailbox` | A1 / render synthetic email fixtures |
-| `pnpm seed:fixture-ledger` | A4 / seed the development ledger |
-| `pnpm seed:gmail-demo-inbox` | A2 / populate the dedicated demo inbox |
-| `pnpm voice:benchmark` | A3 / voice evaluation |
+## External setup and acceptance
 
-To add a future database migration after defining/importing models:
+[Gmail setup](docs/gmail-setup.md): read-only application scope; seeder insert-only
+scope is separate. OAuth app remains Testing, refresh tokens expire after seven
+days. Registered Gmail callbacks are 8000/8002, not 8015. A2's previous grant was
+revoked deliberately; the human reconnects before a live demo.
 
-```sh
-uv run --package finboy-api alembic -c apps/api/alembic.ini revision --autogenerate -m "Describe the change"
-# Review the generated migration before applying it.
-pnpm db:migrate
-pnpm db:check
-pnpm test:integration
-```
+[Voice](docs/voice.md): actual provider capability checks, stock voices and benchmark
+limits. Browser records at most 30 s / 3 MB into memory, gives an editable transcript,
+and requests speech separately. Human performs mic permissions; no fake audio.
 
-No tables are created by application startup. Migration `0002_phase1` creates the
-11 contract tables and seeds Arun (`00000000-0000-0000-0000-000000000001`). There
-is no product login. Domain service bodies raise `NotImplementedError`; empty
-routers expose no domain endpoints yet. App navigation links to placeholder pages
-at `/dashboard`, `/transactions`, `/review`, `/assistant`, `/connect`, `/privacy`,
-and `/import/[runId]`.
+[WhatsApp](docs/whatsapp.md): existing Meta app/portfolio, approved test sender
+allowlist, signature/context checks, temporary token expiry, restricted tunnel,
+metadata-only persistence and durable duplicate suppression. Accepted Graph sends
+are distinct from delivered/read replies; confirm actual receipt on the approved
+phone. No arbitrary send endpoint, broad public API tunnel, or production publishing.
 
-Add a shadcn component only when needed:
+Human performs login/2FA/CAPTCHA/consent/billing. Identify browser profiles by account
+and stable identity, not numeric IDs after restart. Never send tests to unapproved
+recipients. Do not push, deploy or merge into main without the requested approval.
 
-```sh
-pnpm --filter @finboy/web exec shadcn add <component>
-```
+## Operations and documentation
 
-## Health and errors
+Health: /api/v1/health reports core/database availability. Readiness:
+/api/v1/readiness distinguishes schema, tools and provider configuration; it explicitly
+does not claim live acceptance. BackgroundTasks are in-process and not durable.
+Memory-only work cannot replay after restart; stale imports/tasks are marked failed/
+interrupted. Responses are no-store, have generated request IDs, and expose fixed
+errors. Structured logs omit bodies, URLs/query strings, secrets, SQL parameters,
+exception text and financial content.
 
-```sh
-curl -i http://127.0.0.1:8000/api/v1/health
-```
-
-Healthy (`200`):
-
-```json
-{"status":"ok","service":"finboy-api","version":"0.1.0","database":"connected"}
-```
-
-Database unavailable (`503`):
-
-```json
-{"status":"degraded","service":"finboy-api","version":"0.1.0","database":"unavailable"}
-```
-
-The frontend distinguishes checking, connected, database unavailable, and offline
-states. Requests have a five-second timeout and validate the response at runtime.
-Health responses are uncached. HTTP, validation, and unexpected errors use:
-
-```json
-{"error":{"code":"http_error","message":"Not Found","request_id":"generated-request-id"}}
-```
-
-API responses include `X-Request-ID`, also exposed through CORS. Logs are JSON
-with allowlisted operational fields. Request bodies, raw URLs, query strings,
-headers, SQL parameters, exception messages, and financial data are not logged.
-
-## Repository
-
-```text
-apps/api/
-  src/finboy/
-    api/             # Versioned HTTP routes
-    core/            # Settings, logging, errors, request context
-    db/              # SQLAlchemy metadata and sessions
-    services/        # Application logic
-  alembic/           # Reviewed schema migrations
-  tests/             # Unit/HTTP contracts and local integration tests
-  fixtures/          # Synthetic demo_mailbox/, llm_cassettes/, voice/ (owners add data)
-apps/web/
-  src/app/           # Next.js routes, layout, styles, icon
-  src/components/    # Landing UI and owned shadcn components
-  src/hooks/         # Connection state and refresh lifecycle
-  src/lib/api/       # Domain clients; shared zod requestJson helper
-docs/architecture.md
-AGENTS.md
-compose.yaml
-```
-
-See [architecture](docs/architecture.md) and [engineering rules](AGENTS.md).
-Completed checks and observed results are recorded in [verification](docs/verification.md).
-The contract defines the remaining Phase 1 work and its out-of-scope list.
-This pre-flight implements no domain features.
-
-## Troubleshooting
-
-- Docker socket unavailable: start Docker Desktop and rerun `pnpm db:up`.
-- Database unavailable: inspect `docker compose ps` and `docker compose logs postgres`,
-  confirm port 5433 is free, and check the backend URL matches the Compose values.
-- Offline in the browser: confirm the API is running on port 8000, the public API
-  URL is correct, and the page's exact origin appears in `CORS_ORIGINS`. If Next.js
-  chooses another port because 3000 is busy, free 3000 or explicitly update CORS.
-- Build or lint failure after dependency edits: rerun both package-manager installs
-  and review compatibility. Do not suppress TypeScript or ESLint errors.
+See [architecture](docs/architecture.md), [extraction](docs/extraction.md),
+[money](docs/money.md), [product UI](docs/product-ui.md),
+[design system](docs/design-system.md), [integration handoff](docs/handoffs/agent-5.md).
+The original design worktree and the pre-existing A2 .gitignore edit are preserved.

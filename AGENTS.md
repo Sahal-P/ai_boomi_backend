@@ -63,3 +63,13 @@
   `docs/phase1/parallel-completion.md` for this completion round.
 - Never stop the shared PostgreSQL container (`db:down` or Compose down).
 - Secrets live only in `~/.config/finboy/secrets.env` and gitignored env files.
+
+## Completion-round handoff clarification
+
+- Agent 5 owns final integration after each owner handoff. The human explicitly
+  reassigned the absent Agent 2 frontend work to Agent 5; the original uncommitted
+  design worktree must remain untouched, with only reviewed snapshot copies used.
+- The human's final TTS choice is Resemble Ultra for English/Hindi, Gemini for
+  Malayalam. This supersedes the initial Chatterbox requirement; no Replicate setup.
+- Do not equate configured providers or Graph acceptance with completed live flows.
+  Record actual browser playback, human-confirmed receipt, and unresolved criteria.

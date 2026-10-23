@@ -88,3 +88,26 @@ Browser checks cover desktop/mobile navigation and the health panel's four state
 See [verification](verification.md) for actual outcomes. Scope excludes product
 login, Outlook, IMAP, WhatsApp, bank APIs, Gmail watch, security recommendations,
 model training, and deployment. New services or shared packages need a concrete use.
+
+## Completion round integration (24 October 2026)
+
+The active completion contract is phase1/parallel-completion.md. Real A1 ingestion
+and A2 imports now compose with Agent 1's deterministic money/read-review services,
+Agent 3's single assistant/speech implementation, and Agent 4's signed WhatsApp
+transport. Agent 5 supplied shared settings/languages, provider unavailable errors,
+startup stale-task handling, global no-store, operational readiness, and restricted
+final runtime commands. No business arithmetic or provider client is duplicated
+in the frontend or WhatsApp adapter. Actual JSON contracts are zod-validated in web.
+
+The premium design was copied as a reviewed uncommitted snapshot (hash manifest),
+not merged from its stale scaffold HEAD. The human assigned the missing Agent 2
+frontend work to Agent 5. The source design worktree remains untouched. Web hooks
+own runtime state/communication; presentational components render backend facts.
+Microphone recording/transcripts/audio URLs stay ephemeral and are released on
+replacement/unmount. Marketing examples are synthetic illustrations.
+
+0003_whatsapp is additive on 0002_phase1 and adds three metadata-only tables.
+The public stateless ingress forwards only exact webhook GET/POST to a fixed
+loopback API upstream. Product/financial routes remain private. Shared PostgreSQL
+and other agents' listeners are preserved. Current live provider/delivery acceptance
+and residual gaps belong in handoffs/agent-5.md rather than health assumptions.
