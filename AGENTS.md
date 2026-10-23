@@ -73,3 +73,12 @@
   Malayalam. This supersedes the initial Chatterbox requirement; no Replicate setup.
 - Do not equate configured providers or Graph acceptance with completed live flows.
   Record actual browser playback, human-confirmed receipt, and unresolved criteria.
+
+## Authorized production round
+
+- On 24 October 2026 the human authorized pushing every branch to the two named
+  GitHub repositories, merging main, Vercel frontend deployment and voxpay backend
+  deployment, then selected private single-household access and antlegs.in DNS.
+- Follow docs/production.md. Keep production access fail-closed; do not introduce
+  public multi-user signup, expose unauthenticated finance routes, or copy credentials
+  into Vercel/browser configuration. Preserve all other running host applications.

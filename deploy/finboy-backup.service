@@ -1,0 +1,8 @@
+[Unit]
+Description=Private FinBoy PostgreSQL backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/finboy-backup
+UMask=0077

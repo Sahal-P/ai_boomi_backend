@@ -70,6 +70,7 @@ export function PrivacyScreen(props: Props) {
         <h2 className="text-lg font-medium">A few clear promises</h2>
         <h3 className="mt-6 font-medium">What stays</h3>
         <p className="mt-2 text-muted-foreground">Masked account details, message identifiers and hashes, structured financial records, and evidence snippets of up to 80 characters per field. Gmail refresh tokens are encrypted.</p>
+        <p className="mt-2 text-muted-foreground">On the hosted app, private server backups may retain structured imported records for up to seven days after deletion.</p>
         <h3 className="mt-6 font-medium">What doesn’t stay</h3>
         <p className="mt-2 text-muted-foreground">Raw email bodies, uploaded .eml files, full account email addresses, OAuth codes, and access tokens are never stored in the database. Access tokens live only in memory.</p>
         <h3 className="mt-6 font-medium">Your emails are not training data</h3>

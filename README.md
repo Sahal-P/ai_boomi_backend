@@ -6,7 +6,10 @@ confirmed net spending, commitments and cash-flow simulations. Review/correction
 privacy controls, and an English/Hindi/Malayalam text/voice assistant share the same
 records. WhatsApp supports approved-sender ledger QUESTIONS only.
 
-The assembled completion branch is **feat/finboy-integration**, not main. Its frozen
+The assembled product is merged into **main** and published to both requested repositories.
+The authorized private production site is **https://finboy.antlegs.in**, with its
+backend on voxpay at **https://finboy-api.antlegs.in**. See [production operations](docs/production.md).
+Development integration history remains on **feat/finboy-integration**. Its frozen
 baseline **feat/finboy-ready-base** is
 `fd618aef74336279e587748b216374d20cc892ad`. See
 [parallel completion](docs/phase1/parallel-completion.md), the frozen
@@ -25,10 +28,12 @@ acceptance gaps; provider configuration alone never means completion.
   validate/transcode real media to MP3. No cloning or training.
 - One API, one web app, PostgreSQL as the only persistent service. Stateless
   webhook-only ingress may forward exactly GET/POST /api/v1/whatsapp/webhook.
-  Money/privacy/product APIs remain loopback-only and never enter a public tunnel.
+  Local product APIs remain loopback-only. Authorized production uses a household
+  session gate and an HTTPS proxy; finance/privacy routes reject unauthenticated users.
 
-Money stays integer paise in INR and dates use IST. No login, bank API, WhatsApp
-capture/OCR/mutations, stock/fund recommendations, production deployment, or training.
+Money stays integer paise in INR and dates use IST. Production supports private
+household login only. No public signup, bank API, WhatsApp capture/OCR/mutations,
+stock/fund recommendations, or training.
 “Estimated unallocated amount” comes from email-derived and confirmed records;
 actual bank balances may differ. Simulations are not investment recommendations.
 

@@ -1,5 +1,9 @@
 # FinBoy Phase 1 — shared contract
 
+The authorized private production round in [production operations](../production.md)
+supersedes the earlier deployment exclusion and adds single-household access.
+Financial arithmetic, ingestion interfaces and privacy rules remain unchanged.
+
 **24 October completion round:** [parallel-completion.md](parallel-completion.md)
 supersedes conflicting ownership/runtime/provider/language/scope sections below.
 English, Hindi, Malayalam voice/text and read-only WhatsApp questions are authorized.

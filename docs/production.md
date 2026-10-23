@@ -50,14 +50,18 @@ migrations, check drift, switch current atomically, then restart only finboy.ser
 Retain previous release and a PostgreSQL custom-format backup for rollback.
 Migrations are never automatically downgraded. Do not run tests or fixture evaluation
 against production. Backups are private and contain financial data; retain locally
-on the server and apply a documented retention/restore check.
+on the server and apply a documented retention/restore check. The daily root-only
+backup timer keeps seven days of custom-format archives and checks their directory
+readability with pg_restore --list. This is not a full restore drill; record one
+before relying on disaster recovery. Hosted Privacy discloses backup retention.
 
 Nginx configuration templates are in deploy/. Test nginx -t before reload. Use
 Certbot webroot/HTTP challenge and a renewal deploy hook that reloads nginx only
 after nginx -t. Confirm the certificate and unattended renewal with a dry run.
 
-Gmail needs a new explicitly registered HTTPS callback on the deployed frontend:
-/api/v1/connections/gmail/callback. Local callback registrations remain. Human handles
+Gmail uses a new explicitly registered direct HTTPS backend callback:
+https://finboy-api.antlegs.in/api/v1/connections/gmail/callback. OAuth codes avoid the
+frontend proxy; nginx access logs are disabled. Local callback registrations remain. Human handles
 Google consent. Testing mode still expires refresh tokens after seven days.
 Never claim production Gmail works until callback registration and live import pass.
 
@@ -65,3 +69,42 @@ Provider keys are reused privately without regenerating existing local credentia
 Production uses the real IST clock, not DEMO_TODAY. Synthetic demo mailbox remains
 available through the same pipeline. Actual speech and all deferred WhatsApp voice,
 microphone and Gmail acceptance limitations remain recorded in handoffs/agent-5.md.
+
+## Verified live state — 24 October 2026
+
+- Vercel project shl-s-projects/ai-boomi-frontend, apps/web, Node 24; Git connected
+  to Sahal-P/ai_boomi_frontend. Production domain finboy.antlegs.in. Only the two
+  origin/proxy settings are configured there; provider/access secrets stay backend.
+- GoDaddy A finboy-api points to the authorized voxpay host; frontend CNAME uses
+  Vercel's project-specific recommended target. Existing DNS records were preserved.
+- Both repositories have all 12 named branches and main as default. All branch tips
+  are ancestors of assembled main. No force push, history rewrite or branch deletion.
+  Original design and A2 uncommitted worktrees remain unchanged. Snapshot ancestry
+  commits explicitly retain newer integrated code instead of applying stale routes.
+- Actual public HTTPS health returns 200; unauthenticated money/transaction/privacy
+  requests return 401; docs/OpenAPI return 404. Proxy household login/cookie roundtrip
+  and authenticated readiness passed. Cross-origin deletion returns 403.
+- Actual production import processed 42 .eml, 36 candidates, 26 transactions, six
+  merged duplicates, two review items and zero failures. Expected 62000/37420/9800/
+  14780 tracked totals passed; category correction produced food 7860. No SQL seeding.
+- Actual production EN/HI/ML assistant facts match; each speech API returned an MP3
+  that decoded locally. Measured speech latencies were 3.666/3.454/8.914 seconds.
+  This establishes production HTTP/media, not human microphone or phone playback.
+- A >4.5MB invalid multipart request reached the backend and returned its fixed 400
+  with a request ID, validating the rewrite path without importing invalid records.
+- pnpm check passed 375 backend unit tests, 16 web tests, lint and strict TypeScript;
+  pnpm build passed. Local PostgreSQL integration 28/28 and schema drift passed.
+  Production applied only additive migrations to a newly isolated database; no test
+  suite was run against production. Actual head is 0003_whatsapp, no drift.
+- gitleaks full-ref history scan passed. Private local/server env files are mode 600.
+- API runs on loopback 8020 as finboy.service; existing Finind services stayed active.
+  Certificate expires 21 January 2027; Certbot renewal dry-run passed. Daily backup
+  timer is active and initial pg_restore archive listing passed; full restore drill
+  and off-host recovery copy remain operator follow-ups. Server retains ~10GB free.
+
+Remaining human acceptance: household browser login; live Gmail consent/import/revoke
+on the deployed callback; browser microphone and chooser checks from the prior handoff.
+WhatsApp remains deliberately disabled in production. English phone text acceptance
+belongs to the previous local verifier; live voice remains explicitly deferred.
+No public signup, Meta app publication, broad public tunnel or renewed WhatsApp grant
+was performed by production deployment.
