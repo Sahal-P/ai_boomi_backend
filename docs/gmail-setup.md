@@ -215,6 +215,26 @@ hashes and mode 600. A live callback issue exposed during this check was fixed: 
 temporary receiver now waits for a validated callback, tolerating incidental browser
 connections and favicon requests; six focused tests cover that behavior.
 
-The application's separate read-only Gmail consent is pending human completion.
-Live application import/revocation remains unverified at this checkpoint. A1's
-pipeline and fixture merge remain necessary before the extraction demo is ready.
+The human completed the application's separate read-only consent in Chrome. The
+callback created an active connection with exactly `gmail.readonly`, a masked email,
+and an encrypted refresh token, then redirected to a persisted Gmail import run.
+That run correctly stopped at A1's current `NotImplementedError` stub with the fixed
+`import_failed` code; no extraction completion or financial totals are claimed.
+
+A separate live invocation of A2's Gmail fetch adapter refreshed the token and
+fetched three matched raw candidates in memory; scan counts reached 3 headers and
+3 candidates. No raw content was written to disk or printed. The actual progress
+and connected Privacy screens were captured at 1440×1000 and 390×844.
+
+Disconnect was then exercised through the real Privacy dialog with **Keep my
+ledger** selected. It succeeded, marked the connection `revoked`, wiped the encrypted
+refresh token, and wrote the audit event. Google rejected an attempted refresh with
+the old token, which was held only in the verifier process's memory. Searching
+`FinBoy` at Google Account's linked-apps/permissions page returned **No results
+found**. The revoked Privacy state was also captured at both viewport sizes.
+
+The final local connection is intentionally revoked after this verification.
+Reconnect before the demo. A1's pipeline and fixture merge still remain necessary
+for successful extraction and the full rendered demo mailbox. The upload API and
+three-message demo entry point are tested with A1 interface doubles; the browser
+file-picker test remains limited by the Chrome extension setting described above.
