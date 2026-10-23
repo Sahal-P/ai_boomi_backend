@@ -7,7 +7,7 @@ from finboy.db.base import Base
 from finboy.db.models import User
 from finboy.db.session import get_session
 from finboy.main import create_app
-from sqlalchemy import JSON, MetaData, create_engine
+from sqlalchemy import JSON, MetaData, create_engine, event
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -19,10 +19,18 @@ def mail_factory():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
+
+    @event.listens_for(engine, "connect")
+    def foreign_keys(connection, _record):
+        connection.execute("PRAGMA foreign_keys=ON")
+
     metadata = MetaData()
     for table in Base.metadata.sorted_tables:
         for column in table.columns:
-            if isinstance(column.type, ARRAY | JSONB):
+            if (
+                isinstance(column.type, ARRAY | JSONB)
+                and "sqlite" not in column.type._variant_mapping
+            ):
                 column.type = column.type.with_variant(JSON(), "sqlite")
         copy = table.to_metadata(metadata)
         for column in copy.columns:

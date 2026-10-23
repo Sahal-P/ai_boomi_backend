@@ -2,6 +2,9 @@
 
 from uuid import UUID
 
+from sqlalchemy import delete, select, update
+from sqlalchemy.orm import Session
+
 from finboy.core.clock import now_ist
 from finboy.core.config import LOCAL_USER_ID
 from finboy.db.models.ledger import (
@@ -14,8 +17,6 @@ from finboy.db.models.ledger import (
 )
 from finboy.db.models.mail import ImportRun
 from finboy.services.privacy.audit import audit
-from sqlalchemy import delete, select, update
-from sqlalchemy.orm import Session
 
 
 def delete_imported_data(session: Session, *, connection_id: UUID | None = None) -> None:
@@ -83,7 +84,7 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
     session.execute(
         update(ImportRun)
         .where(*runs)
-        .values(status="failed", error_code="import_cancelled", finished_at=now_ist())
+        .values(status="failed", error_code="import_failed", finished_at=now_ist())
     )
     audit(
         session,

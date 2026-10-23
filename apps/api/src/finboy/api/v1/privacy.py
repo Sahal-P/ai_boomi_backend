@@ -12,11 +12,11 @@ from finboy.core.config import LOCAL_USER_ID
 from finboy.db.models.mail import AuditEvent
 from finboy.db.session import get_session
 from finboy.services.imports.locking import import_lock
-from finboy.services.mail.http import failure
+from finboy.services.mail.http import MailRoute, failure
 from finboy.services.mail.security import MailError
 from finboy.services.privacy.delete import delete_imported_data
 
-router = APIRouter(prefix="/privacy", tags=["privacy"])
+router = APIRouter(prefix="/privacy", tags=["privacy"], route_class=MailRoute)
 DB = Annotated[Session, Depends(get_session)]
 
 

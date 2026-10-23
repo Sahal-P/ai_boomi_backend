@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from datetime import timedelta
 from urllib.parse import urlencode
 
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session
+
 from finboy.core.clock import now_ist
 from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.db.models.mail import MailConnection, OAuthState
@@ -15,8 +18,6 @@ from finboy.services.mail.security import (
     random_secret,
     sha256,
 )
-from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 
 
 @dataclass(frozen=True, repr=False)
@@ -87,6 +88,7 @@ def consume_state(session: Session, config: OAuthConfig, state: str) -> str:
             OAuthState.expires_at > now_ist(),
         )
         .values(used_at=now_ist())
+        .execution_options(synchronize_session=False)
         .returning(OAuthState.encrypted_code_verifier)
     )
     session.commit()

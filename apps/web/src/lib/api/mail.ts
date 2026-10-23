@@ -68,7 +68,7 @@ export const disconnectConnection = (id: string, deleteData: boolean) => request
 export const deleteImportedData = () => requestJson(
   "/api/v1/privacy/imported-data", okSchema, { method: "DELETE", timeoutMs: 30_000 });
 
-const errors: Record<string, string> = {
+const errors = {
   gmail_not_configured: "Gmail connection is not configured yet. You can upload emails or try the demo.",
   invalid_state: "This connection link expired or was already used. Please connect Gmail again.",
   consent_denied: "Gmail access was cancelled. You can connect again whenever you’re ready.",
@@ -78,9 +78,15 @@ const errors: Record<string, string> = {
   import_cancelled: "This import stopped because the connection changed or the data was deleted.",
   import_busy: "Another import is in progress. Let it finish, then try again.",
   demo_unavailable: "The demo mailbox is not available yet. Please try again shortly.",
+  authorization_failed: "Google access could not be used. Please reconnect Gmail.",
+  configuration_missing: "Gmail is not configured yet. Please try upload or demo mode.",
+  provider_unavailable: "The email provider is unavailable. Please try again shortly.",
 };
+function isErrorCode(code: string): code is keyof typeof errors {
+  return Object.hasOwn(errors, code);
+}
 export function oauthErrorMessage(code?: string): string | null {
-  return code ? errors[code] ?? "The Gmail connection could not be completed. Please try again." : null;
+  return code ? (isErrorCode(code) ? errors[code] : "The operation could not be completed. Please try again.") : null;
 }
 export function mailErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {

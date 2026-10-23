@@ -1,8 +1,18 @@
+import logging
+from collections.abc import Awaitable, Callable
+from http import HTTPStatus
+
 from fastapi import Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
+from starlette.exceptions import HTTPException
+from starlette.responses import Response
+
 from finboy.core.errors import error_response
 from finboy.services.mail.security import MailError
+
+logger = logging.getLogger(__name__)
 
 
 def failure(request: Request, exc: MailError) -> JSONResponse:
@@ -20,13 +30,35 @@ def failure(request: Request, exc: MailError) -> JSONResponse:
 
 
 class MailRoute(APIRoute):
-    def get_route_handler(self):
+    def get_route_handler(self) -> Callable[[Request], Awaitable[Response]]:
         handler = super().get_route_handler()
 
-        async def safe_handler(request: Request):
+        async def safe_handler(request: Request) -> Response:
             try:
-                return await handler(request)
+                origin = request.headers.get("origin")
+                if (
+                    request.method in {"POST", "DELETE"}
+                    and origin
+                    and origin not in request.app.state.settings.allowed_origins
+                ):
+                    raise HTTPException(403)
+                response = await handler(request)
             except MailError as exc:
-                return failure(request, exc)
+                response = failure(request, exc)
+            except HTTPException as exc:
+                response = error_response(
+                    request, exc.status_code, "http_error", HTTPStatus(exc.status_code).phrase
+                )
+            except RequestValidationError:
+                response = error_response(
+                    request, 422, "validation_error", "Request validation failed."
+                )
+            except Exception as exc:
+                logger.error("mail.request_failed", extra={"error_type": type(exc).__name__})
+                response = error_response(
+                    request, 500, "internal_error", "An unexpected error occurred."
+                )
+            response.headers["Cache-Control"] = "no-store"
+            return response
 
         return safe_handler

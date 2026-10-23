@@ -1,7 +1,12 @@
 """Background import orchestration; all progress writes use independent sessions."""
 
+import logging
 from collections.abc import Iterable, Iterator
+from datetime import timedelta
 from uuid import UUID, uuid4
+
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from finboy.core.clock import now_ist
 from finboy.core.config import LOCAL_USER_ID, Settings
@@ -12,10 +17,19 @@ from finboy.services.mail.fetch import fetch_messages
 from finboy.services.mail.oauth import OAuthConfig
 from finboy.services.mail.security import MailError, decrypt
 from finboy.services.privacy.audit import audit
-from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session, sessionmaker
 
 COUNTERS = tuple(IngestionStats.__dataclass_fields__)
+logger = logging.getLogger(__name__)
+
+
+def stored_error(code: str) -> str:
+    if code == "gmail_not_configured":
+        return "configuration_missing"
+    if code in {"reconnect_required", "connection_inactive", "scope_missing"}:
+        return "authorization_failed"
+    if code == "gmail_unavailable":
+        return "provider_unavailable"
+    return "import_failed"
 
 
 def create_run(session: Session, *, mode: str, connection_id: UUID | None = None) -> ImportRun:
@@ -25,18 +39,33 @@ def create_run(session: Session, *, mode: str, connection_id: UUID | None = None
 
     session.scalar(select(User).where(User.id == LOCAL_USER_ID).with_for_update())
     existing = session.scalar(
-        select(ImportRun.id).where(
+        select(ImportRun).where(
             ImportRun.user_id == LOCAL_USER_ID, ImportRun.status.in_(["queued", "running"])
         )
     )
     if existing:
-        raise MailError("import_busy")
+        stale = session.scalar(
+            select(ImportRun.id).where(
+                ImportRun.id == existing.id,
+                ImportRun.started_at <= now_ist() - timedelta(seconds=30),
+            )
+        )
+        if existing.status == "queued" and not stale:
+            raise MailError("import_busy")
+        # The worker holds this lock throughout ingestion. If it is absent, this is
+        # interrupted work from a stopped process, not an active extractor.
+        with import_lock(session.get_bind().engine):
+            existing.status = "failed"
+            existing.error_code = "import_failed"
+            existing.finished_at = now_ist()
+            audit(session, "import.failed", "import", existing.id, mode=existing.mode)
     run = ImportRun(
         id=uuid4(),
         user_id=LOCAL_USER_ID,
         mode=mode,
         mail_connection_id=connection_id,
         status="queued",
+        started_at=now_ist(),
     )
     session.add(run)
     session.flush()
@@ -140,16 +169,34 @@ def run_import(
                 audit(session, "import.completed", "import", run.id, mode=run.mode)
     except Exception as exc:
         code = exc.code if isinstance(exc, MailError) else "import_failed"
-        with factory.begin() as session:
-            run = session.get(ImportRun, run_id)
-            if run is not None:
-                run.status, run.error_code, run.finished_at = "failed", code, now_ist()
-                audit(session, "import.failed", "import", run.id, mode=run.mode)
-                if code == "reconnect_required" and run.mail_connection_id:
-                    connection = session.get(MailConnection, run.mail_connection_id)
-                    if connection and connection.status not in {"revoked", "paused"}:
-                        connection.status = "error"
-                        audit(session, "gmail.reconnect_required", "connection", connection.id)
+        try:
+            with factory.begin() as session:
+                run = session.get(ImportRun, run_id)
+                if run is not None:
+                    run.status, run.error_code, run.finished_at = (
+                        "failed",
+                        stored_error(code),
+                        now_ist(),
+                    )
+                    audit(session, "import.failed", "import", run.id, mode=run.mode)
+                    if code == "reconnect_required" and run.mail_connection_id:
+                        connection = session.get(MailConnection, run.mail_connection_id)
+                        if connection and connection.status not in {"revoked", "paused"}:
+                            connection.status = "error"
+                            audit(session, "gmail.reconnect_required", "connection", connection.id)
+        except Exception as persistence_error:
+            # BackgroundTasks exceptions run after the HTTP response. Contain them
+            # here so Uvicorn cannot print chained provider/database exception text.
+            logger.error(
+                "import.failure_record_unavailable",
+                extra={
+                    "import_run_id": str(run_id),
+                    "error_type": type(persistence_error).__name__,
+                },
+            )
     finally:
         if google:
-            google.close()
+            try:
+                google.close()
+            except Exception:
+                logger.error("import.client_close_failed", extra={"import_run_id": str(run_id)})

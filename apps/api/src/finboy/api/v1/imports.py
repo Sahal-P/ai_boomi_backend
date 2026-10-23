@@ -57,7 +57,32 @@ async def uploads(request: Request) -> list[InboundMessage]:
     return await read_eml_uploads(request)
 
 
-@router.post("/eml", status_code=202, response_model=None)
+@router.post(
+    "/eml",
+    status_code=202,
+    response_model=None,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["files"],
+                        "properties": {
+                            "files": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": 50,
+                                "items": {"type": "string", "format": "binary"},
+                            },
+                        },
+                    }
+                }
+            },
+        },
+    },
+)
 def start_eml(
     request: Request,
     background: BackgroundTasks,

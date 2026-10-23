@@ -1,12 +1,13 @@
 """Streaming multipart parser with memory-only buffers (no UploadFile spool files)."""
 
 from fastapi import Request
-from finboy.services.imports.files import MAX_BYTES, MAX_FILES, parse_eml
-from finboy.services.ingestion.pipeline import InboundMessage
-from finboy.services.mail.security import MailError
 from python_multipart import MultipartParser
 from python_multipart.exceptions import MultipartParseError
 from python_multipart.multipart import parse_options_header
+
+from finboy.services.imports.files import MAX_BYTES, MAX_FILES, parse_eml
+from finboy.services.ingestion.pipeline import InboundMessage
+from finboy.services.mail.security import MailError
 
 
 async def read_eml_uploads(request: Request) -> list[InboundMessage]:

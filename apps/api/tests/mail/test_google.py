@@ -4,11 +4,10 @@ from uuid import uuid4
 
 import httpx
 import pytest
-
 from finboy.services.mail.fetch import fetch_messages, financial_query
 from finboy.services.mail.google import GoogleClient
 from finboy.services.mail.security import MailError
-from finboy.services.mail.seed import seed_messages
+from finboy.services.mail.seed_demo_inbox import seed_messages
 
 
 def test_fetch_paginates_refreshes_and_counts(eml, monkeypatch):
@@ -30,8 +29,9 @@ def test_fetch_paginates_refreshes_and_counts(eml, monkeypatch):
                 retries += 1
                 if retries < 3:
                     return httpx.Response(429 if retries == 1 else 503)
-                return httpx.Response(200, json={"messages": [{"id": "abc"}],
-                                                 "nextPageToken": "page2"})
+                return httpx.Response(
+                    200, json={"messages": [{"id": "abc"}], "nextPageToken": "page2"}
+                )
             return httpx.Response(200, json={"messages": [{"id": "def"}]})
         if request.headers["authorization"] == "Bearer access1":
             return httpx.Response(401)
@@ -39,11 +39,22 @@ def test_fetch_paginates_refreshes_and_counts(eml, monkeypatch):
             return httpx.Response(200, json={"payload": {"headers": []}})
         return httpx.Response(200, json={"raw": base64.urlsafe_b64encode(eml).decode()})
 
-    google = GoogleClient("client", "secret", "http://localhost", sleep=waits.append,
-                          client=httpx.Client(transport=httpx.MockTransport(handler)))
-    messages = list(fetch_messages(google, refresh_token="refresh", connection_id=uuid4(),
-                                    on_scan=lambda *counts: scans.append(counts),
-                                    ensure_active=lambda: None))
+    google = GoogleClient(
+        "client",
+        "secret",
+        "http://localhost",
+        sleep=waits.append,
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    messages = list(
+        fetch_messages(
+            google,
+            refresh_token="refresh",
+            connection_id=uuid4(),
+            on_scan=lambda *counts: scans.append(counts),
+            ensure_active=lambda: None,
+        )
+    )
     assert [message.provider_message_id for message in messages] == ["abc", "def"]
     assert messages[0].raw_rfc822 == eml
     assert scans == [(1, 1), (2, 2)]
@@ -56,9 +67,18 @@ def test_fetch_paginates_refreshes_and_counts(eml, monkeypatch):
 
 
 def test_invalid_grant_is_fixed():
-    google = GoogleClient("id", "secret", "http://localhost", client=httpx.Client(
-        transport=httpx.MockTransport(lambda _: httpx.Response(400, json={
-            "error": "invalid_grant", "error_description": "SENSITIVE_DETAILS"}))))
+    google = GoogleClient(
+        "id",
+        "secret",
+        "http://localhost",
+        client=httpx.Client(
+            transport=httpx.MockTransport(
+                lambda _: httpx.Response(
+                    400, json={"error": "invalid_grant", "error_description": "SENSITIVE_DETAILS"}
+                )
+            )
+        ),
+    )
     with pytest.raises(MailError, match="^reconnect_required$"):
         google.refresh("SENSITIVE_REFRESH")
     google.close()
@@ -71,8 +91,12 @@ def test_revoke_posts_body_and_accepts_already_revoked():
         calls.append(request)
         return httpx.Response(400, json={"error": "invalid_token"})
 
-    google = GoogleClient("id", "secret", "http://localhost", client=httpx.Client(
-        transport=httpx.MockTransport(handler)))
+    google = GoogleClient(
+        "id",
+        "secret",
+        "http://localhost",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
     google.revoke("SENSITIVE_REFRESH")
     assert calls[0].method == "POST"
     assert calls[0].content == b"token=SENSITIVE_REFRESH"
@@ -82,15 +106,42 @@ def test_revoke_posts_body_and_accepts_already_revoked():
 
 def test_fetch_caps_candidates(eml, monkeypatch):
     monkeypatch.setattr("finboy.services.mail.fetch.MAX_CANDIDATES", 2)
-    google = GoogleClient("id", "secret", "http://localhost", client=httpx.Client(
-        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=
-            {"access_token": "token"} if request.url.path == "/token" else
-            {"messages": [{"id": "a"}, {"id": "b"}, {"id": "c"}], "nextPageToken": "again"}
-            if request.url.path.endswith("/messages") else
-            {"payload": {}} if request.url.params.get("format") == "metadata" else
-            {"raw": base64.urlsafe_b64encode(eml).decode()}))))
-    assert len(list(fetch_messages(google, refresh_token="token", connection_id=uuid4(),
-                                    on_scan=lambda *_: None, ensure_active=lambda: None))) == 2
+    google = GoogleClient(
+        "id",
+        "secret",
+        "http://localhost",
+        client=httpx.Client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    200,
+                    json={"access_token": "token"}
+                    if request.url.path == "/token"
+                    else {
+                        "messages": [{"id": "a"}, {"id": "b"}, {"id": "c"}],
+                        "nextPageToken": "again",
+                    }
+                    if request.url.path.endswith("/messages")
+                    else {"payload": {}}
+                    if request.url.params.get("format") == "metadata"
+                    else {"raw": base64.urlsafe_b64encode(eml).decode()},
+                )
+            )
+        ),
+    )
+    assert (
+        len(
+            list(
+                fetch_messages(
+                    google,
+                    refresh_token="token",
+                    connection_id=uuid4(),
+                    on_scan=lambda *_: None,
+                    ensure_active=lambda: None,
+                )
+            )
+        )
+        == 2
+    )
     google.close()
 
 
@@ -103,8 +154,12 @@ def test_seed_is_insert_only_and_idempotent(tmp_path: Path, eml):
         calls.append(request)
         return httpx.Response(200, json={"id": "synthetic"})
 
-    google = GoogleClient("id", "secret", "http://localhost", client=httpx.Client(
-        transport=httpx.MockTransport(handler)))
+    google = GoogleClient(
+        "id",
+        "secret",
+        "http://localhost",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
     manifest = tmp_path / "manifest.json"
     kwargs = {"directory": tmp_path, "manifest_path": manifest, "mailbox_label": "demo"}
     assert seed_messages(google, "SENSITIVE_ACCESS", **kwargs) == (3, 0)

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
+
 from finboy.services.mail.security import MailError
 
 READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"

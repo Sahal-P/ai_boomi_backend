@@ -12,6 +12,10 @@ from sqlalchemy import select
 
 
 def test_pkce_encryption_and_one_use(mail_factory, mail_settings):
+    # RFC 7636 Appendix B's public vector, independent of the implementation.
+    assert pkce_challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk") == (
+        "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+    )
     config = OAuthConfig.from_settings(mail_settings)
     with mail_factory() as session:
         url, state = authorize(session, config)
@@ -40,6 +44,10 @@ def test_expired_and_tampered_state(mail_factory, mail_settings):
         for invalid in (state, state + "tamper", "", "x" * 257):
             with pytest.raises(MailError, match="invalid_state"):
                 consume_state(session, config, invalid)
+        _, fresh = authorize(session, config)
+        with pytest.raises(MailError, match="invalid_state"):
+            consume_state(session, config, fresh + "tampered")
+        assert consume_state(session, config, fresh)
 
 
 def test_encryption_roundtrip_and_wrong_key(mail_settings):

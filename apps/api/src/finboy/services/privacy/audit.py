@@ -1,8 +1,9 @@
 from uuid import UUID
 
+from sqlalchemy.orm import Session
+
 from finboy.core.config import LOCAL_USER_ID
 from finboy.db.models.mail import AuditEvent
-from sqlalchemy.orm import Session
 
 EVENTS = frozenset(
     {

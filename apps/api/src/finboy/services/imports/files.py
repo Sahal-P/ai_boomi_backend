@@ -1,7 +1,9 @@
 from email import policy
 from email.parser import BytesParser
+from email.utils import parsedate_to_datetime
 from hashlib import sha256
 from pathlib import Path
+from typing import Literal
 
 from finboy.services.ingestion.pipeline import InboundMessage
 from finboy.services.mail.security import MailError
@@ -11,7 +13,9 @@ MAX_BYTES = 2 * 1024 * 1024
 DEMO_DIRECTORY = Path(__file__).resolve().parents[4] / "fixtures" / "demo_mailbox"
 
 
-def parse_eml(raw: bytes, *, source: str = "eml_upload") -> InboundMessage:
+def parse_eml(
+    raw: bytes, *, source: Literal["eml_upload", "demo_mailbox"] = "eml_upload"
+) -> InboundMessage:
     if not raw or len(raw) > MAX_BYTES:
         raise MailError("upload_limit")
     try:
@@ -20,10 +24,11 @@ def parse_eml(raw: bytes, *, source: str = "eml_upload") -> InboundMessage:
             message.defects
             or not message.get("From")
             or not message.get("Date")
-            or not message.get("Subject")
+            or any(getattr(value, "defects", ()) for value in message.values())
             or any(part.defects for part in message.walk())
         ):
             raise MailError("invalid_eml")
+        parsedate_to_datetime(str(message["Date"]))
     except ValueError, TypeError, UnicodeError:
         raise MailError("invalid_eml") from None
     return InboundMessage(

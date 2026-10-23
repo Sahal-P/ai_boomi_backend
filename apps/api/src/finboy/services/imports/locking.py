@@ -1,8 +1,9 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from finboy.services.mail.security import MailError
 from sqlalchemy import Engine, text
+
+from finboy.services.mail.security import MailError
 
 # Session-level locks use a dedicated connection across pipeline-owned transactions.
 # Privacy deletion and imports share this lock so deletion cannot race an extractor commit.

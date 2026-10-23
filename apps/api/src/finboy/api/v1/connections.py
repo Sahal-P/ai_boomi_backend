@@ -15,13 +15,13 @@ from finboy.db.models.mail import MailConnection
 from finboy.db.session import get_session
 from finboy.services.imports.locking import import_lock
 from finboy.services.imports.runner import create_run, run_import
-from finboy.services.mail.http import failure
+from finboy.services.mail.http import MailRoute, failure
 from finboy.services.mail.oauth import OAuthConfig, authorize, consume_state, finish_connection
 from finboy.services.mail.security import MailError, decrypt
 from finboy.services.privacy.audit import audit
 from finboy.services.privacy.delete import delete_imported_data
 
-router = APIRouter(prefix="/connections", tags=["connections"])
+router = APIRouter(prefix="/connections", tags=["connections"], route_class=MailRoute)
 DB = Annotated[Session, Depends(get_session)]
 STATE_COOKIE = "finboy_oauth_state"
 CALLBACK_PATH = "/api/v1/connections/gmail/callback"
