@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiError, requestJson } from "@/lib/api/http";
+import { ApiError, apiBaseUrl, requestJson } from "./http.ts";
 
 const counter = z.number().int().nonnegative();
 export const importRunSchema = z.object({
@@ -33,11 +33,7 @@ export type MailConnection = z.infer<typeof connectionSchema>;
 export type AuditEvent = z.infer<typeof auditSchema>;
 
 export function authorizeUrl(): string {
-  const base = new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000");
-  if (!["http:", "https:"].includes(base.protocol) || base.username || base.password) {
-    throw new Error("The backend URL is not configured correctly.");
-  }
-  return new URL("/api/v1/connections/gmail/authorize", base).toString();
+  return `${apiBaseUrl()}/api/v1/connections/gmail/authorize`;
 }
 
 export const getImportRun = (id: string, signal?: AbortSignal) =>

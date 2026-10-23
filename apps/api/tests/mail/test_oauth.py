@@ -1,4 +1,5 @@
 from datetime import timedelta
+from time import time
 from urllib.parse import parse_qs, urlsplit
 
 import httpx
@@ -6,7 +7,14 @@ import pytest
 from finboy.core.clock import now_ist
 from finboy.db.models.mail import AuditEvent, MailConnection, OAuthState
 from finboy.services.mail.google import READ_SCOPE, GoogleClient
-from finboy.services.mail.oauth import OAuthConfig, authorize, consume_state, finish_connection
+from finboy.services.mail.oauth import (
+    OAuthConfig,
+    authorize,
+    consume_authorization_handoff,
+    consume_state,
+    create_authorization_handoff,
+    finish_connection,
+)
 from finboy.services.mail.security import MailError, decrypt, encrypt, pkce_challenge, sha256
 from sqlalchemy import select
 
@@ -48,6 +56,34 @@ def test_expired_and_tampered_state(mail_factory, mail_settings):
         with pytest.raises(MailError, match="invalid_state"):
             consume_state(session, config, fresh + "tampered")
         assert consume_state(session, config, fresh)
+
+
+def test_authorization_handoff_is_expiring_single_use_and_distinct_from_oauth_state(
+    mail_factory, mail_settings
+):
+    from cryptography.fernet import Fernet
+
+    config = OAuthConfig.from_settings(mail_settings)
+    cipher = Fernet(config.encryption_key)
+    with mail_factory() as session:
+        ticket = create_authorization_handoff(session, config)
+        payload = cipher.decrypt(ticket.encode())
+        expired = cipher.encrypt_at_time(payload, int(time()) - 120).decode()
+        for invalid in (
+            "",
+            "x" * 1025,
+            ticket[:-1],
+            expired,
+            cipher.encrypt(b"wrong-kind").decode(),
+        ):
+            with pytest.raises(MailError, match="invalid_state"):
+                consume_authorization_handoff(session, config, invalid)
+        url, state = consume_authorization_handoff(session, config, ticket)
+        assert parse_qs(urlsplit(url).query)["state"] == [state]
+        assert state.encode() not in payload
+        with pytest.raises(MailError, match="invalid_state"):
+            consume_authorization_handoff(session, config, ticket)
+        assert consume_state(session, config, state)
 
 
 def test_encryption_roundtrip_and_wrong_key(mail_settings):
@@ -165,6 +201,90 @@ async def test_callback_connects_starts_import_and_redacts(
         "private-person@example.test",
     ):
         assert sensitive not in output
+
+
+@pytest.mark.anyio
+async def test_private_cross_host_authorization_sets_cookie_on_callback_host(
+    mail_app, mail_settings, monkeypatch
+):
+    from cryptography.fernet import Fernet
+    from finboy.core.access import password_hash
+    from finboy.core.config import Settings
+
+    google_double(monkeypatch)
+    scheduled = []
+    monkeypatch.setattr(
+        "finboy.api.v1.connections.run_import", lambda *args: scheduled.append(args)
+    )
+    frontend = "https://household.example.test"
+    backend = "https://api.example.test"
+    callback = backend + "/api/v1/connections/gmail/callback"
+    mail_app.state.settings = Settings.model_validate(
+        mail_settings.model_dump()
+        | {
+            "environment": "production",
+            "web_app_url": frontend,
+            "cors_origins": [frontend],
+            "google_oauth_redirect_uri": callback,
+            "web_session_key": Fernet.generate_key().decode(),
+            "household_password_hash": password_hash("synthetic-password"),
+        }
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=mail_app), base_url=frontend
+    ) as client:
+        authorize_path = "/api/v1/connections/gmail/authorize"
+        assert (await client.get(authorize_path)).status_code == 401
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={"password": "synthetic-password"},
+            headers={"Origin": frontend},
+        )
+        assert login.status_code == 200
+        auth = await client.get(authorize_path)
+        handoff_url = auth.headers["location"]
+        assert handoff_url.startswith(backend + "/api/v1/connections/gmail/handoff?ticket=")
+        assert "set-cookie" not in auth.headers
+        assert auth.headers["cache-control"] == "no-store"
+        assert auth.headers["referrer-policy"] == "no-referrer"
+        # The household cookie stays on the frontend. The handoff alone can only
+        # initiate this one OAuth flow, never read records or start another flow.
+        assert (await client.get(backend + authorize_path)).status_code == 401
+        assert (await client.get(backend + "/api/v1/connections")).status_code == 401
+        handoff = await client.get(handoff_url)
+        params = parse_qs(urlsplit(handoff.headers["location"]).query)
+        assert params["redirect_uri"] == [callback]
+        cookie = handoff.headers["set-cookie"]
+        assert "Domain=" not in cookie
+        assert "Secure" in cookie and "HttpOnly" in cookie and "SameSite=lax" in cookie
+        assert "Path=/api/v1/connections/gmail/callback" in cookie
+        cookies = [c for c in client.cookies.jar if c.name == "finboy_oauth_state"]
+        assert len(cookies) == 1 and cookies[0].domain == "api.example.test"
+        replay = await client.get(handoff_url)
+        assert replay.headers["location"] == frontend + "/connect?error=invalid_state"
+        response = await client.get(
+            callback, params={"state": params["state"][0], "code": "SENSITIVE_CODE"}
+        )
+        assert response.headers["location"].startswith(frontend + "/import/")
+        assert response.headers["cache-control"] == "no-store"
+        assert len(scheduled) == 1
+        assert not [c for c in client.cookies.jar if c.name == "finboy_oauth_state"]
+        missing = await client.get(backend + "/api/v1/connections/gmail/handoff")
+        assert missing.headers["location"] == frontend + "/connect?error=invalid_state"
+        invalid = await client.get(
+            backend + "/api/v1/connections/gmail/handoff", params={"ticket": "SENSITIVE_TICKET"}
+        )
+        assert invalid.headers["location"] == frontend + "/connect?error=invalid_state"
+        assert "SENSITIVE" not in invalid.text + invalid.headers["location"]
+        for origin, expected in [(frontend, 200), ("https://attacker.example.test", 400)]:
+            preflight = await client.options(
+                backend + "/api/v1/connections/gmail/handoff",
+                headers={"Origin": origin, "Access-Control-Request-Method": "GET"},
+            )
+            assert preflight.status_code == expected
+            assert preflight.headers.get("access-control-allow-origin") == (
+                frontend if expected == 200 else None
+            )
 
 
 @pytest.mark.anyio

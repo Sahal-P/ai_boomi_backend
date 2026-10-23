@@ -1,6 +1,7 @@
 import secrets
 from datetime import datetime
 from typing import Annotated
+from urllib.parse import urlencode, urlsplit
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
@@ -16,7 +17,14 @@ from finboy.db.session import get_session
 from finboy.services.imports.locking import import_lock
 from finboy.services.imports.runner import create_run, run_import
 from finboy.services.mail.http import MailRoute, failure
-from finboy.services.mail.oauth import OAuthConfig, authorize, consume_state, finish_connection
+from finboy.services.mail.oauth import (
+    OAuthConfig,
+    authorize,
+    consume_authorization_handoff,
+    consume_state,
+    create_authorization_handoff,
+    finish_connection,
+)
 from finboy.services.mail.security import MailError, decrypt
 from finboy.services.privacy.audit import audit
 from finboy.services.privacy.delete import delete_imported_data
@@ -56,6 +64,28 @@ def web_origin(request: Request) -> str:
     return str(value).rstrip("/") if value else "http://127.0.0.1:3002"
 
 
+def oauth_redirect(location: str) -> RedirectResponse:
+    return RedirectResponse(
+        location,
+        status_code=307,
+        headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
+    )
+
+
+def google_redirect(config: OAuthConfig, url: str, state: str) -> RedirectResponse:
+    response = oauth_redirect(url)
+    response.set_cookie(
+        STATE_COOKIE,
+        state,
+        httponly=True,
+        samesite="lax",
+        max_age=600,
+        secure=config.redirect_uri.startswith("https:"),
+        path=CALLBACK_PATH,
+    )
+    return response
+
+
 @router.get("", response_model=list[ConnectionView])
 def list_connections(session: DB) -> list[MailConnection]:
     return list(
@@ -71,21 +101,31 @@ def list_connections(session: DB) -> list[MailConnection]:
 def gmail_authorize(request: Request, session: DB) -> RedirectResponse:
     try:
         config = OAuthConfig.from_settings(request.app.state.settings)
+        callback = urlsplit(config.redirect_uri)
+        if callback.hostname != urlsplit(web_origin(request)).hostname:
+            ticket = create_authorization_handoff(session, config)
+            # Set the host-only state cookie directly on the callback host, after
+            # the household-authenticated frontend has issued a one-use handoff.
+            return oauth_redirect(
+                f"{callback.scheme}://{callback.netloc}/api/v1/connections/gmail/handoff?"
+                + urlencode({"ticket": ticket})
+            )
         url, state = authorize(session, config)
-        response = RedirectResponse(url, status_code=307)
-        response.set_cookie(
-            STATE_COOKIE,
-            state,
-            httponly=True,
-            samesite="lax",
-            max_age=600,
-            secure=config.redirect_uri.startswith("https:"),
-            path=CALLBACK_PATH,
-        )
-        return response
+        return google_redirect(config, url, state)
     except MailError as exc:
         session.rollback()
-        return RedirectResponse(f"{web_origin(request)}/connect?error={exc.code}", status_code=307)
+        return oauth_redirect(f"{web_origin(request)}/connect?error={exc.code}")
+
+
+@router.get("/gmail/handoff", response_model=None)
+def gmail_handoff(request: Request, session: DB, ticket: str = "") -> RedirectResponse:
+    try:
+        config = OAuthConfig.from_settings(request.app.state.settings)
+        url, state = consume_authorization_handoff(session, config, ticket)
+        return google_redirect(config, url, state)
+    except MailError as exc:
+        session.rollback()
+        return oauth_redirect(f"{web_origin(request)}/connect?error={exc.code}")
 
 
 @router.get("/gmail/callback", response_model=None)
@@ -124,9 +164,8 @@ def gmail_callback(
     finally:
         if google:
             google.close()
-    response = RedirectResponse(location, status_code=307)
+    response = oauth_redirect(location)
     response.delete_cookie(STATE_COOKIE, path=CALLBACK_PATH)
-    response.headers["Referrer-Policy"] = "no-referrer"
     return response
 
 

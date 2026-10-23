@@ -33,6 +33,15 @@ no serverless API body parser in this path. API/provider keys stay only on voxpa
 Preview builds receive no production environment; do not add production credentials
 or production-origin proxy settings to preview environments.
 
+The Connect page uses the shared API URL helper, including the `/` proxy setting.
+When the Gmail callback host differs from the frontend host, authenticated
+authorization issues an encrypted 60-second, single-use handoff to the API host.
+That host consumes the handoff before creating fresh OAuth state/PKCE and setting
+its host-only callback cookie. The handoff route is public only to redeem this
+capability; Gmail authorization and finance routes still require the household
+session. Handoff and OAuth redirects are non-cacheable and suppress referrers.
+No session or OAuth cookies are shared with sibling antlegs.in applications.
+
 The API listens on 127.0.0.1:8020 under a dedicated unprivileged systemd service.
 Nginx terminates HTTPS and turns off access/error payload logging and proxy body
 buffering. Existing nginx sites, Finind services and databases remain untouched.
@@ -108,3 +117,13 @@ WhatsApp remains deliberately disabled in production. English phone text accepta
 belongs to the previous local verifier; live voice remains explicitly deferred.
 No public signup, Meta app publication, broad public tunnel or renewed WhatsApp grant
 was performed by production deployment.
+
+## Connect repair — 24 October 2026
+
+The deployed Connect page crashed because its Gmail URL builder treated the `/`
+production API setting as an absolute URL. A regression test reproduces that
+configuration and the URL builder now shares the same validation as API requests.
+Cross-host Gmail tests also exercise household login, the one-use handoff, callback
+cookie domain, mocked Google exchange/import scheduling, replay/expiry rejection,
+and unauthenticated finance-route rejection. These are automated checks; live Google
+consent and actual Gmail import must still be recorded separately.

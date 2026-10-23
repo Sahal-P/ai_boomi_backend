@@ -23,6 +23,8 @@ PUBLIC = {
     "/api/v1/whatsapp/webhook",
     # One-use, expiring OAuth state is validated by the callback, independently of cookies.
     "/api/v1/connections/gmail/callback",
+    # A short-lived, single-use capability issued only by authenticated authorization.
+    "/api/v1/connections/gmail/handoff",
 }
 
 

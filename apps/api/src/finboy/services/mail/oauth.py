@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from urllib.parse import urlencode
 
+from cryptography.fernet import InvalidToken
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,7 @@ from finboy.db.models.mail import MailConnection, OAuthState
 from finboy.services.mail.google import READ_SCOPE, GoogleClient
 from finboy.services.mail.security import (
     MailError,
+    cipher,
     decrypt,
     encrypt,
     mask_email,
@@ -18,6 +20,9 @@ from finboy.services.mail.security import (
     random_secret,
     sha256,
 )
+
+HANDOFF_SECONDS = 60
+HANDOFF_PREFIX = "finboy:gmail-handoff:v1:"
 
 
 @dataclass(frozen=True, repr=False)
@@ -48,17 +53,45 @@ class OAuthConfig:
         return GoogleClient(self.client_id, self.client_secret, self.redirect_uri)
 
 
-def authorize(session: Session, config: OAuthConfig) -> tuple[str, str]:
+def create_state(session: Session, config: OAuthConfig, *, lifetime: timedelta) -> tuple[str, str]:
     state, verifier = random_secret(), random_secret()
     session.add(
         OAuthState(
             user_id=LOCAL_USER_ID,
             state_sha256=sha256(state),
             encrypted_code_verifier=encrypt(config.encryption_key, verifier),
-            expires_at=now_ist() + timedelta(minutes=10),
+            expires_at=now_ist() + lifetime,
         )
     )
     session.commit()
+    return state, verifier
+
+
+def create_authorization_handoff(session: Session, config: OAuthConfig) -> str:
+    state, _ = create_state(session, config, lifetime=timedelta(seconds=HANDOFF_SECONDS))
+    return encrypt(config.encryption_key, HANDOFF_PREFIX + state).decode()
+
+
+def consume_authorization_handoff(
+    session: Session, config: OAuthConfig, ticket: str
+) -> tuple[str, str]:
+    if not ticket or len(ticket) > 1024:
+        raise MailError("invalid_state")
+    try:
+        payload = (
+            cipher(config.encryption_key).decrypt(ticket.encode(), ttl=HANDOFF_SECONDS).decode()
+        )
+    except InvalidToken, UnicodeError:
+        raise MailError("invalid_state") from None
+    if not payload.startswith(HANDOFF_PREFIX):
+        raise MailError("invalid_state")
+    consume_state(session, config, payload.removeprefix(HANDOFF_PREFIX))
+    # Use a fresh OAuth state: the cross-host handoff cannot replace the callback cookie.
+    return authorize(session, config)
+
+
+def authorize(session: Session, config: OAuthConfig) -> tuple[str, str]:
+    state, verifier = create_state(session, config, lifetime=timedelta(minutes=10))
     return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(
         {
             "client_id": config.client_id,
