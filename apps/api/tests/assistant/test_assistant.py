@@ -203,3 +203,49 @@ async def test_http_answer_and_cors(
 )
 def test_security_recommendations_never_become_affordability(question: str) -> None:
     assert rule_intent(question).intent == "regulated_advice"
+
+
+@pytest.mark.parametrize(
+    "question", ["Simulate -5000 monthly", "Simulate −5000 monthly", "Simulate - 5000 monthly"]
+)
+def test_negative_proposal_does_not_become_positive(question: str) -> None:
+    assert rule_intent(question).amount_minor is None
+
+
+def test_other_currency_requires_clarification() -> None:
+    assert rule_intent("Can I afford $5000 monthly?").intent == "clarification"
+
+
+def test_evidence_is_restricted_to_engine_summary(
+    settings: Settings, session: MagicMock, money_engine: dict[str, MagicMock]
+) -> None:
+    from datetime import datetime
+    from uuid import UUID
+
+    wanted = UUID("00000000-0000-0000-0000-000000000002")
+    unrelated = UUID("00000000-0000-0000-0000-000000000003")
+    sample = money_engine["money_summary"].return_value
+    sample.evidence_transaction_ids = [wanted]
+    rows = [
+        engine.TransactionView(
+            id=key,
+            direction="out",
+            kind="purchase",
+            amount_minor=786000,
+            merchant="Synthetic Merchant",
+            category="food_dining",
+            occurred_at=datetime.fromisoformat("2026-10-20T10:00:00+05:30"),
+            status="confirmed",
+            confidence=1.0,
+        )
+        for key in [wanted, unrelated]
+    ]
+    money_engine["find_transactions"].return_value = rows
+    answer = answer_question(
+        session,
+        user_id=LOCAL_USER_ID,
+        text="Food spending this month?",
+        display_style="en",
+        settings=settings,
+    )
+    assert [t.id for t in answer.evidence_transactions] == [wanted]

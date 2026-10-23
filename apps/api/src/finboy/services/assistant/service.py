@@ -37,7 +37,10 @@ def answer_question(
     elif parsed.intent == "clarification":
         key, policy = "clarify", "clarify"
     elif parsed.intent == "education":
-        key = parsed.topic or "sip"
+        if parsed.topic is None:
+            key, policy = "clarify", "clarify"
+        else:
+            key = parsed.topic
     elif parsed.intent in {"affordability_check", "savings_simulation"} and (
         parsed.amount_minor is None or parsed.period.kind != "current_month"
     ):
@@ -118,6 +121,15 @@ def answer_question(
                     status="confirmed",
                     limit=10,
                 )
+                if parsed.intent != "merchant_lookup":
+                    evidence_ids = set(summary.evidence_transaction_ids)
+                    evidence = [item for item in evidence if item.id in evidence_ids]
+                    if parsed.intent == "income_query":
+                        evidence = [
+                            item
+                            for item in evidence
+                            if item.direction == "in" and item.kind in {"salary", "income_other"}
+                        ]
                 if parsed.intent == "merchant_lookup":
                     key = "merchant_lookup" if evidence else "empty"
                     facts.extend(

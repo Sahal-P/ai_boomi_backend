@@ -177,11 +177,14 @@ def contains(text: str, terms: tuple[str, ...]) -> bool:
 def amounts_in_question(text: str) -> set[int]:
     """Parse explicit rupee literals; conversion to paise is not ledger arithmetic."""
     values: set[int] = set()
-    for token in re.findall(r"(?<![\w.])\d[\d,]*(?:\.\d{1,2})?(?![\w.])", normalized(text)):
+    question = normalized(text)
+    if re.search(r"[-−]\s+(?:₹\s*)?\d", question):
+        return values
+    for token in re.findall(r"(?<![\w.])[-−]?\d[\d,]*(?:\.\d{1,2})?(?![\w.])", question):
         if "," in token and not re.fullmatch(r"\d{1,3}(?:,\d{2})*,\d{3}(?:\.\d{1,2})?", token):
             continue
         try:
-            paise = Decimal(token.replace(",", "")) * 100
+            paise = Decimal(token.replace(",", "").replace("−", "-")) * 100
             if 0 < paise <= 100_000_000_00 and paise == paise.to_integral_value():
                 values.add(int(paise))
         except InvalidOperation:
@@ -191,6 +194,8 @@ def amounts_in_question(text: str) -> set[int]:
 
 def rule_intent(text: str) -> ParsedIntent:
     q = normalized(text)
+    if re.search(r"[$€£]|\b(usd|eur|dollars?|pounds?)\b", q):
+        return ParsedIntent(intent="clarification")
     security_request = re.search(r"\b(stock|fund|share|portfolio)\b", q) and re.search(
         r"\b(buy|sell|recommend|choose|pick|allocate|best)\b", q
     )

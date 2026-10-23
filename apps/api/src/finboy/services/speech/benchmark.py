@@ -206,7 +206,12 @@ def main() -> None:
     if (
         report["intent_failed_ids"]
         or any(
-            row.get("media_status") != "passed" or row.get("stt_status") == "unavailable_or_invalid"
+            row.get("media_status") != "passed"
+            or row.get("stt_status") == "unavailable_or_invalid"
+            or any(
+                row.get(key) is False
+                for key in ("language_correct", "intent_correct", "spoken_number_machine_check")
+            )
             for row in report["samples"]
         )
         or any(row["status"] != "passed" for row in generation)
