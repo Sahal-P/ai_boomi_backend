@@ -1,0 +1,38 @@
+# Local environment and secrets (examples are safe to commit)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# JavaScript / Next.js
+node_modules/
+.pnpm-store/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+playwright-report/
+test-results/
+
+# Local tooling
+.DS_Store
+.idea/
+.vscode/
+*.log
+*.pem
+*.key
+.turbo/

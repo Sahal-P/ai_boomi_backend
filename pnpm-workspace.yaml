@@ -1,0 +1,9 @@
+packages:
+  - apps/web
+
+saveExact: true
+engineStrict: true
+allowBuilds:
+  sharp: true
+  '@tailwindcss/oxide': true
+  unrs-resolver: true
