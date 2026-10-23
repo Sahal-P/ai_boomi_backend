@@ -279,6 +279,48 @@ def test_delete_preserves_shared_sources_manual_records_and_audit(mail_factory, 
         exercise_deletion(session, mail_settings)
 
 
+@pytest.mark.anyio
+async def test_disconnect_option_deletes_only_its_sources(
+    mail_app,
+    mail_factory,
+    mail_settings,
+    monkeypatch,
+):
+    with mail_factory.begin() as session:
+        first, second = (
+            new_connection(session, mail_settings),
+            new_connection(session, mail_settings, "b"),
+        )
+        shared, sole = make_transaction(session), make_transaction(session)
+        make_source(session, first, shared)
+        make_source(session, second, shared)
+        make_source(session, first, sole)
+        connection_id, shared_id, sole_id = first.id, shared.id, sole.id
+    monkeypatch.setattr(
+        OAuthConfig,
+        "google",
+        lambda config: GoogleClient(
+            config.client_id,
+            config.client_secret,
+            config.redirect_uri,
+            client=httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200))),
+        ),
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=mail_app), base_url="http://test"
+    ) as client:
+        response = await client.delete(f"/api/v1/connections/{connection_id}?delete_data=true")
+        assert response.status_code == 200
+    with mail_factory() as session:
+        assert session.get(Transaction, shared_id) is not None
+        assert session.get(Transaction, sole_id) is None
+        assert session.get(MailConnection, connection_id).encrypted_refresh_token is None
+        assert set(session.scalars(select(AuditEvent.event_type))) == {
+            "gmail.revoked",
+            "data.deleted",
+        }
+
+
 @pytest.mark.integration
 def test_postgres_privacy_foreign_keys_and_import_lock(mail_settings):
     from finboy.core.config import Settings
