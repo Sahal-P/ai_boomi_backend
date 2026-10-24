@@ -1,7 +1,17 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, LargeBinary, Text, func, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    LargeBinary,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -78,6 +88,16 @@ class ImportRun(Base):
     non_financial_skipped: Mapped[int] = mapped_column(server_default=text("0"))
     failed: Mapped[int] = mapped_column(server_default=text("0"))
     error_code: Mapped[str | None] = mapped_column(Text)
+    next_page_token_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    resume_page_token_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    outcome_detail: Mapped[str | None] = mapped_column(Text)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    truncated: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    window_start: Mapped[date | None] = mapped_column()
+    window_end: Mapped[date | None] = mapped_column()
+    retry_source_ids: Mapped[list[str]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

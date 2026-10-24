@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     CHAR,
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -74,6 +75,11 @@ class EmailSource(Base):
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     classification: Mapped[str] = mapped_column(Text)
     processing_status: Mapped[str] = mapped_column(Text)
+    last_attempt_run_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("import_runs.id"), index=True
+    )
+    issue_reason: Mapped[str | None] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(server_default=text("1"))
 
 
 class Transaction(Base):
@@ -108,6 +114,7 @@ class Transaction(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    dataset: Mapped[str] = mapped_column(Text, server_default="household", index=True)
     direction: Mapped[str] = mapped_column(Text)
     kind: Mapped[str] = mapped_column(Text)
     amount_minor: Mapped[int] = mapped_column(BigInteger)
@@ -199,6 +206,8 @@ class Commitment(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    dataset: Mapped[str] = mapped_column(Text, server_default="household", index=True)
+    user_resolved: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     kind: Mapped[str] = mapped_column(Text)
     label: Mapped[str] = mapped_column(Text)
     amount_minor: Mapped[int] = mapped_column(BigInteger)
@@ -220,3 +229,19 @@ class ExtractionCache(Base):
     cache_key: Mapped[str] = mapped_column(Text, unique=True)
     result: Mapped[dict[str, object]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ReviewDecision(Base):
+    __tablename__ = "review_decisions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    transaction_id: Mapped[UUID] = mapped_column(
+        ForeignKey("transactions.id", ondelete="CASCADE"), index=True
+    )
+    action: Mapped[str] = mapped_column(Text)
+    before_state: Mapped[dict[str, object]] = mapped_column(JSONB)
+    after_state: Mapped[dict[str, object]] = mapped_column(JSONB)
+    result_version: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    undone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
