@@ -1,51 +1,40 @@
 "use client";
 
-import { ArrowLeftRight, Inbox, LayoutDashboard, ListChecks, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Inbox,
+  LayoutDashboard,
+  ListChecks,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { motion } from "motion/react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { AccountMenu, AccountPanel } from "@/components/app-shell/account-controls";
+import { GuardedLink } from "@/components/app-shell/guarded-link";
 import { Brand } from "@/components/brand";
-import { useHealth } from "@/hooks/use-health";
 import { cn } from "@/lib/utils";
 
 export const APP_NAVIGATION = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, mobile: true },
+  { label: "Overview", href: "/dashboard", icon: LayoutDashboard, mobile: true },
   { label: "Transactions", href: "/transactions", icon: ArrowLeftRight, mobile: true },
   { label: "Review", href: "/review", icon: ListChecks, mobile: true },
-  { label: "Assistant", href: "/assistant", icon: Sparkles, mobile: true },
-  { label: "Connect", href: "/connect", icon: Inbox, mobile: false },
-  { label: "Privacy", href: "/privacy", icon: ShieldCheck, mobile: true },
+  { label: "Ask", href: "/assistant", icon: Sparkles, mobile: true },
+  { label: "Sources", href: "/sources", icon: Inbox, mobile: true },
+  { label: "Privacy", href: "/privacy", icon: ShieldCheck, mobile: false },
 ] as const;
 
 function isActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`) || (href === "/connect" && pathname.startsWith("/import"));
+  if (href === "/sources") {
+    return ["/sources", "/connect", "/import"].some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function ConnectionDot() {
-  const { connection } = useHealth();
-  const label =
-    connection.state === "connected"
-      ? "Live · API connected"
-      : connection.state === "checking"
-        ? "Checking connection…"
-        : connection.state === "degraded"
-          ? "Database unavailable"
-          : "Backend offline";
-  return (
-    <p role="status" className="flex items-center gap-2 text-xs font-medium text-ink-soft">
-      <span
-        className={cn(
-          "size-2 rounded-full",
-          connection.state === "connected" ? "bg-positive" : connection.state === "checking" ? "animate-pulse bg-ink-subtle" : "bg-warning",
-        )}
-      />
-      {label}
-    </p>
-  );
-}
-
-/** Floating glass sidebar (desktop) and glass tab bar (mobile). */
+/** Floating glass sidebar (desktop); compact header and five-tab bar (phones). */
 export function AppNav() {
   const pathname = usePathname();
 
@@ -59,7 +48,7 @@ export function AppNav() {
               const active = isActive(pathname, href);
               return (
                 <li key={href}>
-                  <Link
+                  <GuardedLink
                     href={href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
@@ -74,48 +63,43 @@ export function AppNav() {
                         transition={{ type: "spring", stiffness: 420, damping: 36 }}
                       />
                     ) : null}
-                    <Icon className={cn("relative size-[18px]", active && "text-violet")} aria-hidden="true" />
+                    <Icon
+                      className={cn("relative size-[18px]", active && "text-violet")}
+                      aria-hidden="true"
+                    />
                     <span className="relative">{label}</span>
-                  </Link>
+                  </GuardedLink>
                 </li>
               );
             })}
           </ul>
         </nav>
-        <Link
-          href="/assistant"
-          className="group relative overflow-hidden rounded-2xl bg-[linear-gradient(140deg,#efe9ff,#fbe6f6)] p-4 transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
-        >
-          <Sparkles className="size-5 text-violet" aria-hidden="true" />
-          <p className="mt-3 text-sm font-semibold text-ink">Ask in your language</p>
-          <p lang="ml" className="mt-0.5 text-xs text-ink-soft">
-            ഈ മാസം എത്ര ചെലവായി?
-          </p>
-        </Link>
-        <div className="mt-4 px-2">
-          <ConnectionDot />
-        </div>
+        <AccountPanel />
       </aside>
 
-      <header className="glass fixed inset-x-3 top-3 z-40 flex h-14 items-center justify-between rounded-full px-4 lg:hidden">
+      {/* Near-opaque on phones: content (including the dark estimate card) scrolls beneath,
+          and labels must keep their contrast over it. */}
+      <header className="glass fixed inset-x-3 top-3 z-40 flex h-14 items-center justify-between rounded-full bg-white/[0.94] pr-1.5 pl-4 lg:hidden">
         <Brand />
-        <Link href="/connect" className="text-sm font-semibold text-violet">
-          Connect
-        </Link>
+        <AccountMenu />
       </header>
 
-      <nav aria-label="App navigation" className="glass fixed inset-x-3 bottom-3 z-40 rounded-full p-1.5 lg:hidden">
-        <ul className="grid grid-cols-5">
+      <nav
+        aria-label="App navigation"
+        className="app-tabbar glass fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-full bg-white/[0.94] p-1.5 lg:hidden"
+      >
+        {/* Content-sized cells so "Transactions" fits at 320px without shrinking labels. */}
+        <ul className="flex">
           {APP_NAVIGATION.filter((item) => item.mobile).map(({ label, href, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
-              <li key={href}>
-                <Link
+              <li key={href} className="min-w-11 flex-auto">
+                <GuardedLink
                   href={href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "relative flex h-12 flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-semibold",
-                    active ? "text-ink" : "text-ink-subtle",
+                    "relative flex h-12 flex-col items-center justify-center gap-1 rounded-full px-1 text-[11px] leading-none font-semibold whitespace-nowrap",
+                    active ? "text-ink" : "text-ink-soft",
                   )}
                 >
                   {active ? (
@@ -125,9 +109,12 @@ export function AppNav() {
                       transition={{ type: "spring", stiffness: 420, damping: 36 }}
                     />
                   ) : null}
-                  <Icon className={cn("relative size-[18px]", active && "text-violet")} aria-hidden="true" />
+                  <Icon
+                    className={cn("relative size-[18px]", active && "text-violet")}
+                    aria-hidden="true"
+                  />
                   <span className="relative">{label}</span>
-                </Link>
+                </GuardedLink>
               </li>
             );
           })}

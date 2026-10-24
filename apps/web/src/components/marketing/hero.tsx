@@ -55,7 +55,7 @@ export function Hero() {
         </p>
         <div className="rise-in mt-9 flex flex-wrap items-center gap-3" style={delay(0.7)}>
           <Link
-            href="/connect"
+            href="/sources?intent=gmail"
             className="group inline-flex h-12 items-center gap-3 rounded-full bg-ink pr-2 pl-6 text-sm font-semibold text-white shadow-lift transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
           >
             Connect Gmail
@@ -64,11 +64,11 @@ export function Hero() {
             </span>
           </Link>
           <Link
-            href="/connect"
+            href="/demo"
             className="glass inline-flex h-12 items-center gap-2.5 rounded-full px-6 text-sm font-semibold text-ink transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
           >
             <Play className="size-3.5 fill-current" aria-hidden="true" />
-            Try the demo mailbox
+            Explore sample data
           </Link>
         </div>
         <ul

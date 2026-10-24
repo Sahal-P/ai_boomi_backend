@@ -51,7 +51,7 @@ export function SiteNav() {
             Open app
           </Link>
           <Link
-            href="/connect"
+            href="/sources"
             className="inline-flex h-10 items-center rounded-full bg-white px-5 text-[13px] font-semibold text-ink shadow-[0_1px_2px_rgba(20,16,60,0.06),0_8px_24px_-10px_rgba(76,52,170,0.35)] transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
           >
             Get started
