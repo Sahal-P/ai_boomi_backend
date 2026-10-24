@@ -1,113 +1,95 @@
-# Phase 1 architecture
+# FinBoy architecture
 
-FinBoy keeps one FastAPI app, one Next.js App Router app, PostgreSQL, and one
-lockfile per ecosystem. [The shared contract](phase1/contract.md) defines scope,
-interfaces, ownership, isolated ports/databases, and the demo truth table.
+FinBoy is one private household FastAPI service in `apps/api`, one Next.js App Router
+application in `apps/web`, and PostgreSQL. HTTP routes validate contracts; synchronous
+services own blocking work and write transactions; `db` owns SQLAlchemy metadata and
+sessions; `core` owns settings, access, errors, clocks and redacted logging. There is
+no startup `create_all`, queue service, signup, payment execution or external analytics.
 
-```mermaid
-flowchart LR
-  Browser[Next.js landing and app shell] --> Client[Domain clients / lib/api]
-  Client -->|HTTP / runtime zod validation| Routes[FastAPI api/v1]
-  Routes --> Services[Mail / ingestion / ledger / money / assistant / privacy]
-  Services --> Session[SQLAlchemy sessions]
-  Session --> Postgres[(PostgreSQL)]
-  Alembic[Reviewed Alembic migrations] --> Postgres
-  Services -. backend only / future features .-> Providers[Google / OpenAI]
-```
+The deployed boundary is Vercel's same-origin `/api/v1` rewrite to the loopback
+voxpay API behind HTTPS nginx. Twelve-hour host-only household cookies, exact-Origin
+write checks, independent single-use Gmail state/PKCE and the cross-host handoff
+remain in place. Only health, the fixed read-only demo, household authentication and
+the existing signed/capability-validated provider exceptions are public. Provider
+credentials remain exclusively backend-side. See [production](production.md).
 
-The diagram shows Phase 1 boundaries. Only health works end to end in the scaffold;
-domain routers are empty and ingestion, reconciliation, and money interfaces raise
-`NotImplementedError`. App routes contain headings and accessible navigation.
-No authentication, provider calls, ingestion, money calculations, or demo data are
-implemented here. The root evaluation/seed scripts point to modules their owners
-will add. Synthetic fixtures belong in `apps/api/fixtures/`.
+## Sources, ledger and scope
 
-## Backend
+Gmail scans and memory-only `.eml` uploads normalize messages, classify them, extract
+bounded evidence and reconcile canonical transactions and obligations. One message
+commits atomically. Successful sources deduplicate by stable provider/content identity;
+failed sources retain a safe reason and attempt count and can be retried. Gmail retries
+re-fetch selected source IDs; uploads require the original files. Bodies are never
+stored. Extraction cache keys distinguish sample and household provenance.
 
-- `api` owns HTTP contracts and translates requests/responses; synchronous routes
-  run blocking database work in FastAPI's thread pool.
-- `services` owns business logic and write transaction boundaries. Future ingestion
-  uses `BackgroundTasks` and `import_runs` counters, with no additional queue service.
-  LLMs interpret; deterministic money services calculate; users review uncertainty.
-- `db` owns the engine, request sessions, typed models, and metadata. Sessions close
-  without auto-commit. Alembic imports every model; only reviewed migrations change
-  schema. `0002_phase1` creates 11 tables, seeds the local user Arun, and preserves
-  UUIDs, integer paise, INR checks, timezone-aware timestamps, JSONB evidence, and
-  reconciliation links. No raw email body column exists. See contract §5 for details.
-- `core` owns settings, IST clock, allowlisted structured logging, error envelopes,
-  and request context. `today_ist()` honors the demo date only outside production;
-  `now_ist()` always returns real time for audit records.
+All finance queries and reconciliation partition by `dataset`. `/api/v1/demo` builds a
+fixed synthetic snapshot in memory without opening a household session. Its UI never
+imports samples. The legacy demo mutation returns `demo_read_only`. Additive migration
+0004 marks existing demo-only records as demo and mixed canonical values as quarantined,
+preserving source events, canonical values, locks and revisions. Quarantined values
+cannot enter ordinary finance, search, assistant, matching or review writes. The explicit
+quarantined history view and isolation inventory retain inspectability. Mixed data needs
+source-aware operator review; a dataset label is not proof of clean canonical values.
 
-Application construction opens no database connection. Lifespan disposes the
-engine. Health returns uncached `200/ok/connected` or `503/degraded/unavailable`;
-it checks connectivity, while Alembic commands check migration state.
+Confirmed, household, non-transfer transactions feed integer-paise INR calculations.
+Refunds/reversals offset outflows; corrected original categories propagate to refunds.
+Unpaid obligations due by the selected period end remain deductions across due-day and
+month rollover. Future/today and overdue amounts are separate; uncertain obligations are
+conservatively deducted and inspectable. Paid and dismissed states differ. Historical
+summaries describe current unresolved liabilities, not reconstructed bank balances.
 
-## Frontend
+## Recovery and concurrency
 
-Pages/layouts are Server Components. The landing connection panel uses a small
-hook for initial, 30-second, and manual refresh plus cancellation. It renders
-checking, connected, degraded, and offline states.
+A PostgreSQL trigger maintains a household generation across finance, source, revision,
+connection and import mutations. Tokens also contain the IST calculation day. Clients
+treat tokens as opaque. Versioned decisions and previews use the ingestion user lock
+and the generation row. Previews run in a rolled-back savepoint. Confirm may atomically
+save corrections; reject/reopen/merge/keep-separate/correct all preserve provenance.
+Decision snapshots contain changed structured entities and source links, never bodies.
+Undo appends revisions and succeeds only against the decision's unchanged snapshot.
+Later sources, links, user locks or edits cause a safe conflict instead of being lost.
 
-`src/lib/api/http.ts` owns `requestJson(path, schema, init)`, backend URL validation,
-zod response validation, safe `ApiError`, a five-second default timeout,
-`credentials: "omit"`, and uncached requests. Optional status schemas support the
-health endpoint's consistent 200/503 contract. Each domain gets its own module;
-`health.ts` is implemented. Components remain presentational.
+The additive counted transaction page supports all unresolved records independently
+of month, filters, stable ordering, continuation and version checks. The old transaction
+array remains available. Merge candidates are independent of the currently displayed
+queue and include compatible confirmed targets. Evidence carries stable exact IDs;
+field extraction completeness is separate from payment verification.
 
-The `(app)` route group provides minimal navigation and placeholders without
-changing `/`. Theme tokens and local Geist fonts preserve the landing design.
-The requested shadcn components are installed for subsequent feature owners.
+Imports run in the existing process using durable PostgreSQL counters. Run outcomes
+separate complete, partial, failed, interrupted and cancelled processing. The worker
+checks cancellation/scan permission before persistence checkpoints. Enabling scans never
+starts or resumes a job. The worker's PostgreSQL session lock distinguishes an active
+provider call from an abandoned run. A stopped upload cannot resume from a stored body.
+Gmail caps are explicit; encrypted continuation tokens preserve the original query window.
+There is no scheduler. Coverage is a query window, last successful scan, failures,
+review/quarantine counts and truncation, never a claim of complete mailbox/bank coverage.
 
-## Configuration and privacy
+## Assistant, voice and privacy
 
-Local env files are ignored; committed examples contain blank integration values
-and public local database settings. Secrets belong only in
-`~/.config/finboy/secrets.env` and ignored env files. OpenAI and OAuth secrets never
-enter browser bundles. Configured Fernet keys are validated; a configured
-`WEB_APP_URL` must match a CORS origin. Integration settings remain optional so
-health and scaffold builds need no credentials.
+Closed bookkeeping intents select deterministic engine operations. Full-scope merchant
+arithmetic separates gross outflows, refunds/reversals and net spending before evidence
+is capped. Contributing income/spending evidence is selected before the ten-row display
+limit. Supported relative periods resolve against IST; unsupported periods get a specific
+period clarification. Results include snapshot, resolved period, localized fact/warning
+labels and separate display-script/speech metadata. LLMs never calculate ledger totals
+or choose SQL/tools. Resemble Ultra English/Hindi, Gemini Malayalam and OpenAI
+transcription remain backend-only, with independent speech failure and text fallback.
 
-CORS permits explicit origins, GET/POST/PATCH/DELETE/OPTIONS, no credentials, and
-exposes generated request IDs. Local listeners bind to loopback. Logs allow only
-operational fields, including import run/stage/count/provider/outcome/model/latency.
-Bodies, query strings, tokens, SQL parameters, and raw exception text stay redacted.
-Existing errors keep the same safe envelope and request ID.
+Explicit authenticated export downloads structured records/corrections, excluding raw
+bodies, evidence snippets, credentials and account/reference/payment identifiers.
+Deletion previews report removed and retained shared-source counts, dates and seven-day
+backup retention. Previewed deletion rejects stale versions. Remaining evidence is
+revalidated; unsupported retained canonical values are quarantined. Operational task
+outcomes use fixed allowlisted events and IDs in the existing audit table, with no
+question text, merchant, amount, mail content, credential URL or external analytics.
 
-## Parallel work and verification
+## Frontend and verification ownership
 
-Follow contract §3–4. Each agent uses its assigned ports and database on the shared
-Postgres container; never stop it during parallel work. Root scripts accept
-`API_PORT` / `WEB_PORT`; each worktree must also update CORS and backend URLs.
-The integrator owns shared dependencies, core, migration baseline, and HTTP helper.
-
-`pnpm check` runs lint, unit/client tests, and strict types; `pnpm build` checks the
-production build. Database checks use a local disposable database, reviewed Alembic
-upgrades, drift checks, and integration tests whose constraint probes roll back.
-Browser checks cover desktop/mobile navigation and the health panel's four states.
-
-See [verification](verification.md) for actual outcomes. Scope excludes product
-login, Outlook, IMAP, WhatsApp, bank APIs, Gmail watch, security recommendations,
-model training, and deployment. New services or shared packages need a concrete use.
-
-## Completion round integration (24 October 2026)
-
-The active completion contract is phase1/parallel-completion.md. Real A1 ingestion
-and A2 imports now compose with Agent 1's deterministic money/read-review services,
-Agent 3's single assistant/speech implementation, and Agent 4's signed WhatsApp
-transport. Agent 5 supplied shared settings/languages, provider unavailable errors,
-startup stale-task handling, global no-store, operational readiness, and restricted
-final runtime commands. No business arithmetic or provider client is duplicated
-in the frontend or WhatsApp adapter. Actual JSON contracts are zod-validated in web.
-
-The premium design was copied as a reviewed uncommitted snapshot (hash manifest),
-not merged from its stale scaffold HEAD. The human assigned the missing Agent 2
-frontend work to Agent 5. The source design worktree remains untouched. Web hooks
-own runtime state/communication; presentational components render backend facts.
-Microphone recording/transcripts/audio URLs stay ephemeral and are released on
-replacement/unmount. Marketing examples are synthetic illustrations.
-
-0003_whatsapp is additive on 0002_phase1 and adds three metadata-only tables.
-The public stateless ingress forwards only exact webhook GET/POST to a fixed
-loopback API upstream. Product/financial routes remain private. Shared PostgreSQL
-and other agents' listeners are preserved. Current live provider/delivery acceptance
-and residual gaps belong in handoffs/agent-5.md rather than health assumptions.
+Presentational components consume runtime-validated domain clients under `src/lib/api`
+and small state hooks. The Product owner owns all frontend files during the UX round;
+the Backend owner takes integration ownership only after its explicit handoff.
+[UX API contract](ux-round/api-contract.md) freezes the additive schemas and examples;
+[implementation map](ux-round/implementation-map.md) distinguishes implementation from
+assembled browser and human acceptance. Unit tests require no PostgreSQL; schema and
+high-risk journeys use only a loopback, non-production disposable database. Real consent,
+phone playback, microphone permission and observed comprehension are separate evidence.

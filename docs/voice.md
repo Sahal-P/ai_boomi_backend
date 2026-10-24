@@ -228,3 +228,15 @@ product-page QA. Agent 3 made no Next.js changes. Product loading/offline/empty/
 keyboard, microphone-denied and responsive 1440×1000 / 390×844 / 320×740 checks remain
 with Agent 2 and final integration. No human microphone recording or WhatsApp delivery
 is claimed here. No public ingress, tunnel, additional chat or subagent was created.
+
+## UX answer provenance (24 October 2026)
+
+Bookkeeping answers include opaque data version, resolved IST period, exact evidence
+IDs, total evidence count and an explicit sampling flag. Merchant arithmetic uses the
+entire matching confirmed non-transfer scope, separating gross outflows, refunds and
+net spending before selecting up to ten records. Income evidence is selected before
+capping. Today/yesterday/current month/previous month/YYYY-MM are deterministic;
+unsupported periods receive period-specific clarification. Localized fact/warning labels
+and separate display-script/spoken-language metadata support native and romanized styles.
+Providers, refusal boundaries, backend-only keys and independent speech/text fallback
+remain unchanged. These changes do not establish human microphone or phone playback.

@@ -82,3 +82,15 @@
 - Follow docs/production.md. Keep production access fail-closed; do not introduce
   public multi-user signup, expose unauthenticated finance routes, or copy credentials
   into Vercel/browser configuration. Preserve all other running host applications.
+
+## UX remediation round — 24 October 2026
+
+The human assigned Backend/Integration to Agent 1 and Product to Agent 2 from exact
+baseline b572565aa521a753fbee1271ca0c68e470ff15c8. This round's additive contract and
+scope changes supersede earlier frozen interfaces only as documented in
+`docs/ux-round/api-contract.md`. Backend uses feat/finboy-ux-backend, loopback 8031/3031
+and disposable finboy_ux_api. Product uses feat/finboy-ux-frontend, 8032/3032 and
+finboy_ux_ui. Backend owns apps/api and backend/domain/operations docs; Product owns
+apps/web, JavaScript tooling and UI/design docs until its explicit handoff. Final
+assembly belongs to Agent 1 on feat/finboy-ux-integration. Do not create more agents,
+edit other worktrees, invent local OAuth callbacks, or run production test suites.

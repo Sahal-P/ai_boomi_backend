@@ -137,3 +137,15 @@ See [architecture](docs/architecture.md), [extraction](docs/extraction.md),
 [money](docs/money.md), [product UI](docs/product-ui.md),
 [design system](docs/design-system.md), [integration handoff](docs/handoffs/agent-5.md).
 The original design worktree and the pre-existing A2 .gitignore edit are preserved.
+
+## UX trust and recovery round
+
+[API contract and synthetic examples](docs/ux-round/api-contract.md) describe the
+isolated read-only demo, overdue liabilities, honest manual scan coverage, versioned
+review/undo, history pagination, recoverable extraction and private export/deletion
+previews. [Source isolation operations](docs/ux-round/data-isolation-operations.md)
+include a read-only aggregate inventory command and non-destructive migration policy.
+The [F01–F38 map](docs/ux-round/implementation-map.md) distinguishes backend, Product,
+assembled browser and human acceptance. Never use the old demo import to populate a
+household ledger. Local UX disposable databases are finboy_ux_api and finboy_ux_ui;
+all existing production and shared-service protections remain binding.

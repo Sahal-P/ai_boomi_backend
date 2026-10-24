@@ -117,3 +117,19 @@ in `docs/handoffs/agent-1.md`.
 
 Implementation references: [FastAPI typed query models](https://fastapi.tiangolo.com/tutorial/query-param-models/)
 and [SQLAlchemy 2.1 transaction framing](https://docs.sqlalchemy.org/en/21/orm/session_basics.html#framing-out-a-begin-commit-rollback-block).
+
+## UX trust contract (24 October 2026)
+
+The additive [UX contract](ux-round/api-contract.md) supersedes the old upcoming-only
+estimate. Household finance excludes demo and quarantined canonical values. Unpaid
+obligations due by period end remain deducted after their due date, with separate
+future/today, overdue and uncertain subtotals. Uncertainty is conservatively deducted;
+paid/dismissed resolutions and corrections are inspectable and version checked.
+
+`/transactions` remains an array; `/transactions/page` adds counts, stable pagination,
+all-month unresolved scope, source/kind/category/search filters and snapshot versions.
+Versioned decisions include atomic correction+confirm, reopen, compatible independent
+merge candidates, a rollback-only impact preview and stale-safe undo with preserved
+source mappings, links, locks and revisions. Date, direction and kind corrections
+propagate through deterministic reconciliation. Extraction quality never means payment
+certainty. Assistant merchant totals use full matching scope with explicit refunds.

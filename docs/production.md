@@ -147,3 +147,26 @@ failed. The run completed with no run-level error. This verifies the live deploy
 callback and first Gmail import, with partial message extraction explicitly recorded.
 No revoke/delete action was performed and no mailbox content or financial fields
 were printed during verification.
+
+## UX remediation release procedure
+
+The UX round is authorized from b572565 under the implementation brief and
+`docs/ux-round/api-contract.md`. Only Agent 1 releases after Agent 2's explicit handoff
+and assembled real UI/API verification. Preserve the current 7bf4587 release until
+integration gates pass. API/schema support deploys before the dependent frontend.
+The read-only `/api/v1/demo` is a new explicit public exception; it cannot access the
+household database. The legacy household demo-import mutation is disabled.
+
+Before migration, run the aggregate read-only source inventory described in
+`ux-round/data-isolation-operations.md`, make/validate a private backup, and verify no
+active import is being terminated. Stop/restart only finboy.service when necessary
+to prevent old reconciliation code writing through a new scope migration. Apply
+0004_ux_trust and 0005_scan_continuation; preserve all data/revisions and quarantine
+mixed provenance. Never reset the production ledger. No automatic schema downgrade
+or old-code rollback that bypasses scope filters. Record any actual mixed-data
+operator acceptance separately from passing synthetic preservation tests.
+
+Keep the same session key/password hash, Gmail grants/callback, provider credentials,
+proxy origins, DNS, nginx sites and other applications. Do not run tests or fixture
+imports in production. Production checks are read-only health/access/schema/provider
+configuration and human-session browser journeys, with consent/playback gaps explicit.

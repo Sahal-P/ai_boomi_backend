@@ -238,3 +238,20 @@ Reconnect before the demo. A1's pipeline and fixture merge still remain necessar
 for successful extraction and the full rendered demo mailbox. The upload API and
 three-message demo entry point are tested with A1 interface doubles; the browser
 file-picker test remains limited by the Chrome extension setting described above.
+
+## UX recovery contract (24 October 2026)
+
+Scans remain manual; allowing scans only changes permission, while Scan now creates
+an independent run. Imports expose durable history, exact timestamps, safe issue
+reasons and complete/partial/interrupted/cancelled outcomes. Pause/cancel is checked
+at persistence checkpoints, and committed counters remain visible. An abandoned
+in-process task is not described as resumed. Upload recovery requires the original
+files; no raw upload body is retained. Gmail retry re-fetches selected failed IDs,
+while successful events remain idempotent. Failed-source IDs and attempts are stable.
+
+Gmail date windows use IST epoch boundaries. Caps/truncation are visible; Continue
+starts a bounded job from encrypted provider continuation state in the original window.
+Continuation tokens and provider message IDs never enter browser results/logs. A full
+query window is still not complete bank/mailbox coverage. Last successful scan, service
+availability, pending review and failed-source counts are distinct. Sample viewing is
+read-only and no longer creates an import; disposable tests still exercise the pipeline.
