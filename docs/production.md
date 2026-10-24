@@ -216,3 +216,31 @@ The extended read-only UX preflight also found zero merged transactions. 0006 re
 original event lineage for later exact source deletion and removes derived private
 review snapshots with the deleted evidence. Unknown older merge lineage fails closed
 before deletion instead of guessing. No production privacy action was run for UX tests.
+
+## UX release executed — 24 October 2026
+
+The combined application source `3098a14` is deployed: voxpay current points to
+`/opt/finboy/releases/3098a14`; Vercel production deployment
+`6BST4o7vdCJjU5GwoP3tnxUStGyh` was Ready for main on `finboy.antlegs.in` (42-second build).
+This supersedes the earlier runtime/schema observations above while preserving the eligibility
+hotfix. Subsequent release-evidence/test-only commits preserve the same application source.
+
+A fresh private backup passed archive listing. Immediate preflight found zero active imports,
+26 demo-only transactions, four demo-only obligations, zero mixed records and zero invalid
+cross-scope payment links. Additive 0004–0006 migrations preserved record/source/import counts;
+revision/audit counts did not decrease. Current schema is `0006_event_origins`, no drift;
+source origins are complete and household reads have zero demo-provenance contamination.
+No production record reset/deletion, test suite, fixture import or general rescan was performed.
+
+Only FinBoy stopped/started. Finind, Finind Celery, nginx and PostgreSQL remained active.
+Public health and read-only demo return 200; unauthenticated finance/privacy return 401;
+docs/OpenAPI return 404, both directly and through the frontend. The existing human household
+session survived. Actual browser Sources controls, summary coverage/household identity and
+exact evidence passed; evidence dialogs returned focus with no horizontal overflow at
+1440×1000, 390×844 and 320×740. The public sample rendered its persistent read-only identity.
+Provider keys, session/password settings, Gmail grants/callback, DNS and proxy origins stayed
+unchanged. No new consent or microphone permission was requested for this release.
+
+See `handoffs/ux-integration.md` for commands, verification boundaries and CI, and
+`ux-round/implementation-map.md` for F01–F38 software completion versus human acceptance.
+Never roll the pre-scope API back onto the migrated database; recover forward with scoped code.
