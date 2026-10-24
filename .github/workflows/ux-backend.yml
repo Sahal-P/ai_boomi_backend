@@ -65,4 +65,4 @@ jobs:
         run: |
           uv run --package finboy-api alembic -c apps/api/alembic.ini upgrade head
           uv run --package finboy-api alembic -c apps/api/alembic.ini check
-          uv run pytest apps/api/tests -m integration
+          env -u WEB_APP_URL uv run pytest apps/api/tests -m integration

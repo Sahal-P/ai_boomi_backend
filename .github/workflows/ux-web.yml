@@ -29,7 +29,6 @@ jobs:
       CORS_ORIGINS: '["http://127.0.0.1:3031"]'
       WEB_APP_URL: http://127.0.0.1:3031
       FINBOY_EXTRACTION_MODE: rules
-      DEMO_TODAY: '2026-10-24'
       E2E_PORT: 3031
       E2E_API_ORIGIN: https://127.0.0.1:8031
       UV_PYTHON: 3.15.1
@@ -51,6 +50,7 @@ jobs:
           uv python install 3.15.1
           uv sync --locked
           pnpm --filter @finboy/web exec playwright install-deps chromium
+          sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Static contracts and build
         run: env -u WEB_APP_URL pnpm check && pnpm build
       - name: Three-width contract browser journeys
@@ -62,7 +62,7 @@ jobs:
           mkdir -m 700 /tmp/finboy-ci-tls
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=FinBoy CI' -addext 'subjectAltName=IP:127.0.0.1' -keyout /tmp/finboy-ci-tls/key.pem -out /tmp/finboy-ci-tls/cert.pem
           chmod 600 /tmp/finboy-ci-tls/*
-          uv run --package finboy-api uvicorn finboy.main:create_app --factory --host 127.0.0.1 --port 8031 --ssl-keyfile /tmp/finboy-ci-tls/key.pem --ssl-certfile /tmp/finboy-ci-tls/cert.pem --no-access-log --log-config apps/api/logging.json > /tmp/finboy-ci-api.log 2>&1 &
+          DEMO_TODAY=2026-10-24 uv run --package finboy-api uvicorn finboy.main:create_app --factory --host 127.0.0.1 --port 8031 --ssl-keyfile /tmp/finboy-ci-tls/key.pem --ssl-certfile /tmp/finboy-ci-tls/cert.pem --no-access-log --log-config apps/api/logging.json > /tmp/finboy-ci-api.log 2>&1 &
           for attempt in $(seq 1 30); do
             if curl --fail --silent --cacert /tmp/finboy-ci-tls/cert.pem https://127.0.0.1:8031/api/v1/health > /dev/null; then exit 0; fi
             sleep 1
