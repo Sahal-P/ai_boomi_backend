@@ -10,7 +10,7 @@ import { displayLang, SPEECH_LIMITS, type DisplayStyle } from "@/lib/api/assista
 import { formatMoney } from "@/lib/api/money";
 import { recordOutcome } from "@/lib/api/privacy";
 import type { Turn } from "@/lib/conversation";
-import { formatDay } from "@/lib/dates";
+import { formatDay, formatPeriod } from "@/lib/dates";
 import { kindLabels } from "@/lib/labels";
 
 export const styleLabels: Record<DisplayStyle, { label: string; lang?: string }> = {
@@ -90,9 +90,9 @@ export function TurnCard({
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
             <span className="rounded-full bg-lilac px-2.5 py-1 text-violet-deep">{policyLabel[answer.policy]}</span>
             {answer.resolved_period && (
+              // The API's period label is an ISO range; show the product's one date style instead.
               <span className="rounded-full bg-muted px-2.5 py-1 text-ink-soft">
-                <span lang={lang}>{answer.resolved_period.label}</span>
-                <span className="sr-only"> ({formatDay(answer.resolved_period.start)} to {formatDay(answer.resolved_period.end)})</span>
+                {formatPeriod(answer.resolved_period.start, answer.resolved_period.end)}
               </span>
             )}
           </div>

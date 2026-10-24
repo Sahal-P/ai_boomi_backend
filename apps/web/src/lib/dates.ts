@@ -40,6 +40,14 @@ export function formatRange(start: string | null, end: string | null): string | 
   return `${formatDay(start)} – ${formatDay(end)}`;
 }
 
+/** "October 2026" for a whole calendar month, else "1 Oct 2026 – 24 Oct 2026" (or one day). */
+export function formatPeriod(start: string, end: string): string {
+  const first = calendarDate(start);
+  const monthEnd = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+  if (first.getDate() === 1 && calendarDate(end).getTime() === monthEnd.getTime()) return monthYear.format(first);
+  return start === end ? formatDay(start) : `${formatDay(start)} – ${formatDay(end)}`;
+}
+
 export function monthLabel(year: number, month: number): string {
   return monthYear.format(new Date(year, month - 1, 1));
 }

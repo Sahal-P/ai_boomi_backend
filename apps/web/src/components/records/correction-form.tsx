@@ -34,14 +34,22 @@ export function draftFrom(tx: Transaction): CorrectionDraft {
 
 type Errors = Partial<Record<keyof CorrectionDraft, string>>;
 
-function validate(draft: CorrectionDraft): { errors: Errors; amount: number | null } {
+function latestDate(evidence: string): string {
+  const today = istDate(new Date());
+  return evidence > today ? evidence : today;
+}
+
+function validate(draft: CorrectionDraft, baseline: CorrectionDraft): { errors: Errors; amount: number | null } {
   const errors: Errors = {};
   const amount = inputPaise(draft.amount);
   if (!draft.merchant.trim()) errors.merchant = "Enter the merchant or payer name.";
   else if (draft.merchant.trim().length > 160) errors.merchant = "Use at most 160 characters.";
   if (amount === null) errors.amount = "Enter a positive amount in rupees, with at most two decimals.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.date)) errors.date = "Choose a date.";
-  else if (draft.date > istDate(new Date())) errors.date = "The date can't be in the future.";
+  // Evidence can carry a later date (a scheduled debit); only a date the person typed is checked.
+  else if (draft.date !== baseline.date && draft.date > istDate(new Date())) {
+    errors.date = "The date can't be in the future.";
+  }
   const kind = draft.kind as Kind;
   if (MONEY_IN.includes(kind) && draft.direction !== "in") {
     errors.direction = `${kindLabels[kind]} is money coming in. Change the direction or the type.`;
@@ -97,7 +105,7 @@ export function CorrectionForm({
     kind: `${prefix}-kind`,
   };
   const dirty = (Object.keys(baseline) as (keyof CorrectionDraft)[]).some((key) => draft[key] !== baseline[key]);
-  const { errors, amount } = validate(draft);
+  const { errors, amount } = validate(draft, baseline);
   const invalid = Object.keys(errors).length > 0;
 
   useEffect(() => {
@@ -181,7 +189,7 @@ export function CorrectionForm({
         </div>
         <div>
           <label htmlFor={ids.date} className="text-xs font-semibold">Date</label>
-          <input id={ids.date} type="date" value={draft.date} max={istDate(new Date())} onChange={(event) => update("date", event.target.value)} className={inputClass} {...field("date")} />
+          <input id={ids.date} type="date" value={draft.date} max={latestDate(baseline.date)} onChange={(event) => update("date", event.target.value)} className={inputClass} {...field("date")} />
           {fieldError("date")}
         </div>
         <div>

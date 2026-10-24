@@ -649,7 +649,7 @@ export class FakeFinBoyApi {
         warning_labels: { pending_review_items: label.warning },
         data_version: String(this.version),
         dataset: "household",
-        resolved_period: { start: "2026-10-01", end: "2026-10-31", label: language === "en" ? "October 2026" : "अक्टूबर 2026" },
+        resolved_period: { start: "2026-10-01", end: "2026-10-31", label: "2026-10-01 – 2026-10-31" },
       },
     };
   }

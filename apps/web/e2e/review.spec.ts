@@ -48,6 +48,24 @@ test("save and confirm submits the edited value atomically, then undo restores i
   expect(api.requests.some((item) => item.path.endsWith("/undo"))).toBe(true);
 });
 
+test("an evidence date after today still confirms; only a typed future date is refused", async ({ page, api }, testInfo) => {
+  // The browser's today is before the record's 20 Oct evidence date (as with a scheduled debit).
+  await page.clock.setFixedTime(new Date("2026-10-19T12:00:00+05:30"));
+  await page.goto("/review");
+  const panel = await openRecord(page, testInfo.project.name === "desktop", "Sample Marketplace");
+  const date = panel.getByLabel("Date");
+  await date.fill("2026-10-23");
+  await panel.getByRole("button", { name: "Save and confirm" }).click();
+  await expect(panel.getByText("The date can't be in the future.")).toBeVisible();
+  await expect(date).toHaveAttribute("aria-invalid", "true");
+  await panel.getByRole("button", { name: "Discard changes" }).click();
+  await panel.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect.poll(() => api.unresolved.length).toBe(3);
+  const decision = api.requests.filter((item) => item.path.endsWith("/decisions")).at(-1);
+  expect(decision?.body).toMatchObject({ action: "confirm" });
+  expect(decision?.body).not.toHaveProperty("correction.occurred_at");
+});
+
 test("a duplicate merges into a confirmed record from the independent candidate list", async ({ page, api }, testInfo) => {
   const wide = testInfo.project.name === "desktop";
   await page.goto("/review?q=Sample+Books");

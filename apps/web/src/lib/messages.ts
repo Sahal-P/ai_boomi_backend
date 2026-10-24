@@ -11,7 +11,7 @@ export type Problem = {
   code: string | null;
 };
 
-// Fixed backend codes with their own recovery copy (contract v1 plus phase-1 mail codes).
+// Fixed backend codes with their own recovery copy (contract v1.1.2 plus phase-1 mail codes).
 const byCode: Record<string, string> = {
   version_conflict:
     "Your records changed since this was loaded. Nothing was saved. Review the latest version, then try again.",
@@ -21,6 +21,13 @@ const byCode: Record<string, string> = {
   demo_read_only: "The sample is read-only. It never changes your household records.",
   original_files_required:
     "Uploaded emails aren't kept, so FinBoy needs the original .eml files again to retry them.",
+  invalid_decision:
+    "Those changes don't fit together — for example a refund marked as money going out. Nothing was saved. Check the fields and try again.",
+  quarantined_record:
+    "This record mixes sample and household evidence, so it's on hold and can't be decided here. Nothing changed.",
+  database_unavailable: "Your records are temporarily unavailable. Nothing changed. Try again shortly.",
+  source_lineage_unavailable:
+    "Some older merged records can't be traced to their emails, so nothing was deleted. Ask the person who set up FinBoy to check them first.",
   source_unavailable: "Gmail is unavailable right now. Nothing changed. Try again shortly.",
   reconnect_required: "Google access expired or was revoked. Reconnect Gmail to scan again.",
   upload_limit: "That batch is too large. Choose up to 50 .eml files of 2 MB or less each.",
