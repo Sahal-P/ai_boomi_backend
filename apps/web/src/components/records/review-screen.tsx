@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight, CircleCheckBig, FileSearch, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { EmptyState, LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
@@ -73,7 +73,9 @@ export function ReviewScreen() {
     if (next) select(next.id);
   }
 
-  useEffect(() => {
+  // Keep the shortcut handler in sync before the new queue position is painted.
+  // A second key can otherwise reach the previous position's passive-effect listener.
+  useLayoutEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey || typingTarget(event.target)) return;
       if (document.querySelector("[role=dialog][data-state=open], [role=alertdialog]") && wide) return;
