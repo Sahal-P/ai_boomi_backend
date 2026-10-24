@@ -65,11 +65,12 @@ test("health client rejects unexpected HTTP statuses and non-JSON data", async (
   await assert.rejects(getHealth(), ApiError);
 });
 
-test("health client propagates an unreachable backend", async (t) => {
+test("health client reports an unreachable backend without its error text", async (t) => {
   t.mock.method(globalThis, "fetch", async () => {
-    throw new TypeError("Network error");
+    throw new TypeError("Network error at private-host");
   });
-  await assert.rejects(getHealth(), TypeError);
+  await assert.rejects(getHealth(), (error: unknown) =>
+    error instanceof ApiError && error.kind === "network" && !error.message.includes("private-host"));
 });
 
 test("health client rejects status/body mismatches in both directions", async (t) => {

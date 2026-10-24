@@ -26,7 +26,7 @@ test("requestJson rejects invalid JSON schemas without exposing input", async (t
     error instanceof ApiError && error.status === 200 && !error.message.includes("private"));
 });
 
-test("requestJson propagates caller cancellation and timeout", async (t) => {
+test("requestJson classifies timeouts and keeps caller cancellation as AbortError", async (t) => {
   t.mock.method(globalThis, "fetch", async (_input: string, init: RequestInit) => {
     const signal = init.signal;
     assert.ok(signal);
@@ -39,9 +39,8 @@ test("requestJson propagates caller cancellation and timeout", async (t) => {
       }, { once: true });
     });
   });
-  await assert.rejects(requestJson("/api/v1/example", schema, { timeoutMs: 5 }), {
-    name: "TimeoutError",
-  });
+  await assert.rejects(requestJson("/api/v1/example", schema, { timeoutMs: 5 }), (error: unknown) =>
+    error instanceof ApiError && error.kind === "timeout");
   const controller = new AbortController();
   controller.abort();
   await assert.rejects(requestJson("/api/v1/example", schema, { signal: controller.signal }), {
