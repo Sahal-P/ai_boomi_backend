@@ -246,6 +246,7 @@ def test_a_complete_screenshot_still_cannot_confirm_itself(settings: Settings) -
 def test_read_payment_sends_only_the_sanitized_image(
     monkeypatch: pytest.MonkeyPatch, vision: Settings
 ) -> None:
+    monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "live")
     fake = MagicMock()
     create = fake.return_value.__enter__.return_value.responses.parse
     create.return_value.output_parsed = reading()
@@ -266,6 +267,7 @@ def test_read_payment_sends_only_the_sanitized_image(
 def test_read_payment_failures_are_fixed_and_redacted(
     monkeypatch: pytest.MonkeyPatch, vision: Settings, settings: Settings, caplog
 ) -> None:
+    monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "live")
     png = image(vision, "png")
     fake = MagicMock()
     create = fake.return_value.__enter__.return_value.responses.parse
