@@ -3,18 +3,20 @@
 import shutil
 from typing import Annotated, Literal
 
+from alembic.script import ScriptDirectory
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from finboy.core.config import LOCAL_USER_ID
+from finboy.core.config import API_ROOT, LOCAL_USER_ID
 from finboy.db.models.mail import ImportRun
 from finboy.db.session import get_session
 from finboy.services.whatsapp.config import ChannelUnavailable, channel_config
 
 router = APIRouter(tags=["readiness"])
+SCHEMA_HEAD = ScriptDirectory(str(API_ROOT / "alembic")).get_current_head()
 
 
 class Readiness(BaseModel):
@@ -41,7 +43,7 @@ def readiness(
     try:
         session.execute(text("SELECT 1"))
         revision = session.scalar(text("SELECT version_num FROM alembic_version"))
-        schema = "current" if revision == "0006_event_origins" else "unavailable"
+        schema = "current" if revision == SCHEMA_HEAD else "unavailable"
         active = session.scalar(
             select(func.count())
             .select_from(ImportRun)

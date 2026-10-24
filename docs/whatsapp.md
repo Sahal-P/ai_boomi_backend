@@ -299,3 +299,15 @@ unavailable when `OPENAI_VISION_MODEL` is unset or extraction runs offline/rules
 
 Not verified live: no real Meta image webhook, no live OpenAI vision call, and no phone
 reply. Production WhatsApp stays disabled.
+
+## Subsequent production activation
+
+The human explicitly enabled production on 24 October 2026. This supersedes the
+disabled status above: the existing private allowlist is active, Meta's verified
+callback points to `finboy-api.antlegs.in`, and actual production text replies have
+reached `read`. See [production activation](production.md#whatsapp-production-activated--24-october-2026)
+for the verified token expiry, configuration and operational checks.
+
+The screenshot reader's real OpenAI synthetic-image capability check passed with
+`gpt-6-luna`; screenshot-only records remain review-only. Real phone image capture and
+voice playback are still unverified, and the prior voice deferral remains in effect.

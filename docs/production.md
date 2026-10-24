@@ -263,3 +263,33 @@ verified `GROQ_API_KEY`, `GROQ_TRANSCRIBE_MODEL=whisper-large-v3-turbo` and
 `SPEECH_TRANSCRIBE_PROVIDER=groq`. Screenshot activation additionally requires a verified
 `OPENAI_VISION_MODEL` and separately authorized WhatsApp acceptance. No such live
 Groq/vision/WhatsApp acceptance is claimed by this release.
+
+## WhatsApp production activated — 24 October 2026
+
+The human explicitly requested activation after the coordinated release. Production
+now has `WHATSAPP_ENABLED=true` with the same private one-sender allowlist, app and
+phone context. The renewed token was validated for the existing app, required grants
+and phone/WABA access, then exchanged server-side for a long-lived user token expiring
+23 December 2026 at 06:37:10 UTC. No system user, new app/phone, recipient or billing
+change was created. Credentials remain private; stable encryption/session/Gmail keys
+and all unrelated provider settings are preserved.
+
+Meta Dashboard verified and saved the exact production callback
+`https://finboy-api.antlegs.in/api/v1/whatsapp/webhook`; fresh Graph reads confirm its
+active `messages` subscription and the existing WABA/app subscription. Public exact
+challenge succeeds; wrong verify token and invalid signature return 403. Finance
+remains authenticated (401 without session), and health returns 200. Only FinBoy
+restarted; Finind, Celery, nginx and PostgreSQL remain active.
+
+`OPENAI_VISION_MODEL=gpt-6-luna` passed a synthetic image-input check through the real
+reader: one grounded event, matching amount and review-only confidence; zero database
+writes. Production speech remains OpenAI; Groq is not configured. Real production text
+receipts completed without errors and an outbound reply reached Meta `read` status.
+This is actual text transport; it does not establish phone voice playback or a real
+image-to-review round trip. The earlier human-deferred voice acceptance remains pending.
+
+Readiness now compares the database revision with the deployed Alembic head instead
+of a hard-coded old revision. Current 0007 reports current; 0006 remains degraded.
+`pnpm check` passed 733 backend unit and 39 web tests, lint and strict TypeScript;
+the production-shaped build passed. No schema or dependency change accompanies this
+readiness correction, and no test suite was run against production.

@@ -7,7 +7,7 @@ from finboy.main import create_app
 
 @pytest.mark.anyio
 async def test_readiness_separates_configuration_from_live_acceptance(client, session):
-    session.scalar.side_effect = ["0006_event_origins", 0]
+    session.scalar.side_effect = ["0007_whatsapp_capture", 0]
     response = await client.get("/api/v1/readiness")
     assert response.status_code == 200
     result = response.json()
@@ -20,6 +20,15 @@ async def test_readiness_separates_configuration_from_live_acceptance(client, se
     assert result["live_provider_acceptance"] == "not_checked_by_readiness"
     assert result["import_worker"] == "in_process_not_durable"
     assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.anyio
+async def test_readiness_rejects_the_schema_before_capture_upgrade(client, session):
+    session.scalar.side_effect = ["0006_event_origins", 0]
+    response = await client.get("/api/v1/readiness")
+    assert response.status_code == 503
+    assert response.json()["schema_status"] == "unavailable"
+    assert response.json()["status"] == "degraded"
 
 
 @pytest.mark.anyio

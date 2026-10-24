@@ -104,3 +104,14 @@ contract changes in `docs/capture-round/contract.md` supersede earlier non-goals
 documented there. One agent on feat/finboy-voice-capture, loopback 8041/3041, disposable
 finboy_capture. WhatsApp stays disabled in production; WhatsApp never confirms, edits or
 deletes records, and screenshots/transcripts are never stored.
+
+## Authorized WhatsApp production activation — 24 October 2026
+
+The human subsequently explicitly requested enabling WhatsApp in production. This
+supersedes the earlier production-disabled statements only for the existing Meta
+app and existing private sender allowlist. Preserve household access, consent/STOP
+state, stable encryption/session keys and all other host applications. No public
+signup, new recipient, business phone, app, billing setup or unsolicited send.
+Production speech remains OpenAI; screenshot reading uses capability-verified
+`gpt-6-luna` and every screenshot-only event still requires review. Record actual
+Meta delivery/read status separately from human voice/screenshot acceptance.
