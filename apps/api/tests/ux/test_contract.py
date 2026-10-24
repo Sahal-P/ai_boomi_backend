@@ -183,3 +183,52 @@ def test_category_words_inside_merchant_names_do_not_add_silent_filters():
         category = rule_intent("How much did I spend on " + phrase + " today?")
         assert category.intent == "spending_query" and category.category == "food_dining"
     assert rule_intent("How much did I spend in September?").clarification_reason == "period"
+
+
+def test_published_response_examples_match_the_concrete_contracts():
+    import json
+    from pathlib import Path
+
+    from finboy.services.assistant.models import AssistantAnswer
+    from finboy.services.money.engine import CashFlowSimulation, MoneySummary
+    from finboy.services.money.models import TransactionDetail
+    from finboy.services.ux.contracts import (
+        DeletionPreview,
+        DemoView,
+        ImportPage,
+        IsolationInventory,
+        IssuePage,
+        ObligationDetail,
+        ObligationList,
+        TaskResult,
+    )
+    from finboy.services.ux.decisions import DecisionPreview, DecisionResult
+    from finboy.services.ux.imports import ImportView
+    from finboy.services.ux.records import MergeCandidates, TransactionPage
+
+    examples = json.loads(
+        (Path(__file__).parents[4] / "docs/ux-round/fixtures/actual-http-v1.json").read_text()
+    )
+    for key, model in {
+        "demo": DemoView,
+        "summary": MoneySummary,
+        "transaction_page": TransactionPage,
+        "filtered_empty": TransactionPage,
+        "transaction_detail": TransactionDetail,
+        "merge_candidates": MergeCandidates,
+        "obligations": ObligationList,
+        "obligation_detail": ObligationDetail,
+        "import_status": ImportView,
+        "import_history": ImportPage,
+        "import_issues": IssuePage,
+        "isolation": IsolationInventory,
+        "decision_preview": DecisionPreview,
+        "decision_result": DecisionResult,
+        "undo_result": DecisionResult,
+        "simulation": CashFlowSimulation,
+        "deletion_preview": DeletionPreview,
+        "task_outcome": TaskResult,
+    }.items():
+        model.model_validate(examples[key])
+    for style in ("en", "hi", "ml", "hinglish", "manglish"):
+        AssistantAnswer.model_validate(examples["assistant_" + style])

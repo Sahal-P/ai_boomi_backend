@@ -98,6 +98,7 @@ def test_equivalent_engine_facts_and_native_speech(
             session, user_id=LOCAL_USER_ID, text=question, display_style=style, settings=settings
         )
         assert answer.policy == "answer"
+        assert len(answer.speech_text) <= settings.speech_max_text_characters
         assert expected in [f.amount_minor for f in answer.facts]
         assert "pending_review_items" in answer.warnings
         if answer.simulation:
@@ -260,3 +261,23 @@ def test_evidence_is_restricted_to_engine_summary(
         settings=settings,
     )
     assert [t.id for t in answer.evidence_transactions] == [wanted]
+
+
+def test_model_cannot_select_an_unstated_date_range(monkeypatch, settings):
+    from pydantic import SecretStr
+
+    configured = settings.model_copy(
+        update={"openai_api_key": SecretStr("synthetic"), "openai_assistant_model": "configured"}
+    )
+    fake = MagicMock()
+    fake.return_value.__enter__.return_value.responses.parse.return_value.output_parsed = (
+        ParsedIntent(
+            intent="spending_query",
+            period=engine.PeriodSpec(
+                kind="range", start_date=date(2020, 1, 1), end_date=date(2020, 1, 2)
+            ),
+        )
+    )
+    monkeypatch.setattr(intent, "OpenAI", fake)
+    result = parse_intent("Please show the figures", configured)
+    assert result.intent == "clarification" and result.clarification_reason == "period"

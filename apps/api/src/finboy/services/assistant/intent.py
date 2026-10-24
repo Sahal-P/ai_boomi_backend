@@ -401,10 +401,9 @@ def parse_intent(text: str, settings: Settings) -> ParsedIntent:
             return ParsedIntent(intent="clarification")
         if parsed.merchant and normalized(parsed.merchant) not in normalized(text):
             return ParsedIntent(intent="clarification")
-        if parsed.period.kind != "current_month":
-            period_token = f"{parsed.period.year:04}-{parsed.period.month:02}"
-            if period_token not in normalized(text):
-                return ParsedIntent(intent="clarification")
+        deterministic_period, unsupported = resolve_period(normalized(text))
+        if unsupported or parsed.period != deterministic_period:
+            return ParsedIntent(intent="clarification", clarification_reason="period")
         return parsed
     except APIError, ValidationError, ValueError:
         return fallback
