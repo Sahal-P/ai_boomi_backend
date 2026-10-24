@@ -214,7 +214,8 @@
     "window_start": null,
     "window_end": null,
     "truncated": false,
-    "data_version": "42"
+    "data_version": "42",
+    "can_continue": false
   },
   "import_running": {
     "id": "30000000-0000-4000-8000-000000000001",
@@ -239,7 +240,8 @@
     "window_start": null,
     "window_end": null,
     "truncated": false,
-    "data_version": "42"
+    "data_version": "42",
+    "can_continue": false
   },
   "import_complete": {
     "id": "30000000-0000-4000-8000-000000000001",
@@ -264,7 +266,8 @@
     "window_start": null,
     "window_end": null,
     "truncated": false,
-    "data_version": "42"
+    "data_version": "42",
+    "can_continue": false
   },
   "import_partial": {
     "id": "30000000-0000-4000-8000-000000000001",
@@ -289,7 +292,8 @@
     "window_start": null,
     "window_end": null,
     "truncated": false,
-    "data_version": "42"
+    "data_version": "42",
+    "can_continue": false
   },
   "import_failed": {
     "id": "30000000-0000-4000-8000-000000000001",
@@ -314,7 +318,8 @@
     "window_start": null,
     "window_end": null,
     "truncated": false,
-    "data_version": "42"
+    "data_version": "42",
+    "can_continue": false
   },
   "import_interrupted": {
     "id": "30000000-0000-4000-8000-000000000001",
@@ -339,7 +344,8 @@
     "window_start": null,
     "window_end": null,
     "truncated": false,
-    "data_version": "42"
+    "data_version": "42",
+    "can_continue": false
   },
   "import_cancelled": {
     "id": "30000000-0000-4000-8000-000000000001",
@@ -364,7 +370,8 @@
     "window_start": null,
     "window_end": null,
     "truncated": false,
-    "data_version": "42"
+    "data_version": "42",
+    "can_continue": false
   },
   "error_401_session_required": {
     "error": {

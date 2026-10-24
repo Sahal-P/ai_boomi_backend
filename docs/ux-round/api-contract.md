@@ -1,4 +1,4 @@
-# UX API contract v1.0.0 — 24 October 2026
+# UX API contract v1.1.0 — 24 October 2026
 
 Baseline b572565aa521a753fbee1271ca0c68e470ff15c8. This committed bootstrap freezes the following contracts for Product. Implementation follows on the same branch. All examples are synthetic. Prefix `/api/v1`; household endpoints retain existing session/Origin protection. Demo reads require no household credentials and perform no persistence. No frontend financial arithmetic.
 
@@ -72,3 +72,5 @@ Upload validation remains all-or-nothing before run creation. Invalid upload ret
 ## Changelog
 
 - v1.0.0 bootstrap: additive read/pagination/coverage; versioned review/undo/preview; isolated demo; recoverable sources; explicit private export; deterministic answer metadata. Implementations must match these names/types; corrections require a committed changelog before dependent UI changes.
+
+- v1.1.0: Import adds `can_continue:boolean`; `POST /imports/{id}/continue` with `{expected_version:string}` starts a new bounded Gmail job using an encrypted provider continuation, preserving the original IST window. Returns202 `{import_run_id:UUID}`; non-continuable=>422 invalid_decision. `GET /imports/{id}/issues` also follows last-attempt provenance on retry runs. Fact display language is hi/ml for romanized styles with script Latn (use hi-Latn/ml-Latn); spoken language remains native. Shared records retained after source deletion are quarantined if canonical provenance may be affected; preview counts explicitly describe retained, not trusted, values.
