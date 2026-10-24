@@ -245,11 +245,21 @@ See `handoffs/ux-integration.md` for commands, verification boundaries and CI, a
 `ux-round/implementation-map.md` for F01–F38 software completion versus human acceptance.
 Never roll the pre-scope API back onto the migrated database; recover forward with scoped code.
 
-## Capture round — not released
+## Capture and AI release configuration
 
-Groq speech-to-text routing and WhatsApp screenshot capture (`capture-round/contract.md`)
-are not deployed. A release needs the human's explicit go-ahead after local verification,
-a private backup, additive migration `0007_whatsapp_capture`, and these backend-only
-settings in `/etc/finboy/production.env`: `SPEECH_TRANSCRIBE_PROVIDER`, `GROQ_API_KEY`,
-`GROQ_TRANSCRIBE_MODEL` and, only if WhatsApp is ever enabled, `OPENAI_VISION_MODEL`.
-Rollback for speech is `SPEECH_TRANSCRIBE_PROVIDER=openai`. WhatsApp stays disabled.
+The human authorized the coordinated release of the committed capture and live-AI
+assistant changes after local verification. The release applies only additive migration
+`0007_whatsapp_capture`, after a validated private backup and an active-import check.
+Record counts must remain unchanged. Preserve household sessions, Gmail grants and
+all unrelated host applications. Only FinBoy is stopped/restarted.
+
+The reviewed assistant model remains `gpt-6-luna`; the newly supplied OpenAI key is
+transferred privately from the operator's secrets file to `/etc/finboy/production.env`.
+No other production credential or setting changes. Never copy it to Vercel or Git.
+
+Deploying the capability does not activate unverified providers. Production speech
+remains `openai` and WhatsApp remains disabled. Future Groq activation requires a
+verified `GROQ_API_KEY`, `GROQ_TRANSCRIBE_MODEL=whisper-large-v3-turbo` and
+`SPEECH_TRANSCRIBE_PROVIDER=groq`. Screenshot activation additionally requires a verified
+`OPENAI_VISION_MODEL` and separately authorized WhatsApp acceptance. No such live
+Groq/vision/WhatsApp acceptance is claimed by this release.

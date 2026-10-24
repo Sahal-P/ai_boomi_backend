@@ -102,8 +102,10 @@ human's explicit go-ahead after local verification.
 
 ## Outcomes — 24 October 2026
 
-Software is implemented on `feat/finboy-voice-capture` and verified locally against
-`finboy_capture`. Nothing is committed, pushed or deployed.
+The following table records the initial capture-only local verification on
+`feat/finboy-voice-capture` against `finboy_capture`. The subsequent committed AI
+assistant integration and its verification are recorded in [handoff.md](handoff.md).
+Publication and deployment belong to the coordinated release owner.
 
 | Check | Actual outcome |
 | --- | --- |
