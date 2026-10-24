@@ -35,7 +35,12 @@ export default defineConfig({
   webServer: {
     command: `pnpm exec next build && pnpm exec next start --hostname 127.0.0.1 --port ${port}`,
     url: baseURL,
-    env: { NEXT_PUBLIC_API_URL: "/" },
+    // Live mode proxies the same-origin /api/v1 to a real disposable API (never production). The
+    // proxy origin must be HTTPS: trust a local private certificate with NODE_EXTRA_CA_CERTS.
+    env:
+      process.env.E2E_LIVE_API === "1"
+        ? { NEXT_PUBLIC_API_URL: "/", FINBOY_API_ORIGIN: process.env.E2E_API_ORIGIN ?? "https://127.0.0.1:8032" }
+        : { NEXT_PUBLIC_API_URL: "/" },
     reuseExistingServer: !process.env.CI && process.env.E2E_REUSE_SERVER === "1",
     timeout: 300_000,
   },

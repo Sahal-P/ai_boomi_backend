@@ -7,18 +7,18 @@ import { FakeFinBoyApi, PASSWORD, type Scenario } from "./fake-api.ts";
  */
 export const test = base.extend<{ scenario: Scenario; api: FakeFinBoyApi; foreignApiCalls: string[] }>({
   scenario: [{}, { option: true }],
-  foreignApiCalls: async ({ page, baseURL }, use) => {
+  foreignApiCalls: async ({ page, baseURL }, provide) => {
     const appOrigin = new URL(baseURL ?? "http://127.0.0.1:3032").origin;
     const foreign: string[] = [];
     page.on("request", (request) => {
       const url = new URL(request.url());
       if (url.pathname.startsWith("/api/v1") && url.origin !== appOrigin) foreign.push(url.origin);
     });
-    await use(foreign);
+    await provide(foreign);
   },
   // Auto: every test talks to the double, even when it doesn't inspect it.
   api: [
-    async ({ page, scenario, baseURL }, use) => {
+    async ({ page, scenario, baseURL }, provide) => {
     const api = new FakeFinBoyApi(scenario);
     const appOrigin = new URL(baseURL ?? "http://127.0.0.1:3032").origin;
     await page.context().route("**/api/v1/**", async (route) => {
@@ -37,7 +37,7 @@ export const test = base.extend<{ scenario: Scenario; api: FakeFinBoyApi; foreig
         body: response.raw ?? (response.body === undefined ? "" : JSON.stringify(response.body)),
       });
     });
-    await use(api);
+    await provide(api);
     },
     { auto: true },
   ],
