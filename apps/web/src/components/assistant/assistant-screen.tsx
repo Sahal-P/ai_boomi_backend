@@ -51,7 +51,7 @@ export function AssistantScreen() {
       />
       <section aria-labelledby={`${ids}-ask`} className="surface rounded-3xl p-5 sm:p-7">
         <h2 id={`${ids}-ask`} className="sr-only">
-          Your question
+          Ask a question
         </h2>
         <details className="rounded-2xl bg-canvas px-4 py-3 text-sm">
           <summary className="cursor-pointer font-semibold">What can I ask?</summary>
