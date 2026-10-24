@@ -152,8 +152,8 @@ were printed during verification.
 
 The UX round is authorized from b572565 under the implementation brief and
 `docs/ux-round/api-contract.md`. Only Agent 1 releases after Agent 2's explicit handoff
-and assembled real UI/API verification. Preserve the current 7bf4587 release until
-integration gates pass. API/schema support deploys before the dependent frontend.
+and assembled real UI/API verification. Preserve the latest reviewed running release until
+integration gates pass; check current again before promotion. API/schema support deploys before the dependent frontend.
 The read-only `/api/v1/demo` is a new explicit public exception; it cannot access the
 household database. The legacy household demo-import mutation is disabled.
 
@@ -161,7 +161,7 @@ Before migration, run the aggregate read-only source inventory described in
 `ux-round/data-isolation-operations.md`, make/validate a private backup, and verify no
 active import is being terminated. Stop/restart only finboy.service when necessary
 to prevent old reconciliation code writing through a new scope migration. Apply
-0004_ux_trust and 0005_scan_continuation; preserve all data/revisions and quarantine
+0004_ux_trust, 0005_scan_continuation and 0006_event_origins; preserve all data/revisions and quarantine
 mixed provenance. Never reset the production ledger. No automatic schema downgrade
 or old-code rollback that bypasses scope filters. Record any actual mixed-data
 operator acceptance separately from passing synthetic preservation tests.
@@ -176,3 +176,8 @@ Read-only UX preflight on 24 October 2026: production provenance inventory retur
 or obligations. Only aggregate operational counts were printed; no source/financial
 fields were read into console output. The current service/release remained unchanged.
 Repeat the inventory immediately around migration rather than assuming it is frozen.
+
+The extended read-only UX preflight also found zero merged transactions. 0006 retains
+original event lineage for later exact source deletion and removes derived private
+review snapshots with the deleted evidence. Unknown older merge lineage fails closed
+before deletion instead of guessing. No production privacy action was run for UX tests.

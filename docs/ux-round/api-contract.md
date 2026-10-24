@@ -1,4 +1,4 @@
-# UX API contract v1.1.1 — 24 October 2026
+# UX API contract v1.1.2 — 24 October 2026
 
 Baseline b572565aa521a753fbee1271ca0c68e470ff15c8. This committed bootstrap freezes the following contracts for Product. Implementation follows on the same branch. All examples are synthetic. Prefix `/api/v1`; household endpoints retain existing session/Origin protection. Demo reads require no household credentials and perform no persistence. No frontend financial arithmetic.
 
@@ -78,3 +78,15 @@ Upload validation remains all-or-nothing before run creation. Invalid upload ret
 Snapshot versions include the IST calculation day as well as the database generation; the token stays opaque. Midnight rollover therefore invalidates stale previews.
 
 - v1.1.1 lifecycle clarification: cancel is an idempotent, monotonic request on the exact run ID. Its expected_version identifies the displayed snapshot but progress-only generation changes do not reject cancellation. Completed jobs return their actual terminal outcome without relabeling it cancelled. Financial decisions, undo, recovery retries and destructive previews retain strict generation checks.
+
+
+`fixtures/actual-http-v1.json` supplies expanded examples captured from real rules
+extraction, HTTP routes and a temporary synthetic user on the assigned disposable
+PostgreSQL. It includes demo, summary/page/detail/candidates, decisions/preview/undo,
+obligations, import history, all display styles, simulation, export and deletion
+preview. The bootstrap state/error variants remain in `fixtures/contract-v1.json`.
+Regenerate explicitly with `uv run --package finboy-api python
+apps/api/tests/ux/export_examples.py`; its fixture guards reject production and other
+databases, make no provider calls, and clean up the temporary user.
+
+- v1.1.2: Source events retain original transaction lineage independently of their current canonical record. Deletion previews/removal include orphaned merge stubs and private decision snapshots derived from removed evidence; operational audit stays. Shared/manual records remain, and loss of the last payment proof reopens review without replacing financial values or locks. Unmapped pre-upgrade merges fail closed with 409 `source_lineage_unavailable` before deletion; the production preflight found none. Storage migration head is 0006_event_origins. Public response field names are unchanged.

@@ -48,6 +48,8 @@ save corrections; reject/reopen/merge/keep-separate/correct all preserve provena
 Decision snapshots contain changed structured entities and source links, never bodies.
 Undo appends revisions and succeeds only against the decision's unchanged snapshot.
 Later sources, links, user locks or edits cause a safe conflict instead of being lost.
+Original event-to-transaction lineage survives source movement, so later privacy removal
+can remove derived merge stubs and financial decision snapshots exactly.
 
 The additive counted transaction page supports all unresolved records independently
 of month, filters, stable ordering, continuation and version checks. The old transaction
@@ -79,7 +81,9 @@ Explicit authenticated export downloads structured records/corrections, excludin
 bodies, evidence snippets, credentials and account/reference/payment identifiers.
 Deletion previews report removed and retained shared-source counts, dates and seven-day
 backup retention. Previewed deletion rejects stale versions. Remaining evidence is
-revalidated; unsupported retained canonical values are quarantined. Operational task
+revalidated; unsupported retained canonical values are quarantined, and removal of the
+last payment proof reopens review while retaining values and locks. Private decision
+snapshots derived from deleted evidence are removed; operational audit is preserved. Operational task
 outcomes use fixed allowlisted events and IDs in the existing audit table, with no
 question text, merchant, amount, mail content, credential URL or external analytics.
 

@@ -2,7 +2,7 @@
 
 Run `uv run --package finboy-api python -m finboy.services.ux.isolation` using the
 reviewed environment before and after deployment. It opens a read-only transaction
-and outputs only four provenance counts, with no IDs, bodies or financial fields.
+and outputs four provenance counts plus a merged-record count, with no IDs, bodies or financial fields.
 It works before migration 0004 because it reads original provenance columns only.
 Do not print an environment file, database URL, source body or full SQL parameters.
 
@@ -11,6 +11,10 @@ remove/reset sources, records, corrections, locks or revisions. Source-only demo
 records are tagged demo. Mixed demo/live canonical values are quarantined; hiding
 a source alone would not validate them. Same-scope matching prevents new mixing.
 0005 adds encrypted Gmail continuation state and last-attempt source provenance.
+0006 preserves original transaction lineage across merges; it does not change values.
+Known prior decision snapshots can backfill that lineage. Unknown older merge lineage
+blocks privacy deletion with a safe conflict until reviewed; no deletion is guessed.
+Production preflight found zero merged records before this migration.
 
 Before production migration, make and validate the existing private PostgreSQL backup.
 Keep the previous release and the reviewed new archive. The migration preservation

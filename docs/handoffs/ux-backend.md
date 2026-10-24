@@ -2,7 +2,7 @@
 
 Core implementation: `76cb9b9`, precision follow-up `3337b85` on `feat/finboy-ux-backend`, exact starting baseline
 `b572565aa521a753fbee1271ca0c68e470ff15c8`. Contract-only bootstrap `2e42622`;
-continuation contract `c05b44b`; current contract v1.1.1 in
+continuation contract `c05b44b`; current contract v1.1.2 in
 `docs/ux-round/api-contract.md`. Product can read committed schemas/fixtures through
 Git without accessing this worktree. No apps/web, pnpm lockfile or root package
 script edits were made. No additional agents/chats were created.
@@ -33,7 +33,7 @@ script edits were made. No additional agents/chats were created.
 
 ## Schema and runtime
 
-Migrations: `0004_ux_trust`, `0005_scan_continuation`. No destructive migration,
+Migrations: `0004_ux_trust`, `0005_scan_continuation`, `0006_event_origins`. No destructive migration,
 source deletion/reset or canonical value rewriting. Read
 `docs/ux-round/data-isolation-operations.md` before production. The inventory command
 is read-only and outputs counts only; mixed canonical values remain quarantined for
@@ -46,13 +46,13 @@ private ignored env has only this disposable runtime's local settings.
 
 ## Verification actually performed
 
-- `pnpm check`: passed Ruff/format, **398 backend unit tests**, **19 existing web client
+- `pnpm check`: passed Ruff/format, **400 backend unit tests**, **19 existing web client
   tests**, ESLint and strict TypeScript. Unit tests require no PostgreSQL.
 - `pnpm build`: passed the baseline frontend build. Product changes and integrated
   browser acceptance are still separate gates.
-- `pnpm db:migrate`: passed through `0005_scan_continuation` on finboy_ux_api.
+- `pnpm db:migrate`: passed through `0006_event_origins` on finboy_ux_api.
 - `pnpm db:check`: no new upgrade operations detected.
-- `pnpm test:integration`: **40 passed**, using only the assigned disposable database.
+- `pnpm test:integration`: **46 passed**, using only the assigned disposable database.
   Includes a pre-upgrade temporary schema with demo/live/mixed provenance and explicit
   canonical value/source/revision preservation assertions; the schema rolls back.
 - New trust journeys include failed-upload recovery, targeted Gmail retry/continuation,
@@ -102,3 +102,20 @@ and any newer main/production state during final assembly; do not edit that tree
 or overwrite its protections. The UX Product handoff remains the frontend ownership
 gate. Literal merchant/category regressions also cover a merchant name containing
 "food", so it cannot silently add a category filter.
+
+
+Privacy/review closure: migration 0006 preserves original transaction lineage while
+manual merges move current evidence. Exact preview/removal now includes origin stubs
+and financial decision snapshots, including bill-only derived snapshots. Shared and
+source-free manual records survive; loss of the last payment proof reopens review
+without replacing values or locks. Unknown older merge lineage blocks deletion before
+mutation. Production preflight found zero merged records. Six additional PostgreSQL
+cases cover this interaction. Expanded real synthetic HTTP fixtures are in
+`docs/ux-round/fixtures/actual-http-v1.json`, validated by unit tests; their explicit
+export helper uses only the guarded temporary-user fixture and makes no provider calls.
+
+The local API can run HTTPS on 8031 with a temporary private certificate, scoped to
+Node through `NODE_EXTRA_CA_CERTS`, for real same-origin proxy browser checks. Preserve
+strict HTTPS validation in production proxy configuration; a frontend test-only
+loopback-HTTP exception should be removed during integration in favor of this runtime.
+Do not install the test certificate into system trust or use production credentials.
