@@ -1,5 +1,12 @@
 # FinBoy web
 
+## Live site and demo
+
+- [Open FinBoy](https://finboy.antlegs.in)
+- [Watch the product demo (MP4, 68 seconds)](https://github.com/Sahal-P/ai_boomi_frontend/releases/download/demo-2026-10-24/finboy-demo.mp4)
+
+[![Watch the FinBoy product demo](../../docs/media/finboy-demo-preview.jpg)](https://github.com/Sahal-P/ai_boomi_frontend/releases/download/demo-2026-10-24/finboy-demo.mp4)
+
 Next.js App Router, strict TypeScript, Tailwind CSS 4, shadcn/ui, and Lucide.
 
 Use the root [README](../../README.md) for complete workspace setup, environment,
