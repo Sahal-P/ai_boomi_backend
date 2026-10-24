@@ -36,7 +36,9 @@ def assembled_app(monkeypatch):
     engine = build_engine(settings)
     assert settings.environment != "production"
     assert engine.url.host in {"127.0.0.1", "localhost"}
-    assert engine.url.database in {"finboy_p5", "finboy_test"}, "Use integration disposable DB"
+    assert engine.url.database in {"finboy_p5", "finboy_ux_api", "finboy_ux_ui", "finboy_test"}, (
+        "Use integration disposable DB"
+    )
     user = uuid4()
     for name in (
         "finboy.api.v1.imports",
@@ -92,7 +94,11 @@ async def test_actual_mailbox_to_money_review_assistant_and_privacy(assembled_ap
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as client:
-        start = await client.post("/api/v1/imports/demo")
+        paths = sorted(DEMO_DIRECTORY.glob("*.eml"))
+        start = await client.post(
+            "/api/v1/imports/eml",
+            files=[("files", (path.name, path.read_bytes(), "message/rfc822")) for path in paths],
+        )
         assert start.status_code == 202
         run = (await client.get("/api/v1/imports/" + start.json()["import_run_id"])).json()
         assert run["status"] == "completed", run["error_code"]
@@ -175,7 +181,10 @@ async def test_actual_mailbox_to_money_review_assistant_and_privacy(assembled_ap
             payload = answer.json()
             assert payload["policy"] == "answer", (style, payload["intent"])
             assert any(fact["amount_minor"] == 786000 for fact in payload["facts"]), style
-        again = await client.post("/api/v1/imports/demo")
+        again = await client.post(
+            "/api/v1/imports/eml",
+            files=[("files", (path.name, path.read_bytes(), "message/rfc822")) for path in paths],
+        )
         assert again.status_code == 202
         second = (await client.get("/api/v1/imports/" + again.json()["import_run_id"])).json()
         assert second["status"] == "completed" and second["transactions_created"] == 0
@@ -202,7 +211,7 @@ async def test_actual_mailbox_to_money_review_assistant_and_privacy(assembled_ap
                 session.scalar(
                     select(func.count()).select_from(EmailSource).where(EmailSource.user_id == user)
                 )
-                == 84
+                == 42
             )
         review = (await client.get("/api/v1/transactions?status=needs_review")).json()
         assert len(review) == 2

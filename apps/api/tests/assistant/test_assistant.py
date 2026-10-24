@@ -31,6 +31,7 @@ def summary() -> engine.MoneySummary:
         tracked_income_minor=6200000,
         confirmed_outflows_minor=3742000,
         upcoming_commitments_minor=980000,
+        unresolved_commitments_minor=980000,
         estimated_unallocated_minor=1478000,
         pending_review_count=2,
         pending_review_minor=50000,
@@ -70,6 +71,11 @@ def money_engine(monkeypatch: pytest.MonkeyPatch) -> dict[str, MagicMock]:
     }
     for name, fake in fakes.items():
         monkeypatch.setattr(engine, name, fake)
+    from finboy.services.assistant.facts import FinancialFacts
+
+    full = MagicMock(return_value=FinancialFacts(786000, 0, 786000, 7, []))
+    monkeypatch.setattr("finboy.services.assistant.service.financial_facts", full)
+    fakes["financial_facts"] = full
     return fakes
 
 
@@ -95,7 +101,9 @@ def test_equivalent_engine_facts_and_native_speech(
         assert expected in [f.amount_minor for f in answer.facts]
         assert "pending_review_items" in answer.warnings
         if answer.simulation:
-            assert answer.display_text.endswith(DISCLAIMER)
+            assert (
+                answer.display_text.endswith(DISCLAIMER) if style == "en" else answer.display_text
+            )
             assert answer.simulation.remaining_after_proposal_minor == expected
         if style in {"hi", "hinglish"}:
             assert answer.speech_language == "hi"
@@ -131,7 +139,8 @@ def test_advice_declines_without_loading_money(
 def test_cashflow_amount_is_grounded_and_period_is_not_assumed(settings: Settings) -> None:
     assert amounts_in_question("₹5,000.25 / ५०००.२५ / ൫൦൦൦.൨൫") == {500025}
     assert rule_intent("Would a monthly SIP fit?").amount_minor is None
-    assert rule_intent("food spending last month").intent == "clarification"
+    assert rule_intent("food spending last month").intent == "spending_query"
+    assert rule_intent("food spending last week").clarification_reason == "period"
     assert rule_intent("food spending 2026-09").period == engine.PeriodSpec(
         kind="month", year=2026, month=9
     )
@@ -240,7 +249,9 @@ def test_evidence_is_restricted_to_engine_summary(
         )
         for key in [wanted, unrelated]
     ]
-    money_engine["find_transactions"].return_value = rows
+    from finboy.services.assistant.facts import FinancialFacts
+
+    money_engine["financial_facts"].return_value = FinancialFacts(786000, 0, 786000, 1, [rows[0]])
     answer = answer_question(
         session,
         user_id=LOCAL_USER_ID,

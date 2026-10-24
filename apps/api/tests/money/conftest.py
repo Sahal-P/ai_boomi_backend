@@ -51,6 +51,8 @@ def mailbox_api(monkeypatch, tmp_path) -> Iterator[MailboxAPI]:
         "finboy_p3",
         "finboy_p4",
         "finboy_p5",
+        "finboy_ux_api",
+        "finboy_ux_ui",
     }, "Use a named local disposable FinBoy database"
     factory = sessionmaker(engine, expire_on_commit=False)
     user_id, run_id = uuid4(), uuid4()
@@ -61,7 +63,7 @@ def mailbox_api(monkeypatch, tmp_path) -> Iterator[MailboxAPI]:
     with factory.begin() as session:
         session.add(User(id=user_id, display_name="Synthetic money test"))
         session.flush()
-        session.add(ImportRun(id=run_id, user_id=user_id, mode="demo_mailbox", status="running"))
+        session.add(ImportRun(id=run_id, user_id=user_id, mode="eml_upload", status="running"))
     app = create_app(settings)
 
     def session_dependency():
@@ -73,7 +75,7 @@ def mailbox_api(monkeypatch, tmp_path) -> Iterator[MailboxAPI]:
         directory = tmp_path / "rendered_mailbox"
         render(date(2026, 10, 28), directory)
         messages = [
-            parse_eml(path.read_bytes(), source="demo_mailbox")
+            parse_eml(path.read_bytes(), source="eml_upload")
             for path in sorted(directory.glob("*.eml"))
         ]
         assert len(messages) == 42

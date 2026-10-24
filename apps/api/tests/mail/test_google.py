@@ -60,7 +60,7 @@ def test_fetch_paginates_refreshes_and_counts(eml, monkeypatch):
     assert scans == [(1, 1), (2, 2)]
     assert waits == [1, 2]
     assert token_calls == 2
-    assert "after:2026/09/28" in financial_query()
+    assert "after:1790533800 before:1793212200" in financial_query()
     assert "-category:social -category:promotions" in financial_query()
     assert all("refresh" not in str(call.url) for call in calls)
     google.close()

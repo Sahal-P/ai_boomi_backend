@@ -125,7 +125,9 @@ def test_upcoming_dates_and_statuses_are_inclusive_and_month_bounded():
         commitment(status="dismissed"),
     ]
     result = summary(commitments=items)
-    assert result.commitment_count == 2 and result.upcoming_commitments_minor == 20000
+    assert result.commitment_count == 3 and result.upcoming_commitments_minor == 20000
+    assert result.overdue_commitments_minor == 10000
+    assert result.unresolved_commitments_minor == 30000
     past = calculate_summary(
         [], items, period=PeriodSpec(kind="month", year=2026, month=9), today=TODAY
     )
@@ -133,7 +135,7 @@ def test_upcoming_dates_and_statuses_are_inclusive_and_month_bounded():
     future = calculate_summary(
         [], items, period=PeriodSpec(kind="month", year=2026, month=11), today=TODAY
     )
-    assert future.commitment_count == 1
+    assert future.commitment_count == 4
 
 
 def test_refund_uses_original_corrected_category_across_periods_and_can_be_negative():
@@ -154,7 +156,7 @@ def test_empty_ledger_and_simulation_disclaimer():
     assert simulation.remaining_after_proposal_minor == -500000
     assert simulation.warnings == ["negative_remaining", "incomplete_coverage"]
     assert simulation.disclaimer_key == "cash_flow_model_not_investment_advice"
-    assert [line.sign for line in simulation.lines] == ["+", "-", "-", "-"]
+    assert [line.sign for line in simulation.lines] == ["+", "-", "-", "-", "-"]
 
 
 def test_review_negative_and_low_buffer_warning_boundaries():

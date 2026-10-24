@@ -28,7 +28,8 @@ def factory(config: ChannelConfig) -> Iterator[sessionmaker[Session]]:
     if (
         settings.environment == "production"
         or url.host not in {"127.0.0.1", "localhost"}
-        or url.database not in {"finboy_p4", "finboy_p5", "finboy_test"}
+        or url.database
+        not in {"finboy_p4", "finboy_p5", "finboy_ux_api", "finboy_ux_ui", "finboy_test"}
     ):
         pytest.fail(
             "WhatsApp integration tests require a disposable local FinBoy integration database"

@@ -72,24 +72,20 @@ async def test_malformed_eml_and_truncated_multipart(mail_app):
 
 
 @pytest.mark.anyio
-async def test_demo_uses_same_entry_point(mail_app, monkeypatch, eml, tmp_path):
-    for number in range(3):
-        (tmp_path / f"{number}.eml").write_bytes(eml)
-    monkeypatch.setattr("finboy.services.imports.files.DEMO_DIRECTORY", tmp_path)
-    scheduled = []
-    monkeypatch.setattr("finboy.api.v1.imports.run_import", lambda *args: scheduled.append(args))
+async def test_demo_is_read_only_and_old_import_is_disabled(mail_app, mail_factory):
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=mail_app), base_url="http://test"
     ) as client:
+        before = list(mail_factory().scalars(select(ImportRun.id)))
         response = await client.post("/api/v1/imports/demo")
-        assert response.status_code == 202
-        run = await client.get("/api/v1/imports/" + response.json()["import_run_id"])
-        assert run.json()["status"] == "queued"
-        assert run.json()["mode"] == "demo_mailbox"
-        assert run.headers["cache-control"] == "no-store"
-        assert (await client.get(f"/api/v1/imports/{uuid4()}")).status_code == 404
-    assert len(scheduled[0][3]) == 3
-    assert all(message.source == "demo_mailbox" for message in scheduled[0][3])
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "demo_read_only"
+        demo = await client.get("/api/v1/demo")
+        assert demo.status_code == 200
+        assert demo.json()["read_only"] is True
+        assert demo.json()["summary"]["dataset"] == "demo"
+        assert demo.json()["summary"]["estimated_unallocated_minor"] == 1478000
+        assert list(mail_factory().scalars(select(ImportRun.id))) == before
 
 
 def test_progress_uses_independent_sessions(mail_factory, mail_settings, monkeypatch, eml):
@@ -98,7 +94,7 @@ def test_progress_uses_independent_sessions(mail_factory, mail_settings, monkeyp
         run = create_run(session, mode="eml_upload")
         run_id = run.id
 
-    def ingest(factory, *, user_id, import_run_id, messages, on_progress):
+    def ingest(factory, *, user_id, import_run_id, messages, on_progress, ensure_active):
         assert user_id == LOCAL_USER_ID and import_run_id == run_id
         assert len(list(messages)) == 1
         stats = IngestionStats(
@@ -162,7 +158,9 @@ def test_background_failure_recording_is_redacted(mail_settings, monkeypatch, ca
 @pytest.mark.anyio
 async def test_cross_origin_post_has_no_side_effect(mail_app, monkeypatch):
     calls = []
-    monkeypatch.setattr("finboy.api.v1.imports.demo_messages", lambda: calls.append(True))
+    monkeypatch.setattr(
+        "finboy.api.v1.imports.create_run", lambda *args, **kwargs: calls.append(True)
+    )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=mail_app), base_url="http://test"
     ) as client:

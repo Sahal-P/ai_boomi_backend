@@ -39,6 +39,8 @@ def storage(monkeypatch):
         "finboy_p3",
         "finboy_p4",
         "finboy_p5",
+        "finboy_ux_api",
+        "finboy_ux_ui",
     }, "Use a local test database"
     factory = sessionmaker(engine, expire_on_commit=False)
     user_id, run_id = uuid4(), uuid4()
@@ -48,7 +50,7 @@ def storage(monkeypatch):
     with factory.begin() as session:
         session.add(User(id=user_id, display_name="Synthetic ingestion test"))
         session.flush()
-        session.add(ImportRun(id=run_id, user_id=user_id, mode="demo_mailbox", status="running"))
+        session.add(ImportRun(id=run_id, user_id=user_id, mode="eml_upload", status="running"))
     try:
         yield factory, user_id, run_id
     finally:
@@ -85,7 +87,7 @@ def inbound(path, provider_id=None):
     from finboy.services.ingestion.pipeline import InboundMessage
 
     raw = path.read_bytes()
-    return InboundMessage("demo_mailbox", provider_id or hashlib.sha256(raw).hexdigest(), raw)
+    return InboundMessage("eml_upload", provider_id or hashlib.sha256(raw).hexdigest(), raw)
 
 
 def test_full_mailbox_idempotency_locks_and_links(storage):
@@ -298,7 +300,7 @@ def test_failure_is_atomic_and_next_message_commits(storage, monkeypatch, caplog
             session.scalar(
                 select(func.count()).select_from(EmailSource).where(EmailSource.user_id == user_id)
             )
-            == 1
+            == 2
         )
 
 
@@ -311,7 +313,9 @@ def test_structured_cache_reused_without_network(storage, monkeypatch):
     factory, user_id, run_id = storage
     monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "offline")
     message = inbound(MAILBOX / "01-salary.eml")
-    key = cache_key(normalize(message.raw_rfc822), Settings().openai_extraction_model)
+    key = "household:" + cache_key(
+        normalize(message.raw_rfc822), Settings().openai_extraction_model
+    )
     with factory() as session:
         already_existed = (
             session.scalar(select(ExtractionCache.id).where(ExtractionCache.cache_key == key))

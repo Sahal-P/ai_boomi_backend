@@ -26,7 +26,7 @@ def changed_message(message: InboundMessage, provider_id: str, replacements: dic
         assert old in body
         body = body.replace(old, new)
     parsed.set_content(body)
-    return InboundMessage("demo_mailbox", provider_id, parsed.as_bytes())
+    return InboundMessage("eml_upload", provider_id, parsed.as_bytes())
 
 
 def message_for(api, reference: str) -> InboundMessage:
@@ -46,7 +46,14 @@ def test_real_mailbox_apis_truth_evidence_and_category_correction(mailbox_api):
     amazon = next(row for row in transactions if row["amount_minor"] == 79900)
     arya = next(row for row in transactions if row["merchant"] == "HOTEL ARYA")
     detail = api.client.get(f"/api/v1/transactions/{amazon['id']}").json()
-    assert set(detail) == {"transaction", "sources", "confidence_factors", "revisions"}
+    assert set(detail) == {
+        "transaction",
+        "sources",
+        "confidence_factors",
+        "revisions",
+        "version",
+        "decisions",
+    }
     assert len(detail["sources"]) == 3
     assert len({row["email_source_id"] for row in detail["sources"]}) == 3
     assert detail["confidence_factors"]["source_count"] == 3
