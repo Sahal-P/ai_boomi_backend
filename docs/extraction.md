@@ -208,3 +208,35 @@ windows and confidence availability normalization need calibration on labeled re
 messages. Reconciliation currently scans one user's ledger and favors clarity over
 large-mailbox performance. Commitments do not have a dedicated revision table in the
 shared contract. End-to-end Gmail/UI/voice integration remains with A2/A3/A4.
+
+## Production eligibility repair — 24 October 2026
+
+`claims.py` supplies a shared, bounded local-assertion gate for rules, candidate
+classification and model validation. Currency amounts are paired with their own
+affirmative financial assertion, rather than the first amount and any matching
+keyword in the document. Advertised compensation, examples, credit limits,
+balances, conditional/future settlements and negated payments are not completed
+transactions. Genuine issued orders/invoices remain unverified review candidates;
+bank settlements and actual bill/EMI notices retain their separate meanings.
+Incidental advertising, job, refund-policy and login-help footers do not replace
+the event or discard a genuine notification.
+
+An explicit model non-transaction decision suppresses weak rule claims. A locally
+grounded settlement with personal reference/account anchors can survive only with
+a model-disagreement factor, confidence capped below confirmation and mandatory
+review. Conflicting bill/EMI notices produce a failed extraction for recovery, not
+an unreviewable commitment deduction. Both preparation paths keep the same guarded
+rules during provider outages. No new dependency, HTTP contract or schema is needed.
+
+Live extraction cache keys include `claims-v1`; historical synthetic model
+cassettes may be replayed offline but are always checked by the current eligibility
+policy. That compatibility fallback is never used for the live database cache.
+Rules source IDs use `rules-v2` to make provenance distinguishable.
+
+Synthetic unit coverage includes the job-ad incident, compensation ranges,
+promotions, available balances, negation/future wording, multiple claims, ordinary
+failure formats, May/month and merchant names, model rejection/fabrication, provider
+outage/cache modes, idempotent skipped-source persistence, and zero false transaction
+or commitment rows. The original rules and offline 42-message oracles remain binding.
+This is regression protection, not a promise that arbitrary future emails can
+never be misclassified. Preserve review and incomplete-coverage disclosures.

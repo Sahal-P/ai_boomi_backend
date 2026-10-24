@@ -2,9 +2,10 @@ import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from finboy.services.ingestion.amounts import AMOUNT_PATTERN, parse_amount
+from finboy.services.ingestion.amounts import AMOUNT_PATTERN
+from finboy.services.ingestion.claims import clear_non_transaction, financial_claims
 from finboy.services.ingestion.normalize import NormalizedMessage
-from finboy.services.ingestion.types import Event, EventType, Extraction
+from finboy.services.ingestion.types import Event, Extraction
 
 IST = ZoneInfo("Asia/Kolkata")
 PATTERNS = {
@@ -36,79 +37,56 @@ def extract_rules(message: NormalizedMessage) -> Extraction:
     # A request to modify the ledger is not a notification of a financial event.
     if re.search(r"ignore (?:all )?(?:previous )?instructions|record .*credit", text, re.I):
         return Extraction(not_transaction=True)
-    event_type: EventType
-    if re.search(r"\b(?:failed|declined|unsuccessful)\b", text, re.I):
-        event_type = "failed"
-    elif re.search(r"\b(?:reversal|reversed)\b", text, re.I):
-        event_type = "reversal"
-    elif re.search(r"\brefund\b", text, re.I):
-        event_type = "refund"
-    elif re.search(r"\bemi\b.*\bdue\b", text, re.I | re.S):
-        event_type = "emi_due"
-    elif re.search(r"\bbill\b.*\bdue\b", text, re.I | re.S):
-        event_type = "bill_due"
-    elif re.search(r"\bcredit.card bill payment\b", text, re.I):
-        event_type = "transfer"
-    elif re.search(r"\bsalary\b.*\bcredited\b", text, re.I | re.S):
-        event_type = "salary"
-    elif re.search(r"\b(?:SIP|investment)\b.*\b(?:debited|paid)\b", text, re.I | re.S):
-        event_type = "investment"
-    elif re.search(r"\b(?:debited|paid|charged|order confirmation|invoice|receipt)\b", text, re.I):
-        event_type = "debit"
-    elif re.search(r"\bcredited\b", text, re.I):
-        event_type = "credit"
-    else:
-        return Extraction()
-    matches = {field: pattern.search(text) for field, pattern in PATTERNS.items()}
-    amount = matches["amount_minor"]
-    if amount is None:
-        return Extraction()
-    event = Event(event_type=event_type, amount_minor=parse_amount(amount[0]))
-    event.evidence = {field: match[0][:80] for field, match in matches.items() if match}
-    for field in ("merchant", "reference_id", "account_last4", "payment_instrument"):
-        match = matches[field]
-        if match:
-            value = match[field].strip()
-            limit = {
-                "merchant": 160,
-                "reference_id": 128,
-                "account_last4": 4,
-                "payment_instrument": 32,
-            }[field]
-            if len(value) > limit:
-                event.evidence.pop(field, None)
-                continue
-            setattr(event, field, value)
-    when = matches["occurred_at"]
-    if when:
-        try:
-            event.occurred_at = _date(when["date"])
-            if when["time"]:
-                hour, minute = map(int, when["time"].split(":"))
-                event.occurred_at = event.occurred_at.replace(hour=hour, minute=minute)
-        except ValueError:
-            event.evidence.pop("occurred_at", None)
-    due = matches["due_date"]
-    if due:
-        try:
-            event.due_date = _date(due["due_date"]).date()
-        except ValueError:
-            event.evidence.pop("due_date", None)
-    event.payment_proof = bool(
-        re.search(
-            r"\b(?:debited|credited|charged|payment received|paid successfully)\b", text, re.I
+    claims = financial_claims(text)
+    if not claims:
+        return Extraction(not_transaction=clear_non_transaction(text))
+    events = []
+    for claim in claims:
+        context = claim.context
+        matches = {field: pattern.search(context) for field, pattern in PATTERNS.items()}
+        event = Event(
+            event_type=claim.event_type,
+            amount_minor=claim.amount_minor,
+            payment_proof=claim.payment_proof,
+            extractor_id="rules-v2",
         )
-    )
-    event.evidence["event_type"] = next(
-        (
-            line[:80]
-            for line in text.splitlines()
-            if re.search(r"debited|credited|due|failed|refund|reversed", line, re.I)
-        ),
-        text[:80],
-    )
-    if event.payment_proof:
-        event.evidence["payment_proof"] = event.evidence["event_type"]
-    event.field_confidence = dict.fromkeys(event.evidence, 1.0)
-    event.rule_fields = list(event.evidence)
-    return Extraction(events=[event])
+        event.evidence = {field: match[0][:80] for field, match in matches.items() if match}
+        event.evidence["amount_minor"] = claim.amount_evidence[:80]
+        event.evidence["event_type"] = claim.event_evidence
+        for field in ("merchant", "reference_id", "account_last4", "payment_instrument"):
+            match = matches[field]
+            if match:
+                value = match[field].strip(" ,")
+                limit = {
+                    "merchant": 160,
+                    "reference_id": 128,
+                    "account_last4": 4,
+                    "payment_instrument": 32,
+                }[field]
+                if len(value) > limit:
+                    event.evidence.pop(field, None)
+                    continue
+                setattr(event, field, value)
+        when = matches["occurred_at"]
+        if when:
+            try:
+                event.occurred_at = _date(when["date"])
+                if when["time"]:
+                    hour, minute = map(int, when["time"].split(":"))
+                    event.occurred_at = event.occurred_at.replace(hour=hour, minute=minute)
+            except ValueError:
+                event.evidence.pop("occurred_at", None)
+        due = matches["due_date"]
+        if due:
+            try:
+                event.due_date = _date(due["due_date"]).date()
+            except ValueError:
+                event.evidence.pop("due_date", None)
+        if claim.payment_evidence:
+            event.evidence["payment_proof"] = claim.payment_evidence
+        event.field_confidence = dict.fromkeys(event.evidence, 1.0)
+        event.rule_fields = list(event.evidence)
+        if claim.independent:
+            event.rule_fields.append("independent_claim")
+        events.append(event)
+    return Extraction(events=events)

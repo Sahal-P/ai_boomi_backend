@@ -16,4 +16,4 @@ def parse_amount(value: str) -> int:
     return result
 
 
-AMOUNT_PATTERN = rf"(?:₹|Rs\.?|INR)\s*(?P<amount>{_NUMBER})(?![\d,.])"
+AMOUNT_PATTERN = rf"(?:₹|Rs\.?|INR)\s*(?P<amount>{_NUMBER})(?![\d,]|\.\d)"

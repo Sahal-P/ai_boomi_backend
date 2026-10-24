@@ -1,5 +1,6 @@
 import re
 
+from finboy.services.ingestion.claims import clear_non_transaction, financial_claims
 from finboy.services.ingestion.normalize import NormalizedMessage
 from finboy.services.ingestion.types import Classification
 
@@ -13,8 +14,28 @@ def trusted_domain(domain: str) -> bool:
 
 def classify(message: NormalizedMessage) -> Classification:
     text = message.text.lower()
-    negative = len(re.findall(r"\b(?:promo|win|offer|newsletter|otp|one.time.password)\b", text))
-    if negative:
+    claims = financial_claims(message.text)
+    if claims:
+        claim = claims[0]
+        meanings: dict[str, Classification] = {
+            "salary": "salary_credit",
+            "refund": "refund_notice",
+            "reversal": "refund_notice",
+            "emi_due": "emi_notice",
+            "bill_due": "bill_notice",
+        }
+        if claim.event_type in meanings:
+            return meanings[claim.event_type]
+        if re.search(r"\border confirmation\b", claim.context, re.I):
+            return "order_confirmation"
+        if re.search(r"\b(?:invoice|receipt)\b", claim.context, re.I):
+            return "merchant_receipt"
+        if re.search(r"\bupi\b", claim.context, re.I):
+            return "upi_alert"
+        if re.search(r"\bcard\b", claim.context, re.I):
+            return "card_alert"
+        return "bank_alert" if message.sender_domain in BANK_DOMAINS else "unknown"
+    if clear_non_transaction(text):
         return "promotional" if re.search(r"\b(?:promo|win|offer)\b", text) else "non_financial"
     score = 2 * trusted_domain(message.sender_domain)
     score += len(
@@ -22,19 +43,4 @@ def classify(message: NormalizedMessage) -> Classification:
             r"\b(?:debited|credited|payment|invoice|bill|emi|refund|salary|upi|order)\b", text
         )
     )
-    if score < 2:
-        return "unknown" if score else "non_financial"
-    patterns: tuple[tuple[str, Classification], ...] = (
-        (r"\bsalary\b", "salary_credit"),
-        (r"\b(?:refund|reversal|reversed)\b", "refund_notice"),
-        (r"\bemi\b.*\bdue\b", "emi_notice"),
-        (r"\b(?:bill|amount)\b.*\bdue\b", "bill_notice"),
-        (r"\border confirmation\b", "order_confirmation"),
-        (r"\b(?:invoice|receipt)\b", "merchant_receipt"),
-        (r"\bupi\b", "upi_alert"),
-        (r"\bcard\b", "card_alert"),
-    )
-    for pattern, label in patterns:
-        if re.search(pattern, text, re.S):
-            return label
-    return "bank_alert" if message.sender_domain in BANK_DOMAINS else "unknown"
+    return "unknown" if score else "non_financial"

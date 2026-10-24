@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from finboy.services.ingestion.claims import MODEL_CONFLICT
 from finboy.services.ingestion.types import Event
 from finboy.services.ledger.categories import category_for
 
@@ -44,5 +45,9 @@ def confidence_for(
     elif category_for(event) == "other":
         reason = "category_uncertain"
     elif value < 0.90:
+        reason = "low_confidence"
+    if MODEL_CONFLICT in event.rule_fields:
+        factors["model_disagreement"] = 0
+        value = min(value, 0.89)
         reason = "low_confidence"
     return Confidence(value, factors, "needs_review" if reason else "confirmed", reason)

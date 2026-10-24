@@ -12,6 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from finboy.core.config import Settings
 from finboy.services.ingestion.amounts import AMOUNT_PATTERN, parse_amount
+from finboy.services.ingestion.claims import (
+    MODEL_CONFLICT,
+    POLICY_VERSION,
+    event_signal,
+    financial_claims,
+)
 from finboy.services.ingestion.normalize import NormalizedMessage
 from finboy.services.ingestion.render_demo_mailbox import FIXTURES
 from finboy.services.ingestion.types import Category, Event, EventType, Extraction
@@ -89,7 +95,7 @@ class ExtractionUnavailable(Exception):
 
 def cache_key(message: NormalizedMessage, model: str) -> str:
     return hashlib.sha256(
-        f"{message.content_sha256}:{EXTRACTOR_VERSION}:{model}".encode()
+        f"{message.content_sha256}:{EXTRACTOR_VERSION}:{model}:{POLICY_VERSION}".encode()
     ).hexdigest()
 
 
@@ -125,6 +131,13 @@ def cassette_extract(
 ) -> LLMResult:
     path = folder / f"{cache_key(message, model)}.json"
     if not path.exists():
+        # Historical synthetic model recordings are revalidated by the current
+        # claim policy. Live caches never use this compatibility path.
+        legacy = hashlib.sha256(
+            f"{message.content_sha256}:{EXTRACTOR_VERSION}:{model}".encode()
+        ).hexdigest()
+        path = folder / f"{legacy}.json"
+    if not path.exists():
         raise ExtractionUnavailable("cassette_missing")
     data = json.loads(path.read_text())
     if data["model"] != model or data["extractor_version"] != EXTRACTOR_VERSION:
@@ -157,6 +170,7 @@ def supported_events(result: LLMResult, message: NormalizedMessage) -> Extractio
     events: list[Event] = []
     if result.not_transaction:
         return Extraction(not_transaction=True)
+    claims = financial_claims(message.text)
     for item in result.events:
         evidence = {
             entry.field: entry.snippet
@@ -172,6 +186,18 @@ def supported_events(result: LLMResult, message: NormalizedMessage) -> Extractio
         amount_matches = re.finditer(AMOUNT_PATTERN, evidence["amount_minor"], re.I)
         if not any(parse_amount(match[0]) == item.amount_minor for match in amount_matches):
             continue
+        claim = next(
+            (
+                claim
+                for claim in claims
+                if claim.amount_minor == item.amount_minor
+                and claim.event_type == item.event_type
+                and event_signal(evidence["event_type"], item.event_type)
+            ),
+            None,
+        )
+        if claim is None:
+            continue
         values = item.model_dump(exclude={"evidence", "field_confidence"})
         for field in (
             "merchant",
@@ -182,11 +208,13 @@ def supported_events(result: LLMResult, message: NormalizedMessage) -> Extractio
             "payment_instrument",
             "category",
         ):
-            if field not in evidence:
+            if field not in evidence or evidence[field] not in claim.context:
                 values[field] = None
         values["payment_proof"] = bool(
             item.payment_proof
+            and claim.payment_proof
             and "payment_proof" in evidence
+            and evidence["payment_proof"] in claim.context
             and re.search(
                 r"\b(?:debited|credited|charged|payment received|paid successfully)\b",
                 evidence["payment_proof"],
@@ -216,9 +244,26 @@ def supported_events(result: LLMResult, message: NormalizedMessage) -> Extractio
 
 
 def merge_evidence(rules: Extraction, llm: Extraction) -> Extraction:
-    """Deterministic claims win. A model may fill only evidenced, matching gaps."""
+    """Keep grounded fields; treat model rejection as a real eligibility conflict."""
     if rules.not_transaction:
         return rules
+    if llm.not_transaction:
+        independent = [
+            event.model_copy(deep=True)
+            for event in rules.events
+            if "independent_claim" in event.rule_fields
+            and event.event_type not in {"bill_due", "emi_due"}
+        ]
+        for event in independent:
+            event.rule_fields.append(MODEL_CONFLICT)
+        obligation_conflict = any(
+            event.event_type in {"bill_due", "emi_due"} for event in rules.events
+        )
+        # Obligations have no pending-review state in the current ledger. Keep
+        # disagreements retryable instead of deducting an unreviewable liability.
+        return Extraction(
+            events=independent, not_transaction=not independent and not obligation_conflict
+        )
     if not rules.events:
         return llm
     result = rules.model_copy(deep=True)
