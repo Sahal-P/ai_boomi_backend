@@ -65,6 +65,7 @@ test("review: a decision is version-checked and undo restores the queue", async 
   // Phones open the decision as a dialog from the queue; desktop keeps it beside the queue.
   if (!wide) await page.getByRole("list", { name: "Records to review" }).getByRole("link").first().click();
   const panel = wide ? page.getByRole("region", { name: "Decision" }) : page.getByRole("dialog");
+  if (!wide) await expect(page).toHaveURL(/selected=[0-9a-f-]{36}/);
   const selectedBefore = new URL(page.url()).searchParams.get("selected");
   // Wait for the decision form itself: a duplicate offers "keep both", other reasons Confirm.
   const decision = panel.getByRole("button", { name: /^(Confirm|Not a duplicate — keep both)$/ }).first();
@@ -152,6 +153,7 @@ test("real review: preview and merge into a confirmed record, then undo the deli
   await expect(page.getByRole("list", { name: "Records to review" }).getByRole("link")).toHaveCount(1);
   if (!wide) await page.getByRole("list", { name: "Records to review" }).getByRole("link").click();
   const panel = wide ? page.getByRole("region", { name: "Decision" }) : page.getByRole("dialog");
+  if (!wide) await expect(page).toHaveURL(/selected=[0-9a-f-]{36}/);
   const selectedBefore = new URL(page.url()).searchParams.get("selected");
   await panel.getByRole("button", { name: "It's a duplicate…" }).click();
   const match = panel.locator("label").filter({ hasText: "Amazon" }).filter({ hasText: "Confirmed" }).first();
