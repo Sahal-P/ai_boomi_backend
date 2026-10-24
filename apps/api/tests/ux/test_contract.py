@@ -166,3 +166,11 @@ async def test_public_demo_is_session_independent_and_old_mutation_has_no_writes
     assert result.status_code == 409 and result.json()["error"]["code"] == "demo_read_only"
     session.execute.assert_not_called()
     session.add.assert_not_called()
+
+
+def test_literal_merchant_questions_cannot_silently_become_all_spending():
+    parsed = rule_intent("How much did I spend at Sample Bookshop today?")
+    assert parsed.intent == "merchant_lookup" and parsed.merchant == "sample bookshop"
+    assert rule_intent("How much did I spend on food today?").category == "food_dining"
+    combined = rule_intent("Amazon shopping spending this month")
+    assert combined.merchant == "amazon" and combined.category == "shopping"

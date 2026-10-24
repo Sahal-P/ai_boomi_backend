@@ -45,7 +45,11 @@ def answer_question(
         key, policy = "scope", "decline"
     elif parsed.intent == "clarification":
         key, policy = (
-            "clarify_period" if parsed.clarification_reason == "period" else "clarify",
+            "clarify_period"
+            if parsed.clarification_reason == "period"
+            else "clarify_merchant"
+            if parsed.clarification_reason == "merchant"
+            else "clarify",
             "clarify",
         )
     elif parsed.intent == "education":

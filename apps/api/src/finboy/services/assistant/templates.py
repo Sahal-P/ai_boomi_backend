@@ -314,6 +314,14 @@ for style, merchant, period in [
 ]:
     COPY[style]["merchant_total"] = merchant
     COPY[style]["clarify_period"] = period
+for style, text in {
+    "en": "Which merchant should I match? Use the name shown in your records.",
+    "hi": "किस व्यापारी का खर्च चाहिए? रिकॉर्ड में दिखा नाम बताएं।",
+    "ml": "ഏത് വ്യാപാരിയുടെ ചെലവ് വേണം? രേഖകളിലുള്ള പേര് പറയുക.",
+    "hinglish": "Kis merchant ka kharch chahiye? Records mein dikhne wala naam batayein.",
+    "manglish": "Ethu merchantinte chelavu venam? Recordsilulla peru parayuka.",
+}.items():
+    COPY[style]["clarify_merchant"] = text
 
 
 CATEGORY_NAMES: dict[str, tuple[str, str, str]] = {

@@ -86,24 +86,15 @@ def require_version(session: Session, user_id: UUID, expected: str) -> str:
 
 
 def coverage(session: Session, user_id: UUID) -> Coverage:
-    runs = list(
-        session.scalars(
-            select(ImportRun)
-            .where(ImportRun.user_id == user_id, ImportRun.mode != "demo_mailbox")
-            .order_by(ImportRun.started_at.desc().nullslast(), ImportRun.id.desc())
-            .limit(100)
-        )
+    base = (
+        select(ImportRun)
+        .where(ImportRun.user_id == user_id, ImportRun.mode != "demo_mailbox")
+        .order_by(ImportRun.started_at.desc().nullslast(), ImportRun.id.desc())
     )
-    latest = next((r for r in runs if r.mode == "gmail" and not r.retry_source_ids), None)
-    successful = next(
-        (
-            r
-            for r in runs
-            if r.mode == "gmail" and not r.retry_source_ids and r.status == "completed"
-        ),
-        None,
-    )
-    active = next((r for r in runs if r.status in {"queued", "running"}), None)
+    normal = base.where(ImportRun.mode == "gmail", ImportRun.retry_source_ids == [])
+    latest = session.scalar(normal.limit(1))
+    successful = session.scalar(normal.where(ImportRun.status == "completed").limit(1))
+    active = session.scalar(base.where(ImportRun.status.in_(["queued", "running"])).limit(1))
     pending = (
         session.scalar(
             select(func.count())
@@ -148,7 +139,7 @@ def coverage(session: Session, user_id: UUID) -> Coverage:
         window_start=latest.window_start if latest else None,
         window_end=latest.window_end if latest else None,
         state="unknown"
-        if latest is None
+        if latest is None or latest.window_start is None or latest.window_end is None
         else "partial"
         if latest.status != "completed" or latest.failed or latest.truncated
         else "scanned",

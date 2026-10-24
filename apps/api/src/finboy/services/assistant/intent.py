@@ -32,7 +32,7 @@ Intent = Literal[
 class ParsedIntent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     intent: Intent
-    clarification_reason: Literal["period", "amount"] | None = None
+    clarification_reason: Literal["period", "amount", "merchant"] | None = None
     category: Category | None = None
     period: PeriodSpec = Field(default_factory=PeriodSpec)
     amount_minor: int | None = Field(default=None, gt=0, le=100_000_000_00)
@@ -335,10 +335,27 @@ def rule_intent(text: str) -> ParsedIntent:
         return ParsedIntent(intent="income_query", period=period)
     if contains(q, UPCOMING):
         return ParsedIntent(intent="upcoming_commitments", period=period)
-    merchant = next((m for m in MERCHANTS if m in q), None)
-    if merchant:
-        return ParsedIntent(intent="merchant_lookup", merchant=merchant, period=period)
     category = next((c for c, terms in CATEGORIES.items() if contains(q, terms)), None)
+    merchant = next((m for m in MERCHANTS if m in q), None)
+    if merchant is None and contains(q, SPEND):
+        # A literal merchant phrase is a parameter, never model-generated arithmetic/SQL.
+        stop = (
+            r"(?=\s+(?:(?:this|last|previous|current)\s+month|today|yesterday|"
+            r"20\d{2}-\d{2})|[?!]|$)"
+        )
+        match = re.search(r"\b(?:spend(?:ing)?|spent|paid)\s+(?:on|at|with|to)\s+(.+?)" + stop, q)
+        if match:
+            candidate = re.sub(r"\s+(?:in|during|for)$", "", match[1]).strip(" .\"'")
+            if candidate and not any(
+                candidate == term for terms in CATEGORIES.values() for term in terms
+            ):
+                if len(candidate) > 80:
+                    return ParsedIntent(intent="clarification", clarification_reason="merchant")
+                merchant = candidate
+    if merchant:
+        return ParsedIntent(
+            intent="merchant_lookup", merchant=merchant, category=category, period=period
+        )
     if contains(q, SPEND) or category:
         return ParsedIntent(intent="spending_query", category=category, period=period)
     return ParsedIntent(intent="out_of_scope")

@@ -22,7 +22,9 @@ def settings() -> Settings:
 
 @pytest.fixture
 def session() -> MagicMock:
-    return MagicMock(spec=Session)
+    value = MagicMock(spec=Session)
+    value.scalar.return_value = None
+    return value
 
 
 @pytest.fixture

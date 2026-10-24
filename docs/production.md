@@ -170,3 +170,9 @@ Keep the same session key/password hash, Gmail grants/callback, provider credent
 proxy origins, DNS, nginx sites and other applications. Do not run tests or fixture
 imports in production. Production checks are read-only health/access/schema/provider
 configuration and human-session browser journeys, with consent/playback gaps explicit.
+
+Read-only UX preflight on 24 October 2026: production provenance inventory returned
+26 demo-only transactions, four demo-only obligations and zero mixed transactions
+or obligations. Only aggregate operational counts were printed; no source/financial
+fields were read into console output. The current service/release remained unchanged.
+Repeat the inventory immediately around migration rather than assuming it is frozen.

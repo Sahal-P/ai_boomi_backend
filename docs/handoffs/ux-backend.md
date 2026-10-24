@@ -46,7 +46,7 @@ private ignored env has only this disposable runtime's local settings.
 
 ## Verification actually performed
 
-- `pnpm check`: passed Ruff/format, **396 backend unit tests**, **19 existing web client
+- `pnpm check`: passed Ruff/format, **397 backend unit tests**, **19 existing web client
   tests**, ESLint and strict TypeScript. Unit tests require no PostgreSQL.
 - `pnpm build`: passed the baseline frontend build. Product changes and integrated
   browser acceptance are still separate gates.
@@ -83,3 +83,13 @@ PostgreSQL and Product's actual UI-to-API browser suite at all three widths. The
 F01–F38 matrix currently records backend evidence and pending Product/integration
 acceptance; it is not a completion claim. Actual human consent, microphone/phone
 playback, screen-reader/device performance and observed comprehension remain explicit.
+
+
+Follow-up review: literal merchant phrases (for example, a new bookshop) are parsed
+as bounded merchant filters rather than falling through to all-spending answers;
+merchant and category filters can combine. A regression covers that distinction.
+Coverage discovery queries the latest Gmail scan independently of upload-history
+volume and treats pre-migration missing windows as unknown. This preserves the
+same response schemas. Production read-only provenance inventory returned 26
+demo-only transactions, four demo-only obligations, and zero mixed records of either
+type. No production mutation or migration was performed for that inventory.
