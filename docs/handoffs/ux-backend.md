@@ -2,7 +2,7 @@
 
 Core implementation: `76cb9b9`, precision follow-up `3337b85` on `feat/finboy-ux-backend`, exact starting baseline
 `b572565aa521a753fbee1271ca0c68e470ff15c8`. Contract-only bootstrap `2e42622`;
-continuation contract `c05b44b`; current contract v1.1.2 in
+continuation contract `c05b44b`; current contract v1.2.0 in
 `docs/ux-round/api-contract.md`. Product can read committed schemas/fixtures through
 Git without accessing this worktree. No apps/web, pnpm lockfile or root package
 script edits were made. No additional agents/chats were created.
@@ -46,13 +46,13 @@ private ignored env has only this disposable runtime's local settings.
 
 ## Verification actually performed
 
-- `pnpm check`: passed Ruff/format, **400 backend unit tests**, **19 existing web client
+- `pnpm check`: passed Ruff/format, **584 backend unit tests**, **19 existing web client
   tests**, ESLint and strict TypeScript. Unit tests require no PostgreSQL.
 - `pnpm build`: passed the baseline frontend build. Product changes and integrated
   browser acceptance are still separate gates.
 - `pnpm db:migrate`: passed through `0006_event_origins` on finboy_ux_api.
 - `pnpm db:check`: no new upgrade operations detected.
-- `pnpm test:integration`: **46 passed**, using only the assigned disposable database.
+- `pnpm test:integration`: **49 passed**, using only the assigned disposable database.
   Includes a pre-upgrade temporary schema with demo/live/mixed provenance and explicit
   canonical value/source/revision preservation assertions; the schema rolls back.
 - New trust journeys include failed-upload recovery, targeted Gmail retry/continuation,
@@ -67,7 +67,7 @@ private ignored env has only this disposable runtime's local settings.
 
 ## Product/integration requirements still open
 
-Consume v1.1.1, including `can_continue`, the continuation action and actual terminal
+Consume v1.2.0, including `can_continue`, the continuation action and actual terminal
 cancel outcomes. Always use `/transactions/page` for counted history, versioned
 `/decisions` for review, previewed privacy deletion and explicit export. Preserve the
 production `/` API proxy, host-only cookie and cross-host Gmail handoff. Snapshot
@@ -119,3 +119,29 @@ Node through `NODE_EXTRA_CA_CERTS`, for real same-origin proxy browser checks. P
 strict HTTPS validation in production proxy configuration; a frontend test-only
 loopback-HTTP exception should be removed during integration in favor of this runtime.
 Do not install the test certificate into system trust or use production credentials.
+
+
+Final backend integration closure: main's deployed eligibility hotfix c37d611/988a731
+is merged and retained. The combined check passes 584 backend units and 49 PostgreSQL
+integration tests. The cached-veto fixtures use the household cache namespace; mutated
+HTML fixtures preserve their MIME subtype instead of bypassing the new claim binding.
+The migration also reopens household bills previously settled only by sample/quarantined
+payments, retaining the previous status/payment pointer in operational audit. Invalid
+cross-dataset links get system revisions; locked links are quarantined. Full ingestion
+of the same synthetic salary/bill into demo and household creates independent records.
+
+Contract v1.2.0 adds `include_overdue_line:true` to the UX client's simulation and ask
+requests. Default false keeps the currently deployed client's closed four-label enum
+readable during backend-first rollout; calculations are identical. Add this flag in
+both frontend domain clients during integration. Also emit `overview_explanation_opened`
+for opening an explanation; a click is not observed comprehension (`overview_understood`
+stays a legacy/self-report event). No public response fields were removed.
+
+Import `needs_review` now reflects current unresolved records linked to that run,
+while its processing-time counter remains in PostgreSQL. Confirm/reopen and the
+eligibility repair therefore update the next action honestly. Refund category changes
+propagate to drilldowns, and an explicit correction of a refund's own category is
+respected consistently by summary, list and assistant. The read-only sample includes
+its documented example correction. Historical simulation questions clarify the period;
+month tokens cannot be mistaken for proposed rupee amounts. Local HTTPS transport,
+read-only demo/household version stability and genuine page responses passed over 8031.

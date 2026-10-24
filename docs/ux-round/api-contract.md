@@ -1,4 +1,4 @@
-# UX API contract v1.1.2 — 24 October 2026
+# UX API contract v1.2.0 — 24 October 2026
 
 Baseline b572565aa521a753fbee1271ca0c68e470ff15c8. This committed bootstrap freezes the following contracts for Product. Implementation follows on the same branch. All examples are synthetic. Prefix `/api/v1`; household endpoints retain existing session/Origin protection. Demo reads require no household credentials and perform no persistence. No frontend financial arithmetic.
 
@@ -90,3 +90,12 @@ apps/api/tests/ux/export_examples.py`; its fixture guards reject production and 
 databases, make no provider calls, and clean up the temporary user.
 
 - v1.1.2: Source events retain original transaction lineage independently of their current canonical record. Deletion previews/removal include orphaned merge stubs and private decision snapshots derived from removed evidence; operational audit stays. Shared/manual records remain, and loss of the last payment proof reopens review without replacing financial values or locks. Unmapped pre-upgrade merges fail closed with 409 `source_lineage_unavailable` before deletion; the production preflight found none. Storage migration head is 0006_event_origins. Public response field names are unchanged.
+
+- v1.1.3: Import `needs_review` is the current distinct unresolved count linked to that run's sources, so confirm/reopen/merge and guarded eligibility repairs update the next action. The original processing counter remains durably stored for history. The legacy transaction array also returns genuine source/payment/version metadata while retaining its array shape. No response fields changed.
+
+- v1.2.0 rollout compatibility: `POST /money/simulations` and `POST /assistant/ask` accept optional strict boolean `include_overdue_line` (default false). The UX client MUST send true. True returns the explicit overdue line. False preserves the current client's four-label enum by combining future and overdue liabilities into its legacy commitments line, while all calculations and additive summary fields stay correct. This keeps the backend-first deployment compatible with the current frontend. No provider or language behavior changes.
+
+The outcome enum also accepts `overview_explanation_opened`: the UX client uses it
+for opening the calculation explanation. `overview_understood` is retained only as
+a legacy/self-report event; a click must not be presented as observed comprehension.
+Human comprehension remains a separate acceptance session.

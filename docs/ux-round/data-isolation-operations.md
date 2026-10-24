@@ -2,12 +2,15 @@
 
 Run `uv run --package finboy-api python -m finboy.services.ux.isolation` using the
 reviewed environment before and after deployment. It opens a read-only transaction
-and outputs four provenance counts plus a merged-record count, with no IDs, bodies or financial fields.
+and outputs four provenance counts, a merged-record count and a cross-scope payment-link count, with no IDs, bodies or financial fields.
 It works before migration 0004 because it reads original provenance columns only.
 Do not print an environment file, database URL, source body or full SQL parameters.
 
 0004 adds scope metadata, recovery metadata and a generation trigger. It does not
-remove/reset sources, records, corrections, locks or revisions. Source-only demo
+remove/reset sources, records, corrections, locks or revisions. Household bills
+previously settled only by sample/quarantined payments are reopened, with the old
+status/payment pointer preserved in operational audit. Invalid cross-dataset links
+get system revisions; user-locked links remain quarantined for review. Source-only demo
 records are tagged demo. Mixed demo/live canonical values are quarantined; hiding
 a source alone would not validate them. Same-scope matching prevents new mixing.
 0005 adds encrypted Gmail continuation state and last-attempt source provenance.

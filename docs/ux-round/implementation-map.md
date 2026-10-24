@@ -4,7 +4,7 @@ Backend implementation is verified locally. Product, assembled browser, producti
 
 | Finding | Backend responsibility/status | Product responsibility/status | Required evidence / remaining acceptance |
 | --- | --- | --- | --- |
-| F01 | Implemented/tested: Isolation across all reads/writes and backfill | Awaiting Product: Distinct read-only demo identity | Demo/mixed-scope API and pure-engine tests; pre-upgrade preservation test; production inventory pending. |
+| F01 | Implemented/tested: Isolation across all reads/writes and backfill | Awaiting Product: Distinct read-only demo identity | Actual ingestion partitions sample/household salary and bills; pre-upgrade value/history preservation and invalid-payment reopening tests; production scope inventory checked. |
 | F02 | Implemented/tested: Carry overdue and uncertain liabilities; resolution | Awaiting Product: Inspect/repair obligation | Due-day/month/year rollover and real obligation inspect/resolve/stale-write tests. |
 | F03 | Implemented/tested: Outcome and counters | Awaiting Product: Partial outcome/action hierarchy | Actual partial upload counters/outcomes; successful retry outcome test; UI action hierarchy pending. |
 | F04 | Implemented/tested: Failed retry, issues and successful dedupe | Awaiting Product: Recovery queue/original file selection | Stable failed-source UUID/attempts, upload retry, selected Gmail refetch and successful dedupe tests. |

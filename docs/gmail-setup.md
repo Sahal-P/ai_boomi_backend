@@ -255,3 +255,6 @@ Continuation tokens and provider message IDs never enter browser results/logs. A
 query window is still not complete bank/mailbox coverage. Last successful scan, service
 availability, pending review and failed-source counts are distinct. Sample viewing is
 read-only and no longer creates an import; disposable tests still exercise the pipeline.
+
+The IST scan window uses epoch seconds because Google interprets date-string
+search boundaries in PST; see Google's [Gmail filtering guide](https://developers.google.com/workspace/gmail/api/guides/filtering).
