@@ -56,7 +56,7 @@ export function displayLang(answer: Pick<Answer, "display_language" | "display_s
 export const askQuestion = (text: string, displayStyle: DisplayStyle, signal?: AbortSignal) =>
   requestJson("/api/v1/assistant/ask", answerSchema, {
     method: "POST",
-    ...jsonBody({ text, display_style: displayStyle }),
+    ...jsonBody({ text, display_style: displayStyle, include_overdue_line: true }),
     signal,
     timeoutMs: 60_000,
   });

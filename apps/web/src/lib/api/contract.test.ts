@@ -192,7 +192,7 @@ test("typed summary client rejects malformed success without exposing it", async
   await assert.rejects(getSummary(null), (error: unknown) => error instanceof ApiError && !error.message.includes("sensitive"));
 });
 
-// Responses captured from the real API by the backend owner (contract v1.1.2). The file lives on
+// Responses captured from the real API by the backend owner (contract v1.2.0). The file lives on
 // the backend branch, so this runs once both branches are assembled.
 const actualHttp = new URL("../../../../../docs/ux-round/fixtures/actual-http-v1.json", import.meta.url);
 test(

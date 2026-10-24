@@ -95,7 +95,7 @@ function Exceptions({ summary, period }: { summary: MoneySummary; period: Period
           <li key={key}>
             <Link
               href={href}
-              onClick={() => recordOutcome("overview_understood")}
+              onClick={() => recordOutcome("overview_explanation_opened")}
               className="flex min-h-12 items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950 hover:bg-amber-100/70"
             >
               <Icon className="size-4 shrink-0 text-amber-800" aria-hidden="true" />
@@ -186,7 +186,7 @@ function Estimate({ summary, period }: { summary: MoneySummary; period: Period }
               <li key={line.label}>
                 <Link
                   href={line.href}
-                  onClick={() => recordOutcome("overview_understood")}
+                  onClick={() => recordOutcome("overview_explanation_opened")}
                   className="flex items-start justify-between gap-3 rounded-xl py-3 hover:bg-white/5"
                 >
                   <span>
@@ -236,7 +236,7 @@ function Categories({ summary, period }: { summary: MoneySummary; period: Period
               <li key={item.category}>
                 <Link
                   href={`/transactions?category=${item.category}&status=confirmed${periodParams(period)}`}
-                  onClick={() => recordOutcome("overview_understood")}
+                  onClick={() => recordOutcome("overview_explanation_opened")}
                   className="block rounded-2xl px-2 py-2.5 hover:bg-canvas"
                 >
                   <span className="flex justify-between gap-4 text-sm">

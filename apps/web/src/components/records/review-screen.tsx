@@ -92,6 +92,14 @@ export function ReviewScreen() {
     return () => window.removeEventListener("keydown", onKey);
   }, [items, position, update, wide]);
 
+  const measuredDecision = useRef<string | null>(null);
+  useEffect(() => {
+    if (last && page?.unresolved_total === 0 && measuredDecision.current !== last.outcome.result.decision_id) {
+      measuredDecision.current = last.outcome.result.decision_id;
+      recordOutcome("review_completed");
+    }
+  }, [last, page]);
+
   function onDecided(outcome: DecisionOutcome, recordId: string) {
     setDecided((value) => value + 1);
     setLast({ outcome, recordId });
@@ -100,7 +108,6 @@ export function ReviewScreen() {
     const next = items[position + 1] ?? items[position - 1] ?? null;
     select(next ? next.id : null);
     list.reload();
-    if (!next && page && page.unresolved_total <= 1) recordOutcome("review_completed");
     if (next) setFocusPanel(true);
     else requestAnimationFrame(() => queueHeading.current?.focus());
   }
@@ -283,7 +290,8 @@ export function ReviewScreen() {
           onClose={() => select(null)}
           onDecided={(outcome) => selected && onDecided(outcome, selected)}
           focusFallback={() => queueHeading.current}
-          header={undoBar}
+          header={selected ? undoBar : null}
+          showUndo={false}
           footer={
             items.length > 1 && position >= 0 ? (
               <div className="mt-6 flex items-center justify-between gap-2 border-t pt-4">

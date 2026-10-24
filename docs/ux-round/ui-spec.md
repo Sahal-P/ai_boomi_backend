@@ -1,8 +1,8 @@
 # UX round — product UI specification
 
-Owner: Product (Agent 2), branch `feat/finboy-ux-frontend`. Consumes API contract **v1.1.2**
+Owner: Product (Agent 2), branch `feat/finboy-ux-frontend`. Consumes API contract **v1.2.0**
 (`docs/ux-round/api-contract.md`: bootstrap `2e42622`, continuation `c05b44b`; v1.1.1 cancel and
-v1.1.2 lineage changes read from the backend branch at `b14a9e9`, whose captured HTTP examples
+v1.2.0 lineage changes read from the backend branch at `b14a9e9`, whose captured HTTP examples
 parse through these clients). The UI never computes money: every
 amount, total, deduction and preview comes from the API; the web app only formats paise and
 converts typed rupees to paise.
@@ -154,8 +154,8 @@ regions, failures use `role="alert"`; skip link; keyboard help (`?`), search (`/
 ## Product outcome events
 
 Only `POST /privacy/task-outcomes` with `evidence_opened` (citation → record, with the record
-ID), `overview_understood` (following an overview explanation link) and `review_completed`
-(queue emptied). No amounts, merchants, questions, URLs or mailbox content; failures are ignored.
+ID), `overview_explanation_opened` (following an overview explanation link) and `review_completed`
+(the refreshed server response reports zero unresolved records). No amounts, merchants, questions, URLs or mailbox content; failures are ignored.
 
 ## Browser harness
 
@@ -167,3 +167,13 @@ contract — not live integration, real Google consent, microphone hardware or p
 proxy against a real API on a disposable database; the proxy origin must be HTTPS, so local runs
 use a temporary private certificate trusted only via `NODE_EXTRA_CA_CERTS`
 (`apps/web/e2e/README.md`).
+
+## Integration clarifications
+
+The human transferred integration ownership after Product finished at `5fd2467`. Both
+assistant questions and cash-flow simulations send `include_overdue_line: true` for
+contract v1.2.0; older deployed clients retain the compatible four-line response by default.
+The answer unit also localizes policy, period, supporting-record headings/count qualifiers
+and playback controls across native and romanized Hindi/Malayalam. Provider speech remains
+native. This establishes UI behavior, with fluent-user comprehension still requiring a pilot.
+Opening an explanation is a click event, never a claim of comprehension.

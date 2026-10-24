@@ -30,6 +30,7 @@ export function RecordDialog({
   focusFallback,
   header,
   footer,
+  showUndo = true,
 }: {
   id: string | null;
   onClose: () => void;
@@ -37,6 +38,7 @@ export function RecordDialog({
   focusFallback?: () => HTMLElement | null;
   header?: ReactNode;
   footer?: ReactNode;
+  showUndo?: boolean;
 }) {
   const [dirty, setDirty] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -78,6 +80,7 @@ export function RecordDialog({
                 key={id}
                 id={id}
                 focusOnLoad
+                showUndo={showUndo}
                 onDirtyChange={setDirty}
                 {...(onDecided ? { onDecided } : {})}
               />

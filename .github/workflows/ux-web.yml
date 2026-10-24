@@ -1,0 +1,75 @@
+name: UX web journeys
+
+on:
+  push:
+    branches: [main, feat/finboy-ux-frontend, feat/finboy-ux-integration]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-and-real-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: finboy
+          POSTGRES_PASSWORD: finboy_local_only
+          POSTGRES_DB: finboy_ux_api
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U finboy -d finboy_ux_api"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://finboy:finboy_local_only@127.0.0.1:5432/finboy_ux_api
+      CORS_ORIGINS: '["http://127.0.0.1:3031"]'
+      WEB_APP_URL: http://127.0.0.1:3031
+      FINBOY_EXTRACTION_MODE: rules
+      DEMO_TODAY: '2026-10-24'
+      E2E_PORT: 3031
+      E2E_API_ORIGIN: https://127.0.0.1:8031
+      UV_PYTHON: 3.15.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: 0.12.19
+          enable-cache: true
+      - name: Install locked runtimes
+        run: |
+          npm install --global pnpm@12.15.0
+          pnpm install --frozen-lockfile
+          uv python install 3.15.1
+          uv sync --locked
+          pnpm --filter @finboy/web exec playwright install-deps chromium
+      - name: Static contracts and build
+        run: pnpm check && pnpm build
+      - name: Three-width contract browser journeys
+        run: pnpm test:e2e
+      - name: Disposable database and private loopback TLS API
+        run: |
+          pnpm db:migrate
+          pnpm db:check
+          mkdir -m 700 /tmp/finboy-ci-tls
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=FinBoy CI' -addext 'subjectAltName=IP:127.0.0.1' -keyout /tmp/finboy-ci-tls/key.pem -out /tmp/finboy-ci-tls/cert.pem
+          chmod 600 /tmp/finboy-ci-tls/*
+          uv run --package finboy-api uvicorn finboy.main:create_app --factory --host 127.0.0.1 --port 8031 --ssl-keyfile /tmp/finboy-ci-tls/key.pem --ssl-certfile /tmp/finboy-ci-tls/cert.pem --no-access-log --log-config apps/api/logging.json > /tmp/finboy-ci-api.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --cacert /tmp/finboy-ci-tls/cert.pem https://127.0.0.1:8031/api/v1/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Three-width real UI to PostgreSQL journeys
+        env:
+          E2E_LIVE_API: '1'
+          NODE_EXTRA_CA_CERTS: /tmp/finboy-ci-tls/cert.pem
+        run: pnpm --filter @finboy/web exec playwright test e2e/live.spec.ts --workers=1

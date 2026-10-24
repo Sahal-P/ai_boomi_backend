@@ -10,7 +10,7 @@ import { displayLang, SPEECH_LIMITS, type DisplayStyle } from "@/lib/api/assista
 import { formatMoney } from "@/lib/api/money";
 import { recordOutcome } from "@/lib/api/privacy";
 import type { Turn } from "@/lib/conversation";
-import { formatDay, formatPeriod } from "@/lib/dates";
+import { answerCopy, answerDate, answerPeriod } from "@/lib/answer-copy";
 import { kindLabels } from "@/lib/labels";
 
 export const styleLabels: Record<DisplayStyle, { label: string; lang?: string }> = {
@@ -20,12 +20,6 @@ export const styleLabels: Record<DisplayStyle, { label: string; lang?: string }>
   hinglish: { label: "Hinglish" },
   ml: { label: "മലയാളം", lang: "ml" },
   manglish: { label: "Manglish" },
-};
-
-const policyLabel = {
-  answer: "From your household records",
-  decline: "Outside what FinBoy answers",
-  clarify: "FinBoy needs one more detail",
 };
 
 /** A submitted question paired with its own result, scope and reply style. */
@@ -55,6 +49,7 @@ export function TurnCard({
   const answer = turn.answer;
   const mine = playback.turnId === turn.id;
   const lang = answer ? displayLang(answer) : undefined;
+  const copy = answerCopy(answer ?? { display_language: "en", display_script: "Latn" });
   return (
     <article aria-label={`Question: ${turn.question}`} className="surface rounded-3xl p-5 sm:p-7">
       <header className="border-b pb-4">
@@ -86,13 +81,13 @@ export function TurnCard({
       )}
 
       {answer && turn.state === "answered" && (
-        <div className="mt-4 space-y-5">
+        <div className="mt-4 space-y-5" lang={lang}>
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-            <span className="rounded-full bg-lilac px-2.5 py-1 text-violet-deep">{policyLabel[answer.policy]}</span>
+            <span className="rounded-full bg-lilac px-2.5 py-1 text-violet-deep">{copy[answer.policy]}</span>
             {answer.resolved_period && (
               // The API's period label is an ISO range; show the product's one date style instead.
               <span className="rounded-full bg-muted px-2.5 py-1 text-ink-soft">
-                {formatPeriod(answer.resolved_period.start, answer.resolved_period.end)}
+                {answerPeriod(answer.resolved_period.start, answer.resolved_period.end, copy.locale)}
               </span>
             )}
           </div>
@@ -119,13 +114,13 @@ export function TurnCard({
             </ul>
           )}
           {answer.evidence_transactions.length > 0 && (
-            <section aria-label="Supporting records">
+            <section aria-label={copy.evidence}>
               <h3 className="text-sm font-semibold">
-                Supporting records
+                {copy.evidence}
                 <span className="font-normal text-ink-soft">
                   {answer.evidence_sampled
-                    ? ` · showing ${answer.evidence_transactions.length} of ${answer.evidence_total} — a sample, not the full list`
-                    : ` · all ${answer.evidence_transactions.length}`}
+                    ? ` · ${copy.showing} ${answer.evidence_transactions.length} ${copy.of} ${answer.evidence_total} — ${copy.sample}`
+                    : ` · ${copy.all} ${answer.evidence_transactions.length}`}
                 </span>
               </h3>
               <ul className="mt-2 divide-y rounded-2xl border">
@@ -139,7 +134,7 @@ export function TurnCard({
                       <span className="min-w-0">
                         <span className="block font-semibold break-words text-violet-deep underline underline-offset-4">{tx.merchant}</span>
                         <span className="block text-xs text-ink-soft">
-                          {formatDay(tx.occurred_at)} · {kindLabels[tx.kind]}
+                          {answerDate(tx.occurred_at, copy.locale)} · <span lang="en">{kindLabels[tx.kind]}</span>
                           {tx.source_count ? ` · ${tx.source_count} ${tx.source_count === 1 ? "email" : "emails"}` : ""}
                         </span>
                       </span>
@@ -153,25 +148,25 @@ export function TurnCard({
 
           <div className="flex flex-wrap items-center gap-2 border-t pt-4">
             {answer.speech_text.length > SPEECH_LIMITS.characters ? (
-              <p className="text-xs text-ink-soft">This answer is too long to play as audio; the full text is above.</p>
+              <p className="text-xs text-ink-soft">{copy.tooLong}</p>
             ) : mine && playback.step === "preparing" ? (
               <>
                 <Button variant="outline" disabled>
-                  <LoaderCircle className="motion-safe:animate-spin" aria-hidden="true" /> Preparing audio…
+                  <LoaderCircle className="motion-safe:animate-spin" aria-hidden="true" /> {copy.preparing}
                 </Button>
-                <Button variant="ghost" onClick={onStop}>Cancel</Button>
+                <Button variant="ghost" onClick={onStop}>{copy.cancel}</Button>
               </>
             ) : mine && playback.step === "playing" ? (
               <Button variant="outline" onClick={onStop}>
-                <Square aria-hidden="true" /> Stop audio
+                <Square aria-hidden="true" /> {copy.stop}
               </Button>
             ) : mine && playback.step === "ready" ? (
               <Button onClick={onResume}>
-                <Play aria-hidden="true" /> Audio ready — play
+                <Play aria-hidden="true" /> {copy.ready}
               </Button>
             ) : (
               <Button variant="outline" onClick={onPlay}>
-                <Volume2 aria-hidden="true" /> {mine && playback.step === "failed" ? "Try audio again" : "Play answer"}
+                <Volume2 aria-hidden="true" /> {mine && playback.step === "failed" ? copy.retry : copy.play}
               </Button>
             )}
             {turn.style !== currentStyle && (
@@ -183,7 +178,7 @@ export function TurnCard({
           <div role="status" aria-live="polite" className="text-sm">
             {mine && playback.step === "playing" && (
               <p className="flex items-center gap-2 text-ink-soft">
-                <Pause className="size-4" aria-hidden="true" /> Playing the answer aloud.
+                <Pause className="size-4" aria-hidden="true" /> {copy.playing}
               </p>
             )}
           </div>

@@ -256,7 +256,7 @@ export const updateObligation = (id: string, change: ObligationChange) =>
 export const simulate = (amount: number, signal?: AbortSignal) =>
   requestJson("/api/v1/money/simulations", simulationSchema, {
     method: "POST",
-    ...jsonBody({ monthly_amount_minor: amount, label: "Monthly SIP" }),
+    ...jsonBody({ monthly_amount_minor: amount, label: "Monthly SIP", include_overdue_line: true }),
     signal,
     timeoutMs: 15_000,
   });

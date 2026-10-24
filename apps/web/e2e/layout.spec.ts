@@ -37,12 +37,15 @@ test("the tab bar steps aside while typing so the keyboard never hides the field
   test.skip(testInfo.project.name === "desktop", "phones only");
   await page.goto("/assistant");
   await expect(page.locator(".app-tabbar")).toBeVisible();
-  await page.getByLabel("Your question").focus();
+  // A real tap also waits for hydration and field stability before focusing.
+  await page.getByLabel("Your question").click();
+  await expect(page.getByLabel("Your question")).toBeFocused();
   await expect(page.locator(".app-tabbar")).toBeHidden();
 });
 
 test("navigation labels meet WCAG AA contrast as rendered", async ({ page }) => {
   await page.goto("/dashboard");
+  await expect(page.getByRole("link", { name: "Overview", exact: true })).toBeVisible();
   const samples = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('nav[aria-label="App navigation"] a')]
       .filter((link) => link.checkVisibility())
@@ -64,6 +67,7 @@ test("navigation labels meet WCAG AA contrast as rendered", async ({ page }) => 
 test("keyboard users can skip to content and see focus", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "hardware-keyboard path is checked at desktop width");
   await page.goto("/transactions");
+  await expect(page.getByRole("heading", { name: "Transactions", exact: true })).toBeVisible();
   await page.keyboard.press("Tab");
   const skip = page.getByRole("link", { name: "Skip to content" });
   await expect(skip).toBeFocused();

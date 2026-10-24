@@ -1,44 +1,53 @@
-# F01–F38 implementation and acceptance map
+# F01–F38 completion matrix
 
-Backend implementation is verified locally. Product, assembled browser, production and human acceptance remain independent gates; endpoint existence is not completion.
+Backend and Product are assembled on `feat/finboy-ux-integration`. The human confirmed
+Product finished at `5fd2467` and transferred integration ownership. **Implemented** below
+means the software behavior exists and has the listed verification; it does not substitute
+for human acceptance. No comprehension, phone performance or playback success is invented.
 
-| Finding | Backend responsibility/status | Product responsibility/status | Required evidence / remaining acceptance |
+Evidence: **DB** = actual HTTP/rules/PostgreSQL tests (49); **UI** = browser journeys
+at 1440×1000, 390×844 and 320×740 using the explicitly test-only contract double;
+**Real UI** = assembled production build, same-origin HTTPS proxy, actual FastAPI and
+disposable PostgreSQL, with synthetic uploads and no API double. Provider HTTP boundaries
+are mocked in DB tests. Final commands and deployment outcomes: [integration handoff](../handoffs/ux-integration.md).
+
+| Finding | Backend | UI | Verification / remaining acceptance |
 | --- | --- | --- | --- |
-| F01 | Implemented/tested: Isolation across all reads/writes and backfill | Awaiting Product: Distinct read-only demo identity | Actual ingestion partitions sample/household salary and bills; pre-upgrade value/history preservation and invalid-payment reopening tests; production scope inventory checked. |
-| F02 | Implemented/tested: Carry overdue and uncertain liabilities; resolution | Awaiting Product: Inspect/repair obligation | Due-day/month/year rollover and real obligation inspect/resolve/stale-write tests. |
-| F03 | Implemented/tested: Outcome and counters | Awaiting Product: Partial outcome/action hierarchy | Actual partial upload counters/outcomes; successful retry outcome test; UI action hierarchy pending. |
-| F04 | Implemented/tested: Failed retry, issues and successful dedupe | Awaiting Product: Recovery queue/original file selection | Stable failed-source UUID/attempts, upload retry, selected Gmail refetch and successful dedupe tests. |
-| F05 | Implemented/tested: Coverage/freshness/caps/manual sync | Awaiting Product: Coverage beside estimate | Gmail IST window, cap, encrypted continuation and coverage metadata; browser qualifier pending. |
-| F06 | Support/no change: No backend change | Awaiting Product: Move obstructing account control | Frontend-only change; mobile overlap acceptance pending. |
-| F07 | Implemented/tested: Compatible independent candidates/preview | Awaiting Product: Side-by-side merge comparison | Confirmed target discovery independent of queue; real preview/merge/undo test. |
-| F08 | Implemented/tested: Extraction versus payment metadata | Awaiting Product: Intelligible evidence states | Separate extraction/payment fields; no calibrated probability claim. UI comprehension pending. |
-| F09 | Implemented/tested: Atomic correction+confirm | Awaiting Product: Dirty draft protection | Atomic date/direction/kind/amount correction plus confirmation; dirty-draft UI pending. |
-| F10 | Implemented/tested: Versioned decisions and undo | Awaiting Product: Reopen/undo/history | Reopen and snapshot undo preserve sources/locks/revisions; concurrent changes reject safely. |
-| F11 | Implemented/tested: Date/direction/kind corrections and obligations | Awaiting Product: Complete repair forms | Supported fact repair and inspectable/correctable/resolvable uncertain obligations tested. |
-| F12 | Implemented/tested: All unresolved + counted pagination | Awaiting Product: Month/URL/paging controls | 201 records, prior-month unresolved queue, unique next page and independent total tests. |
-| F13 | Implemented/tested: Snapshot data_version in results | Awaiting Product: Submitted-input/stale states | Opaque database-generation plus IST-day versions; submitted-input UI pending. |
-| F14 | Implemented/tested: Safe401/403 and bounded auth | Awaiting Product: Return path and draft/session expiry | Household auth/Origin/CORS/redaction tests retained; return-path/draft UI pending. |
-| F15 | Implemented/tested: Deterministic merchant/time arithmetic | Awaiting Product: Supported prompts/clarifications | Full-scope 16-record merchant gross/refund/net test; relative period/year rollover tests. |
-| F16 | Implemented/tested: Relevant evidence before cap, exact IDs | Awaiting Product: Exact evidence deep link/back | Income evidence selected before cap; stable exact IDs and sampled/total metadata. Navigation pending. |
-| F17 | Support/no change: No backend change | Awaiting Product: Contrast and legible navigation | Frontend-only contrast change; actual rendered state checks pending. |
-| F18 | Implemented/tested: Real API fixture/runtime integration | Awaiting Product: Browser journeys/proxy/session/320px | Real HTTP/PostgreSQL import/review/assistant/privacy tests; mocked Google boundary explicit. Assembled browser pending. |
-| F19 | Implemented/tested: Source status/import discovery | Awaiting Product: Sources management entry point | Connection state plus active/recent import endpoints; source-management UI pending. |
-| F20 | Implemented/tested: Durable imports/outcomes/interruption | Awaiting Product: History and reconnect polling | Durable timestamps/outcomes/history and interrupted-worker lock recovery test; polling UI pending. |
-| F21 | Implemented/tested: Cancel checkpoints; scan enable distinct | Awaiting Product: Accurate pause/allow/scan copy | Safe cancellation retains committed counters; allowing scans does not start a job. UI copy pending. |
-| F22 | Implemented/tested: Review reason and aggregate unresolved count | Awaiting Product: Task-oriented review sequence | All-unresolved count, reasons, independent merge candidates and actions; queue productivity UI pending. |
-| F23 | Implemented/tested: Filtered total and unresolved_total | Awaiting Product: Filtered-empty/debounce/URL | Filtered total zero while unresolved_total=201; URL/debounce/clear UI pending. |
-| F24 | Implemented/tested: Kind/provenance/effect fields | Awaiting Product: Explicit event and provenance labels | Kind/source/direction/payment metadata and deterministic refund/transfer math; row UI pending. |
-| F25 | Implemented/tested: Aligned filterable facts/obligation evidence | Awaiting Product: Clickable signed category breakdown | Signed impact-ordered categories, filterable history and obligation evidence; drilldown UI pending. |
-| F26 | Support/no change: Safe async errors | Awaiting Product: Focus restoration and announcements | Safe task errors; Product owns focus/live-region/keyboard behavior. Human screen reader pending. |
-| F27 | Support/no change: Keep speech failure independent | Awaiting Product: Cancellable recording/playback errors | Existing text fallback and speech failure tests retained; real microphone/phone playback pending. |
-| F28 | Implemented/tested: Version/period/display metadata | Awaiting Product: Submitted question pairs/cancel/session | Resolved period, display/script/speech and snapshot metadata; question-pair/session UI pending. |
-| F29 | Implemented/tested: Preview/source-aware delete/private export | Awaiting Product: Impact/export/retention UI | Real shared-source preview/export and stale-delete tests; merge-origin/private-snapshot cleanup, manual retention, bill-only snapshots and last-proof review reopening. |
-| F30 | Implemented/tested: Bounded validation and retry behavior | Awaiting Product: Stage files/size/remove/cancel | Bounded memory-only multipart validation and original-file recovery; staged upload/cancel UI pending. |
-| F31 | Implemented/tested: Localized fact/warning labels and script | Awaiting Product: Localized answer unit and lang tags | Native/romanized labels, warnings and display/speech metadata; real language comprehension pending. |
-| F32 | Support/no change: No backend change | Awaiting Product: Compact consistent task headers | Frontend-only task-header and density acceptance pending. |
-| F33 | Implemented/tested: Fixed safe actionable codes | Awaiting Product: Content/recovery map | Allowlisted actionable error/recovery codes and request IDs; customer copy review belongs to Product. |
-| F34 | Implemented/tested: Distinct missing/conflict/unavailable responses | Awaiting Product: Route and independent panel states | Distinct validation/missing/conflict/auth/unavailable errors; route/panel state UI pending. |
-| F35 | Support/no change: No backend change | Awaiting Product: Static daily visuals/phone budget | Frontend and real-device scope; phone performance acceptance remains unclaimed. |
-| F36 | Implemented/tested: Current architecture/operations docs | Awaiting Product: Current design/UI docs/catalogue | Architecture, money, Gmail, voice and operations docs reflect implementation; UI references pending Product. |
-| F37 | Support/no change: Stable IDs/IST timestamps | Awaiting Product: Task titles/date style/keyboard help | Stable IDs and IST metadata supplied; titles/date/keyboard orientation pending Product. |
-| F38 | Implemented/tested: Allowlisted task outcomes in audit | Awaiting Product: Observed pilot sessions and task measures | Owned-subject task outcome test; no financial/question metadata or external analytics. Observed sessions pending. |
+| F01 | Implemented: dataset separation/backfill | Implemented: read-only sample destination | DB pipeline isolation, mixed quarantine, history preservation and invalid-payment reopening; real UI sample/household separation. Production inventory and additive migration in handoff. |
+| F02 | Implemented: overdue/uncertain deductions and repair | Implemented: evidence/resolve/correct dialog | DB due-day/month/year rollover; real UI overdue deduction, resolution/reopen and correction. |
+| F03 | Implemented: durable outcomes/current counters | Implemented: partial outcome and Review primary | DB partial upload/retry; UI outcome hierarchy and real uploads. Household comprehension session remains. |
+| F04 | Implemented: failed retry and successful dedupe | Implemented: issues/retry/original-file staging | DB stable failed IDs/attempts, selected Gmail refetch, upload retry; UI recovery; real UI idempotent reupload. Google HTTP mocked locally. |
+| F05 | Implemented: scan window/cap/continuation/freshness | Implemented: qualifiers beside estimate/Sources | DB IST window, 500 cap, encrypted continuation; UI partial/stale/manual coverage. No automatic or complete-mailbox claim. |
+| F06 | No backend change | Implemented: account menu and scroll spacing | UI fixed-layer intersections at 320/390, tab bar hidden while typing. Physical phone keyboard acceptance remains. |
+| F07 | Implemented: independent confirmed targets/preview | Implemented: side-by-side compatible matches | DB preview/merge/undo; UI filtered confirmed merge; real UI deliberate merge into confirmed record and undo. |
+| F08 | Implemented: extraction vs payment metadata | Implemented: intelligible review reasons, no percentage | DB separate states; UI missing-proof guidance. Human interpretation remains unobserved. |
+| F09 | Implemented: atomic correction and confirmation | Implemented: Save and confirm/dirty guards | DB supported fact changes; UI Escape/navigation/session draft preservation. Drafts stay in memory. |
+| F10 | Implemented: reversible versioned decisions | Implemented: Undo/reopen/history | DB source/lock/revision/link preservation and stale undo refusal; real UI decision and merge reversal. |
+| F11 | Implemented: date/direction/kind and obligation repair | Implemented: bounded correction forms | DB full fact repair and obligation evidence/resolve/correct; real UI obligation repair/reopen. |
+| F12 | Implemented: all-unresolved/counts/pagination | Implemented: month/URL/paging controls | DB old unresolved and 201+ rows; UI paging; real UI 205 older source-backed uploads in five batches, record 201 reached. |
+| F13 | Implemented: generation plus IST-day version | Implemented: submitted amount/stale results | DB version trigger/clock tests; UI edited-input/changed-record staleness and preserved successful result on error. |
+| F14 | Implemented: safe auth/Origin/access contracts | Implemented: safe return paths/in-place reauth | Auth/CORS/redaction regressions; UI unsafe redirect and expired-session dirty draft checks. No public signup. |
+| F15 | Implemented: complete merchant/refund/date arithmetic | Implemented: supported prompts/period clarification | DB 16-record gross/refund/net and relative-period tests; real UI food answer requires exact amount and evidence. |
+| F16 | Implemented: relevant evidence before cap/exact IDs | Implemented: exact citations/back continuity | DB income evidence/sampled totals; UI citation/back; real UI exact record/evidence dialog. |
+| F17 | No backend change | Implemented: readable navigation contrast | UI rendered contrast >=4.5:1 and labels >=11px at all three widths. Physical-device legibility remains human acceptance. |
+| F18 | Implemented: real HTTP fixtures/CI persistence | Implemented: three-width browser harness | Combined check/build, DB migration/drift/49 tests, UI and real UI suites. CI runs both; doubles never count as real integration. |
+| F19 | Implemented: status and import discovery | Implemented: Sources management | UI account/scan/upload/history placement; real UI staged source import. Privacy retains destructive controls. |
+| F20 | Implemented: history/interruption/recovery counters | Implemented: reconnect polling/progress/history | DB worker-lock interruption and committed counters; UI dropped poll recovery; real UI terminal outcomes. |
+| F21 | Implemented: cancellation safe checkpoints | Implemented: separate pause/allow/scan/cancel copy | DB committed results preserved; UI accurate controls. Allowing scans does not claim a job resumed. |
+| F22 | Implemented: reasons/aggregate unresolved count | Implemented: attention queue/next/previous | UI productive task sequence; real UI review/undo/filtered merge. Human task timing remains unobserved. |
+| F23 | Implemented: filtered and aggregate totals | Implemented: URL/debounce/clear/filtered empty | DB filtered zero vs unresolved 201; UI never equates filtered-empty with completion; outcome waits for refreshed zero. |
+| F24 | Implemented: event/provenance/effect fields | Implemented: kind/source/payment/effect labels | DB deterministic refund/transfer effects; UI row labels; real UI source-backed record evidence. |
+| F25 | Implemented: signed categories/exact drilldown | Implemented: clickable category and obligations | DB linked-refund categories and explicit overrides reconcile with summary/list/assistant; UI exact-period drilldown. |
+| F26 | Safe task errors | Implemented: keyboard/focus/status announcements | UI skip/dialog-return/help/live regions; duplicate mobile undo messages removed. Human screen-reader session remains. |
+| F27 | Preserved: independent speech failure/text fallback | Implemented: cancellable voice/transcript/playback | UI synthetic stream/tone and denied permission; historical production media HTTP evidence. Real microphone/phone playback remains pending. |
+| F28 | Implemented: period/display/script/speech/version | Implemented: paired submitted turns/cancel/session | UI preserves earlier result/style; real UI supported successful answer. No question storage or analytics. |
+| F29 | Implemented: source-aware preview/delete/export | Implemented: impact/retention/export controls | DB shared/manual/merge-origin/snapshot/last-proof behavior; UI and real UI preview/export. No destructive live-household test. |
+| F30 | Implemented: bounded multipart/retry behavior | Implemented: stage/validate/remove/explicit import | UI invalid-file/size/cancel behavior; real UI 42-file upload and paging batches. Bodies remain memory-only. |
+| F31 | Implemented: localized facts/warnings/script metadata | Implemented: localized answer period/evidence/playback | DB native/romanized language tests; UI lang tags and localized controls. Fluent Hindi/Malayalam comprehension and phone pronunciation remain pending. |
+| F32 | No backend change | Implemented: consistent compact task headers | UI PageHeader/task-title/grid checks at three widths. First-use task recognition remains human acceptance. |
+| F33 | Implemented: fixed safe codes/request IDs | Implemented: task-oriented recovery content map | UI errors identify task/recovery; no provider exception details or credentials. |
+| F34 | Implemented: missing/conflict/auth/unavailable | Implemented: independent panel/contextual states | UI secondary failure preserves primary, retryable evidence, missing import, offline/expired/loading states. |
+| F35 | No backend change | Implemented: static daily visuals/fallback | UI daily routes carry no WebGL; marketing no-WebGL/reduced motion. Mid-range physical phone startup/input/battery/transfer measurements remain pending. |
+| F36 | Implemented: current architecture/domain/operations docs | Implemented: current UI/design/spec references | Documents match actual routes, contracts and state matrix; nonexistent styleguide promise removed. |
+| F37 | Stable IDs/IST metadata | Implemented: task titles/date style/keyboard help | UI route titles/keyboard/date checks; private household sign-in explanation and support path. |
+| F38 | Implemented: allowlisted operational task events | Implemented: evidence/open-explanation/zero-queue measures | Explanation click never claims understanding; no amounts/questions/merchants in events. Observed pilot sessions and baseline task measures remain pending. |

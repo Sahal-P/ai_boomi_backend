@@ -38,6 +38,8 @@ test("romanized replies are announced as romanized, with localized labels and wa
   await expect(answer.locator('[lang="hi-Latn"]').first()).toBeVisible();
   await expect(answer.getByText("Sample Books par kharch").first()).toBeVisible();
   await expect(answer.getByText("Kuch records review baaki hain")).toBeVisible();
+  await expect(answer.getByRole("heading", { name: /Sambandhit records/ })).toBeVisible();
+  await expect(answer.getByRole("button", { name: "Jawab sunein" })).toBeVisible();
   await expect(answer.getByText(/Pending Review|Incomplete Coverage/)).toHaveCount(0);
   await page.reload();
   await expect(page.getByLabel("Reply style")).toHaveValue("hinglish");

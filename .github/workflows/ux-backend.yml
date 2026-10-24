@@ -1,0 +1,68 @@
+name: UX backend trust
+
+on:
+  push:
+    branches: [main, feat/finboy-ux-backend, feat/finboy-ux-integration]
+    paths:
+      - apps/api/**
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/ux-backend.yml
+  pull_request:
+    paths:
+      - apps/api/**
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/ux-backend.yml
+
+permissions:
+  contents: read
+
+jobs:
+  trust-and-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: finboy
+          POSTGRES_PASSWORD: finboy_local_only
+          POSTGRES_DB: finboy_ux_api
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U finboy -d finboy_ux_api"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      ENVIRONMENT: test
+      DATABASE_URL: postgresql+psycopg://finboy:finboy_local_only@127.0.0.1:5432/finboy_ux_api
+      CORS_ORIGINS: '["http://127.0.0.1:3031"]'
+      WEB_APP_URL: http://127.0.0.1:3031
+      FINBOY_EXTRACTION_MODE: rules
+      UV_PYTHON: 3.15.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: 0.12.19
+          enable-cache: true
+      - name: Install locked test runtime
+        run: |
+          uv python install 3.15.1
+          uv sync --locked
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Static checks and unit contracts
+        run: |
+          uv run ruff check apps/api
+          uv run ruff format --check apps/api
+          uv run pytest apps/api/tests -m 'not integration'
+      - name: Disposable schema and real persistence journeys
+        run: |
+          uv run --package finboy-api alembic -c apps/api/alembic.ini upgrade head
+          uv run --package finboy-api alembic -c apps/api/alembic.ini check
+          uv run pytest apps/api/tests -m integration

@@ -265,6 +265,9 @@
 /* While typing on a phone the on-screen keyboard needs the space: hide the tab bar so it can
    never cover the focused field or the form's primary action. */
 @media (max-width: 63.98rem) {
+  html {
+    scroll-padding-block: 6rem 7rem;
+  }
   .app-shell:has(
       :is(
           input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="file"], [type="range"]),

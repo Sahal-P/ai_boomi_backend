@@ -102,7 +102,7 @@ export async function exportRecords(expectedVersion: string): Promise<ExportFile
   };
 }
 
-export type TaskOutcome = "evidence_opened" | "overview_understood" | "review_completed";
+export type TaskOutcome = "evidence_opened" | "overview_explanation_opened" | "review_completed";
 
 /** Allowlisted, content-free product outcome; failures are ignored so tasks never block on it. */
 export function recordOutcome(task: TaskOutcome, subjectId?: string) {

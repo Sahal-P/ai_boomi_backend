@@ -7,7 +7,7 @@ Set `E2E_PORT` to pick the port (default 3032) when a dev server already uses it
 
 ## What answers the API
 
-`support/fake-api.ts` is a **test-only** in-memory double of API contract v1.1.2 with synthetic
+`support/fake-api.ts` is a **test-only** in-memory double of API contract v1.2.0 with synthetic
 data; `support/fixtures.ts` routes every same-origin `/api/v1/**` request to it and checks that
 writes carry the app's exact Origin. It is never imported by application code.
 
@@ -51,8 +51,16 @@ allow the test origin in its `CORS_ORIGINS`, then:
 
 ```sh
 cd apps/web
-E2E_LIVE_API=1 E2E_PORT=3036 E2E_API_ORIGIN=https://127.0.0.1:8032 \
+E2E_LIVE_API=1 E2E_PORT=3031 E2E_API_ORIGIN=https://127.0.0.1:8031 \
   NODE_EXTRA_CA_CERTS=/tmp/finboy-tls/cert.pem pnpm exec playwright test e2e/live.spec.ts --workers=1
 ```
 
 Run it with one worker: the three viewports share one database.
+
+The API must use the fixed synthetic clock `DEMO_TODAY=2026-10-24` and rules extraction.
+The live harness rejects API origins outside the two allocated loopback ports. It requires
+successful supported answers (a provider failure cannot satisfy the test), resolves/reopens
+an overdue bill, previews/merges/undoes a deliberate duplicate mistake and uploads 205 unique
+synthetic older bank alerts through five batches before reaching record 201. Runs are serial.
+CI executes both the contract double and the real disposable PostgreSQL journeys; it receives
+no production environment or provider credentials. No browser artifacts are uploaded from CI.
