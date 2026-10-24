@@ -7,6 +7,10 @@
 
 [![Watch the FinBoy product demo](docs/media/finboy-demo-preview.jpg)](https://github.com/Sahal-P/ai_boomi_frontend/releases/download/demo-2026-10-24/finboy-demo.mp4)
 
+### WhatsApp conversation
+
+<img src="docs/media/finboy-whatsapp-conversation.png" alt="FinBoy WhatsApp conversation showing a food-spending summary and purchase-planning questions" width="360">
+
 FinBoy imports Gmail, saved `.eml` files, or a synthetic demo mailbox into an
 evidence-backed ledger. A deterministic money engine provides tracked income,
 confirmed net spending, commitments and cash-flow simulations. Review/correction,
