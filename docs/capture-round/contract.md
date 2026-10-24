@@ -109,10 +109,10 @@ Publication and deployment belong to the coordinated release owner.
 
 | Check | Actual outcome |
 | --- | --- |
-| `pnpm check` | Passed: Ruff, ESLint, 710 backend unit tests, web tests, strict TypeScript |
+| `pnpm check` | Passed: Ruff, ESLint, 732 backend unit tests (710 before the assistant work), 39 web tests, strict TypeScript |
 | `pnpm build` | Passed |
 | `pnpm db:migrate` / `pnpm db:check` on `finboy_capture` | Head `0007_whatsapp_capture`, no drift; downgrade to 0006 and re-upgrade passed |
-| `pnpm test:integration` on `finboy_capture` | 55 passed, including six screenshot capture tests |
+| `pnpm test:integration` on `finboy_capture` | 55 passed at `bc9aadc` with provider credentials disabled, including six screenshot capture tests |
 | `pnpm voice:benchmark` (offline) | 28/28 intents, six fixtures decode, zero live calls |
 | Browser at 1440×1000, 390×844, 320×740 | Synthetic screenshot record shows its source label and filter, screenshot-specific review/evidence/payment copy, confirm works, Sources lists the run, Privacy copy updated, no overflow or console errors |
 
