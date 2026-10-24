@@ -520,6 +520,7 @@ def test_gmail_retry_refetches_only_failed_sources_and_cap_continuation_is_encry
     client, factory, uid = ux
     settings = client.app.state.settings.model_copy(
         update={
+            "web_app_url": "http://127.0.0.1:3031",
             "google_oauth_client_id": "synthetic-client",
             "google_oauth_client_secret": SecretStr("synthetic-secret"),
             "google_oauth_redirect_uri": "http://127.0.0.1:8000/api/v1/connections/gmail/callback",
