@@ -147,3 +147,38 @@ failed. The run completed with no run-level error. This verifies the live deploy
 callback and first Gmail import, with partial message extraction explicitly recorded.
 No revoke/delete action was performed and no mailbox content or financial fields
 were printed during verification.
+
+## Financial-event eligibility hotfix — 24 October 2026
+
+Release `/opt/finboy/releases/988a731` requires a bounded, affirmative financial
+claim with its own amount and proof before admitting a ledger event. Salary/job
+advertisements, examples, balances/limits, negations and future payment instructions
+cannot become transactions through global keyword matching. Explicit model rejection
+suppresses weak rules; anchored settlements with model disagreement stay in review.
+Conflicting bill/EMI claims fail extraction instead of silently becoming deductions.
+The live cache policy is versioned. No dependencies, HTTP contracts or schema changed.
+
+`pnpm check` passed 556 backend unit tests, 19 web tests, lint and strict TypeScript;
+`NEXT_PUBLIC_API_URL=/ pnpm build` passed. There are 179 new synthetic eligibility
+and persistence regressions; the prior rules/offline fixture oracles still pass.
+No test suite or fixture evaluation ran against production.
+
+A staged read-only check re-fetched the exact reported Gmail message using the
+existing grant, matched its stored source hash and returned non_financial/zero
+events. No model/provider extraction request or database write was used for that
+shadow check. A private backup succeeded before promotion; only finboy.service
+restarted. Public proxied health is 200, unauthenticated finance is 401, and existing
+Finind/nginx/PostgreSQL services remain active.
+
+Three proven old job-ad false positives were non-destructively reclassified:
+sources are non_financial/skipped and transactions rejected with system revisions
+and audit events. Checks required pending/zero-confidence state, no payment proof,
+no human changes/locks, no financial links/dependents, the original cached model
+veto, and a fresh matching message rejected by the new policy. Original evidence
+and values remain. Zero confirmed or human-corrected records changed; no records
+were deleted. Other review candidates remain available. This is not a guarantee
+of perfect extraction for arbitrary future messages.
+
+The ongoing UX Backend/Product integration must merge this hotfix from main before
+release, preserving its eligibility policy alongside the new dataset/retry features.
+See `handoffs/ingestion-eligibility-hotfix.md`.
