@@ -111,7 +111,7 @@ microphone and Gmail acceptance limitations remain recorded in handoffs/agent-5.
   timer is active and initial pg_restore archive listing passed; full restore drill
   and off-host recovery copy remain operator follow-ups. Server retains ~10GB free.
 
-Remaining human acceptance: live Gmail consent/import/revoke
+Remaining human acceptance: live Gmail disconnect/revoke
 on the deployed callback; browser microphone and chooser checks from the prior handoff.
 WhatsApp remains deliberately disabled in production. English phone text acceptance
 belongs to the previous local verifier; live voice remains explicitly deferred.
@@ -136,4 +136,14 @@ and Gmail authorization requests remain 401, and existing Finind, nginx and
 PostgreSQL services stayed active. No schema changes or production test suites.
 The human signed in; the repaired live Connect page rendered at 1440×1000,
 390×844 and 320×740, and Connect Gmail reached Google's account chooser with the
-direct backend callback. Google consent/import remains pending human completion.
+direct backend callback.
+
+The human then completed Google consent. The live Privacy page showed Gmail active,
+a last scan at 05:27 IST on 24 October 2026, and the Gmail-connected/import-completed
+audit entries. A read-only operational metadata check confirmed 15 candidate emails
+processed: four transactions created, all four awaiting review; nine emails skipped;
+two emails normalized but yielded no usable transaction events and were marked
+failed. The run completed with no run-level error. This verifies the live deployed
+callback and first Gmail import, with partial message extraction explicitly recorded.
+No revoke/delete action was performed and no mailbox content or financial fields
+were printed during verification.
