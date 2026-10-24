@@ -60,7 +60,7 @@ jobs:
         run: |
           uv run ruff check apps/api
           uv run ruff format --check apps/api
-          uv run pytest apps/api/tests -m 'not integration'
+          env -u WEB_APP_URL uv run pytest apps/api/tests -m 'not integration'
       - name: Disposable schema and real persistence journeys
         run: |
           uv run --package finboy-api alembic -c apps/api/alembic.ini upgrade head

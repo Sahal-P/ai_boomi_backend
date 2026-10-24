@@ -52,7 +52,7 @@ jobs:
           uv sync --locked
           pnpm --filter @finboy/web exec playwright install-deps chromium
       - name: Static contracts and build
-        run: pnpm check && pnpm build
+        run: env -u WEB_APP_URL pnpm check && pnpm build
       - name: Three-width contract browser journeys
         run: pnpm test:e2e
       - name: Disposable database and private loopback TLS API
