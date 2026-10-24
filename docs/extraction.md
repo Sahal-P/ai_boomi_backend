@@ -200,8 +200,9 @@ were changed; ignored worktree env files were configured as requested.
 
 Remaining limits: this is a synthetic demonstration across a few known styles, not
 validation against real bank mail. Domain heuristics do not authenticate senders;
-IMAP/Gmail trust verification belongs to the provider boundary. Attachment/PDF/OCR
-extraction, fuzzy alias discovery, partial refunds, split payments, multi-currency,
+IMAP/Gmail trust verification belongs to the provider boundary. Attachment/PDF
+extraction (WhatsApp screenshots arrive later through `docs/capture-round/contract.md`
+as one grounded line), fuzzy alias discovery, partial refunds, split payments, multi-currency,
 and automatic resolution of ambiguous repeated purchases are not implemented. Pure
 LLM-only claims remain conservative under the confidence threshold. Link/payment
 windows and confidence availability normalization need calibration on labeled real

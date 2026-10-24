@@ -32,7 +32,7 @@ export function readRecordQuery(params: URLSearchParams, view: "transactions" | 
     status: view === "transactions" ? statusSchema.safeParse(params.get("status")).data : undefined,
     category: categorySchema.safeParse(params.get("category")).data,
     kind: kindSchema.safeParse(params.get("kind")).data,
-    source: source === "gmail" || source === "eml_upload" ? source : undefined,
+    source: source === "gmail" || source === "eml_upload" || source === "whatsapp_image" ? source : undefined,
     q: q || undefined,
     dataset: view === "transactions" && params.get("dataset") === "quarantined" ? "quarantined" : undefined,
     limit: PAGE_SIZE,

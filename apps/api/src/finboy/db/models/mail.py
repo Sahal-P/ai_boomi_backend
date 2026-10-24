@@ -55,7 +55,9 @@ class OAuthState(Base):
 class ImportRun(Base):
     __tablename__ = "import_runs"
     __table_args__ = (
-        CheckConstraint("mode IN ('gmail','eml_upload','demo_mailbox')", name="mode"),
+        CheckConstraint(
+            "mode IN ('gmail','eml_upload','demo_mailbox','whatsapp_image')", name="mode"
+        ),
         CheckConstraint("status IN ('queued','running','completed','failed')", name="status"),
         CheckConstraint(
             "headers_checked >= 0 AND candidates_found >= 0 AND emails_processed >= 0 "

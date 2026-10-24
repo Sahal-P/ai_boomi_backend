@@ -62,7 +62,7 @@ export function TurnCard({
       {turn.state === "pending" && (
         <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
           <LoaderCircle className="size-4 text-violet-deep motion-safe:animate-spin" aria-hidden="true" />
-          <span>Checking your household records… this can take up to a minute.</span>
+          <span>Thinking through your question… this can take up to a minute.</span>
           <Button size="sm" variant="ghost" onClick={onCancel}>
             Cancel
           </Button>

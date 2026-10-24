@@ -21,7 +21,7 @@ class InboundQuestion:
     message_id: str
     sender: str = field(repr=False)
     provider_at: datetime
-    kind: Literal["text", "audio"]
+    kind: Literal["text", "audio", "image"]
     text: str = field(default="", repr=False)
     media_id: str | None = None
     mime_type: str | None = None
@@ -41,6 +41,10 @@ class AudioBody(BaseModel):
     mime_type: str = Field(min_length=1, max_length=100)
 
 
+class ImageBody(AudioBody):
+    """Only the Graph media ID and MIME are read; caption and webhook URL are ignored."""
+
+
 class Message(BaseModel):
     id: str = Field(min_length=1, max_length=256, pattern=r"^[A-Za-z0-9_.=+/-]+$")
     from_: str = Field(alias="from", pattern=r"^[0-9]{7,20}$", repr=False)
@@ -48,6 +52,7 @@ class Message(BaseModel):
     type: str = Field(max_length=64)
     text: TextBody | None = None
     audio: AudioBody | None = None
+    image: ImageBody | None = None
 
 
 class Status(BaseModel):
@@ -99,7 +104,7 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                 for item in messages:
                     if not isinstance(item, dict):
                         raise InvalidWebhook
-                    if item.get("type") not in {"text", "audio"}:
+                    if item.get("type") not in {"text", "audio", "image"}:
                         continue
                     msg = Message.model_validate(item)
                     when = datetime.fromtimestamp(int(msg.timestamp), UTC)
@@ -116,6 +121,17 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                                 "audio",
                                 media_id=msg.audio.id,
                                 mime_type=msg.audio.mime_type,
+                            )
+                        )
+                    elif msg.type == "image" and msg.image is not None:
+                        questions.append(
+                            InboundQuestion(
+                                msg.id,
+                                msg.from_,
+                                when,
+                                "image",
+                                media_id=msg.image.id,
+                                mime_type=msg.image.mime_type,
                             )
                         )
                     else:

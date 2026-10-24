@@ -28,8 +28,8 @@ def answer_question(
     request = AskRequest(text=text, display_style=display_style)
     if not request.text.strip():
         raise ValueError("A question is required")
-    parsed = parse_intent(request.text, settings)
     style, language = resolve_style(request.text, request.display_style)
+    parsed = parse_intent(request.text, settings, display_style=style, speech_language=language)
     evidence_total = 0
     facts: list[AssistantFact] = []
     evidence: list[engine.TransactionView] = []
@@ -43,6 +43,8 @@ def answer_question(
         key, policy = "decline", "decline"
     elif parsed.intent == "out_of_scope":
         key, policy = "scope", "decline"
+    elif parsed.intent == "purchase_planning":
+        key, policy = "clarify", "clarify"
     elif parsed.intent == "clarification":
         key, policy = (
             "clarify_period"
@@ -186,6 +188,15 @@ def answer_question(
             }.get(style, DISCLAIMER)
         )
         speech += " " + speech_disclaimer(language)
+    if parsed.reply is not None and policy != "decline":
+        if summary is None:
+            display, speech = parsed.reply.display_text, parsed.reply.speech_text
+        else:
+            # AI supplies context only. Engine-backed figures and warnings stay verbatim.
+            display = parsed.reply.display_text + "\n\n" + display
+            combined = normalize_speech(parsed.reply.speech_text + " " + speech, language)
+            if len(combined) <= settings.speech_max_text_characters:
+                speech = combined
     for fact in facts:
         fact.label = local_label(fact.key, style)
     return AssistantAnswer(

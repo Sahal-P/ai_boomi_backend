@@ -18,7 +18,7 @@ import {
   type ObligationDetail,
 } from "@/lib/api/money";
 import { formatDay, formatDayTime } from "@/lib/dates";
-import { liabilityLabels, obligationKindLabels, sourceLabels } from "@/lib/labels";
+import { liabilityLabels, obligationKindLabels, sourceLabels, sourceSender } from "@/lib/labels";
 import { describeProblem, isConflict } from "@/lib/messages";
 
 function ObligationBody({ detail, onChanged }: { detail: ObligationDetail; onChanged: (next: ObligationDetail) => void }) {
@@ -156,7 +156,7 @@ function ObligationBody({ detail, onChanged }: { detail: ObligationDetail; onCha
           <ul className="mt-2 space-y-2">
             {detail.sources.map((source) => (
               <li key={source.id} className="rounded-2xl border p-3 text-sm">
-                <p className="font-semibold break-all">{source.sender_domain}</p>
+                <p className="font-semibold break-all">{sourceSender(source)}</p>
                 <p className="text-xs text-ink-soft">
                   {sourceLabels[source.source]} · received {formatDayTime(source.received_at)}
                   {source.due_date ? ` · due ${formatDay(source.due_date)}` : ""} · {formatMoney(source.amount_minor)}

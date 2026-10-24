@@ -58,7 +58,13 @@ export const sourceLabels: Record<SourceMode, string> = {
   gmail: "Gmail",
   eml_upload: "Uploaded email",
   demo_mailbox: "Sample mailbox",
+  whatsapp_image: "WhatsApp screenshot",
 };
+
+/** Screenshots carry a placeholder sender domain; name the household's own message instead. */
+export function sourceSender(source: { source: SourceMode; sender_domain: string }): string {
+  return source.source === "whatsapp_image" ? "Your WhatsApp screenshot" : source.sender_domain;
+}
 
 export const datasetLabels: Record<Dataset, string> = {
   household: "Household",
@@ -107,6 +113,32 @@ export const paymentLabels: Record<Transaction["payment_verification"], string> 
 export const extractionLabels: Record<Transaction["extraction_quality"], string> = {
   complete: "All key details found in the email",
   partial: "Some details were missing from the email",
+};
+
+const screenshotExtractionLabels: Record<Transaction["extraction_quality"], string> = {
+  complete: "All key details found in the screenshot",
+  partial: "Some details were missing from the screenshot",
+};
+
+/** Records evidenced only by WhatsApp screenshots; email wording would misdescribe them. */
+export function screenshotOnly(row: { source_modes?: readonly SourceMode[] }): boolean {
+  return Boolean(row.source_modes?.length) && Boolean(row.source_modes?.every((mode) => mode === "whatsapp_image"));
+}
+
+export function extractionLabel(row: Pick<Transaction, "extraction_quality" | "source_modes">): string {
+  return (screenshotOnly(row) ? screenshotExtractionLabels : extractionLabels)[row.extraction_quality];
+}
+
+/** A screenshot never proves settlement; a confirmed one was confirmed by the household. */
+export function paymentLabel(row: Pick<Transaction, "payment_verification" | "source_modes">): string {
+  return screenshotOnly(row) && row.payment_verification === "verified"
+    ? "Confirmed by you from a payment screenshot"
+    : paymentLabels[row.payment_verification];
+}
+
+const screenshotReasonDetails: Partial<Record<ReviewReason, string>> = {
+  unverified_payment: "A payment screenshot shows what an app displayed; it doesn't prove that money left your account.",
+  merchant_uncertain: "FinBoy couldn't read a clear payee name from the screenshot.",
 };
 
 export const obligationKindLabels: Record<Commitment["kind"], string> = {
@@ -187,10 +219,13 @@ export const auditEventLabels: Record<string, string> = {
   "transaction.merged": "Duplicate merged",
 };
 
-export function reasonFor(row: Pick<Transaction, "review_reason" | "status">) {
-  return row.status === "needs_review" && row.review_reason
-    ? reviewReasons[row.review_reason]
-    : null;
+export function reasonFor(
+  row: Pick<Transaction, "review_reason" | "status"> & { source_modes?: readonly SourceMode[] },
+) {
+  if (row.status !== "needs_review" || !row.review_reason) return null;
+  const reason = reviewReasons[row.review_reason];
+  const detail = screenshotOnly(row) ? screenshotReasonDetails[row.review_reason] : undefined;
+  return detail ? { ...reason, detail } : reason;
 }
 
 /** How a record affects the overview, so list rows can be reconciled without opening each one. */

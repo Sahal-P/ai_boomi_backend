@@ -173,7 +173,8 @@ script above. Check actual reply content/playable voice on phone. Language comma
 en/hi/ml select preferred replies; STOP disables subsequent financial replies.
 Unknown sender must get no ledger access. Duplicate delivery must not produce a
 second answer. Metadata stores hashes/IDs/fixed states only, never message/audio or
-financial answers. No WhatsApp screenshots/OCR/capture/ledger mutations.
+financial answers. A UPI screenshot may only create a record waiting for review; no
+WhatsApp confirmations, edits or deletions. Use only synthetic screenshots for demos.
 
 ## Required handoff truth
 

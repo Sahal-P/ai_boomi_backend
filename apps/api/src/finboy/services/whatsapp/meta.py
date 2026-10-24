@@ -13,8 +13,10 @@ from pydantic import BaseModel, Field, ValidationError
 from finboy.services.whatsapp.config import ChannelConfig
 
 AUDIO_TYPES = {"audio/aac", "audio/amr", "audio/mpeg", "audio/mp4", "audio/ogg"}
+IMAGE_TYPES = {"image/jpeg", "image/png"}
 MEDIA_HOSTS = {"lookaside.fbsbx.com", "mmg.whatsapp.net"}
 MAX_AUDIO_BYTES = 3 * 1024 * 1024
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 
 class MetaUnavailable(Exception):
@@ -33,12 +35,13 @@ class MediaInfo(BaseModel):
     id: str = Field(pattern=r"^[0-9]{1,64}$")
     url: str = Field(max_length=4096, repr=False)
     mime_type: str = Field(max_length=100)
-    file_size: int = Field(gt=0, le=MAX_AUDIO_BYTES, strict=True)
+    # The per-kind limit is checked by the caller before any media bytes are read.
+    file_size: int = Field(gt=0, le=MAX_IMAGE_BYTES, strict=True)
     sha256: str = Field(pattern=r"^[A-Fa-f0-9]{64}$")
 
 
 @dataclass(frozen=True)
-class DownloadedAudio:
+class DownloadedMedia:
     data: bytes = field(repr=False)
     content_type: str
 
@@ -102,11 +105,17 @@ class MetaClient:
         except httpx.HTTPError:
             raise MetaUnavailable from None
 
-    def download_audio(self, media_id: str, webhook_mime: str) -> DownloadedAudio:
-        if (
-            not re.fullmatch(r"[0-9]{1,64}", media_id)
-            or webhook_mime.split(";")[0] not in AUDIO_TYPES
-        ):
+    def download_audio(self, media_id: str, webhook_mime: str) -> DownloadedMedia:
+        return self._download(media_id, webhook_mime, AUDIO_TYPES, MAX_AUDIO_BYTES)
+
+    def download_image(self, media_id: str, webhook_mime: str) -> DownloadedMedia:
+        return self._download(media_id, webhook_mime, IMAGE_TYPES, MAX_IMAGE_BYTES)
+
+    def _download(
+        self, media_id: str, webhook_mime: str, allowed: set[str], limit: int
+    ) -> DownloadedMedia:
+        webhook = webhook_mime.split(";")[0].strip().lower()
+        if not re.fullmatch(r"[0-9]{1,64}", media_id) or webhook not in allowed:
             raise InvalidMedia
         try:
             raw, _ = self._read(
@@ -114,16 +123,16 @@ class MetaClient:
             )
             info = MediaInfo.model_validate_json(raw)
             mime = info.mime_type.split(";")[0].strip().lower()
-            if info.id != media_id or mime not in AUDIO_TYPES or not safe_media_url(info.url):
+            if info.id != media_id or mime not in allowed or not safe_media_url(info.url):
                 raise InvalidMedia
-            if mime != webhook_mime.split(";")[0]:
+            if mime != webhook or info.file_size > limit:
                 raise InvalidMedia
-            data, content_type = self._read("GET", info.url, limit=MAX_AUDIO_BYTES)
+            data, content_type = self._read("GET", info.url, limit=limit)
             if content_type != mime or len(data) != info.file_size:
                 raise InvalidMedia
             if not hmac.compare_digest(hashlib.sha256(data).hexdigest(), info.sha256.lower()):
                 raise InvalidMedia
-            return DownloadedAudio(data, mime)
+            return DownloadedMedia(data, mime)
         except ValidationError:
             raise InvalidMedia from None
 

@@ -153,6 +153,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
               <option value="">Any source</option>
               <option value="gmail">Gmail</option>
               <option value="eml_upload">Uploaded emails</option>
+              <option value="whatsapp_image">WhatsApp screenshots</option>
             </select>
           </div>
         )}
@@ -206,6 +207,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
               <option value="">Any source</option>
               <option value="gmail">Gmail</option>
               <option value="eml_upload">Uploaded emails</option>
+              <option value="whatsapp_image">WhatsApp screenshots</option>
             </select>
           </div>
         )}

@@ -99,3 +99,19 @@ The outcome enum also accepts `overview_explanation_opened`: the UX client uses 
 for opening the calculation explanation. `overview_understood` is retained only as
 a legacy/self-report event; a click must not be presented as observed comprehension.
 Human comprehension remains a separate acceptance session.
+
+## AI assistant clarification — 24 October 2026
+
+The human authorized real AI understanding and contextual responses after a consumer
+purchase question incorrectly returned the generic period menu. Configured assistant
+requests now always use backend OpenAI Structured Outputs (`store=false`). The existing
+response shape stays unchanged; `intent` additionally admits `purchase_planning`, with
+`policy=clarify`, no resolved period, financial facts, evidence or simulation. The reply
+asks for purchase context rather than treating a future purchase horizon as a ledger
+query. Product model identifiers are not commitment amounts. Record-query periods and
+monthly simulation boundaries above stay binding. Generated prose cannot contain
+digits/currency symbols/percentages; financial results remain complete engine-backed
+text appended by code. No model arithmetic, live product prices, web access, durable
+chat history or write actions were added. Configured provider failures return the
+existing redacted 503 `assistant_unavailable`; production missing configuration returns
+503 `configuration_missing`. Unconfigured development/test runs retain offline rules.

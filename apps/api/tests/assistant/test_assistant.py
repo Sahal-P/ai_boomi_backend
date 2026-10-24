@@ -301,3 +301,41 @@ def test_historical_simulation_clarifies_its_period_not_a_missing_amount(
     assert result.policy == "clarify" and "current month" in result.display_text
     assert "one monthly rupee amount" not in result.display_text
     money_engine["simulate_monthly_commitment"].assert_not_called()
+
+
+def test_ai_wording_keeps_engine_figures_warnings_and_disclaimer_verbatim(
+    monkeypatch, settings, session, money_engine
+):
+    from finboy.services.assistant.intent import AssistantReply
+    from pydantic import SecretStr
+
+    question = "Would a 5000 monthly SIP fit?"
+    original = answer_question(
+        session, user_id=LOCAL_USER_ID, text=question, display_style="en", settings=settings
+    )
+    configured = settings.model_copy(
+        update={"openai_api_key": SecretStr("synthetic"), "openai_assistant_model": "configured"}
+    )
+    provider = MagicMock()
+    parse = provider.return_value.__enter__.return_value.responses.parse
+    parse.return_value.output_parsed = ParsedIntent(
+        intent="affordability_check",
+        amount_minor=500000,
+        reply=AssistantReply(
+            display_text="Here is how that monthly commitment fits the recorded cash flow.",
+            speech_text="Here is how that monthly commitment fits the recorded cash flow.",
+        ),
+    )
+    monkeypatch.setattr(intent, "OpenAI", provider)
+    answer = answer_question(
+        session, user_id=LOCAL_USER_ID, text=question, display_style="en", settings=configured
+    )
+    assert answer.display_text.endswith(original.display_text)
+    assert answer.display_text.endswith(DISCLAIMER)
+    assert answer.facts == original.facts and answer.simulation == original.simulation
+    assert answer.warnings == original.warnings
+    assert len(answer.speech_text) <= configured.speech_max_text_characters
+    # Provider input has the question and routing instructions, never ledger facts or evidence.
+    outbound = json.dumps(parse.call_args.kwargs["input"])
+    assert "6200000" not in outbound and "62,000" not in outbound
+    assert "1478000" not in outbound and "14,780" not in outbound

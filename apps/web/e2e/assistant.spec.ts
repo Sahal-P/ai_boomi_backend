@@ -24,7 +24,7 @@ test("a slow question can be cancelled without losing earlier answers", async ({
   await page.getByLabel("Your question").fill("How much did I spend this month?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   const pending = page.getByRole("article", { name: /spend this month/ });
-  await expect(pending.getByText("Checking your household records…")).toBeVisible();
+  await expect(pending.getByText("Thinking through your question…")).toBeVisible();
   await pending.getByRole("button", { name: "Cancel" }).click();
   await expect(pending.getByText("You cancelled this question. Nothing was saved.")).toBeVisible();
 });

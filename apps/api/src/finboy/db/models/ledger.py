@@ -48,7 +48,9 @@ class EmailSource(Base):
     __tablename__ = "email_sources"
     __table_args__ = (
         UniqueConstraint("user_id", "source", "provider_message_id"),
-        CheckConstraint("source IN ('gmail','eml_upload','demo_mailbox')", name="source"),
+        CheckConstraint(
+            "source IN ('gmail','eml_upload','demo_mailbox','whatsapp_image')", name="source"
+        ),
         CheckConstraint(
             "classification IN ('bank_alert','card_alert','upi_alert','merchant_receipt',"
             "'order_confirmation','bill_notice','emi_notice','salary_credit','refund_notice',"

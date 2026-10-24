@@ -37,7 +37,7 @@ from finboy.services.ledger.persist import persist_event
 
 @dataclass(frozen=True)
 class InboundMessage:
-    source: Literal["gmail", "eml_upload", "demo_mailbox"]
+    source: Literal["gmail", "eml_upload", "demo_mailbox", "whatsapp_image"]
     provider_message_id: str
     raw_rfc822: bytes
     received_at: datetime | None = None
