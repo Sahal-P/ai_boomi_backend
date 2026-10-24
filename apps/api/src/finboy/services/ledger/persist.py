@@ -382,6 +382,7 @@ def persist_event(
     if match.index is not None:
         transaction = transactions[match.index]
         source_event.transaction_id = transaction.id
+        source_event.origin_transaction_id = transaction.id
         session.flush()
         sources = list(
             session.scalars(select(SourceEvent).where(SourceEvent.transaction_id == transaction.id))
@@ -452,6 +453,7 @@ def persist_event(
     session.add(transaction)
     session.flush()
     source_event.transaction_id = transaction.id
+    source_event.origin_transaction_id = transaction.id
     session.flush()
     refresh_links(session, user_id, dataset)
     return True, False

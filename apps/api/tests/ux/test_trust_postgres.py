@@ -141,6 +141,7 @@ def source(session, uid, transaction, *, mode="eml_upload", proof=True):
         user_id=uid,
         email_source_id=email.id,
         transaction_id=transaction.id,
+        origin_transaction_id=transaction.id,
         event_type="debit",
         amount_minor=transaction.amount_minor,
         currency="INR",
@@ -770,3 +771,274 @@ def test_shared_source_preview_delete_and_task_outcomes(ux):
             )
         )
         assert event.event_metadata == {} and event.subject_id == rid
+
+
+def test_delete_after_merge_removes_origin_stub_and_private_decision_snapshots(ux):
+    client, factory, uid = ux
+    with factory.begin() as session:
+        keep = tx(session, uid, status="confirmed", review_reason=None)
+        pending = tx(session, uid)
+        source(session, uid, keep)
+        source(session, uid, pending)
+        kid, pid = keep.id, pending.id
+    merged = client.post(
+        f"/api/v1/transactions/{pid}/decisions",
+        json={"expected_version": version(client), "action": "merge", "keep_id": str(kid)},
+    )
+    assert merged.status_code == 200
+    preview = client.post("/api/v1/privacy/deletion-preview", json={}).json()
+    assert preview["removed_transaction_count"] == 2
+    assert (
+        client.post(
+            "/api/v1/privacy/delete", json={"expected_version": preview["version"]}
+        ).status_code
+        == 200
+    )
+    assert client.get("/api/v1/transactions/page?scope=all").json()["total"] == 0
+    with factory() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(ReviewDecision)
+                .where(ReviewDecision.user_id == uid)
+            )
+            == 0
+        )
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(TransactionRevision)
+                .join(Transaction, Transaction.id == TransactionRevision.transaction_id)
+                .where(Transaction.user_id == uid)
+            )
+            == 0
+        )
+
+
+def test_scoped_delete_after_merge_keeps_surviving_evidence(ux):
+    client, factory, uid = ux
+    with factory.begin() as session:
+        connection = MailConnection(
+            user_id=uid,
+            provider="gmail",
+            account_email_masked="s***@***.test",
+            account_email_sha256="f" * 64,
+            scopes=[],
+            status="active",
+        )
+        session.add(connection)
+        session.flush()
+        cid = connection.id
+        keep = tx(session, uid, status="confirmed", review_reason=None)
+        pending = tx(session, uid)
+        source(session, uid, keep)
+        imported, _ = source(session, uid, pending, mode="gmail")
+        imported.mail_connection_id = cid
+        kid, pid = keep.id, pending.id
+    assert (
+        client.post(
+            f"/api/v1/transactions/{pid}/decisions",
+            json={"expected_version": version(client), "action": "merge", "keep_id": str(kid)},
+        ).status_code
+        == 200
+    )
+    preview = client.post(
+        "/api/v1/privacy/deletion-preview", json={"connection_id": str(cid)}
+    ).json()
+    assert preview["removed_transaction_count"] == preview["retained_shared_transaction_count"] == 1
+    assert (
+        client.post(
+            "/api/v1/privacy/delete",
+            json={"expected_version": preview["version"], "connection_id": str(cid)},
+        ).status_code
+        == 200
+    )
+    assert client.get(f"/api/v1/transactions/{pid}").status_code == 404
+    assert client.get(f"/api/v1/transactions/{kid}").json()["transaction"]["source_count"] == 1
+
+
+def test_legacy_merge_with_missing_origin_fails_closed_before_privacy_mutation(ux):
+    from finboy.services.ledger.reconcile import merge_transactions
+
+    client, factory, uid = ux
+    with factory.begin() as session:
+        keep = tx(session, uid, status="confirmed", review_reason=None)
+        pending = tx(session, uid)
+        _, first = source(session, uid, keep)
+        _, second = source(session, uid, pending)
+        first.origin_transaction_id = second.origin_transaction_id = None
+        merge_transactions(session, user_id=uid, keep_id=keep.id, merge_id=pending.id)
+    result = client.post("/api/v1/privacy/deletion-preview", json={})
+    assert result.status_code == 409
+    assert result.json()["error"]["code"] == "source_lineage_unavailable"
+    with factory() as session:
+        assert (
+            session.scalar(
+                select(func.count()).select_from(EmailSource).where(EmailSource.user_id == uid)
+            )
+            == 2
+        )
+
+
+def test_source_free_manual_record_survives_deleting_its_imported_merge_target(ux):
+    client, factory, uid = ux
+    with factory.begin() as session:
+        manual = tx(session, uid, merchant="Sample manual entry")
+        imported = tx(session, uid, status="confirmed", review_reason=None)
+        source(session, uid, imported)
+        mid, iid = manual.id, imported.id
+    assert (
+        client.post(
+            f"/api/v1/transactions/{mid}/decisions",
+            json={"expected_version": version(client), "action": "merge", "keep_id": str(iid)},
+        ).status_code
+        == 200
+    )
+    preview = client.post("/api/v1/privacy/deletion-preview", json={}).json()
+    assert preview["removed_transaction_count"] == 1
+    assert (
+        client.post(
+            "/api/v1/privacy/delete", json={"expected_version": preview["version"]}
+        ).status_code
+        == 200
+    )
+    manual = client.get(f"/api/v1/transactions/{mid}").json()["transaction"]
+    assert manual["status"] == "needs_review" and manual["merged_into_id"] is None
+    assert manual["merchant"] == "Sample manual entry"
+
+
+def test_bill_only_deletion_also_removes_derived_review_snapshot(ux):
+    client, factory, uid = ux
+    with factory.begin() as session:
+        connection = MailConnection(
+            user_id=uid,
+            provider="gmail",
+            account_email_masked="s***@***.test",
+            account_email_sha256="1" * 64,
+            scopes=[],
+            status="active",
+        )
+        session.add(connection)
+        session.flush()
+        cid = connection.id
+        row = tx(session, uid, status="confirmed", review_reason=None)
+        email, _ = source(session, uid, row)
+        bill_email = EmailSource(
+            user_id=uid,
+            import_run_id=email.import_run_id,
+            mail_connection_id=cid,
+            source="gmail",
+            provider_message_id=uuid4().hex,
+            content_sha256="2" * 64,
+            sender_domain="example.test",
+            subject_sha256="3" * 64,
+            received_at=datetime(2026, 10, 24, tzinfo=IST),
+            classification="bill_notice",
+            processing_status="extracted",
+        )
+        session.add(bill_email)
+        session.flush()
+        claim = SourceEvent(
+            user_id=uid,
+            email_source_id=bill_email.id,
+            event_type="bill_due",
+            amount_minor=row.amount_minor,
+            currency="INR",
+            merchant_normalized=row.merchant,
+            due_date=date(2026, 10, 24),
+            extraction_method="rule",
+            extractor_id="synthetic",
+            evidence={},
+            field_confidence={},
+        )
+        session.add(claim)
+        session.flush()
+        session.add(
+            Commitment(
+                user_id=uid,
+                kind="bill",
+                label=row.merchant,
+                amount_minor=row.amount_minor,
+                currency="INR",
+                due_date=date(2026, 10, 24),
+                status="paid",
+                source_event_id=claim.id,
+                paid_transaction_id=row.id,
+                confidence=Decimal(".8"),
+            )
+        )
+        rid = row.id
+    assert (
+        client.post(
+            f"/api/v1/transactions/{rid}/decisions",
+            json={"expected_version": version(client), "action": "reject"},
+        ).status_code
+        == 200
+    )
+    with factory() as session:
+        assert session.scalar(
+            select(ReviewDecision).where(ReviewDecision.user_id == uid)
+        ).before_state["commitments"]
+    preview = client.post(
+        "/api/v1/privacy/deletion-preview", json={"connection_id": str(cid)}
+    ).json()
+    assert preview["removed_transaction_count"] == 0 and preview["removed_obligation_count"] == 1
+    assert (
+        client.post(
+            "/api/v1/privacy/delete",
+            json={"expected_version": preview["version"], "connection_id": str(cid)},
+        ).status_code
+        == 200
+    )
+    with factory() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(ReviewDecision)
+                .where(ReviewDecision.user_id == uid)
+            )
+            == 0
+        )
+        assert session.get(Transaction, rid) is not None
+
+
+def test_deleting_last_payment_proof_reopens_shared_record_without_changing_values(ux):
+    client, factory, uid = ux
+    with factory.begin() as session:
+        connection = MailConnection(
+            user_id=uid,
+            provider="gmail",
+            account_email_masked="s***@***.test",
+            account_email_sha256="4" * 64,
+            scopes=[],
+            status="active",
+        )
+        session.add(connection)
+        session.flush()
+        cid = connection.id
+        keep = tx(session, uid, status="confirmed", review_reason=None)
+        pending = tx(session, uid)
+        proof, _ = source(session, uid, keep, mode="gmail")
+        proof.mail_connection_id = cid
+        source(session, uid, pending, proof=False)
+        kid, pid = keep.id, pending.id
+    assert (
+        client.post(
+            f"/api/v1/transactions/{pid}/decisions",
+            json={"expected_version": version(client), "action": "merge", "keep_id": str(kid)},
+        ).status_code
+        == 200
+    )
+    preview = client.post(
+        "/api/v1/privacy/deletion-preview", json={"connection_id": str(cid)}
+    ).json()
+    assert (
+        client.post(
+            "/api/v1/privacy/delete",
+            json={"expected_version": preview["version"], "connection_id": str(cid)},
+        ).status_code
+        == 200
+    )
+    record = client.get(f"/api/v1/transactions/{kid}").json()["transaction"]
+    assert record["status"] == "needs_review" and record["payment_verification"] == "unverified"
+    assert record["amount_minor"] == 10000 and record["merchant"] == "Sample Bookshop"

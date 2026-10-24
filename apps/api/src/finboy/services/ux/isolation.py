@@ -45,6 +45,10 @@ def inventory(connection: Connection, user_id: UUID) -> dict[str, int]:
         "mixed_transactions": transactions.mixed,
         "demo_only_obligations": obligations.demo_only,
         "mixed_obligations": obligations.mixed,
+        "merged_transactions": connection.scalar(
+            text("SELECT count(*) FROM transactions WHERE user_id=:uid AND status='merged'"),
+            {"uid": user_id},
+        ),
     }
 
 

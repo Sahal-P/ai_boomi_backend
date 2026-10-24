@@ -16,6 +16,10 @@ from finboy.db.models.mail import ImportRun
 
 class TaskError(Exception):
     MESSAGES = {
+        "source_lineage_unavailable": (
+            409,
+            "An older merge needs a source review before deletion. Your records were kept.",
+        ),
         "not_found": (404, "This record is no longer available."),
         "version_conflict": (409, "Your records changed. Refresh and review the latest version."),
         "decision_conflict": (

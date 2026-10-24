@@ -162,6 +162,9 @@ class SourceEvent(Base):
         ForeignKey("email_sources.id", ondelete="CASCADE"), index=True
     )
     transaction_id: Mapped[UUID | None] = mapped_column(ForeignKey("transactions.id"), index=True)
+    origin_transaction_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("transactions.id"), index=True
+    )
     event_type: Mapped[str] = mapped_column(Text)
     amount_minor: Mapped[int] = mapped_column(BigInteger)
     currency: Mapped[str] = mapped_column(CHAR(3), server_default="INR")

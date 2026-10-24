@@ -101,6 +101,7 @@ def test_additive_upgrade_preserves_values_revisions_and_mixed_provenance():
                 sources_before = connection.scalar(text("SELECT count(*) FROM source_events"))
                 load("0004_ux_trust.py").upgrade()
                 load("0005_scan_continuation.py").upgrade()
+                load("0006_event_origins.py").upgrade()
                 assert (
                     connection.execute(
                         text("SELECT id,amount_minor,merchant,status FROM transactions ORDER BY id")
@@ -116,6 +117,9 @@ def test_additive_upgrade_preserves_values_revisions_and_mixed_provenance():
                     for row in connection.execute(text("SELECT id,dataset FROM transactions"))
                 }
                 assert [labels[key] for key in txids] == ["demo", "household", "quarantined"]
+                version_before = connection.scalar(
+                    text("SELECT data_version FROM users WHERE id=:id"), {"id": uid}
+                )
                 connection.execute(
                     text(
                         "UPDATE transactions SET merchant='Corrected synthetic merchant' "
@@ -127,7 +131,7 @@ def test_additive_upgrade_preserves_values_revisions_and_mixed_provenance():
                     connection.scalar(
                         text("SELECT data_version FROM users WHERE id=:id"), {"id": uid}
                     )
-                    == 1
+                    == version_before + 1
                 )
             transaction.rollback()
     finally:

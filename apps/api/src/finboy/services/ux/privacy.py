@@ -19,6 +19,7 @@ from finboy.db.models.mail import MailConnection
 from finboy.services.money.engine import commitment_view, transaction_views
 from finboy.services.money.models import RevisionView
 from finboy.services.privacy.audit import audit
+from finboy.services.privacy.scope import transaction_impact
 from finboy.services.ux.decisions import VersionRequest
 from finboy.services.ux.state import TaskError, data_version
 
@@ -67,16 +68,7 @@ def deletion_preview(session: Session, *, user_id: UUID, connection_id: UUID | N
             )
         )
     )
-    txids = {event.transaction_id for event in events if event.transaction_id}
-    shared = set(
-        session.scalars(
-            select(SourceEvent.transaction_id).where(
-                SourceEvent.user_id == user_id,
-                SourceEvent.transaction_id.in_(txids),
-                SourceEvent.email_source_id.not_in(ids),
-            )
-        )
-    )
+    impact = transaction_impact(session, user_id=user_id, source_ids=ids)
     obligations = list(
         session.scalars(
             select(Commitment).where(
@@ -108,8 +100,8 @@ def deletion_preview(session: Session, *, user_id: UUID, connection_id: UUID | N
         "connection_id": connection_id,
         "source_count": len(sources),
         "event_count": len(events),
-        "removed_transaction_count": len(txids - shared),
-        "retained_shared_transaction_count": len(shared),
+        "removed_transaction_count": len(impact.removed),
+        "retained_shared_transaction_count": len(impact.retained),
         "removed_obligation_count": len(obligations) - shared_obligations,
         "retained_shared_obligation_count": shared_obligations,
         "first_received_at": min(times) if times else None,

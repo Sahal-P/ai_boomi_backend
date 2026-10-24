@@ -11,12 +11,15 @@ from finboy.db.models.ledger import (
     Commitment,
     EmailSource,
     ExtractionCache,
+    ReviewDecision,
     SourceEvent,
     Transaction,
     TransactionRevision,
 )
 from finboy.db.models.mail import ImportRun
+from finboy.services.ledger.reconcile import revision
 from finboy.services.privacy.audit import audit
+from finboy.services.privacy.scope import transaction_impact
 
 
 def delete_imported_data(session: Session, *, connection_id: UUID | None = None) -> None:
@@ -27,11 +30,13 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
     events = select(SourceEvent.id).where(
         SourceEvent.email_source_id.in_(sources), SourceEvent.user_id == LOCAL_USER_ID
     )
-    affected_transactions = set(
-        session.scalars(
-            select(SourceEvent.transaction_id).where(
-                SourceEvent.id.in_(events), SourceEvent.transaction_id.is_not(None)
-            )
+    source_ids = set(session.scalars(sources))
+    impact = transaction_impact(session, user_id=LOCAL_USER_ID, source_ids=source_ids)
+    affected_transactions = impact.affected
+    # Private decision snapshots are derived financial data, not operational audit.
+    session.execute(
+        delete(ReviewDecision).where(
+            ReviewDecision.user_id == LOCAL_USER_ID, ReviewDecision.id.in_(impact.decisions)
         )
     )
     # A canonical obligation may also be evidenced by a remaining import mode/account.
@@ -71,16 +76,7 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
     session.flush()
     session.execute(delete(SourceEvent).where(SourceEvent.id.in_(events)))
     session.execute(delete(EmailSource).where(*source_filter))
-    remaining = select(SourceEvent.transaction_id).where(SourceEvent.transaction_id.is_not(None))
-    orphans = list(
-        session.scalars(
-            select(Transaction.id).where(
-                Transaction.user_id == LOCAL_USER_ID,
-                Transaction.id.in_(affected_transactions),
-                Transaction.id.not_in(remaining),
-            )
-        )
-    )
+    orphans = list(impact.removed)
     # Retained shared records may have canonical values chosen from removed evidence.
     # Preserve corrections/history while excluding those claims until source-aware repair.
     shared = affected_transactions - set(orphans)
@@ -129,6 +125,31 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
                     transaction_id=transaction.id,
                     preserve_status=False,
                 )
+                if transaction.status == "confirmed" and not any(
+                    "payment_proof" in event.evidence for event, _ in pairs
+                ):
+                    # Removing the last payment proof requires a new decision, even if a
+                    # merge once locked status. Preserve values/locks and append history.
+                    revision(
+                        session,
+                        transaction,
+                        "status",
+                        "confirmed",
+                        "needs_review",
+                        reason="privacy_evidence_removed",
+                    )
+                    revision(
+                        session,
+                        transaction,
+                        "review_reason",
+                        transaction.review_reason,
+                        "unverified_payment",
+                        reason="privacy_evidence_removed",
+                    )
+                    transaction.status, transaction.review_reason = (
+                        "needs_review",
+                        "unverified_payment",
+                    )
     if orphans:
         session.execute(
             update(Commitment)
@@ -140,10 +161,17 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
             Transaction.merged_into_id,
             Transaction.possible_duplicate_of_id,
         ):
+            changes = {column: None}
+            if column is Transaction.merged_into_id:
+                changes.update(status="needs_review", review_reason="low_confidence")
             session.execute(
                 update(Transaction)
-                .where(Transaction.user_id == LOCAL_USER_ID, column.in_(orphans))
-                .values({column: None})
+                .where(
+                    Transaction.user_id == LOCAL_USER_ID,
+                    column.in_(orphans),
+                    Transaction.id.not_in(orphans),
+                )
+                .values(changes)
             )
         session.execute(
             delete(TransactionRevision).where(TransactionRevision.transaction_id.in_(orphans))
@@ -153,6 +181,9 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
                 Transaction.id.in_(orphans), Transaction.user_id == LOCAL_USER_ID
             )
         )
+    from finboy.services.ledger.persist import refresh_links
+
+    refresh_links(session, LOCAL_USER_ID)
     # The cache has no source/user FK; this single-user app must clear it on privacy deletion.
     session.execute(delete(ExtractionCache))
     runs = [ImportRun.user_id == LOCAL_USER_ID, ImportRun.status.in_(["queued", "running"])]
