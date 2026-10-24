@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from finboy.core.config import LOCAL_USER_ID
 from finboy.db.models.ledger import Commitment
 from finboy.db.session import get_session
+from finboy.services.money.compat import simulation_response
 from finboy.services.money.engine import (
     CashFlowSimulation,
     CommitmentView,
@@ -43,12 +44,13 @@ def commitments(session: DB, query: Annotated[PeriodQuery, Query()]) -> list[Com
 
 @router.post("/simulations")
 def simulate(session: DB, body: SimulationRequest) -> CashFlowSimulation:
-    return simulate_monthly_commitment(
+    result = simulate_monthly_commitment(
         session,
         user_id=LOCAL_USER_ID,
         monthly_amount_minor=body.monthly_amount_minor,
         label=body.label,
     )
+    return simulation_response(result, include_overdue_line=body.include_overdue_line)
 
 
 @router.get("/obligations", response_model=ObligationList)

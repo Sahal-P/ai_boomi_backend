@@ -1,5 +1,5 @@
 {
-  "_provenance": "All fields are synthetic. Captured from actual HTTP, rules extraction and the guarded disposable PostgreSQL fixture. No live provider success is represented.",
+  "_provenance": "All fields are synthetic. Captured from real HTTP, rules extraction and guarded disposable PostgreSQL. No live provider success is claimed.",
   "demo": {
     "dataset": "demo",
     "read_only": true,
@@ -45,9 +45,9 @@
         },
         {
           "category": "food_dining",
-          "amount_minor": 661000,
+          "amount_minor": 786000,
           "currency": "INR",
-          "transaction_count": 4
+          "transaction_count": 5
         },
         {
           "category": "investments",
@@ -78,12 +78,6 @@
           "amount_minor": 150000,
           "currency": "INR",
           "transaction_count": 2
-        },
-        {
-          "category": "travel",
-          "amount_minor": 125000,
-          "currency": "INR",
-          "transaction_count": 1
         }
       ],
       "evidence_transaction_ids": [
@@ -281,7 +275,7 @@
         "amount_minor": 125000,
         "currency": "INR",
         "merchant": "HOTEL ARYA",
-        "category": "travel",
+        "category": "food_dining",
         "occurred_at": "2026-10-13T12:05:00+05:30",
         "status": "confirmed",
         "confidence": 0.8,
@@ -965,34 +959,34 @@
       }
     ],
     "evidence_transaction_ids": [
-      "721a9c97-7c32-4b4f-8020-c1121ef3ddd9",
-      "4325113d-5641-4ebc-9ba8-f57d28af7632",
-      "e2f39ff7-28d8-4b0d-97d2-cc722d1ccc52",
-      "2159fb24-deba-4ca5-a7e7-41000d9b8148",
-      "a42be353-f22f-4c9a-9d92-693026f3b179",
-      "1d3b2376-a360-4346-8268-4599eb13b860",
-      "dbda9f94-677b-4c2a-a36b-c40c975787ff",
-      "8b5a1e12-c1c8-454e-9e39-680dee055b85",
-      "3794ecd5-2580-4f7e-9a3e-321226749656",
-      "05f3d327-4753-415e-9b56-4ec2ea096f91",
-      "7c289b94-39d5-4e09-9233-afb651f656ec",
-      "1e092ef9-7c30-49bd-b0d9-89029d853ffa",
-      "c4887dd8-6835-4e9b-a03f-eb4b9c65978e",
-      "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
-      "7f540324-8209-444a-8713-7f641fe68fe4",
-      "e551343c-d96a-4f75-bb36-f9f3e5a93957",
-      "ec43084d-ba27-47d3-a80d-0b653175dfa6",
-      "dafa9dce-2ab8-4393-a33c-d442616bcf62",
-      "4136089a-40e0-4f75-9b18-27705384013b",
-      "cdf0d27e-4ace-4043-aa04-e586c606747d",
-      "61b4f101-dabe-4145-ba3e-d9e0dfc2a570",
-      "c58b5e6d-4192-455f-a0f3-5f52036773fa"
+      "59ab0a61-f291-484b-92a0-bcf12ce091a9",
+      "8197ac76-bad3-4d74-8695-8dc5f4d2c1a6",
+      "011f3875-7810-4a00-ad12-0f79af1cb51d",
+      "484a7682-0fe8-4129-84f6-4b623fd8db19",
+      "dcf2558d-bc02-44cf-8852-dfc20969740a",
+      "a16594f6-a09b-41dc-9660-c5addca2c654",
+      "2611c0ad-4ffb-4d75-a588-d3e40db83e56",
+      "022617d2-b1be-4aa7-ae0c-19912c0a67bc",
+      "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
+      "90d6cacd-a7ca-4030-acec-675373771c98",
+      "818d84ec-0acb-45eb-96a6-f474d860c0b6",
+      "0000e301-d79c-496a-8879-83f5e637f4ac",
+      "2684f714-3ab6-4b2f-84a7-5545a1cd2976",
+      "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
+      "472addb2-7eb6-4597-9414-50c690bee75a",
+      "5a2d1cd7-f103-4af3-a885-8bf903b46e0b",
+      "9acb8833-0bf1-4748-823a-d25d381af602",
+      "266bbfbb-e64e-4112-9481-008557a2befa",
+      "0808ec23-32b3-40ec-bebe-e84e366729a6",
+      "713e7f24-ca23-4f91-a7c2-afde32d49501",
+      "b57cf0bb-e9f9-467a-94aa-eebc18595cbc",
+      "98d15086-0ed0-4dae-a2e8-8f1a83e3f9b4"
     ]
   },
   "transaction_page": {
     "items": [
       {
-        "id": "29cf3183-4325-49eb-b8a6-4c90f4be5a40",
+        "id": "2926159c-4769-4adc-a983-60c198a5f724",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 50000,
@@ -1019,7 +1013,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "b5147ef1-3bfb-481d-a76f-c604eb56eebd",
+        "id": "a0629fcb-a11a-4264-b2db-5b67b97ce283",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 184000,
@@ -1068,7 +1062,7 @@
     "version": "210:2026-10-24",
     "decisions": [],
     "transaction": {
-      "id": "29cf3183-4325-49eb-b8a6-4c90f4be5a40",
+      "id": "2926159c-4769-4adc-a983-60c198a5f724",
       "direction": "out",
       "kind": "purchase",
       "amount_minor": 50000,
@@ -1096,8 +1090,8 @@
     },
     "sources": [
       {
-        "id": "97be6ea1-791c-4357-9d36-f0dff17d18c5",
-        "email_source_id": "88f303bc-c680-461f-8191-23d2a73f200b",
+        "id": "5e08afbb-ab4f-44b4-9322-182580d77805",
+        "email_source_id": "3e78c799-8d71-4d21-bd7e-aa58bf45c584",
         "source": "eml_upload",
         "sender_domain": "alerts.hdfcbank.test",
         "received_at": "2026-10-27T12:05:00+05:30",
@@ -1109,15 +1103,15 @@
         "occurred_at": "2026-10-27T12:05:00+05:30",
         "due_date": null,
         "extraction_method": "rule",
-        "extractor_id": "rules-v1;fields=account_last4,amount_minor,event_type,merchant,occurred_at,payment_instrument,payment_proof,reference_id",
+        "extractor_id": "rules-v2;fields=account_last4,amount_minor,event_type,independent_claim,merchant,occurred_at,payment_instrument,payment_proof,reference_id",
         "evidence": {
           "account_last4": "XX1234",
           "amount_minor": "₹500.00",
-          "event_type": "Debited ₹500.00 to Unknown VPA [address] on 27-10-26 12:05 IST;",
+          "event_type": "Debited",
           "merchant": "to Unknown VPA [address]",
           "occurred_at": "on 27-10-26 12:05",
           "payment_instrument": "UPI",
-          "payment_proof": "Debited ₹500.00 to Unknown VPA [address] on 27-10-26 12:05 IST;",
+          "payment_proof": "Debited",
           "reference_id": "UTR: SYN-REVIEWVPA"
         },
         "field_confidence": {
@@ -1145,7 +1139,7 @@
   "merge_candidates": {
     "items": [
       {
-        "id": "4136089a-40e0-4f75-9b18-27705384013b",
+        "id": "0808ec23-32b3-40ec-bebe-e84e366729a6",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 50100,
@@ -1172,7 +1166,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "61b4f101-dabe-4145-ba3e-d9e0dfc2a570",
+        "id": "b57cf0bb-e9f9-467a-94aa-eebc18595cbc",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 35000,
@@ -1199,7 +1193,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "3794ecd5-2580-4f7e-9a3e-321226749656",
+        "id": "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 79900,
@@ -1226,7 +1220,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 20000,
@@ -1253,7 +1247,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "dbda9f94-677b-4c2a-a36b-c40c975787ff",
+        "id": "2611c0ad-4ffb-4d75-a588-d3e40db83e56",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 94000,
@@ -1280,7 +1274,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "dafa9dce-2ab8-4393-a33c-d442616bcf62",
+        "id": "266bbfbb-e64e-4112-9481-008557a2befa",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 99900,
@@ -1307,7 +1301,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "05f3d327-4753-415e-9b56-4ec2ea096f91",
+        "id": "90d6cacd-a7ca-4030-acec-675373771c98",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 100000,
@@ -1334,7 +1328,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "cdf0d27e-4ace-4043-aa04-e586c606747d",
+        "id": "713e7f24-ca23-4f91-a7c2-afde32d49501",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 120000,
@@ -1361,7 +1355,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "c4887dd8-6835-4e9b-a03f-eb4b9c65978e",
+        "id": "2684f714-3ab6-4b2f-84a7-5545a1cd2976",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 120000,
@@ -1388,7 +1382,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "1e092ef9-7c30-49bd-b0d9-89029d853ffa",
+        "id": "0000e301-d79c-496a-8879-83f5e637f4ac",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 125000,
@@ -1415,7 +1409,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "e551343c-d96a-4f75-bb36-f9f3e5a93957",
+        "id": "5a2d1cd7-f103-4af3-a885-8bf903b46e0b",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 148000,
@@ -1442,7 +1436,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "8b5a1e12-c1c8-454e-9e39-680dee055b85",
+        "id": "022617d2-b1be-4aa7-ae0c-19912c0a67bc",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 160000,
@@ -1469,7 +1463,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "a42be353-f22f-4c9a-9d92-693026f3b179",
+        "id": "dcf2558d-bc02-44cf-8852-dfc20969740a",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 180000,
@@ -1496,7 +1490,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "2159fb24-deba-4ca5-a7e7-41000d9b8148",
+        "id": "484a7682-0fe8-4129-84f6-4b623fd8db19",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 180000,
@@ -1523,7 +1517,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "b5147ef1-3bfb-481d-a76f-c604eb56eebd",
+        "id": "a0629fcb-a11a-4264-b2db-5b67b97ce283",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 184000,
@@ -1550,7 +1544,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "7c289b94-39d5-4e09-9233-afb651f656ec",
+        "id": "818d84ec-0acb-45eb-96a6-f474d860c0b6",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 184100,
@@ -1577,7 +1571,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "e2f39ff7-28d8-4b0d-97d2-cc722d1ccc52",
+        "id": "011f3875-7810-4a00-ad12-0f79af1cb51d",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 221000,
@@ -1604,7 +1598,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "35273857-cc25-4609-bbeb-8019650ed335",
+        "id": "f2cf10b6-2027-4181-bd81-05cdcbcce3d0",
         "direction": "out",
         "kind": "transfer",
         "amount_minor": 450000,
@@ -1631,7 +1625,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "1d3b2376-a360-4346-8268-4599eb13b860",
+        "id": "a16594f6-a09b-41dc-9660-c5addca2c654",
         "direction": "out",
         "kind": "investment",
         "amount_minor": 500000,
@@ -1658,7 +1652,7 @@
         "version": "210:2026-10-24"
       },
       {
-        "id": "4325113d-5641-4ebc-9ba8-f57d28af7632",
+        "id": "8197ac76-bad3-4d74-8695-8dc5f4d2c1a6",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 1500000,
@@ -1691,7 +1685,7 @@
   "obligations": {
     "items": [
       {
-        "id": "c1e3847e-5c31-4597-a3b1-583aeaeae577",
+        "id": "775658b7-6cf5-4e13-ac94-053a01561bb3",
         "kind": "bill",
         "label": "Electricity",
         "amount_minor": 185000,
@@ -1699,7 +1693,7 @@
         "due_date": "2026-10-29",
         "status": "upcoming",
         "confidence": 1.0,
-        "source_event_id": "818774dd-21a2-415d-a3c8-97d110f26cde",
+        "source_event_id": "c8ed6bd9-50c8-4112-9247-e80f9500f2e2",
         "paid_transaction_id": null,
         "version": "210:2026-10-24",
         "dataset": "household",
@@ -1707,7 +1701,7 @@
         "uncertain": false
       },
       {
-        "id": "599f0ddf-eeb1-4404-83e9-793ba5a2650e",
+        "id": "8d55c954-0929-4c59-9a8c-3edd05160dc1",
         "kind": "emi",
         "label": "Synthetic Loan EMI",
         "amount_minor": 650000,
@@ -1715,7 +1709,7 @@
         "due_date": "2026-10-30",
         "status": "upcoming",
         "confidence": 1.0,
-        "source_event_id": "733330cd-9c6f-4de8-bea3-21a6133d49ee",
+        "source_event_id": "217bf52c-ee1d-4924-a307-f83842f12cc2",
         "paid_transaction_id": null,
         "version": "210:2026-10-24",
         "dataset": "household",
@@ -1723,7 +1717,7 @@
         "uncertain": false
       },
       {
-        "id": "71708520-65af-4639-8418-18a3a2739cae",
+        "id": "5518bc3a-6068-48f9-94d7-4e9c2291f068",
         "kind": "bill",
         "label": "Internet",
         "amount_minor": 145000,
@@ -1731,7 +1725,7 @@
         "due_date": "2026-10-31",
         "status": "upcoming",
         "confidence": 1.0,
-        "source_event_id": "750817f7-765a-42f4-b639-e9f3b957d4c1",
+        "source_event_id": "a78d9157-f037-405b-9c84-29cf01e2651a",
         "paid_transaction_id": null,
         "version": "210:2026-10-24",
         "dataset": "household",
@@ -1743,7 +1737,7 @@
   },
   "obligation_detail": {
     "commitment": {
-      "id": "c1e3847e-5c31-4597-a3b1-583aeaeae577",
+      "id": "775658b7-6cf5-4e13-ac94-053a01561bb3",
       "kind": "bill",
       "label": "Electricity",
       "amount_minor": 185000,
@@ -1751,7 +1745,7 @@
       "due_date": "2026-10-29",
       "status": "upcoming",
       "confidence": 1.0,
-      "source_event_id": "818774dd-21a2-415d-a3c8-97d110f26cde",
+      "source_event_id": "c8ed6bd9-50c8-4112-9247-e80f9500f2e2",
       "paid_transaction_id": null,
       "version": "210:2026-10-24",
       "dataset": "household",
@@ -1760,8 +1754,8 @@
     },
     "sources": [
       {
-        "id": "818774dd-21a2-415d-a3c8-97d110f26cde",
-        "email_source_id": "28026ef9-46a7-4ed2-a885-35ad9a85ca45",
+        "id": "c8ed6bd9-50c8-4112-9247-e80f9500f2e2",
+        "email_source_id": "5a878b4f-793a-4871-8baa-aa952308cb97",
         "source": "eml_upload",
         "sender_domain": "bills.local.test",
         "received_at": "2026-10-28T12:05:00+05:30",
@@ -1773,12 +1767,12 @@
         "occurred_at": "2026-10-28T12:05:00+05:30",
         "due_date": "2026-10-29",
         "extraction_method": "rule",
-        "extractor_id": "rules-v1;fields=account_last4,amount_minor,due_date,event_type,merchant,occurred_at,reference_id",
+        "extractor_id": "rules-v2;fields=account_last4,amount_minor,due_date,event_type,independent_claim,merchant,occurred_at,reference_id",
         "evidence": {
           "account_last4": "XX1234",
           "amount_minor": "INR 1,850.00",
           "due_date": "due 29-10-26",
-          "event_type": "Bill amount INR 1,850.00 due 29-10-26; Biller: Electricity;",
+          "event_type": "Bill amount INR 1,850.00 due",
           "merchant": "Biller: Electricity",
           "occurred_at": "Date: 28-10-26 12:05",
           "reference_id": "Ref: SYN-ELECTRICITY"
@@ -1797,10 +1791,10 @@
     "version": "210:2026-10-24"
   },
   "import_started": {
-    "import_run_id": "e963bb27-c93a-433c-a4a7-149b1585a2b4"
+    "import_run_id": "7dbe3c85-8e8f-42b3-962d-d71ffcbc6dd0"
   },
   "import_status": {
-    "id": "e963bb27-c93a-433c-a4a7-149b1585a2b4",
+    "id": "7dbe3c85-8e8f-42b3-962d-d71ffcbc6dd0",
     "mode": "eml_upload",
     "status": "completed",
     "headers_checked": 42,
@@ -1813,8 +1807,8 @@
     "non_financial_skipped": 6,
     "failed": 0,
     "error_code": null,
-    "started_at": "2026-10-24T06:58:37.135805+05:30",
-    "finished_at": "2026-10-24T06:58:37.576738+05:30",
+    "started_at": "2026-10-24T07:32:05.625692+05:30",
+    "finished_at": "2026-10-24T07:32:06.109282+05:30",
     "outcome": "complete",
     "retryable": false,
     "retry_strategy": "none",
@@ -1828,7 +1822,7 @@
   "import_history": {
     "items": [
       {
-        "id": "e963bb27-c93a-433c-a4a7-149b1585a2b4",
+        "id": "7dbe3c85-8e8f-42b3-962d-d71ffcbc6dd0",
         "mode": "eml_upload",
         "status": "completed",
         "headers_checked": 42,
@@ -1841,8 +1835,8 @@
         "non_financial_skipped": 6,
         "failed": 0,
         "error_code": null,
-        "started_at": "2026-10-24T06:58:37.135805+05:30",
-        "finished_at": "2026-10-24T06:58:37.576738+05:30",
+        "started_at": "2026-10-24T07:32:05.625692+05:30",
+        "finished_at": "2026-10-24T07:32:06.109282+05:30",
         "outcome": "complete",
         "retryable": false,
         "retry_strategy": "none",
@@ -1880,11 +1874,11 @@
   "decision_preview": {
     "version": "210:2026-10-24",
     "action": "confirm",
-    "transaction_id": "29cf3183-4325-49eb-b8a6-4c90f4be5a40",
+    "transaction_id": "2926159c-4769-4adc-a983-60c198a5f724",
     "keep_id": null,
     "source_count": 1,
     "affected_transaction_ids": [
-      "29cf3183-4325-49eb-b8a6-4c90f4be5a40"
+      "2926159c-4769-4adc-a983-60c198a5f724"
     ],
     "before_summary": {
       "dataset": "household",
@@ -1969,28 +1963,28 @@
         }
       ],
       "evidence_transaction_ids": [
-        "721a9c97-7c32-4b4f-8020-c1121ef3ddd9",
-        "4325113d-5641-4ebc-9ba8-f57d28af7632",
-        "e2f39ff7-28d8-4b0d-97d2-cc722d1ccc52",
-        "2159fb24-deba-4ca5-a7e7-41000d9b8148",
-        "a42be353-f22f-4c9a-9d92-693026f3b179",
-        "1d3b2376-a360-4346-8268-4599eb13b860",
-        "dbda9f94-677b-4c2a-a36b-c40c975787ff",
-        "8b5a1e12-c1c8-454e-9e39-680dee055b85",
-        "3794ecd5-2580-4f7e-9a3e-321226749656",
-        "05f3d327-4753-415e-9b56-4ec2ea096f91",
-        "7c289b94-39d5-4e09-9233-afb651f656ec",
-        "1e092ef9-7c30-49bd-b0d9-89029d853ffa",
-        "c4887dd8-6835-4e9b-a03f-eb4b9c65978e",
-        "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
-        "7f540324-8209-444a-8713-7f641fe68fe4",
-        "e551343c-d96a-4f75-bb36-f9f3e5a93957",
-        "ec43084d-ba27-47d3-a80d-0b653175dfa6",
-        "dafa9dce-2ab8-4393-a33c-d442616bcf62",
-        "4136089a-40e0-4f75-9b18-27705384013b",
-        "cdf0d27e-4ace-4043-aa04-e586c606747d",
-        "61b4f101-dabe-4145-ba3e-d9e0dfc2a570",
-        "c58b5e6d-4192-455f-a0f3-5f52036773fa"
+        "59ab0a61-f291-484b-92a0-bcf12ce091a9",
+        "8197ac76-bad3-4d74-8695-8dc5f4d2c1a6",
+        "011f3875-7810-4a00-ad12-0f79af1cb51d",
+        "484a7682-0fe8-4129-84f6-4b623fd8db19",
+        "dcf2558d-bc02-44cf-8852-dfc20969740a",
+        "a16594f6-a09b-41dc-9660-c5addca2c654",
+        "2611c0ad-4ffb-4d75-a588-d3e40db83e56",
+        "022617d2-b1be-4aa7-ae0c-19912c0a67bc",
+        "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
+        "90d6cacd-a7ca-4030-acec-675373771c98",
+        "818d84ec-0acb-45eb-96a6-f474d860c0b6",
+        "0000e301-d79c-496a-8879-83f5e637f4ac",
+        "2684f714-3ab6-4b2f-84a7-5545a1cd2976",
+        "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
+        "472addb2-7eb6-4597-9414-50c690bee75a",
+        "5a2d1cd7-f103-4af3-a885-8bf903b46e0b",
+        "9acb8833-0bf1-4748-823a-d25d381af602",
+        "266bbfbb-e64e-4112-9481-008557a2befa",
+        "0808ec23-32b3-40ec-bebe-e84e366729a6",
+        "713e7f24-ca23-4f91-a7c2-afde32d49501",
+        "b57cf0bb-e9f9-467a-94aa-eebc18595cbc",
+        "98d15086-0ed0-4dae-a2e8-8f1a83e3f9b4"
       ]
     },
     "after_summary": {
@@ -2082,29 +2076,29 @@
         }
       ],
       "evidence_transaction_ids": [
-        "721a9c97-7c32-4b4f-8020-c1121ef3ddd9",
-        "4325113d-5641-4ebc-9ba8-f57d28af7632",
-        "e2f39ff7-28d8-4b0d-97d2-cc722d1ccc52",
-        "2159fb24-deba-4ca5-a7e7-41000d9b8148",
-        "a42be353-f22f-4c9a-9d92-693026f3b179",
-        "1d3b2376-a360-4346-8268-4599eb13b860",
-        "dbda9f94-677b-4c2a-a36b-c40c975787ff",
-        "8b5a1e12-c1c8-454e-9e39-680dee055b85",
-        "3794ecd5-2580-4f7e-9a3e-321226749656",
-        "05f3d327-4753-415e-9b56-4ec2ea096f91",
-        "7c289b94-39d5-4e09-9233-afb651f656ec",
-        "1e092ef9-7c30-49bd-b0d9-89029d853ffa",
-        "c4887dd8-6835-4e9b-a03f-eb4b9c65978e",
-        "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
-        "7f540324-8209-444a-8713-7f641fe68fe4",
-        "e551343c-d96a-4f75-bb36-f9f3e5a93957",
-        "ec43084d-ba27-47d3-a80d-0b653175dfa6",
-        "dafa9dce-2ab8-4393-a33c-d442616bcf62",
-        "4136089a-40e0-4f75-9b18-27705384013b",
-        "cdf0d27e-4ace-4043-aa04-e586c606747d",
-        "61b4f101-dabe-4145-ba3e-d9e0dfc2a570",
-        "c58b5e6d-4192-455f-a0f3-5f52036773fa",
-        "29cf3183-4325-49eb-b8a6-4c90f4be5a40"
+        "59ab0a61-f291-484b-92a0-bcf12ce091a9",
+        "8197ac76-bad3-4d74-8695-8dc5f4d2c1a6",
+        "011f3875-7810-4a00-ad12-0f79af1cb51d",
+        "484a7682-0fe8-4129-84f6-4b623fd8db19",
+        "dcf2558d-bc02-44cf-8852-dfc20969740a",
+        "a16594f6-a09b-41dc-9660-c5addca2c654",
+        "2611c0ad-4ffb-4d75-a588-d3e40db83e56",
+        "022617d2-b1be-4aa7-ae0c-19912c0a67bc",
+        "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
+        "90d6cacd-a7ca-4030-acec-675373771c98",
+        "818d84ec-0acb-45eb-96a6-f474d860c0b6",
+        "0000e301-d79c-496a-8879-83f5e637f4ac",
+        "2684f714-3ab6-4b2f-84a7-5545a1cd2976",
+        "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
+        "472addb2-7eb6-4597-9414-50c690bee75a",
+        "5a2d1cd7-f103-4af3-a885-8bf903b46e0b",
+        "9acb8833-0bf1-4748-823a-d25d381af602",
+        "266bbfbb-e64e-4112-9481-008557a2befa",
+        "0808ec23-32b3-40ec-bebe-e84e366729a6",
+        "713e7f24-ca23-4f91-a7c2-afde32d49501",
+        "b57cf0bb-e9f9-467a-94aa-eebc18595cbc",
+        "98d15086-0ed0-4dae-a2e8-8f1a83e3f9b4",
+        "2926159c-4769-4adc-a983-60c198a5f724"
       ]
     }
   },
@@ -2113,15 +2107,15 @@
       "version": "217:2026-10-24",
       "decisions": [
         {
-          "id": "0c3a3749-2530-420f-b91c-6ef3822226eb",
+          "id": "34c1c6ba-aade-4dd8-97cb-7cb7bf6179dd",
           "action": "confirm",
-          "created_at": "2026-10-24T06:58:37.716151+05:30",
+          "created_at": "2026-10-24T07:32:06.253458+05:30",
           "undone_at": null,
           "can_undo": true
         }
       ],
       "transaction": {
-        "id": "29cf3183-4325-49eb-b8a6-4c90f4be5a40",
+        "id": "2926159c-4769-4adc-a983-60c198a5f724",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 50000,
@@ -2149,8 +2143,8 @@
       },
       "sources": [
         {
-          "id": "97be6ea1-791c-4357-9d36-f0dff17d18c5",
-          "email_source_id": "88f303bc-c680-461f-8191-23d2a73f200b",
+          "id": "5e08afbb-ab4f-44b4-9322-182580d77805",
+          "email_source_id": "3e78c799-8d71-4d21-bd7e-aa58bf45c584",
           "source": "eml_upload",
           "sender_domain": "alerts.hdfcbank.test",
           "received_at": "2026-10-27T12:05:00+05:30",
@@ -2162,15 +2156,15 @@
           "occurred_at": "2026-10-27T12:05:00+05:30",
           "due_date": null,
           "extraction_method": "rule",
-          "extractor_id": "rules-v1;fields=account_last4,amount_minor,event_type,merchant,occurred_at,payment_instrument,payment_proof,reference_id",
+          "extractor_id": "rules-v2;fields=account_last4,amount_minor,event_type,independent_claim,merchant,occurred_at,payment_instrument,payment_proof,reference_id",
           "evidence": {
             "account_last4": "XX1234",
             "amount_minor": "₹500.00",
-            "event_type": "Debited ₹500.00 to Unknown VPA [address] on 27-10-26 12:05 IST;",
+            "event_type": "Debited",
             "merchant": "to Unknown VPA [address]",
             "occurred_at": "on 27-10-26 12:05",
             "payment_instrument": "UPI",
-            "payment_proof": "Debited ₹500.00 to Unknown VPA [address] on 27-10-26 12:05 IST;",
+            "payment_proof": "Debited",
             "reference_id": "UTR: SYN-REVIEWVPA"
           },
           "field_confidence": {
@@ -2195,19 +2189,16 @@
       },
       "revisions": [
         {
-          "id": "041a6481-af12-49fb-bb4e-5d35793f2e75",
-          "field": "user_locked_fields",
-          "old_value": [],
-          "new_value": [
-            "amount_minor",
-            "merchant"
-          ],
+          "id": "2196fbc5-e73c-47b8-b178-0f4b4ac6dd6c",
+          "field": "merchant",
+          "old_value": "Unknown VPA [address]",
+          "new_value": "Sample reviewed merchant",
           "changed_by": "user",
           "reason": "user_correction",
-          "changed_at": "2026-10-24T06:58:37.716151+05:30"
+          "changed_at": "2026-10-24T07:32:06.253458+05:30"
         },
         {
-          "id": "4389bfe9-0110-48c5-8d62-31eb15a80de7",
+          "id": "2a4adceb-1532-4c80-9a77-27e81d10693f",
           "field": "user_locked_fields",
           "old_value": [
             "amount_minor",
@@ -2221,38 +2212,41 @@
           ],
           "changed_by": "user",
           "reason": "user_confirmation",
-          "changed_at": "2026-10-24T06:58:37.716151+05:30"
+          "changed_at": "2026-10-24T07:32:06.253458+05:30"
         },
         {
-          "id": "5b15f2cb-b36e-45ae-8a56-997766f832ff",
-          "field": "merchant",
-          "old_value": "Unknown VPA [address]",
-          "new_value": "Sample reviewed merchant",
-          "changed_by": "user",
-          "reason": "user_correction",
-          "changed_at": "2026-10-24T06:58:37.716151+05:30"
-        },
-        {
-          "id": "b2cf7a1a-edd8-44b0-afc7-af6a43ec2d24",
-          "field": "review_reason",
-          "old_value": "merchant_uncertain",
-          "new_value": null,
-          "changed_by": "user",
-          "reason": "user_confirmation",
-          "changed_at": "2026-10-24T06:58:37.716151+05:30"
-        },
-        {
-          "id": "e3c98e45-8f46-49ca-9cea-23b86635347a",
+          "id": "5193eaa1-a500-454f-ae22-9b6bf373014b",
           "field": "status",
           "old_value": "needs_review",
           "new_value": "confirmed",
           "changed_by": "user",
           "reason": "user_confirmation",
-          "changed_at": "2026-10-24T06:58:37.716151+05:30"
+          "changed_at": "2026-10-24T07:32:06.253458+05:30"
+        },
+        {
+          "id": "5646f8cf-d988-4df0-beaf-ba6033a5a6e2",
+          "field": "review_reason",
+          "old_value": "merchant_uncertain",
+          "new_value": null,
+          "changed_by": "user",
+          "reason": "user_confirmation",
+          "changed_at": "2026-10-24T07:32:06.253458+05:30"
+        },
+        {
+          "id": "d051997a-314a-4b58-895b-dff5d741265e",
+          "field": "user_locked_fields",
+          "old_value": [],
+          "new_value": [
+            "amount_minor",
+            "merchant"
+          ],
+          "changed_by": "user",
+          "reason": "user_correction",
+          "changed_at": "2026-10-24T07:32:06.253458+05:30"
         }
       ]
     },
-    "decision_id": "0c3a3749-2530-420f-b91c-6ef3822226eb",
+    "decision_id": "34c1c6ba-aade-4dd8-97cb-7cb7bf6179dd",
     "data_version": "217:2026-10-24"
   },
   "undo_request": {
@@ -2263,15 +2257,15 @@
       "version": "222:2026-10-24",
       "decisions": [
         {
-          "id": "0c3a3749-2530-420f-b91c-6ef3822226eb",
+          "id": "34c1c6ba-aade-4dd8-97cb-7cb7bf6179dd",
           "action": "confirm",
-          "created_at": "2026-10-24T06:58:37.716151+05:30",
-          "undone_at": "2026-10-24T06:58:37.747900+05:30",
+          "created_at": "2026-10-24T07:32:06.253458+05:30",
+          "undone_at": "2026-10-24T07:32:06.284027+05:30",
           "can_undo": false
         }
       ],
       "transaction": {
-        "id": "29cf3183-4325-49eb-b8a6-4c90f4be5a40",
+        "id": "2926159c-4769-4adc-a983-60c198a5f724",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 50000,
@@ -2299,8 +2293,8 @@
       },
       "sources": [
         {
-          "id": "97be6ea1-791c-4357-9d36-f0dff17d18c5",
-          "email_source_id": "88f303bc-c680-461f-8191-23d2a73f200b",
+          "id": "5e08afbb-ab4f-44b4-9322-182580d77805",
+          "email_source_id": "3e78c799-8d71-4d21-bd7e-aa58bf45c584",
           "source": "eml_upload",
           "sender_domain": "alerts.hdfcbank.test",
           "received_at": "2026-10-27T12:05:00+05:30",
@@ -2312,15 +2306,15 @@
           "occurred_at": "2026-10-27T12:05:00+05:30",
           "due_date": null,
           "extraction_method": "rule",
-          "extractor_id": "rules-v1;fields=account_last4,amount_minor,event_type,merchant,occurred_at,payment_instrument,payment_proof,reference_id",
+          "extractor_id": "rules-v2;fields=account_last4,amount_minor,event_type,independent_claim,merchant,occurred_at,payment_instrument,payment_proof,reference_id",
           "evidence": {
             "account_last4": "XX1234",
             "amount_minor": "₹500.00",
-            "event_type": "Debited ₹500.00 to Unknown VPA [address] on 27-10-26 12:05 IST;",
+            "event_type": "Debited",
             "merchant": "to Unknown VPA [address]",
             "occurred_at": "on 27-10-26 12:05",
             "payment_instrument": "UPI",
-            "payment_proof": "Debited ₹500.00 to Unknown VPA [address] on 27-10-26 12:05 IST;",
+            "payment_proof": "Debited",
             "reference_id": "UTR: SYN-REVIEWVPA"
           },
           "field_confidence": {
@@ -2345,19 +2339,16 @@
       },
       "revisions": [
         {
-          "id": "041a6481-af12-49fb-bb4e-5d35793f2e75",
-          "field": "user_locked_fields",
-          "old_value": [],
-          "new_value": [
-            "amount_minor",
-            "merchant"
-          ],
+          "id": "2196fbc5-e73c-47b8-b178-0f4b4ac6dd6c",
+          "field": "merchant",
+          "old_value": "Unknown VPA [address]",
+          "new_value": "Sample reviewed merchant",
           "changed_by": "user",
           "reason": "user_correction",
-          "changed_at": "2026-10-24T06:58:37.716151+05:30"
+          "changed_at": "2026-10-24T07:32:06.253458+05:30"
         },
         {
-          "id": "4389bfe9-0110-48c5-8d62-31eb15a80de7",
+          "id": "2a4adceb-1532-4c80-9a77-27e81d10693f",
           "field": "user_locked_fields",
           "old_value": [
             "amount_minor",
@@ -2371,55 +2362,40 @@
           ],
           "changed_by": "user",
           "reason": "user_confirmation",
-          "changed_at": "2026-10-24T06:58:37.716151+05:30"
+          "changed_at": "2026-10-24T07:32:06.253458+05:30"
         },
         {
-          "id": "5b15f2cb-b36e-45ae-8a56-997766f832ff",
-          "field": "merchant",
-          "old_value": "Unknown VPA [address]",
-          "new_value": "Sample reviewed merchant",
-          "changed_by": "user",
-          "reason": "user_correction",
-          "changed_at": "2026-10-24T06:58:37.716151+05:30"
-        },
-        {
-          "id": "b2cf7a1a-edd8-44b0-afc7-af6a43ec2d24",
-          "field": "review_reason",
-          "old_value": "merchant_uncertain",
-          "new_value": null,
-          "changed_by": "user",
-          "reason": "user_confirmation",
-          "changed_at": "2026-10-24T06:58:37.716151+05:30"
-        },
-        {
-          "id": "e3c98e45-8f46-49ca-9cea-23b86635347a",
+          "id": "5193eaa1-a500-454f-ae22-9b6bf373014b",
           "field": "status",
           "old_value": "needs_review",
           "new_value": "confirmed",
           "changed_by": "user",
           "reason": "user_confirmation",
-          "changed_at": "2026-10-24T06:58:37.716151+05:30"
+          "changed_at": "2026-10-24T07:32:06.253458+05:30"
         },
         {
-          "id": "0b606995-e363-4ad5-8d5e-6c8a6a2b24f9",
-          "field": "merchant",
-          "old_value": "Sample reviewed merchant",
-          "new_value": "Unknown VPA [address]",
+          "id": "5646f8cf-d988-4df0-beaf-ba6033a5a6e2",
+          "field": "review_reason",
+          "old_value": "merchant_uncertain",
+          "new_value": null,
           "changed_by": "user",
-          "reason": "decision_undone",
-          "changed_at": "2026-10-24T06:58:37.745117+05:30"
+          "reason": "user_confirmation",
+          "changed_at": "2026-10-24T07:32:06.253458+05:30"
         },
         {
-          "id": "477b496f-1c70-455b-a344-7d475033d21f",
-          "field": "status",
-          "old_value": "confirmed",
-          "new_value": "needs_review",
+          "id": "d051997a-314a-4b58-895b-dff5d741265e",
+          "field": "user_locked_fields",
+          "old_value": [],
+          "new_value": [
+            "amount_minor",
+            "merchant"
+          ],
           "changed_by": "user",
-          "reason": "decision_undone",
-          "changed_at": "2026-10-24T06:58:37.745117+05:30"
+          "reason": "user_correction",
+          "changed_at": "2026-10-24T07:32:06.253458+05:30"
         },
         {
-          "id": "a075ccd6-be17-40a7-8733-195c44dcaed8",
+          "id": "4dfd32ed-b4a0-4bbb-b302-4f20865716f3",
           "field": "user_locked_fields",
           "old_value": [
             "amount_minor",
@@ -2430,20 +2406,38 @@
           "new_value": [],
           "changed_by": "user",
           "reason": "decision_undone",
-          "changed_at": "2026-10-24T06:58:37.745117+05:30"
+          "changed_at": "2026-10-24T07:32:06.281387+05:30"
         },
         {
-          "id": "c02e0bd6-3b93-4880-83f9-77025dbcbee6",
+          "id": "70f23f5d-8396-4698-a333-b9848e523a4b",
+          "field": "status",
+          "old_value": "confirmed",
+          "new_value": "needs_review",
+          "changed_by": "user",
+          "reason": "decision_undone",
+          "changed_at": "2026-10-24T07:32:06.281387+05:30"
+        },
+        {
+          "id": "96a6e9ed-b69f-4e8c-bc86-22dfcd144fc6",
           "field": "review_reason",
           "old_value": null,
           "new_value": "merchant_uncertain",
           "changed_by": "user",
           "reason": "decision_undone",
-          "changed_at": "2026-10-24T06:58:37.745117+05:30"
+          "changed_at": "2026-10-24T07:32:06.281387+05:30"
+        },
+        {
+          "id": "ee350431-fe6d-450e-8a26-873670c51124",
+          "field": "merchant",
+          "old_value": "Sample reviewed merchant",
+          "new_value": "Unknown VPA [address]",
+          "changed_by": "user",
+          "reason": "decision_undone",
+          "changed_at": "2026-10-24T07:32:06.281387+05:30"
         }
       ]
     },
-    "decision_id": "0c3a3749-2530-420f-b91c-6ef3822226eb",
+    "decision_id": "34c1c6ba-aade-4dd8-97cb-7cb7bf6179dd",
     "data_version": "222:2026-10-24"
   },
   "assistant_en": {
@@ -2500,7 +2494,7 @@
     "simulation": null,
     "evidence_transactions": [
       {
-        "id": "ec43084d-ba27-47d3-a80d-0b653175dfa6",
+        "id": "9acb8833-0bf1-4748-823a-d25d381af602",
         "direction": "in",
         "kind": "refund",
         "amount_minor": 20000,
@@ -2515,7 +2509,7 @@
         "payment_instrument": "card",
         "account_last4": "1234",
         "possible_duplicate_of_id": null,
-        "linked_transaction_id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "linked_transaction_id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "merged_into_id": null,
         "dataset": "household",
         "source_modes": [
@@ -2527,7 +2521,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 20000,
@@ -2554,7 +2548,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "3794ecd5-2580-4f7e-9a3e-321226749656",
+        "id": "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 79900,
@@ -2640,7 +2634,7 @@
     "simulation": null,
     "evidence_transactions": [
       {
-        "id": "ec43084d-ba27-47d3-a80d-0b653175dfa6",
+        "id": "9acb8833-0bf1-4748-823a-d25d381af602",
         "direction": "in",
         "kind": "refund",
         "amount_minor": 20000,
@@ -2655,7 +2649,7 @@
         "payment_instrument": "card",
         "account_last4": "1234",
         "possible_duplicate_of_id": null,
-        "linked_transaction_id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "linked_transaction_id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "merged_into_id": null,
         "dataset": "household",
         "source_modes": [
@@ -2667,7 +2661,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 20000,
@@ -2694,7 +2688,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "3794ecd5-2580-4f7e-9a3e-321226749656",
+        "id": "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 79900,
@@ -2780,7 +2774,7 @@
     "simulation": null,
     "evidence_transactions": [
       {
-        "id": "ec43084d-ba27-47d3-a80d-0b653175dfa6",
+        "id": "9acb8833-0bf1-4748-823a-d25d381af602",
         "direction": "in",
         "kind": "refund",
         "amount_minor": 20000,
@@ -2795,7 +2789,7 @@
         "payment_instrument": "card",
         "account_last4": "1234",
         "possible_duplicate_of_id": null,
-        "linked_transaction_id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "linked_transaction_id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "merged_into_id": null,
         "dataset": "household",
         "source_modes": [
@@ -2807,7 +2801,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 20000,
@@ -2834,7 +2828,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "3794ecd5-2580-4f7e-9a3e-321226749656",
+        "id": "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 79900,
@@ -2920,7 +2914,7 @@
     "simulation": null,
     "evidence_transactions": [
       {
-        "id": "ec43084d-ba27-47d3-a80d-0b653175dfa6",
+        "id": "9acb8833-0bf1-4748-823a-d25d381af602",
         "direction": "in",
         "kind": "refund",
         "amount_minor": 20000,
@@ -2935,7 +2929,7 @@
         "payment_instrument": "card",
         "account_last4": "1234",
         "possible_duplicate_of_id": null,
-        "linked_transaction_id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "linked_transaction_id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "merged_into_id": null,
         "dataset": "household",
         "source_modes": [
@@ -2947,7 +2941,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 20000,
@@ -2974,7 +2968,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "3794ecd5-2580-4f7e-9a3e-321226749656",
+        "id": "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 79900,
@@ -3060,7 +3054,7 @@
     "simulation": null,
     "evidence_transactions": [
       {
-        "id": "ec43084d-ba27-47d3-a80d-0b653175dfa6",
+        "id": "9acb8833-0bf1-4748-823a-d25d381af602",
         "direction": "in",
         "kind": "refund",
         "amount_minor": 20000,
@@ -3075,7 +3069,7 @@
         "payment_instrument": "card",
         "account_last4": "1234",
         "possible_duplicate_of_id": null,
-        "linked_transaction_id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "linked_transaction_id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "merged_into_id": null,
         "dataset": "household",
         "source_modes": [
@@ -3087,7 +3081,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 20000,
@@ -3114,7 +3108,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "3794ecd5-2580-4f7e-9a3e-321226749656",
+        "id": "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 79900,
@@ -3249,28 +3243,28 @@
         }
       ],
       "evidence_transaction_ids": [
-        "721a9c97-7c32-4b4f-8020-c1121ef3ddd9",
-        "4325113d-5641-4ebc-9ba8-f57d28af7632",
-        "e2f39ff7-28d8-4b0d-97d2-cc722d1ccc52",
-        "2159fb24-deba-4ca5-a7e7-41000d9b8148",
-        "a42be353-f22f-4c9a-9d92-693026f3b179",
-        "1d3b2376-a360-4346-8268-4599eb13b860",
-        "dbda9f94-677b-4c2a-a36b-c40c975787ff",
-        "8b5a1e12-c1c8-454e-9e39-680dee055b85",
-        "3794ecd5-2580-4f7e-9a3e-321226749656",
-        "05f3d327-4753-415e-9b56-4ec2ea096f91",
-        "7c289b94-39d5-4e09-9233-afb651f656ec",
-        "1e092ef9-7c30-49bd-b0d9-89029d853ffa",
-        "c4887dd8-6835-4e9b-a03f-eb4b9c65978e",
-        "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
-        "7f540324-8209-444a-8713-7f641fe68fe4",
-        "e551343c-d96a-4f75-bb36-f9f3e5a93957",
-        "ec43084d-ba27-47d3-a80d-0b653175dfa6",
-        "dafa9dce-2ab8-4393-a33c-d442616bcf62",
-        "4136089a-40e0-4f75-9b18-27705384013b",
-        "cdf0d27e-4ace-4043-aa04-e586c606747d",
-        "61b4f101-dabe-4145-ba3e-d9e0dfc2a570",
-        "c58b5e6d-4192-455f-a0f3-5f52036773fa"
+        "59ab0a61-f291-484b-92a0-bcf12ce091a9",
+        "8197ac76-bad3-4d74-8695-8dc5f4d2c1a6",
+        "011f3875-7810-4a00-ad12-0f79af1cb51d",
+        "484a7682-0fe8-4129-84f6-4b623fd8db19",
+        "dcf2558d-bc02-44cf-8852-dfc20969740a",
+        "a16594f6-a09b-41dc-9660-c5addca2c654",
+        "2611c0ad-4ffb-4d75-a588-d3e40db83e56",
+        "022617d2-b1be-4aa7-ae0c-19912c0a67bc",
+        "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
+        "90d6cacd-a7ca-4030-acec-675373771c98",
+        "818d84ec-0acb-45eb-96a6-f474d860c0b6",
+        "0000e301-d79c-496a-8879-83f5e637f4ac",
+        "2684f714-3ab6-4b2f-84a7-5545a1cd2976",
+        "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
+        "472addb2-7eb6-4597-9414-50c690bee75a",
+        "5a2d1cd7-f103-4af3-a885-8bf903b46e0b",
+        "9acb8833-0bf1-4748-823a-d25d381af602",
+        "266bbfbb-e64e-4112-9481-008557a2befa",
+        "0808ec23-32b3-40ec-bebe-e84e366729a6",
+        "713e7f24-ca23-4f91-a7c2-afde32d49501",
+        "b57cf0bb-e9f9-467a-94aa-eebc18595cbc",
+        "98d15086-0ed0-4dae-a2e8-8f1a83e3f9b4"
       ]
     },
     "proposed_monthly_minor": 500000,
@@ -3324,11 +3318,11 @@
   "structured_export": {
     "schema_version": "1.0",
     "dataset": "household",
-    "exported_at": "2026-10-24T06:58:37.873881+05:30",
+    "exported_at": "2026-10-24T07:32:06.419553+05:30",
     "data_version": "222:2026-10-24",
     "transactions": [
       {
-        "id": "721a9c97-7c32-4b4f-8020-c1121ef3ddd9",
+        "id": "59ab0a61-f291-484b-92a0-bcf12ce091a9",
         "direction": "in",
         "kind": "salary",
         "amount_minor": 6200000,
@@ -3352,7 +3346,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "4325113d-5641-4ebc-9ba8-f57d28af7632",
+        "id": "8197ac76-bad3-4d74-8695-8dc5f4d2c1a6",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 1500000,
@@ -3376,7 +3370,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "e2f39ff7-28d8-4b0d-97d2-cc722d1ccc52",
+        "id": "011f3875-7810-4a00-ad12-0f79af1cb51d",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 221000,
@@ -3400,7 +3394,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "2159fb24-deba-4ca5-a7e7-41000d9b8148",
+        "id": "484a7682-0fe8-4129-84f6-4b623fd8db19",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 180000,
@@ -3424,7 +3418,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "a42be353-f22f-4c9a-9d92-693026f3b179",
+        "id": "dcf2558d-bc02-44cf-8852-dfc20969740a",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 180000,
@@ -3448,7 +3442,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "1d3b2376-a360-4346-8268-4599eb13b860",
+        "id": "a16594f6-a09b-41dc-9660-c5addca2c654",
         "direction": "out",
         "kind": "investment",
         "amount_minor": 500000,
@@ -3472,7 +3466,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "dbda9f94-677b-4c2a-a36b-c40c975787ff",
+        "id": "2611c0ad-4ffb-4d75-a588-d3e40db83e56",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 94000,
@@ -3496,7 +3490,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "8b5a1e12-c1c8-454e-9e39-680dee055b85",
+        "id": "022617d2-b1be-4aa7-ae0c-19912c0a67bc",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 160000,
@@ -3520,7 +3514,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "3794ecd5-2580-4f7e-9a3e-321226749656",
+        "id": "cfbbb79d-9499-49d8-8fe9-15dddc05f3a3",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 79900,
@@ -3544,7 +3538,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "05f3d327-4753-415e-9b56-4ec2ea096f91",
+        "id": "90d6cacd-a7ca-4030-acec-675373771c98",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 100000,
@@ -3568,7 +3562,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "7c289b94-39d5-4e09-9233-afb651f656ec",
+        "id": "818d84ec-0acb-45eb-96a6-f474d860c0b6",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 184100,
@@ -3592,7 +3586,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "1e092ef9-7c30-49bd-b0d9-89029d853ffa",
+        "id": "0000e301-d79c-496a-8879-83f5e637f4ac",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 125000,
@@ -3616,7 +3610,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "c4887dd8-6835-4e9b-a03f-eb4b9c65978e",
+        "id": "2684f714-3ab6-4b2f-84a7-5545a1cd2976",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 120000,
@@ -3640,7 +3634,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 20000,
@@ -3664,7 +3658,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "7f540324-8209-444a-8713-7f641fe68fe4",
+        "id": "472addb2-7eb6-4597-9414-50c690bee75a",
         "direction": "in",
         "kind": "refund",
         "amount_minor": 120000,
@@ -3676,7 +3670,7 @@
         "confidence": 1.0,
         "review_reason": null,
         "possible_duplicate_of_id": null,
-        "linked_transaction_id": "c4887dd8-6835-4e9b-a03f-eb4b9c65978e",
+        "linked_transaction_id": "2684f714-3ab6-4b2f-84a7-5545a1cd2976",
         "merged_into_id": null,
         "dataset": "household",
         "source_modes": [
@@ -3688,7 +3682,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "e551343c-d96a-4f75-bb36-f9f3e5a93957",
+        "id": "5a2d1cd7-f103-4af3-a885-8bf903b46e0b",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 148000,
@@ -3712,7 +3706,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "ec43084d-ba27-47d3-a80d-0b653175dfa6",
+        "id": "9acb8833-0bf1-4748-823a-d25d381af602",
         "direction": "in",
         "kind": "refund",
         "amount_minor": 20000,
@@ -3724,7 +3718,7 @@
         "confidence": 1.0,
         "review_reason": null,
         "possible_duplicate_of_id": null,
-        "linked_transaction_id": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "linked_transaction_id": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "merged_into_id": null,
         "dataset": "household",
         "source_modes": [
@@ -3736,7 +3730,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "dafa9dce-2ab8-4393-a33c-d442616bcf62",
+        "id": "266bbfbb-e64e-4112-9481-008557a2befa",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 99900,
@@ -3760,7 +3754,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "4136089a-40e0-4f75-9b18-27705384013b",
+        "id": "0808ec23-32b3-40ec-bebe-e84e366729a6",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 50100,
@@ -3784,7 +3778,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "cdf0d27e-4ace-4043-aa04-e586c606747d",
+        "id": "713e7f24-ca23-4f91-a7c2-afde32d49501",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 120000,
@@ -3808,7 +3802,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "61b4f101-dabe-4145-ba3e-d9e0dfc2a570",
+        "id": "b57cf0bb-e9f9-467a-94aa-eebc18595cbc",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 35000,
@@ -3832,7 +3826,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "c58b5e6d-4192-455f-a0f3-5f52036773fa",
+        "id": "98d15086-0ed0-4dae-a2e8-8f1a83e3f9b4",
         "direction": "in",
         "kind": "reversal",
         "amount_minor": 35000,
@@ -3844,7 +3838,7 @@
         "confidence": 1.0,
         "review_reason": null,
         "possible_duplicate_of_id": null,
-        "linked_transaction_id": "61b4f101-dabe-4145-ba3e-d9e0dfc2a570",
+        "linked_transaction_id": "b57cf0bb-e9f9-467a-94aa-eebc18595cbc",
         "merged_into_id": null,
         "dataset": "household",
         "source_modes": [
@@ -3856,7 +3850,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "35273857-cc25-4609-bbeb-8019650ed335",
+        "id": "f2cf10b6-2027-4181-bd81-05cdcbcce3d0",
         "direction": "out",
         "kind": "transfer",
         "amount_minor": 450000,
@@ -3880,7 +3874,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "bbe2226a-0127-4e34-ba53-b9d555f6c9eb",
+        "id": "89b7124b-bbd5-475c-8b87-a668a9af8ca5",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 200000,
@@ -3904,7 +3898,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "b5147ef1-3bfb-481d-a76f-c604eb56eebd",
+        "id": "a0629fcb-a11a-4264-b2db-5b67b97ce283",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 184000,
@@ -3928,7 +3922,7 @@
         "version": "222:2026-10-24"
       },
       {
-        "id": "29cf3183-4325-49eb-b8a6-4c90f4be5a40",
+        "id": "2926159c-4769-4adc-a983-60c198a5f724",
         "direction": "out",
         "kind": "purchase",
         "amount_minor": 50000,
@@ -3954,7 +3948,7 @@
     ],
     "commitments": [
       {
-        "id": "1d88476a-4a8c-423a-814a-85cec0218dd8",
+        "id": "b80e3d14-3953-42e9-8614-6edcff6a4dcc",
         "kind": "bill",
         "label": "Netflix subscription",
         "amount_minor": 99900,
@@ -3962,15 +3956,15 @@
         "due_date": "2026-10-19",
         "status": "paid",
         "confidence": 1.0,
-        "source_event_id": "716a19e6-8a26-40b8-b964-76d3cd9d4c0e",
-        "paid_transaction_id": "dafa9dce-2ab8-4393-a33c-d442616bcf62",
+        "source_event_id": "d839cb48-a9cc-4049-a98e-9fad3310395a",
+        "paid_transaction_id": "266bbfbb-e64e-4112-9481-008557a2befa",
         "version": "0",
         "dataset": "household",
         "liability_state": "paid",
         "uncertain": false
       },
       {
-        "id": "c1e3847e-5c31-4597-a3b1-583aeaeae577",
+        "id": "775658b7-6cf5-4e13-ac94-053a01561bb3",
         "kind": "bill",
         "label": "Electricity",
         "amount_minor": 185000,
@@ -3978,7 +3972,7 @@
         "due_date": "2026-10-29",
         "status": "upcoming",
         "confidence": 1.0,
-        "source_event_id": "818774dd-21a2-415d-a3c8-97d110f26cde",
+        "source_event_id": "c8ed6bd9-50c8-4112-9247-e80f9500f2e2",
         "paid_transaction_id": null,
         "version": "0",
         "dataset": "household",
@@ -3986,7 +3980,7 @@
         "uncertain": false
       },
       {
-        "id": "599f0ddf-eeb1-4404-83e9-793ba5a2650e",
+        "id": "8d55c954-0929-4c59-9a8c-3edd05160dc1",
         "kind": "emi",
         "label": "Synthetic Loan EMI",
         "amount_minor": 650000,
@@ -3994,7 +3988,7 @@
         "due_date": "2026-10-30",
         "status": "upcoming",
         "confidence": 1.0,
-        "source_event_id": "733330cd-9c6f-4de8-bea3-21a6133d49ee",
+        "source_event_id": "217bf52c-ee1d-4924-a307-f83842f12cc2",
         "paid_transaction_id": null,
         "version": "0",
         "dataset": "household",
@@ -4002,7 +3996,7 @@
         "uncertain": false
       },
       {
-        "id": "71708520-65af-4639-8418-18a3a2739cae",
+        "id": "5518bc3a-6068-48f9-94d7-4e9c2291f068",
         "kind": "bill",
         "label": "Internet",
         "amount_minor": 145000,
@@ -4010,7 +4004,7 @@
         "due_date": "2026-10-31",
         "status": "upcoming",
         "confidence": 1.0,
-        "source_event_id": "750817f7-765a-42f4-b639-e9f3b957d4c1",
+        "source_event_id": "a78d9157-f037-405b-9c84-29cf01e2651a",
         "paid_transaction_id": null,
         "version": "0",
         "dataset": "household",
@@ -4020,46 +4014,43 @@
     ],
     "revisions": [
       {
-        "id": "8475d3d0-e285-4e3b-8c52-4dc9ff255484",
+        "id": "10c2031f-0c00-489e-9832-3e8c045f4bab",
         "field": "linked_transaction_id",
         "old_value": null,
-        "new_value": "c4887dd8-6835-4e9b-a03f-eb4b9c65978e",
+        "new_value": "2684f714-3ab6-4b2f-84a7-5545a1cd2976",
         "changed_by": "system",
         "reason": "refund_link",
-        "changed_at": "2026-10-24T06:58:37.316616+05:30"
+        "changed_at": "2026-10-24T07:32:05.815377+05:30"
       },
       {
-        "id": "75a7ad77-7b41-41b2-8742-ff16569e5287",
+        "id": "c4a78952-3e77-4ef5-b6ca-c5974df95ccc",
         "field": "linked_transaction_id",
         "old_value": null,
-        "new_value": "c4e35a0c-5f03-4689-bbd1-36b7bebcd996",
+        "new_value": "7826010f-eb2e-4f1a-a865-c90fe28a3f87",
         "changed_by": "system",
         "reason": "refund_link",
-        "changed_at": "2026-10-24T06:58:37.340006+05:30"
+        "changed_at": "2026-10-24T07:32:05.837668+05:30"
       },
       {
-        "id": "ca330c75-33a9-4b00-a8fe-b61ed8e688bc",
+        "id": "b2347f12-7aea-4e9a-bf71-152de7ee6cc0",
         "field": "linked_transaction_id",
         "old_value": null,
-        "new_value": "61b4f101-dabe-4145-ba3e-d9e0dfc2a570",
+        "new_value": "b57cf0bb-e9f9-467a-94aa-eebc18595cbc",
         "changed_by": "system",
         "reason": "refund_link",
-        "changed_at": "2026-10-24T06:58:37.392970+05:30"
+        "changed_at": "2026-10-24T07:32:05.889737+05:30"
       },
       {
-        "id": "041a6481-af12-49fb-bb4e-5d35793f2e75",
-        "field": "user_locked_fields",
-        "old_value": [],
-        "new_value": [
-          "amount_minor",
-          "merchant"
-        ],
+        "id": "2196fbc5-e73c-47b8-b178-0f4b4ac6dd6c",
+        "field": "merchant",
+        "old_value": "Unknown VPA [address]",
+        "new_value": "Sample reviewed merchant",
         "changed_by": "user",
         "reason": "user_correction",
-        "changed_at": "2026-10-24T06:58:37.716151+05:30"
+        "changed_at": "2026-10-24T07:32:06.253458+05:30"
       },
       {
-        "id": "4389bfe9-0110-48c5-8d62-31eb15a80de7",
+        "id": "2a4adceb-1532-4c80-9a77-27e81d10693f",
         "field": "user_locked_fields",
         "old_value": [
           "amount_minor",
@@ -4073,55 +4064,40 @@
         ],
         "changed_by": "user",
         "reason": "user_confirmation",
-        "changed_at": "2026-10-24T06:58:37.716151+05:30"
+        "changed_at": "2026-10-24T07:32:06.253458+05:30"
       },
       {
-        "id": "5b15f2cb-b36e-45ae-8a56-997766f832ff",
-        "field": "merchant",
-        "old_value": "Unknown VPA [address]",
-        "new_value": "Sample reviewed merchant",
-        "changed_by": "user",
-        "reason": "user_correction",
-        "changed_at": "2026-10-24T06:58:37.716151+05:30"
-      },
-      {
-        "id": "b2cf7a1a-edd8-44b0-afc7-af6a43ec2d24",
-        "field": "review_reason",
-        "old_value": "merchant_uncertain",
-        "new_value": null,
-        "changed_by": "user",
-        "reason": "user_confirmation",
-        "changed_at": "2026-10-24T06:58:37.716151+05:30"
-      },
-      {
-        "id": "e3c98e45-8f46-49ca-9cea-23b86635347a",
+        "id": "5193eaa1-a500-454f-ae22-9b6bf373014b",
         "field": "status",
         "old_value": "needs_review",
         "new_value": "confirmed",
         "changed_by": "user",
         "reason": "user_confirmation",
-        "changed_at": "2026-10-24T06:58:37.716151+05:30"
+        "changed_at": "2026-10-24T07:32:06.253458+05:30"
       },
       {
-        "id": "0b606995-e363-4ad5-8d5e-6c8a6a2b24f9",
-        "field": "merchant",
-        "old_value": "Sample reviewed merchant",
-        "new_value": "Unknown VPA [address]",
+        "id": "5646f8cf-d988-4df0-beaf-ba6033a5a6e2",
+        "field": "review_reason",
+        "old_value": "merchant_uncertain",
+        "new_value": null,
         "changed_by": "user",
-        "reason": "decision_undone",
-        "changed_at": "2026-10-24T06:58:37.745117+05:30"
+        "reason": "user_confirmation",
+        "changed_at": "2026-10-24T07:32:06.253458+05:30"
       },
       {
-        "id": "477b496f-1c70-455b-a344-7d475033d21f",
-        "field": "status",
-        "old_value": "confirmed",
-        "new_value": "needs_review",
+        "id": "d051997a-314a-4b58-895b-dff5d741265e",
+        "field": "user_locked_fields",
+        "old_value": [],
+        "new_value": [
+          "amount_minor",
+          "merchant"
+        ],
         "changed_by": "user",
-        "reason": "decision_undone",
-        "changed_at": "2026-10-24T06:58:37.745117+05:30"
+        "reason": "user_correction",
+        "changed_at": "2026-10-24T07:32:06.253458+05:30"
       },
       {
-        "id": "a075ccd6-be17-40a7-8733-195c44dcaed8",
+        "id": "4dfd32ed-b4a0-4bbb-b302-4f20865716f3",
         "field": "user_locked_fields",
         "old_value": [
           "amount_minor",
@@ -4132,16 +4108,34 @@
         "new_value": [],
         "changed_by": "user",
         "reason": "decision_undone",
-        "changed_at": "2026-10-24T06:58:37.745117+05:30"
+        "changed_at": "2026-10-24T07:32:06.281387+05:30"
       },
       {
-        "id": "c02e0bd6-3b93-4880-83f9-77025dbcbee6",
+        "id": "70f23f5d-8396-4698-a333-b9848e523a4b",
+        "field": "status",
+        "old_value": "confirmed",
+        "new_value": "needs_review",
+        "changed_by": "user",
+        "reason": "decision_undone",
+        "changed_at": "2026-10-24T07:32:06.281387+05:30"
+      },
+      {
+        "id": "96a6e9ed-b69f-4e8c-bc86-22dfcd144fc6",
         "field": "review_reason",
         "old_value": null,
         "new_value": "merchant_uncertain",
         "changed_by": "user",
         "reason": "decision_undone",
-        "changed_at": "2026-10-24T06:58:37.745117+05:30"
+        "changed_at": "2026-10-24T07:32:06.281387+05:30"
+      },
+      {
+        "id": "ee350431-fe6d-450e-8a26-873670c51124",
+        "field": "merchant",
+        "old_value": "Sample reviewed merchant",
+        "new_value": "Unknown VPA [address]",
+        "changed_by": "user",
+        "reason": "decision_undone",
+        "changed_at": "2026-10-24T07:32:06.281387+05:30"
       }
     ]
   },

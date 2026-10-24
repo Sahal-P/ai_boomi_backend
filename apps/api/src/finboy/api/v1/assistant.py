@@ -12,6 +12,7 @@ from finboy.core.errors import error_response
 from finboy.db.session import get_session
 from finboy.services.assistant.models import AskRequest, AssistantAnswer, SpeakRequest
 from finboy.services.assistant.service import answer_question
+from finboy.services.money.compat import simulation_response
 from finboy.services.speech.media import InvalidAudio
 from finboy.services.speech.models import Transcript
 from finboy.services.speech.multipart import read_upload
@@ -28,13 +29,22 @@ def ask(
     session: Annotated[Session, Depends(get_session)],
 ) -> AssistantAnswer:
     response.headers["Cache-Control"] = "no-store"
-    return answer_question(
+    result = answer_question(
         session,
         user_id=LOCAL_USER_ID,
         text=body.text,
         display_style=body.display_style,
         settings=request.app.state.settings,
     )
+    if result.simulation is not None:
+        result = result.model_copy(
+            update={
+                "simulation": simulation_response(
+                    result.simulation, include_overdue_line=body.include_overdue_line
+                )
+            }
+        )
+    return result
 
 
 @router.post(

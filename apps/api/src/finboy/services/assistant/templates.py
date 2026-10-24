@@ -18,8 +18,9 @@ COPY: dict[str, dict[str, str]] = {
         "unallocated_query": "Estimated unallocated amount: {value}.",
         "upcoming_commitments": "Unpaid tracked obligations, including overdue: {value}.",
         "simulation": (
-            "Tracked income: {income}. Confirmed net outflows: {outflows}. Upcoming"
-            " obligations: {upcoming}. Proposed monthly commitment: {proposed}. "
+            "Tracked income: {income}. Confirmed net outflows: {outflows}. Tracked"
+            " unpaid obligations (including overdue): {upcoming}. "
+            "Proposed monthly commitment: {proposed}. "
             "Estimated unallocated amount after the proposal: {remaining}."
         ),
         "merchant_lookup": (
@@ -74,7 +75,7 @@ COPY: dict[str, dict[str, str]] = {
         "unallocated_query": "अनुमानित अनावंटित राशि: {value}।",
         "upcoming_commitments": "बकाया सहित अवैतनिक दर्ज दायित्व: {value}।",
         "simulation": (
-            "दर्ज आय: {income}। पुष्टि किया गया शुद्ध खर्च: {outflows}। आने वाले "
+            "दर्ज आय: {income}। पुष्टि किया गया शुद्ध खर्च: {outflows}। अवैतनिक "
             "भुगतान: {upcoming}। प्रस्तावित मासिक भुगतान: {proposed}। प्रस्ताव के "
             "बाद अनुमानित अनावंटित राशि: {remaining}।"
         ),
@@ -91,7 +92,7 @@ COPY: dict[str, dict[str, str]] = {
             " समझा सकता हूँ या दर्ज नकदी प्रवाह पर मासिक भुगतान का प्रभाव दिखा सकता"
             " हूँ।"
         ),
-        "scope": ("मैं ईमेल से मिले लेजर, आने वाले भुगतान और नकदी प्रवाह के बारे में प्रश्नों का उत्तर दे सकता हूँ।"),
+        "scope": ("मैं ईमेल से मिले लेजर, अवैतनिक भुगतान और नकदी प्रवाह के बारे में प्रश्नों का उत्तर दे सकता हूँ।"),
         "clarify": (
             "कृपया रुपये में एक मासिक राशि या वर्ष और महीने की अवधि स्पष्ट करें। "
             "मैं पुष्टि किए गए रिकॉर्ड और मासिक भुगतान का मॉडल दिखा सकता हूँ।"
@@ -127,7 +128,7 @@ COPY: dict[str, dict[str, str]] = {
         "upcoming_commitments": "കുടിശ്ശിക ഉൾപ്പെടെയുള്ള അടയ്ക്കാത്ത രേഖപ്പെടുത്തിയ ബാധ്യതകൾ: {value}.",
         "simulation": (
             "രേഖപ്പെടുത്തിയ വരുമാനം: {income}. സ്ഥിരീകരിച്ച അറ്റ ചെലവ്: {outflows}."
-            " വരാനിരിക്കുന്ന ബാധ്യതകൾ: {upcoming}. നിർദ്ദേശിച്ച പ്രതിമാസ തുക: "
+            " അടയ്ക്കാത്ത ബാധ്യതകൾ: {upcoming}. നിർദ്ദേശിച്ച പ്രതിമാസ തുക: "
             "{proposed}. നിർദ്ദേശത്തിനു ശേഷം കണക്കാക്കിയ നീക്കിവയ്ക്കാത്ത തുക: "
             "{remaining}."
         ),
@@ -185,7 +186,7 @@ COPY: dict[str, dict[str, str]] = {
         "unallocated_query": "Estimated unallocated rakam: {value}.",
         "upcoming_commitments": "Overdue samet unpaid tracked payments: {value}.",
         "simulation": (
-            "Recorded income: {income}. Confirmed net kharch: {outflows}. Aane wale"
+            "Recorded income: {income}. Confirmed net kharch: {outflows}. Unpaid"
             " payments: {upcoming}. Proposed monthly payment: {proposed}. Proposal "
             "ke baad estimated unallocated rakam: {remaining}."
         ),
@@ -238,7 +239,7 @@ COPY: dict[str, dict[str, str]] = {
         "upcoming_commitments": "Kudishika ulppedeyulla adakkatha tracked badhyathakal: {value}.",
         "simulation": (
             "Record cheytha varumanam: {income}. Confirmed net chelavu: {outflows}."
-            " Varanirikkunna badhyathakal: {upcoming}. Nirdeshicha prathimasa "
+            " Adakkatha badhyathakal: {upcoming}. Nirdeshicha prathimasa "
             "thuka: {proposed}. Athinu shesham kanakkakkiya neekkivaykkatha thuka: "
             "{remaining}."
         ),
@@ -324,6 +325,38 @@ for style, text in {
     COPY[style]["clarify_merchant"] = text
 
 
+for style, text in {
+    "en": (
+        "Monthly proposals use the current month's tracked records. "
+        "Use this month for a simulation, or ask about historical spending and income separately."
+    ),
+    "hi": (
+        "मासिक प्रस्ताव इस महीने के दर्ज रिकॉर्ड पर आधारित हैं। "
+        "मॉडल के लिए इस महीने को चुनें; पुराने खर्च और आय के बारे में अलग पूछें।"
+    ),
+    "ml": (
+        "പ്രതിമാസ നിർദ്ദേശങ്ങൾക്ക് ഈ മാസത്തെ രേഖകൾ ഉപയോഗിക്കുന്നു. "
+        "മാതൃകയ്ക്ക് ഈ മാസം തിരഞ്ഞെടുക്കുക; പഴയ ചെലവും വരുമാനവും വേറെ ചോദിക്കാം."
+    ),
+    "hinglish": (
+        "Monthly proposal is mahine ke records par based hai. "
+        "Simulation ke liye is mahine ko chunein; purana kharch aur income alag poochhein."
+    ),
+    "manglish": (
+        "Monthly proposal ee masathe records upayogikkunnu. "
+        "Simulationinu ee masam chodikuka; pazhaya chelavum varumanavum vere chodikam."
+    ),
+}.items():
+    COPY[style]["clarify_simulation_period"] = text
+for style, text in {
+    "en": "Include one proposed monthly amount in rupees, such as 'Model 5000 monthly this month'.",
+    "hi": "रुपये में एक मासिक प्रस्तावित राशि बताएं, जैसे 'इस महीने 5000 का मासिक मॉडल दिखाएं'।",
+    "ml": "രൂപയിൽ ഒരു പ്രതിമാസ തുക പറയുക, ഉദാഹരണത്തിന് 'ഈ മാസം 5000 പ്രതിമാസം മാതൃക കാണിക്കുക'.",
+    "hinglish": "Ek monthly rupee rakam batayein, jaise 'Is mahine 5000 monthly model karein'.",
+    "manglish": "Monthly thuka rupayil parayuka; 'Ee masam 5000 model cheyyuka' pole.",
+}.items():
+    COPY[style]["clarify_amount"] = text
+
 CATEGORY_NAMES: dict[str, tuple[str, str, str]] = {
     "food_dining": ("food and dining", "खाने", "ഭക്ഷണം"),
     "groceries": ("groceries", "किराने", "പലചരക്ക്"),
@@ -362,7 +395,12 @@ def render(
     if category:
         names = CATEGORY_NAMES[category]
         replacements["category"] = names[{"en": 0, "hi": 1, "ml": 2}.get(chosen, 0)]
-    return COPY[chosen][key].format(**replacements)
+    result = COPY[chosen][key].format(**replacements)
+    if speech:
+        result = result.replace(
+            "YYYY-MM", {"en": "year and month", "hi": "वर्ष और महीना", "ml": "വർഷവും മാസവും"}[language]
+        )
+    return result
 
 
 def speech_disclaimer(language: Language) -> str:

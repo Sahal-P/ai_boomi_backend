@@ -281,3 +281,23 @@ def test_model_cannot_select_an_unstated_date_range(monkeypatch, settings):
     monkeypatch.setattr(intent, "OpenAI", fake)
     result = parse_intent("Please show the figures", configured)
     assert result.intent == "clarification" and result.clarification_reason == "period"
+
+
+def test_month_tokens_are_not_proposed_rupee_amounts():
+    assert amounts_in_question("Simulate ₹2026 monthly in 2026-10") == {202600}
+    assert rule_intent("Would a ₹2026 monthly SIP fit?").amount_minor == 202600
+
+
+def test_historical_simulation_clarifies_its_period_not_a_missing_amount(
+    settings, session, money_engine
+):
+    result = answer_question(
+        session,
+        user_id=LOCAL_USER_ID,
+        text="Simulate 5000 for last month",
+        display_style="en",
+        settings=settings,
+    )
+    assert result.policy == "clarify" and "current month" in result.display_text
+    assert "one monthly rupee amount" not in result.display_text
+    money_engine["simulate_monthly_commitment"].assert_not_called()

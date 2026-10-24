@@ -35,7 +35,9 @@ class DeleteRequest(VersionRequest):
 
 class TaskOutcome(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    task: Literal["evidence_opened", "overview_understood", "review_completed"]
+    task: Literal[
+        "evidence_opened", "overview_understood", "overview_explanation_opened", "review_completed"
+    ]
     subject_id: UUID | None = None
 
 

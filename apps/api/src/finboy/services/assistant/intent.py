@@ -61,7 +61,7 @@ CATEGORIES: dict[Category, tuple[str, ...]] = {
     "subscriptions": ("subscription", "सब्सक्रिप्शन", "സബ്സ്ക്രിപ്ഷ"),
     "travel": ("travel", "यात्रा", "വിനോദയാത്ര"),
     "health": ("health", "medical", "स्वास्थ्य", "ആരോഗ്യ"),
-    "education": ("school", "tuition", "शिक्षा", "വിദ്യാഭ്യാസ"),
+    "education": ("education", "school", "tuition", "शिक्षा", "വിദ്യാഭ്യാസ"),
     "investments": ("investment spending", "निवेश खर्च", "നിക്ഷേപച്ചെല"),
     "loan_emi": ("loan emi spending", "ईएमआई खर्च", "വായ്പച്ചെല"),
     "fees": ("fees", "शुल्क", "ഫീസ്"),
@@ -180,7 +180,7 @@ def contains(text: str, terms: tuple[str, ...]) -> bool:
 def amounts_in_question(text: str) -> set[int]:
     """Parse explicit rupee literals; conversion to paise is not ledger arithmetic."""
     values: set[int] = set()
-    question = normalized(text)
+    question = re.sub(r"\b20\d{2}-(?:0[1-9]|1[0-2])\b", " ", normalized(text))
     if re.search(r"[-−]\s+(?:₹\s*)?\d", question):
         return values
     for token in re.findall(r"(?<![\w.])[-−]?\d[\d,]*(?:\.\d{1,2})?(?![\w.])", question):
@@ -248,11 +248,16 @@ def resolve_period(q: str) -> tuple[PeriodSpec, bool]:
                         "अगले",
                         "നാളെ",
                         "next month",
-                        "2025",
-                        "2024",
                     ),
                 )
-                or re.search(r"\b20\d{2}\b", q)
+                or re.search(r"\b20\d{2}-\d{1,2}\b", q)
+                or (
+                    re.search(r"\b20\d{2}\b", q)
+                    and not (
+                        contains(q, SIMULATION + AFFORD)
+                        or re.search(r"₹|\bmonthly\b|\bsip\b|\brupees?\b", q)
+                    )
+                )
             )
         )
     ):

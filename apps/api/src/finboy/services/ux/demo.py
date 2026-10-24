@@ -33,6 +33,7 @@ def demo_view() -> dict:
         "failed": "purchase",
         "fee": "fee",
     }
+    correction = data["correction"]
     records = [
         TransactionView(
             id=ids[row["id"]],
@@ -40,7 +41,7 @@ def demo_view() -> dict:
             kind=kinds[row["event_type"]],
             amount_minor=row["amount_minor"],
             merchant=row["merchant"],
-            category=row["category"],
+            category=correction["new"] if row["id"] == correction["id"] else row["category"],
             occurred_at=row["occurred_at"],
             status=row["status"],
             review_reason=row.get("review_reason"),

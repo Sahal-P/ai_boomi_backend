@@ -87,7 +87,11 @@ def main() -> None:
             )
             examples["simulation"] = post(
                 "/money/simulations",
-                {"monthly_amount_minor": 500000, "label": "Sample monthly proposal"},
+                {
+                    "monthly_amount_minor": 500000,
+                    "label": "Sample monthly proposal",
+                    "include_overdue_line": True,
+                },
             )
             examples["deletion_preview"] = post("/privacy/deletion-preview", {})
             examples["structured_export"] = post("/privacy/export", {"expected_version": version()})

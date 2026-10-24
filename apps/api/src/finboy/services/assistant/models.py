@@ -47,6 +47,7 @@ class AssistantAnswer(BaseModel):
 
 class AskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    include_overdue_line: bool = Field(default=False, strict=True)
     text: str = Field(min_length=1, max_length=2000)
     display_style: DisplayStyle = "auto"
 

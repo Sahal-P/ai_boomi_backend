@@ -9,7 +9,7 @@ from sqlalchemy import Engine, func, or_, select
 from sqlalchemy.orm import Session
 
 from finboy.core.clock import now_ist
-from finboy.db.models.ledger import EmailSource
+from finboy.db.models.ledger import EmailSource, SourceEvent, Transaction
 from finboy.db.models.mail import ImportRun, MailConnection
 from finboy.services.imports.locking import import_lock
 from finboy.services.mail.security import MailError
@@ -83,6 +83,22 @@ def import_view(session: Session, row: ImportRun) -> ImportView:
     can_retry = outcome in {"partial", "failed", "interrupted", "cancelled"} and (
         row.mode == "eml_upload" or bool(failures and connection and connection.status == "active")
     )
+    pending = (
+        session.scalar(
+            select(func.count(func.distinct(SourceEvent.transaction_id)))
+            .join(EmailSource, EmailSource.id == SourceEvent.email_source_id)
+            .join(Transaction, Transaction.id == SourceEvent.transaction_id)
+            .where(
+                SourceEvent.user_id == row.user_id,
+                EmailSource.user_id == row.user_id,
+                or_(EmailSource.import_run_id == row.id, EmailSource.last_attempt_run_id == row.id),
+                EmailSource.source != "demo_mailbox",
+                Transaction.dataset == "household",
+                Transaction.status == "needs_review",
+            )
+        )
+        or 0
+    )
     return ImportView.model_validate(
         {
             **{
@@ -107,6 +123,7 @@ def import_view(session: Session, row: ImportRun) -> ImportView:
                     "truncated",
                 )
             },
+            "needs_review": pending,
             "outcome": outcome,
             "can_continue": bool(
                 row.truncated and row.next_page_token_encrypted and row.status == "completed"

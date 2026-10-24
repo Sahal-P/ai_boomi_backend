@@ -99,6 +99,7 @@ class MergeRequest(BaseModel):
 class SimulationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    include_overdue_line: bool = Field(default=False, strict=True)
     monthly_amount_minor: int = Field(gt=0, le=10**14, strict=True)
     label: str = Field(default="Monthly SIP", min_length=1, max_length=80, strict=True)
 

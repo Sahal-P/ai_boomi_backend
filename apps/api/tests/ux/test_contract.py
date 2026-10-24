@@ -64,6 +64,14 @@ def test_pure_summary_rejects_cross_dataset_claims_and_demo_has_fixed_identity()
     sample = demo_view()
     assert sample["summary"].estimated_unallocated_minor == 1478000
     assert sample["summary"].dataset == "demo"
+    assert (
+        next(
+            row.amount_minor
+            for row in sample["summary"].categories
+            if row.category == "food_dining"
+        )
+        == 786000
+    )
     household = calculate_summary(
         sample["transactions"], sample["commitments"], period=PeriodSpec(), today=date(2026, 10, 28)
     )
@@ -232,3 +240,84 @@ def test_published_response_examples_match_the_concrete_contracts():
         model.model_validate(examples[key])
     for style in ("en", "hi", "ml", "hinglish", "manglish"):
         AssistantAnswer.model_validate(examples["assistant_" + style])
+
+
+def test_backend_first_rollout_preserves_legacy_simulation_labels_and_arithmetic():
+    from finboy.services.money.compat import simulation_response
+    from finboy.services.money.engine import calculate_simulation
+
+    bill = CommitmentView(
+        id=uuid4(),
+        kind="bill",
+        label="Synthetic bill",
+        amount_minor=100000,
+        due_date=date(2026, 10, 23),
+        status="upcoming",
+        confidence=0.4,
+    )
+    summary = calculate_summary([], [bill], period=PeriodSpec(), today=date(2026, 10, 24))
+    value = calculate_simulation(summary, 5000)
+    legacy = simulation_response(value, include_overdue_line=False)
+    assert {line.label_key for line in legacy.lines} == {
+        "tracked_income",
+        "confirmed_outflows",
+        "upcoming_commitments",
+        "proposed_monthly",
+    }
+    assert (
+        sum(line.amount_minor * (1 if line.sign == "+" else -1) for line in legacy.lines)
+        == value.remaining_after_proposal_minor
+    )
+    assert any(
+        line.label_key == "overdue_commitments"
+        for line in simulation_response(value, include_overdue_line=True).lines
+    )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("path", ["/money/simulations", "/assistant/ask"])
+async def test_rollout_flag_is_applied_by_both_http_contracts(client, monkeypatch, path):
+    from finboy.services.assistant.models import AssistantAnswer
+    from finboy.services.money.engine import calculate_simulation
+
+    bill = CommitmentView(
+        id=uuid4(),
+        kind="bill",
+        label="Synthetic bill",
+        amount_minor=100000,
+        due_date=date(2026, 10, 23),
+        status="upcoming",
+        confidence=0.4,
+    )
+    value = calculate_simulation(
+        calculate_summary([], [bill], period=PeriodSpec(), today=date(2026, 10, 24)), 5000
+    )
+    if path == "/money/simulations":
+        monkeypatch.setattr(
+            "finboy.api.v1.money.simulate_monthly_commitment", lambda *args, **kwargs: value
+        )
+        body = {"monthly_amount_minor": 5000}
+    else:
+        answer = AssistantAnswer(
+            intent="affordability_check",
+            policy="answer",
+            display_text="Synthetic example",
+            speech_text="Synthetic example",
+            speech_language="en",
+            facts=[],
+            simulation=value,
+            evidence_transactions=[],
+            warnings=[],
+        )
+        monkeypatch.setattr(
+            "finboy.api.v1.assistant.answer_question", lambda *args, **kwargs: answer
+        )
+        body = {"text": "Could a monthly amount fit?"}
+    for split in [False, True]:
+        response = await client.post(
+            "/api/v1" + path, json={**body, **({"include_overdue_line": True} if split else {})}
+        )
+        assert response.status_code == 200
+        result = response.json() if path == "/money/simulations" else response.json()["simulation"]
+        assert any(line["label_key"] == "overdue_commitments" for line in result["lines"]) is split
+        assert result["remaining_after_proposal_minor"] == -105000

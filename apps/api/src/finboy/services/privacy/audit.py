@@ -23,6 +23,7 @@ EVENTS = frozenset(
         "obligation.corrected",
         "task.evidence_opened",
         "task.overview_understood",
+        "task.overview_explanation_opened",
         "task.review_completed",
         "data.exported",
     }

@@ -60,7 +60,10 @@ def answer_question(
     elif parsed.intent in {"affordability_check", "savings_simulation"} and (
         parsed.amount_minor is None or parsed.period.kind != "current_month"
     ):
-        key, policy = "clarify", "clarify"
+        key, policy = (
+            "clarify_amount" if parsed.amount_minor is None else "clarify_simulation_period",
+            "clarify",
+        )
     else:
         try:
             if parsed.intent in {"affordability_check", "savings_simulation"}:
