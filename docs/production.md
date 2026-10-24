@@ -244,3 +244,12 @@ unchanged. No new consent or microphone permission was requested for this releas
 See `handoffs/ux-integration.md` for commands, verification boundaries and CI, and
 `ux-round/implementation-map.md` for F01–F38 software completion versus human acceptance.
 Never roll the pre-scope API back onto the migrated database; recover forward with scoped code.
+
+## Capture round — not released
+
+Groq speech-to-text routing and WhatsApp screenshot capture (`capture-round/contract.md`)
+are not deployed. A release needs the human's explicit go-ahead after local verification,
+a private backup, additive migration `0007_whatsapp_capture`, and these backend-only
+settings in `/etc/finboy/production.env`: `SPEECH_TRANSCRIBE_PROVIDER`, `GROQ_API_KEY`,
+`GROQ_TRANSCRIBE_MODEL` and, only if WhatsApp is ever enabled, `OPENAI_VISION_MODEL`.
+Rollback for speech is `SPEECH_TRANSCRIBE_PROVIDER=openai`. WhatsApp stays disabled.

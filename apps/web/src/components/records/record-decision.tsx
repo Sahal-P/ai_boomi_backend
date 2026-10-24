@@ -17,10 +17,11 @@ import { formatDayTime } from "@/lib/dates";
 import {
   categoryLabels,
   effectLabel,
-  extractionLabels,
+  extractionLabel,
   kindLabels,
-  paymentLabels,
+  paymentLabel,
   reasonFor,
+  screenshotOnly,
   statusLabels,
 } from "@/lib/labels";
 import { describeProblem } from "@/lib/messages";
@@ -31,7 +32,7 @@ const doneCopy: Record<DecisionRequest["action"], string> = {
   reject: "Rejected. It won't count toward your totals.",
   reopen: "Reopened. It's back in the review queue.",
   correct: "Saved. Your correction is recorded in the history.",
-  merge: "Merged. The match now carries both source emails.",
+  merge: "Merged. The match now carries both source notifications.",
   "keep-separate": "Kept as its own record.",
 };
 
@@ -177,12 +178,14 @@ export function RecordDecision({
           <dt className="text-xs text-ink-soft">Payment</dt>
           <dd className="mt-0.5 flex items-center gap-1.5 font-medium">
             {tx.payment_verification === "verified" && <BadgeCheck className="size-4 text-positive" aria-hidden="true" />}
-            {paymentLabels[tx.payment_verification]}
+            {paymentLabel(tx)}
           </dd>
         </div>
         <div className="rounded-2xl bg-canvas p-3">
-          <dt className="text-xs text-ink-soft">Details in the email</dt>
-          <dd className="mt-0.5 font-medium">{extractionLabels[tx.extraction_quality]}</dd>
+          <dt className="text-xs text-ink-soft">
+            {screenshotOnly(tx) ? "Details in the screenshot" : "Details in the email"}
+          </dt>
+          <dd className="mt-0.5 font-medium">{extractionLabel(tx)}</dd>
         </div>
       </dl>
 

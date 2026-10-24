@@ -62,10 +62,30 @@ def test_context_validation(config: ChannelConfig, mutate) -> None:
         parse_events(json.dumps(data).encode(), config)
 
 
+def test_image_messages_use_only_media_id_and_mime(config: ChannelConfig) -> None:
+    questions, _ = parse_events(json.dumps(payload(kind="image")).encode(), config)
+    assert len(questions) == 1
+    image = questions[0]
+    assert (image.kind, image.media_id, image.mime_type) == ("image", "5678", "image/jpeg")
+    # The caption is never treated as a question, command or instruction.
+    assert image.text == "" and image.command is None
+    assert "ignore" not in repr(image) and "evil.test" not in repr(image)
+
+
+@pytest.mark.parametrize("image", [{"id": "not-digits", "mime_type": "image/png"}, {"id": "1"}])
+def test_malformed_image_messages_fail_closed(config: ChannelConfig, image: dict) -> None:
+    data = payload(kind="image")
+    data["entry"][0]["changes"][0]["value"]["messages"][0]["image"] = image
+    with pytest.raises(InvalidWebhook):
+        parse_events(json.dumps(data).encode(), config)
+
+
 def test_status_only_and_unsupported_events(config: ChannelConfig) -> None:
     data = payload()
     value = data["entry"][0]["changes"][0]["value"]
-    value["messages"] = [{"type": "image", "image": {"id": "private"}}]
+    value["messages"] = [
+        {"type": kind, kind: {"id": "private"}} for kind in ("sticker", "video", "document")
+    ]
     value["statuses"] = [
         {"id": "wamid.synthetic", "status": "delivered", "recipient_id": "919000000001"}
     ]

@@ -23,17 +23,21 @@ acceptance gaps; provider configuration alone never means completion.
 - Next.js App Router, React, strict TypeScript, pnpm, Tailwind/shadcn, Lucide.
 - Preserved premium design: local fonts, GSAP/motion, lazy R3F/three scenes with
   DOM-first controls, reduced motion and no-WebGL fallback.
-- Backend-only OpenAI extraction/intent/STT; Resemble Ultra English/Hindi (human's
-  final provider choice), verified Gemini Malayalam TTS. System ffmpeg/ffprobe
-  validate/transcode real media to MP3. No cloning or training.
+- Backend-only OpenAI extraction, assistant understanding/wording and STT. Configured
+  assistant requests use real AI; financial figures remain engine-calculated.
+  `SPEECH_TRANSCRIBE_PROVIDER=groq` sends
+  English/Hindi to Groq `whisper-large-v3-turbo`; Malayalam always stays on OpenAI.
+  OpenAI vision reads WhatsApp payment screenshots into the review queue. Resemble Ultra
+  English/Hindi (human's final provider choice), verified Gemini Malayalam TTS. System
+  ffmpeg/ffprobe validate/transcode real media. No cloning or training.
 - One API, one web app, PostgreSQL as the only persistent service. Stateless
   webhook-only ingress may forward exactly GET/POST /api/v1/whatsapp/webhook.
   Local product APIs remain loopback-only. Authorized production uses a household
   session gate and an HTTPS proxy; finance/privacy routes reject unauthenticated users.
 
 Money stays integer paise in INR and dates use IST. Production supports private
-household login only. No public signup, bank API, WhatsApp capture/OCR/mutations,
-stock/fund recommendations, or training.
+household login only. No public signup, bank API, WhatsApp confirmations/edits/deletions
+(screenshots only enter review), stock/fund recommendations, or training.
 “Estimated unallocated amount” comes from email-derived and confirmed records;
 actual bank balances may differ. Simulations are not investment recommendations.
 

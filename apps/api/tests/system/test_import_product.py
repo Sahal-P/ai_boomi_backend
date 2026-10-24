@@ -36,9 +36,13 @@ def assembled_app(monkeypatch):
     engine = build_engine(settings)
     assert settings.environment != "production"
     assert engine.url.host in {"127.0.0.1", "localhost"}
-    assert engine.url.database in {"finboy_p5", "finboy_ux_api", "finboy_ux_ui", "finboy_test"}, (
-        "Use integration disposable DB"
-    )
+    assert engine.url.database in {
+        "finboy_p5",
+        "finboy_ux_api",
+        "finboy_ux_ui",
+        "finboy_capture",
+        "finboy_test",
+    }, "Use integration disposable DB"
     user = uuid4()
     for name in (
         "finboy.api.v1.imports",

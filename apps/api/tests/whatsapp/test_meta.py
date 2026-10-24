@@ -5,6 +5,7 @@ import httpx
 import pytest
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.meta import (
+    DownloadedMedia,
     InvalidMedia,
     MetaClient,
     MetaUnavailable,
@@ -151,5 +152,50 @@ def test_unknown_recipient_never_reaches_meta(config: ChannelConfig) -> None:
             client.send("919000000099", text="answer")
         with pytest.raises(InvalidMedia):
             client.download_audio("https://evil.test/a", "audio/ogg")
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize(
+    "fault", [None, "gif", "oversize", "audio_for_image", "content_type", "hash", "webhook_mime"]
+)
+def test_image_download_bounds(config: ChannelConfig, fault: str | None) -> None:
+    image = b"synthetic png"
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.url.host == "graph.facebook.com":
+            return httpx.Response(
+                200,
+                json={
+                    "id": "5678",
+                    "url": "https://lookaside.fbsbx.com/i",
+                    "mime_type": {"gif": "image/gif", "audio_for_image": "audio/ogg"}.get(
+                        fault or "", "image/png"
+                    ),
+                    "file_size": 6 * 1024 * 1024 if fault == "oversize" else len(image),
+                    "sha256": "0" * 64 if fault == "hash" else hashlib.sha256(image).hexdigest(),
+                },
+            )
+        return httpx.Response(
+            200,
+            content=image,
+            headers={"content-type": "image/jpeg" if fault == "content_type" else "image/png"},
+        )
+
+    client = MetaClient(config, transport=httpx.MockTransport(handler))
+    try:
+        webhook = "audio/ogg" if fault == "webhook_mime" else "image/png"
+        if fault is None:
+            assert client.download_image("5678", webhook) == DownloadedMedia(image, "image/png")
+        else:
+            with pytest.raises(InvalidMedia):
+                client.download_image("5678", webhook)
+        assert all(r.url.host in {"graph.facebook.com", "lookaside.fbsbx.com"} for r in seen)
+        assert not seen if fault == "webhook_mime" else seen
+        # Audio keeps its own smaller limit even though images may be 5 MiB.
+        with pytest.raises(InvalidMedia):
+            client.download_audio("5678", "image/png")
     finally:
         client.close()

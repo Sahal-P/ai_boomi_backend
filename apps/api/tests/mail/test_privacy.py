@@ -178,6 +178,9 @@ def make_source(session, connection, transaction):
 
 def exercise_deletion(session, settings):
     audit_count = session.scalar(select(func.count()).select_from(AuditEvent))
+    other_source_count = session.scalar(
+        select(func.count()).select_from(EmailSource).where(EmailSource.user_id != LOCAL_USER_ID)
+    )
     first, second = new_connection(session, settings), new_connection(session, settings, "b")
     shared, sole, manual, linked = [make_transaction(session) for _ in range(4)]
     transaction_ids = [shared.id, sole.id, manual.id, linked.id]
@@ -262,7 +265,22 @@ def exercise_deletion(session, settings):
     assert list(
         session.scalars(select(Transaction.id).where(Transaction.id.in_(transaction_ids)))
     ) == [manual.id]
-    assert session.scalar(select(func.count()).select_from(EmailSource)) == 0
+    assert (
+        session.scalar(
+            select(func.count())
+            .select_from(EmailSource)
+            .where(EmailSource.user_id == LOCAL_USER_ID)
+        )
+        == 0
+    )
+    assert (
+        session.scalar(
+            select(func.count())
+            .select_from(EmailSource)
+            .where(EmailSource.user_id != LOCAL_USER_ID)
+        )
+        == other_source_count
+    )
     assert (
         session.scalar(
             select(func.count())

@@ -1,4 +1,4 @@
-"""Consent and transport metadata only. Never add message/answer/audio columns."""
+"""Consent and transport metadata only. Never add message/answer/audio/image columns."""
 
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -37,7 +37,7 @@ class WhatsAppBinding(Base):
 class WhatsAppReceipt(Base):
     __tablename__ = "whatsapp_receipts"
     __table_args__ = (
-        CheckConstraint("kind IN ('text','audio','command')", name="kind"),
+        CheckConstraint("kind IN ('text','audio','image','command')", name="kind"),
         CheckConstraint("language IN ('en','hi','ml')", name="language"),
         CheckConstraint(
             "state IN ('admitted','processing','completed','failed','interrupted','ignored')",
@@ -45,7 +45,8 @@ class WhatsAppReceipt(Base):
         ),
         CheckConstraint(
             "error_code IN ('provider_unavailable','invalid_audio','assistant_unavailable',"
-            "'processing_failed','window_expired','interrupted','disabled','stale_message')",
+            "'processing_failed','window_expired','interrupted','disabled','stale_message',"
+            "'invalid_image','capture_unavailable','capture_busy')",
             name="error_code",
         ),
         Index("ix_whatsapp_receipts_state_received_at", "state", "received_at"),

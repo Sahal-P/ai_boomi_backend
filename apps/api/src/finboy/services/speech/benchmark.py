@@ -13,7 +13,7 @@ from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
 from finboy.services.assistant.intent import amounts_in_question, normalized, rule_intent
 from finboy.services.speech.media import InvalidAudio, decode_audio
-from finboy.services.speech.service import synthesize_speech, transcribe_audio
+from finboy.services.speech.service import synthesize_speech, transcribe_routed
 
 ROOT = Path(__file__).resolve().parents[4] / "fixtures" / "voice"
 
@@ -112,7 +112,7 @@ def generate_questions(settings: Settings) -> list[dict[str, object]]:
     return results
 
 
-def run(*, settings: Settings, live: bool, real: bool) -> dict[str, object]:
+def run(*, settings: Settings, live: bool, real: bool, hint: bool = True) -> dict[str, object]:
     cases = json.loads((ROOT / "intent_cases.json").read_text())
     failures = [
         case["id"]
@@ -146,14 +146,15 @@ def run(*, settings: Settings, live: bool, real: bool) -> dict[str, object]:
             result["media_status"] = "passed"
             if live:
                 start = time.monotonic()
-                transcript = transcribe_audio(
+                transcript, provider = transcribe_routed(
                     audio=audio,
                     content_type="audio/mpeg",
                     settings=settings,
-                    language_hint=sample.language,
+                    language_hint=sample.language if hint else None,
                 )
                 result.update(
                     stt_status="passed",
+                    stt_provider=provider,
                     stt_latency_ms=round((time.monotonic() - start) * 1000),
                     language_correct=transcript.detected_language == sample.language,
                     exact_transcript=tokens(transcript.transcript) == tokens(sample.text),
@@ -176,7 +177,9 @@ def run(*, settings: Settings, live: bool, real: bool) -> dict[str, object]:
             result["stt_status" if live else "media_status"] = "unavailable_or_invalid"
         rows.append(result)
     return {
-        "mode": "live_stt" if live else "offline_intent_and_media",
+        "mode": ("live_stt" if hint else "live_stt_no_hint")
+        if live
+        else "offline_intent_and_media",
         "intent_cases": len(cases),
         "intent_passed": len(cases) - len(failures),
         "intent_failed_ids": failures,
@@ -189,7 +192,14 @@ def run(*, settings: Settings, live: bool, real: bool) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--live", action="store_true", help="Actually call OpenAI STT on fixtures")
+    parser.add_argument(
+        "--live", action="store_true", help="Actually call the configured STT routing on fixtures"
+    )
+    parser.add_argument(
+        "--no-hint",
+        action="store_true",
+        help="With --live, omit language hints to exercise detection and Malayalam routing",
+    )
     parser.add_argument(
         "--generate", action="store_true", help="Actually synthesize three questions"
     )
@@ -199,7 +209,7 @@ def main() -> None:
     args = parser.parse_args()
     settings = Settings()
     generation = generate_questions(settings) if args.generate else []
-    report = run(settings=settings, live=args.live, real=args.real)
+    report = run(settings=settings, live=args.live, real=args.real, hint=not args.no_hint)
     if generation:
         report["live_tts_generation"] = generation
     print(json.dumps(report, ensure_ascii=False, indent=2))

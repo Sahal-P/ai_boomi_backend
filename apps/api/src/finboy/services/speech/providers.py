@@ -160,4 +160,46 @@ def resemble_synthesize(text: str, language: Language, settings: Settings) -> tu
     return decode_base64(result.audio_content), "audio/mpeg"
 
 
+class GroqSegment(BaseModel):
+    no_speech_prob: float
+    avg_logprob: float
+
+
+class GroqTranscription(BaseModel):
+    text: str = Field(max_length=2000, repr=False)
+    # Undocumented format (a name or ISO code); the service maps it and checks the script.
+    language: str | None = Field(default=None, max_length=32)
+    segments: list[GroqSegment] = Field(default_factory=list, max_length=200)
+
+
+# Language-neutral terms: an English sentence here biases Whisper's language detection.
+GROQ_VOCABULARY = "SIP, UPI, EMI, Swiggy, Zomato, Amazon"
+MAX_GROQ_JSON_BYTES = 256 * 1024
+
+
+def groq_transcribe(wav: bytes, language: Language | None, settings: Settings) -> GroqTranscription:
+    """Groq Whisper for English/Hindi; callers keep Malayalam on OpenAI."""
+    if not settings.groq_api_key or settings.groq_transcribe_model != "whisper-large-v3-turbo":
+        raise ProviderUnavailable("configuration_missing")
+    fields = {
+        "model": settings.groq_transcribe_model,
+        "response_format": "verbose_json",
+        "temperature": "0",
+        "prompt": GROQ_VOCABULARY,
+    }
+    if language in {"en", "hi"}:
+        fields["language"] = language
+    with provider_client(settings) as client:
+        raw = bounded_request(
+            client,
+            "POST",
+            str(settings.groq_base_url).rstrip("/") + "/audio/transcriptions",
+            limit=MAX_GROQ_JSON_BYTES,
+            headers={"Authorization": "Bearer " + settings.groq_api_key.get_secret_value()},
+            data=fields,
+            files={"file": ("question.wav", wav, "audio/wav")},
+        )
+    return GroqTranscription.model_validate_json(raw)
+
+
 PROVIDER_ERRORS = (httpx.HTTPError, ValidationError, ValueError, KeyError, TypeError)

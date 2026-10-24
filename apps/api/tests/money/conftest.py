@@ -53,6 +53,7 @@ def mailbox_api(monkeypatch, tmp_path) -> Iterator[MailboxAPI]:
         "finboy_p5",
         "finboy_ux_api",
         "finboy_ux_ui",
+        "finboy_capture",
     }, "Use a named local disposable FinBoy database"
     factory = sessionmaker(engine, expire_on_commit=False)
     user_id, run_id = uuid4(), uuid4()

@@ -50,7 +50,7 @@ export const reviewReasons = [
   "unverified_payment",
 ] as const;
 export type ReviewReason = (typeof reviewReasons)[number];
-export const sourceModeSchema = z.enum(["gmail", "eml_upload", "demo_mailbox"]);
+export const sourceModeSchema = z.enum(["gmail", "eml_upload", "demo_mailbox", "whatsapp_image"]);
 export type SourceMode = z.infer<typeof sourceModeSchema>;
 export const datasetSchema = z.enum(["household", "demo", "quarantined"]);
 export type Dataset = z.infer<typeof datasetSchema>;

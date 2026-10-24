@@ -6,6 +6,7 @@ import { z } from "zod";
 import { onSessionEvent } from "../session-events.ts";
 import { answerSchema, askQuestion, displayLang, speechFor, transcribeAudio } from "./assistant.ts";
 import { ApiError, failure, requestJson } from "./http.ts";
+import { extractionLabel, paymentLabel, reasonFor, sourceLabels, sourceSender } from "../labels.ts";
 import { getDemo } from "./demo.ts";
 import { fileProblem, getImportIssues, getImportRun, getImports, importRunSchema, issueSchema } from "./imports.ts";
 import { baseTransactionSchema, getObligation, getObligations, getSummary, inputPaise, simulate, summarySchema } from "./money.ts";
@@ -235,3 +236,33 @@ test(
     assert.deepEqual(Object.keys(actual.decision_request as object).sort(), ["action", "correction", "expected_version"]);
   },
 );
+
+test("WhatsApp screenshot sources validate and read as the household's own message", () => {
+  const fixture = (key: string) => z.record(z.string(), z.unknown()).parse(contract[key]);
+  const pending = fixture("transactions_pending");
+  const page = z.object({ items: z.array(z.record(z.string(), z.unknown())) }).parse(pending);
+  const item = { ...page.items[0], source_modes: ["whatsapp_image"] };
+  assert.deepEqual(pageSchema.parse({ ...pending, items: [item] }).items[0]?.source_modes, ["whatsapp_image"]);
+  const run = importRunSchema.parse({ ...fixture("import_complete"), mode: "whatsapp_image", retry_strategy: "none" });
+  assert.equal(sourceLabels[run.mode], "WhatsApp screenshot");
+  const issue = issueSchema.parse({ ...fixture("issue"), source_mode: "whatsapp_image", retryable: false, retry_strategy: "none" });
+  assert.equal(issue.source_mode, "whatsapp_image");
+  assert.equal(sourceSender({ source: "whatsapp_image", sender_domain: "whatsapp.invalid" }), "Your WhatsApp screenshot");
+  assert.equal(sourceSender({ source: "gmail", sender_domain: "alerts.example.test" }), "alerts.example.test");
+  assert.equal(
+    recordQueryString({ limit: 50, offset: 0, scope: "all", period: null, source: "whatsapp_image" }),
+    "?scope=all&source=whatsapp_image&limit=50&offset=0",
+  );
+});
+
+test("screenshot-only records never borrow email or bank-email wording", () => {
+  const shot = { source_modes: ["whatsapp_image"] as const, extraction_quality: "complete" as const };
+  const mixed = { source_modes: ["eml_upload", "whatsapp_image"] as const, extraction_quality: "complete" as const };
+  assert.equal(paymentLabel({ ...shot, source_modes: [...shot.source_modes], payment_verification: "verified" }), "Confirmed by you from a payment screenshot");
+  assert.equal(paymentLabel({ ...mixed, source_modes: [...mixed.source_modes], payment_verification: "verified" }), "Payment confirmed by a bank or card email");
+  assert.equal(extractionLabel({ ...shot, source_modes: [...shot.source_modes] }), "All key details found in the screenshot");
+  const reason = reasonFor({ status: "needs_review", review_reason: "unverified_payment", source_modes: ["whatsapp_image"] });
+  assert.match(reason?.detail ?? "", /screenshot/);
+  assert.doesNotMatch(reason?.detail ?? "", /email/);
+  assert.match(reasonFor({ status: "needs_review", review_reason: "unverified_payment" })?.detail ?? "", /email/);
+});

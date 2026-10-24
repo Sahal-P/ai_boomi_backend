@@ -47,7 +47,7 @@ export function AssistantScreen() {
     <div className="space-y-5">
       <PageHeader
         title="Ask FinBoy"
-        description="Ask in English, हिन्दी or മലയാളം — or mix them. Answers come only from your confirmed household records."
+        description="Ask in English, हिन्दी or മലയാളം — or mix them. AI helps explain your money and plan purchases; financial totals use confirmed household records."
       />
       <section aria-labelledby={`${ids}-ask`} className="surface rounded-3xl p-5 sm:p-7">
         <h2 id={`${ids}-ask`} className="sr-only">
@@ -59,6 +59,7 @@ export function AssistantScreen() {
             <li>Spending for today, yesterday, this month, last month or a month like 2026-09.</li>
             <li>Spending by category or at a merchant, including refunds.</li>
             <li>How much is left this month, and whether you can set aside a monthly amount.</li>
+            <li>Planning a purchase: discuss the quote, savings and cash or financing options.</li>
             <li>FinBoy doesn&apos;t pick funds or stocks, and only counts confirmed records.</li>
           </ul>
         </details>

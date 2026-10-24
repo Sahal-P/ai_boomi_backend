@@ -25,7 +25,7 @@ account, subscription, funds, training, or cloned voice was created. Current cho
 | Hindi TTS | Resemble Ultra / stock Fatima (`af3b3fad`, hi) | Authenticated `/synthesize`, real MP3, browser playback |
 | Malayalam TTS | `gemini-3.8-flash-tts` / prebuilt Kore | Authenticated `/models` and `/interactions`; WAV converted to MP3, browser playback |
 | STT, all three languages | `gpt-transcribe` | Model listed by this OpenAI account; actual transcription of six provider-generated fixtures |
-| Optional intent interpretation | `gpt-6-luna` | Account model discovery and one actual Structured Outputs request |
+| Assistant understanding and contextual wording | `gpt-6-luna` | Actual Structured Outputs requests, including the purchase-planning regression |
 
 Resemble synthesis selects the voice's current model automatically; **do not send a
 `model` field**. The portal/default-model documentation establishes Ultra, while the
@@ -79,22 +79,41 @@ or user content crosses the error boundary.
 
 ## Financial truth and policy
 
-The rules-first parser has a closed intent, category, period, education-topic and
-positive paise schema. It covers spending, income, estimated unallocated, obligations,
-merchant evidence, affordability/simulation, education, advice decline and scope.
+With `OPENAI_API_KEY` and `OPENAI_ASSISTANT_MODEL` configured, every question uses
+OpenAI Structured Outputs for understanding and contextual wording. The closed
+intent, category, period, education-topic and positive paise schema covers spending,
+income, estimated unallocated, obligations, merchant evidence,
+affordability/simulation, consumer purchase planning, education, advice decline and scope.
 A current calendar month is the default; explicit `YYYY-MM` is supported. Other
 relative periods clarify rather than silently querying a different month. Simulations
 use the engine's current-month interface and clarify an explicit historical period.
 Amounts must be positive explicit rupee literals in the question. Negative or
 ambiguous proposals and non-INR requests clarify; an LLM cannot invent a proposal.
 
-Only otherwise-unrecognized questions use optional OpenAI Structured Outputs.
-Instructions identify questions as untrusted, expose no tools/SQL and request no
-financial answer. Unsupported advice is declined. Model amounts and merchant slots
-must match the question; model periods must match an explicit question token.
-Timeouts/refusals/invalid output fall back deterministically. There is no optional
-model-written answer prose: trusted templates alone compose financial statements.
-The numeric guard regression checks added, changed, removed and signed literals.
+Rules remain available for explicitly unconfigured development/test runs and as
+validators for provider-selected financial parameters. Production without assistant
+configuration returns `configuration_missing`; a configured provider's timeout,
+authentication/quota failure, refusal, malformed output or missing contextual reply
+returns redacted `assistant_unavailable` instead of silently pretending to answer.
+Model amounts and merchants must match the question, record-query periods must
+match deterministic resolution, and explicit security picks still decline.
+
+Consumer purchase planning returns `purchase_planning` with policy `clarify`, no
+money-engine call, no period and no financial facts. For example, buying a GT 650
+"next month" asks about the item, actual quote and cash/financing plan; its model
+number is never used as a monthly rupee commitment. A purchase horizon is independent
+of supported historical record-query periods. No price/specification lookup, future
+cash-flow forecast or one-off purchase simulation is claimed.
+
+The model writes short contextual prose and native-language speech without digits,
+currency symbols or percentages (validated), and is instructed to avoid numeric
+claims in words, invented prices/rates and unsupported affordability claims. Financial
+answers append the complete deterministic engine-backed text, dates, disclaimers
+and warnings verbatim. The model never receives ledger rows or engine amounts.
+Clarifications, purchase questions and neutral education use the model's prose.
+If an introductory speech sentence would exceed the existing audio limit, speech
+keeps the complete financial statement. Questions remain independent requests;
+no server-side conversation memory or stored question history was added.
 
 All totals come from the existing money engine signatures. There is no independent
 SQL, money summation, balance inference, or ledger mutation in this owner. Category
@@ -144,7 +163,7 @@ as benchmark fixtures.
 Resemble requests omit `project_uuid` and `title`, avoiding intentionally stored
 clips. User text is escaped before submission to the text/SSML field. Gemini uses
 `store=false`; see [Interactions retention](https://ai.google.dev/gemini-api/docs/interactions-overview).
-OpenAI intent requests also set `store=false`. These are application storage controls,
+OpenAI assistant requests also set `store=false`. These are application storage controls,
 **not** a claim of zero upstream operational/abuse retention. Resemble's current Ultra
 implementation is described as powered by xAI in its official changelog; upstream
 retention guarantees were not established. No stored-clip or voice-creation endpoint
@@ -240,3 +259,35 @@ unsupported periods receive period-specific clarification. Localized fact/warnin
 and separate display-script/spoken-language metadata support native and romanized styles.
 Providers, refusal boundaries, backend-only keys and independent speech/text fallback
 remain unchanged. These changes do not establish human microphone or phone playback.
+
+## Groq transcription routing (capture round, 24 October 2026)
+
+The human chose Groq `whisper-large-v3-turbo` for English/Hindi speech-to-text and kept
+OpenAI `gpt-transcribe` for Malayalam (`docs/capture-round/contract.md`). The table above
+describes the default `SPEECH_TRANSCRIBE_PROVIDER=openai` mode, which is unchanged.
+
+- Settings (backend-only): `SPEECH_TRANSCRIBE_PROVIDER=openai|groq`, `GROQ_API_KEY`,
+  `GROQ_TRANSCRIBE_MODEL` (must equal `whisper-large-v3-turbo`, otherwise
+  `configuration_missing`) and `GROQ_BASE_URL` (default
+  `https://api.groq.com/openai/v1`, HTTPS without credentials/query).
+- `transcribe_audio(...)` and `/api/v1/assistant/transcribe` keep their contract. The
+  validated WAV goes to `POST /audio/transcriptions` as multipart with
+  `response_format=verbose_json`, `temperature=0`, a language-neutral vocabulary prompt
+  and `language` only for en/hi hints, through the bounded no-redirect client.
+- A Malayalam hint goes straight to OpenAI. A Groq result is accepted only when its
+  reported language maps to en/hi and the transcript uses that script; anything else is
+  re-transcribed once by OpenAI. Groq's response language format is undocumented, so
+  names and ISO codes are both mapped. Groq failures report `speech_unavailable` and are
+  never retried on OpenAI.
+- Silence guard: if every Whisper segment has `no_speech_prob > 0.6` and
+  `avg_logprob < -1.0`, the transcript is empty, so filler Whisper invents on silence
+  never reaches the assistant through WhatsApp.
+- Groq retains no inference data by default apart from reliability/abuse logs for up to
+  30 days; Zero Data Retention in Groq's data controls removes those. Pricing is $0.04
+  per audio hour with a 10-second minimum per request.
+- `pnpm voice:benchmark --live` reports `stt_provider` per sample; `--live --no-hint`
+  exercises detection and the Malayalam escalation.
+
+Not yet run: no Groq key exists in the private secrets file, so no live Groq call,
+capability check or Groq benchmark has been made. Keep `SPEECH_TRANSCRIBE_PROVIDER=openai`
+until both live benchmark modes pass for all six fixtures.

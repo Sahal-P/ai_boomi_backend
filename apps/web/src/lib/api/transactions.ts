@@ -62,7 +62,7 @@ export type RecordQuery = {
   period: Period;
   status?: RecordStatus | undefined;
   category?: Category | undefined;
-  source?: "gmail" | "eml_upload" | undefined;
+  source?: "gmail" | "eml_upload" | "whatsapp_image" | undefined;
   kind?: Kind | undefined;
   q?: string | undefined;
   dataset?: "household" | "quarantined" | undefined;

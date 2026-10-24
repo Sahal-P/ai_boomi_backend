@@ -32,7 +32,7 @@ type Tx = {
   linked_transaction_id: string | null;
   merged_into_id: string | null;
   dataset: "household" | "quarantined";
-  source_modes: ("gmail" | "eml_upload")[];
+  source_modes: ("gmail" | "eml_upload" | "whatsapp_image")[];
   source_count: number;
   extraction_quality: "complete" | "partial";
   payment_verification: "verified" | "unverified" | "failed";

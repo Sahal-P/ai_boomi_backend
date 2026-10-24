@@ -94,3 +94,13 @@ finboy_ux_ui. Backend owns apps/api and backend/domain/operations docs; Product 
 apps/web, JavaScript tooling and UI/design docs until its explicit handoff. Final
 assembly belongs to Agent 1 on feat/finboy-ux-integration. Do not create more agents,
 edit other worktrees, invent local OAuth callbacks, or run production test suites.
+
+## Capture round — 24 October 2026
+
+From main 5d85595 the human chose Groq `whisper-large-v3-turbo` speech-to-text for
+English/Hindi (OpenAI `gpt-transcribe` stays for Malayalam) and authorized WhatsApp UPI
+screenshot capture into the review queue, read by OpenAI vision. Scope, provider and
+contract changes in `docs/capture-round/contract.md` supersede earlier non-goals only as
+documented there. One agent on feat/finboy-voice-capture, loopback 8041/3041, disposable
+finboy_capture. WhatsApp stays disabled in production; WhatsApp never confirms, edits or
+deletes records, and screenshots/transcripts are never stored.

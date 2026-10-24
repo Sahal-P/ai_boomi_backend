@@ -10,9 +10,10 @@ from finboy.services.assistant.models import AssistantAnswer
 from finboy.services.speech.media import InvalidAudio
 from finboy.services.speech.models import SynthesizedAudio, Transcript
 from finboy.services.whatsapp import processor
+from finboy.services.whatsapp.capture import Capture
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
-from finboy.services.whatsapp.meta import DownloadedAudio, InvalidMedia
+from finboy.services.whatsapp.meta import DownloadedMedia, InvalidMedia
 from sqlalchemy.orm import Session
 
 
@@ -30,7 +31,7 @@ def harness(monkeypatch: pytest.MonkeyPatch, *, preferred: str | None = None):
     monkeypatch.setattr(processor.receipts, "finish", finish)
     meta = MagicMock()
     monkeypatch.setattr(processor, "MetaClient", lambda _: meta)
-    meta.download_audio.return_value = DownloadedAudio(b"synthetic", "audio/ogg")
+    meta.download_audio.return_value = DownloadedMedia(b"synthetic", "audio/ogg")
     meta.upload_audio.return_value = "12345"
     send = MagicMock(return_value=True)
     monkeypatch.setattr(processor, "send_reply", send)
@@ -171,3 +172,77 @@ def test_unexpected_failure_log_redaction(
 def test_phone_answers_direct_review_to_demo_computer(url: str) -> None:
     response = processor.phone_text("Please review at " + url + ".")
     assert "http" not in response and "demo computer" in response
+
+
+@pytest.mark.parametrize(
+    "outcome,error",
+    [
+        ("saved", None),
+        ("already_recorded", None),
+        ("no_payment", None),
+        ("busy", "capture_busy"),
+        ("invalid_image", "invalid_image"),
+        ("unavailable", "capture_unavailable"),
+    ],
+)
+def test_images_go_to_capture_never_the_assistant(
+    monkeypatch: pytest.MonkeyPatch,
+    config: ChannelConfig,
+    wa_settings: Settings,
+    outcome: str,
+    error: str | None,
+) -> None:
+    factory, receipt, _, meta, send, ask, transcribe, speak, finish = harness(monkeypatch)
+    captured = MagicMock(return_value=Capture(outcome, 50000, "Ravi Kumar"))
+    monkeypatch.setattr(processor.capture, "capture_screenshot", captured)
+    question = InboundQuestion(
+        "wamid.image",
+        "919000000001",
+        datetime.now(UTC),
+        "image",
+        media_id="5678",
+        mime_type="image/jpeg",
+    )
+    processor.process_question(factory, wa_settings, config, receipt.id, question)
+    assert captured.call_args.args[2] is meta and captured.call_args.args[3] is question
+    assert not ask.called and not transcribe.called and not speak.called
+    assert send.call_count == 1 and "media_id" not in send.call_args.kwargs
+    if outcome == "saved":
+        assert send.call_args.kwargs["text"].startswith("Saved for review: ₹500 · Ravi Kumar.")
+    assert finish.call_args.kwargs["error"] == error
+    meta.close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "preferred,script", [("hi", ("\u0900", "\u097f")), ("ml", ("\u0d00", "\u0d7f"))]
+)
+def test_image_replies_follow_the_language_preference(
+    monkeypatch: pytest.MonkeyPatch,
+    config: ChannelConfig,
+    wa_settings: Settings,
+    preferred: str,
+    script: tuple[str, str],
+) -> None:
+    factory, receipt, _, _, send, _, _, _, finish = harness(monkeypatch, preferred=preferred)
+    monkeypatch.setattr(
+        processor.capture, "capture_screenshot", lambda *_: Capture("saved", 50000, "Ravi")
+    )
+    send.return_value = False
+    processor.process_question(
+        factory,
+        wa_settings,
+        config,
+        receipt.id,
+        InboundQuestion(
+            "wamid.image",
+            "919000000001",
+            datetime.now(UTC),
+            "image",
+            media_id="5678",
+            mime_type="image/png",
+        ),
+    )
+    low, high = script
+    assert any(low <= character <= high for character in send.call_args.kwargs["text"])
+    # A saved capture whose reply could not be sent is a transport failure, not a capture one.
+    assert finish.call_args.kwargs["error"] == "provider_unavailable"

@@ -16,7 +16,7 @@ from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppDelivery, WhatsAp
 from finboy.services.assistant import service as assistant
 from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
-from finboy.services.whatsapp import receipts
+from finboy.services.whatsapp import capture, receipts
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable, SendUnknown
@@ -147,6 +147,25 @@ def process_question(
                     allow_disabled=question.command == "stop",
                 )
                 receipts.finish(session, receipt_id, error=None if ok else "provider_unavailable")
+                return
+            if question.kind == "image":
+                # End this read snapshot; the import pipeline commits through its own sessions.
+                session.rollback()
+                result = capture.capture_screenshot(session.get_bind(), settings, client, question)
+                ok = send_reply(
+                    session,
+                    config,
+                    client,
+                    receipt,
+                    question,
+                    text=phone_text(capture.capture_reply(result, preferred)),
+                )
+                receipts.finish(
+                    session,
+                    receipt_id,
+                    error=capture.RECEIPT_ERRORS.get(result.outcome)
+                    or (None if ok else "provider_unavailable"),
+                )
                 return
             try:
                 text = question.text

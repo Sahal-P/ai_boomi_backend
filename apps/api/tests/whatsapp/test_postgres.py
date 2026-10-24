@@ -29,7 +29,14 @@ def factory(config: ChannelConfig) -> Iterator[sessionmaker[Session]]:
         settings.environment == "production"
         or url.host not in {"127.0.0.1", "localhost"}
         or url.database
-        not in {"finboy_p4", "finboy_p5", "finboy_ux_api", "finboy_ux_ui", "finboy_test"}
+        not in {
+            "finboy_p4",
+            "finboy_p5",
+            "finboy_ux_api",
+            "finboy_ux_ui",
+            "finboy_capture",
+            "finboy_test",
+        }
     ):
         pytest.fail(
             "WhatsApp integration tests require a disposable local FinBoy integration database"
@@ -230,7 +237,7 @@ async def test_concurrent_http_duplicates_run_shared_services_once(
     from finboy.services.assistant.models import AssistantAnswer
     from finboy.services.speech.models import SynthesizedAudio, Transcript
     from finboy.services.whatsapp import processor
-    from finboy.services.whatsapp.meta import DownloadedAudio
+    from finboy.services.whatsapp.meta import DownloadedMedia
     from httpx import ASGITransport, AsyncClient
 
     from .conftest import payload
@@ -250,8 +257,8 @@ async def test_concurrent_http_duplicates_run_shared_services_once(
                 calls["send"] += 1
                 return "wamid.outbound." + str(calls["send"])
 
-        def download_audio(self, *_args) -> DownloadedAudio:
-            return DownloadedAudio(b"synthetic audio", "audio/ogg")
+        def download_audio(self, *_args) -> DownloadedMedia:
+            return DownloadedMedia(b"synthetic audio", "audio/ogg")
 
         def upload_audio(self, _data: bytes) -> str:
             return "12345"

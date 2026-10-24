@@ -290,3 +290,275 @@ async def test_audio_part_limit_preserves_413(client: httpx.AsyncClient) -> None
         files={"audio": ("question.wav", b"x" * (3 * 1024 * 1024 + 1), "audio/wav")},
     )
     assert response.status_code == 413
+
+
+@pytest.fixture
+def groq_mode(configured: Settings) -> Settings:
+    return configured.model_copy(
+        update={
+            "speech_transcribe_provider": "groq",
+            "groq_api_key": SecretStr("synthetic-groq"),
+            "groq_transcribe_model": "whisper-large-v3-turbo",
+        }
+    )
+
+
+def fake_openai(monkeypatch: pytest.MonkeyPatch, code: str = "ml") -> MagicMock:
+    fake = MagicMock()
+    result = fake.return_value.__enter__.return_value.audio.transcriptions.create.return_value
+    result.model_dump.return_value = {"text": "openai transcript", "languages": [{"code": code}]}
+    monkeypatch.setattr(service, "OpenAI", fake)
+    return fake
+
+
+def whisper(text: str, language: str | None = "english", **extra: object) -> httpx.Response:
+    segments = extra.pop("segments", [{"no_speech_prob": 0.01, "avg_logprob": -0.2}])
+    return httpx.Response(200, json={"text": text, "language": language, "segments": segments})
+
+
+@pytest.mark.parametrize("hint", ["en", "hi", None])
+def test_groq_request_shape(
+    monkeypatch: pytest.MonkeyPatch, groq_mode: Settings, wav: bytes, hint: str | None
+) -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if hint == "hi":
+            return whisper("खाने पर कितना खर्च हुआ", "hindi")
+        return whisper("How much did I spend on food?", "English")
+
+    mock_http(monkeypatch, handler)
+    openai = fake_openai(monkeypatch)
+    transcript, provider = service.transcribe_routed(
+        audio=wav, content_type="audio/wav", settings=groq_mode, language_hint=hint
+    )
+    request = seen[0]
+    body = request.content
+    assert request.method == "POST" and request.url.path == "/openai/v1/audio/transcriptions"
+    assert str(request.url).startswith("https://api.groq.com/") and not request.url.query
+    assert request.headers["Authorization"] == "Bearer synthetic-groq"
+    assert request.headers["content-type"].startswith("multipart/form-data")
+    assert b'name="model"\r\n\r\nwhisper-large-v3-turbo\r\n' in body
+    assert b'name="response_format"\r\n\r\nverbose_json\r\n' in body
+    assert b'name="temperature"\r\n\r\n0\r\n' in body
+    assert b"SIP, UPI, EMI" in body and b"RIFF" in body
+    assert (b'name="language"\r\n\r\n' + (hint or "").encode() in body) == (hint is not None)
+    assert provider == "groq" and transcript.detected_language == (hint or "en")
+    assert not openai.called
+
+
+@pytest.mark.parametrize(
+    "hint,reported,text,provider,language",
+    [
+        ("en", "english", "food spending this month", "groq", "en"),
+        ("hi", "hindi", "इस महीने खाने पर कितना खर्च हुआ", "groq", "hi"),
+        (None, "English", "food spending this month", "groq", "en"),
+        (None, "hi", "SIP पर कितना खर्च हुआ", "groq", "hi"),
+        (None, "malayalam", "ഈ മാസം ഭക്ഷണത്തിന് എത്ര ചെലവായി", "openai", "ml"),
+        (None, "tamil", "இந்த மாதம் உணவுக்கு", "openai", "ml"),
+        (None, None, "food spending this month", "openai", "ml"),
+        (None, "hindi", "is mahine khane par kitna kharch hua", "openai", "ml"),
+        (None, "hindi", "اس مہینے کھانے پر", "openai", "ml"),
+        ("hi", "hindi", "اس مہینے کھانے پر", "openai", "ml"),
+        ("en", "english", "खाना", "openai", "ml"),
+    ],
+)
+def test_groq_routing_escalates_uncertain_results_once(
+    monkeypatch: pytest.MonkeyPatch,
+    groq_mode: Settings,
+    wav: bytes,
+    hint: str | None,
+    reported: str | None,
+    text: str,
+    provider: str,
+    language: str,
+) -> None:
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return whisper(text, reported)
+
+    mock_http(monkeypatch, handler)
+    openai = fake_openai(monkeypatch)
+    transcript, served = service.transcribe_routed(
+        audio=wav, content_type="audio/wav", settings=groq_mode, language_hint=hint
+    )
+    assert len(calls) == 1 and served == provider
+    assert transcript.detected_language == language
+    create = openai.return_value.__enter__.return_value.audio.transcriptions.create
+    assert create.call_count == (provider == "openai")
+    if provider == "openai":
+        assert create.call_args.kwargs["file"][1].startswith(b"RIFF")
+        assert create.call_args.kwargs["extra_body"]["languages"] == (
+            [hint] if hint else ["en", "hi", "ml"]
+        )
+    else:
+        assert transcript.transcript == text
+
+
+def test_malayalam_hint_and_openai_mode_never_call_groq(
+    monkeypatch: pytest.MonkeyPatch, groq_mode: Settings, configured: Settings, wav: bytes
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("Groq must not be called")
+
+    mock_http(monkeypatch, handler)
+    fake_openai(monkeypatch)
+    assert service.transcribe_routed(
+        audio=wav, content_type="audio/wav", settings=groq_mode, language_hint="ml"
+    ) == (service.Transcript(transcript="openai transcript", detected_language="ml"), "openai")
+    for hint in ("en", "hi", None):
+        assert (
+            service.transcribe_routed(
+                audio=wav, content_type="audio/wav", settings=configured, language_hint=hint
+            )[1]
+            == "openai"
+        )
+
+
+@pytest.mark.parametrize(
+    "segments,text,silent",
+    [
+        ([{"no_speech_prob": 0.92, "avg_logprob": -1.4}], " Thank you.", True),
+        ([], "   ", True),
+        ([{"no_speech_prob": 0.7, "avg_logprob": -0.5}], "food this month", False),
+        (
+            [
+                {"no_speech_prob": 0.95, "avg_logprob": -1.6},
+                {"no_speech_prob": 0.02, "avg_logprob": -0.3},
+            ],
+            "food this month",
+            False,
+        ),
+    ],
+)
+def test_silence_guard_drops_hallucinated_filler_without_escalation(
+    monkeypatch: pytest.MonkeyPatch,
+    groq_mode: Settings,
+    wav: bytes,
+    segments: list[dict[str, float]],
+    text: str,
+    silent: bool,
+) -> None:
+    mock_http(monkeypatch, lambda request: whisper(text, "english", segments=segments))
+    openai = fake_openai(monkeypatch)
+    transcript, provider = service.transcribe_routed(
+        audio=wav, content_type="audio/wav", settings=groq_mode
+    )
+    assert provider == "groq" and not openai.called
+    assert transcript.transcript == ("" if silent else text)
+    assert transcript.detected_language == ("unknown" if silent else "en")
+
+
+def _timeout(request: httpx.Request) -> httpx.Response:
+    raise httpx.ReadTimeout("NEVER-LEAK-timeout", request=request)
+
+
+def _status(status: int):
+    return lambda request: httpx.Response(status, json={"error": "NEVER-LEAK-groq-body"})
+
+
+@pytest.mark.parametrize(
+    "handler",
+    [
+        *[_status(status) for status in (401, 403, 429, 500, 503)],
+        lambda request: httpx.Response(302, headers={"Location": "https://redirect.test/"}),
+        lambda request: httpx.Response(200, content=b"NEVER-LEAK not json"),
+        lambda request: httpx.Response(200, content=b'{"text":"' + b"x" * 300_000 + b'"}'),
+        lambda request: whisper("x" * 2001),
+        lambda request: httpx.Response(200, json={"language": "english"}),
+        _timeout,
+    ],
+)
+def test_groq_failures_are_fixed_redacted_and_never_retried_on_openai(
+    monkeypatch: pytest.MonkeyPatch, groq_mode: Settings, wav: bytes, handler, caplog
+) -> None:
+    mock_http(monkeypatch, handler)
+    openai = fake_openai(monkeypatch)
+    with pytest.raises(ProviderUnavailable) as exc:
+        service.transcribe_audio(audio=wav, content_type="audio/wav", settings=groq_mode)
+    assert str(exc.value) == "speech_unavailable"
+    assert not openai.called
+    assert "NEVER-LEAK" not in caplog.text and "synthetic-groq" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "update",
+    [
+        {"groq_api_key": None},
+        {"groq_transcribe_model": None},
+        {"groq_transcribe_model": "whisper-large-v3"},
+    ],
+)
+def test_groq_requires_verified_configuration(
+    monkeypatch: pytest.MonkeyPatch, groq_mode: Settings, wav: bytes, update: dict
+) -> None:
+    mock_http(monkeypatch, lambda request: whisper("food"))
+    openai = fake_openai(monkeypatch)
+    with pytest.raises(ProviderUnavailable, match="configuration_missing"):
+        service.transcribe_audio(
+            audio=wav, content_type="audio/wav", settings=groq_mode.model_copy(update=update)
+        )
+    assert not openai.called
+
+
+@pytest.mark.parametrize(
+    "reported,text,expected",
+    [
+        ("Hindi", "SIP कितना है", "hi"),
+        ("hindi", "SIP", "unknown"),
+        ("english", "food ₹500", "en"),
+        ("english", "₹500", "unknown"),
+        ("english", "खाना", "unknown"),
+        ("malayalam", "ഭക്ഷണം UPI", "ml"),
+        ("ml", "भोजन", "unknown"),
+        ("telugu", "food", "unknown"),
+        (None, "food", "unknown"),
+    ],
+)
+def test_script_language_requires_matching_script(
+    reported: str | None, text: str, expected: str
+) -> None:
+    assert service.script_language(reported, text) == expected
+
+
+def test_groq_settings_validation(settings: Settings) -> None:
+    from pydantic import ValidationError
+
+    base = {**settings.model_dump(), "_env_file": None}
+    for value in (
+        "http://api.groq.com/openai/v1",
+        "https://user:secret@api.groq.com/openai/v1",
+        "https://api.groq.com/openai/v1?key=value",
+    ):
+        with pytest.raises(ValidationError):
+            Settings(**{**base, "groq_base_url": value})
+    with pytest.raises(ValidationError):
+        Settings(**{**base, "speech_transcribe_provider": "whisper"})
+    blank = Settings(
+        **{**base, "groq_api_key": "", "groq_transcribe_model": "", "openai_vision_model": ""}
+    )
+    assert blank.groq_api_key is blank.groq_transcribe_model is blank.openai_vision_model is None
+    assert blank.speech_transcribe_provider == "openai"
+    assert "synthetic" not in repr(Settings(**{**base, "groq_api_key": "synthetic-groq"}))
+
+
+def test_benchmark_no_hint_reports_served_provider(
+    monkeypatch: pytest.MonkeyPatch, settings: Settings
+) -> None:
+    from finboy.services.speech import benchmark
+    from finboy.services.speech.models import Transcript
+
+    hints: list[str | None] = []
+
+    def routed(**kwargs: object) -> tuple[Transcript, str]:
+        hints.append(kwargs["language_hint"])  # type: ignore[arg-type]
+        return Transcript(transcript="synthetic", detected_language="unknown"), "openai"
+
+    monkeypatch.setattr(benchmark, "transcribe_routed", routed)
+    report = benchmark.run(settings=settings, live=True, real=False, hint=False)
+    assert report["mode"] == "live_stt_no_hint"
+    assert hints and set(hints) == {None}
+    assert {row["stt_provider"] for row in report["samples"]} == {"openai"}

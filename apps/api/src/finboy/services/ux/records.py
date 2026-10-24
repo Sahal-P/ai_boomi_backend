@@ -19,7 +19,7 @@ class PageQuery(PeriodQuery):
     scope: Literal["all", "month", "unresolved"] = "month"
     status: Literal["confirmed", "needs_review", "rejected", "merged", "failed"] | None = None
     category: str | None = Field(default=None, max_length=40)
-    source: Literal["gmail", "eml_upload"] | None = None
+    source: Literal["gmail", "eml_upload", "whatsapp_image"] | None = None
     kind: (
         Literal[
             "purchase",

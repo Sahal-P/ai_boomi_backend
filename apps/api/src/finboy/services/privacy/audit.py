@@ -28,7 +28,10 @@ EVENTS = frozenset(
         "data.exported",
     }
 )
-METADATA = {"mode": {"gmail", "eml_upload", "demo_mailbox"}, "result": {"success", "failure"}}
+METADATA = {
+    "mode": {"gmail", "eml_upload", "demo_mailbox", "whatsapp_image"},
+    "result": {"success", "failure"},
+}
 
 
 def audit(

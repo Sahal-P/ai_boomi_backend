@@ -1,10 +1,12 @@
 # WhatsApp ledger questions
 
 This channel answers text and voice **questions** about FinBoy's email-derived
-ledger. It calls the same assistant and speech functions as the web app. It cannot
-capture payments, OCR screenshots, change transactions, recommend securities, run
-broadcasts, or send unsolicited financial updates. Uncertain transactions are
-reviewed in FinBoy on the demo computer; local web URLs are removed from phone replies.
+ledger. It calls the same assistant and speech functions as the web app. Since the
+capture round it also accepts UPI/payment screenshots, which can only create records
+waiting for review (see the screenshot section below). It cannot confirm or change
+transactions, recommend securities, run broadcasts, or send unsolicited financial
+updates. Uncertain transactions are reviewed in FinBoy on the demo computer; local web
+URLs are removed from phone replies.
 
 ## Current real setup (24 October 2026, IST)
 
@@ -167,7 +169,8 @@ GET validates mode/token with constant-time comparison, rejects duplicate params
 and echoes only a numeric 1–128-character challenge. POST caps exact raw bytes and
 verifies `X-Hub-Signature-256` **before JSON parsing**. It validates object, WABA and
 phone context; the app secret proves app context. Unsupported message kinds/fields
-are acknowledged safely; no image/OCR pipeline is called.
+are acknowledged safely. Image messages go only to the screenshot capture flow below;
+captions and webhook-supplied URLs are ignored.
 
 Only allowlisted senders create bindings. PostgreSQL retains user UUID, keyed sender/
 content hashes, inbound/outbound provider IDs, language preference, enabled flag,
@@ -255,3 +258,44 @@ ledger/assistant answers in en/hi/ml passed in the isolated assembled verifier.
 Existing approved ingress/runtime/ports are left intact for integration coordination;
 no further live voice message was sent or synthesized by this deferred check. Resume
 the human phone voice acceptance only when the human requests it.
+
+## Feature status — 24 October 2026
+
+Recorded from code and the evidence above, before the capture round changes anything.
+
+| Capability | Status |
+| --- | --- |
+| Text questions | Implemented. One allowlisted test number reached Meta READ through the local restricted ingress and tunnel. Production WhatsApp is disabled. |
+| Voice notes | Implemented in code: Graph media download, shared transcription, shared assistant, text reply, then an MP3 reply. Never verified on a real phone; the human deferred voice acceptance. |
+| Live voice calls | Not implemented. The channel is message-based questions and answers. |
+| UPI/payment screenshots | Not implemented. The webhook acknowledges and ignores image messages; this was a documented non-goal. |
+| Speech-to-text provider | OpenAI `gpt-transcribe`, shared with the web microphone. No Groq integration. |
+
+The capture round (`docs/capture-round/contract.md`) adds Groq transcription for
+English/Hindi and screenshot capture into the review queue. Its outcomes are recorded
+in that document, not assumed here.
+
+## Screenshot capture (capture round)
+
+An allowlisted, enabled sender inside the 24-hour window may send a JPEG/PNG payment
+screenshot. The webhook admits it as an `image` receipt; only the Graph media ID and MIME
+are read. The processor downloads it through the same bounded Graph media path (5 MiB,
+host allowlist, MIME/size/SHA-256 checks), validates and re-encodes it through
+ffprobe/ffmpeg pipes, and asks OpenAI vision (`OPENAI_VISION_MODEL`, `store=false`) for a
+verbatim transcript plus proposed payment fields.
+
+Code accepts a proposed field only when it appears in the transcript, refuses pending,
+failed, requested or reversed screens, and writes one line such as
+`Rs. 500.00 paid to Ravi Kumar via UPI on 24-10-26 10:42, UPI Ref: 612345678901`. That
+line runs through the `.eml` import pipeline as source/mode `whatsapp_image`, so the UPI
+reference is pseudonymized before storage. A screenshot-only record cannot exceed 0.706
+confidence and always waits for review; a matching bank alert merges with it by reference.
+
+Replies (en/hi/ml): saved for review with amount and payee, already in FinBoy, no
+completed payment found, busy importing, unreadable image, or capture unavailable.
+Receipt error codes: `invalid_image`, `capture_busy`, `capture_unavailable`. Captions,
+images, transcripts and proposed fields are never stored or logged. Capture is
+unavailable when `OPENAI_VISION_MODEL` is unset or extraction runs offline/rules-only.
+
+Not verified live: no real Meta image webhook, no live OpenAI vision call, and no phone
+reply. Production WhatsApp stays disabled.
