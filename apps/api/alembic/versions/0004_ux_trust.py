@@ -95,6 +95,42 @@ def upgrade() -> None:
           AND e.due_date=c.due_date
           AND coalesce(e.merchant_normalized,'Unidentified obligation')=c.label
           AND e.event_type IN ('bill_due','emi_due'));
+      -- A sample/quarantined payment cannot settle a household bill. Preserve the
+      -- former operational state in audit before reopening the unpaid liability.
+      INSERT INTO audit_events(id,user_id,event_type,subject_type,subject_id,metadata)
+        SELECT gen_random_uuid(),c.user_id,'isolation.payment_reopened','commitment',c.id,
+          jsonb_build_object('previous_status',c.status,
+            'previous_payment_id',c.paid_transaction_id::text,'status','upcoming')
+        FROM commitments c JOIN transactions t ON t.id=c.paid_transaction_id
+        WHERE c.dataset='household' AND c.status='paid' AND t.dataset<>'household';
+      UPDATE commitments c SET status='upcoming',paid_transaction_id=NULL
+        FROM transactions t WHERE t.id=c.paid_transaction_id AND c.dataset='household'
+          AND c.status='paid' AND t.dataset<>'household';
+      INSERT INTO transaction_revisions(id,transaction_id,field,old_value,new_value,
+          changed_by,reason)
+        SELECT gen_random_uuid(),t.id,'linked_transaction_id',
+          to_jsonb(t.linked_transaction_id::text),'null'::jsonb,'system','dataset_isolation'
+        FROM transactions t JOIN transactions parent ON parent.id=t.linked_transaction_id
+        WHERE t.dataset='household' AND parent.dataset<>'household'
+          AND NOT ('linked_transaction_id'=ANY(t.user_locked_fields));
+      UPDATE transactions t SET dataset='quarantined'
+        FROM transactions parent WHERE parent.id=t.linked_transaction_id
+          AND t.dataset='household' AND parent.dataset<>'household'
+          AND 'linked_transaction_id'=ANY(t.user_locked_fields);
+      UPDATE transactions t SET linked_transaction_id=NULL,updated_at=now()
+        FROM transactions parent WHERE parent.id=t.linked_transaction_id
+          AND t.dataset='household' AND parent.dataset<>'household';
+      INSERT INTO transaction_revisions(id,transaction_id,field,old_value,new_value,
+          changed_by,reason)
+        SELECT gen_random_uuid(),t.id,'possible_duplicate_of_id',
+          to_jsonb(t.possible_duplicate_of_id::text),'null'::jsonb,'system','dataset_isolation'
+        FROM transactions t JOIN transactions partner ON partner.id=t.possible_duplicate_of_id
+        WHERE t.dataset='household' AND partner.dataset<>'household';
+      UPDATE transactions t SET possible_duplicate_of_id=NULL,
+          review_reason=CASE WHEN t.review_reason='possible_duplicate'
+            THEN 'low_confidence' ELSE t.review_reason END,updated_at=now()
+        FROM transactions partner WHERE partner.id=t.possible_duplicate_of_id
+          AND t.dataset='household' AND partner.dataset<>'household';
       UPDATE email_sources SET issue_reason='extraction_failed'
         WHERE processing_status='failed';
     """)

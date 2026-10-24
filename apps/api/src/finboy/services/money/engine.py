@@ -174,7 +174,15 @@ def money_summary(session: Session, *, user_id: UUID, period: PeriodSpec) -> Mon
     version = lock_snapshot(session, user_id)
     today = today_ist()
     start, end = period_dates(period, today)
-    records = [transaction_view(row) for row in session.scalars(_transactions(user_id, start, end))]
+    rows = list(session.scalars(_transactions(user_id, start, end)))
+    records = [transaction_view(row) for row in rows]
+    # An explicit correction to a refund's own category is an intentional override.
+    calculation_records = [
+        view.model_copy(update={"linked_transaction_id": None})
+        if row.kind in {"refund", "reversal"} and "category" in (row.user_locked_fields or [])
+        else view
+        for row, view in zip(rows, records, strict=True)
+    ]
     linked_ids = {row.linked_transaction_id for row in records if row.linked_transaction_id}
     # A refund follows the original's corrected category, even across month boundaries.
     linked_categories = (
@@ -192,7 +200,7 @@ def money_summary(session: Session, *, user_id: UUID, period: PeriodSpec) -> Mon
         else {}
     )
     result = calculate_summary(
-        records,
+        calculation_records,
         _unresolved(session, user_id=user_id, end=end, today=today),
         period=period,
         today=today,
@@ -245,6 +253,7 @@ def find_transactions(
         raise ValueError("invalid_status")
     if merchant is not None and (not merchant.strip() or len(merchant) > 160):
         raise ValueError("invalid_merchant")
+    lock_snapshot(session, user_id)
     start, end = period_dates(period, today_ist())
     statement = _transactions(user_id, start, end)
     if category is not None:
@@ -255,12 +264,12 @@ def find_transactions(
         statement = statement.where(
             Transaction.merchant.icontains(merchant.strip(), autoescape=True)
         )
-    return [
-        transaction_view(row)
-        for row in session.scalars(
+    rows = list(
+        session.scalars(
             statement.order_by(Transaction.occurred_at.desc(), Transaction.id).limit(limit)
         )
-    ]
+    )
+    return transaction_views(session, rows, user_id=user_id)
 
 
 def simulate_monthly_commitment(

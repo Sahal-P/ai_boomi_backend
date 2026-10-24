@@ -158,7 +158,8 @@ def test_real_pipeline_keeps_provider_states_conservative_without_dropping_real_
             for message in notifications:
                 session.add(
                     ExtractionCache(
-                        cache_key=cache_key(
+                        cache_key="household:"
+                        + cache_key(
                             normalize(message.raw_rfc822),
                             ingestion_settings.openai_extraction_model,
                         ),
@@ -237,7 +238,8 @@ def test_model_vetoed_bill_is_failed_for_recovery_without_deducting_a_commitment
         with mail_factory.begin() as session:
             session.add(
                 ExtractionCache(
-                    cache_key=cache_key(
+                    cache_key="household:"
+                    + cache_key(
                         normalize(message.raw_rfc822), ingestion_settings.openai_extraction_model
                     ),
                     result=veto.model_dump(mode="json"),

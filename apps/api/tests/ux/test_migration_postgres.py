@@ -95,6 +95,32 @@ def test_additive_upgrade_preserves_values_revisions_and_mixed_provenance():
                   VALUES(:id,:tx,'category','"other"','"shopping"','user','user_correction')"""),
                     {"id": revision_id, "tx": txids[2]},
                 )
+                bill_id, claim_id = str(uuid4()), str(uuid4())
+                live_source = connection.scalar(
+                    text("SELECT id FROM email_sources WHERE source='gmail' LIMIT 1")
+                )
+                connection.execute(
+                    text("""INSERT INTO source_events(id,user_id,email_source_id,
+                    event_type,amount_minor,currency,merchant_normalized,due_date,
+                    extraction_method,extractor_id,evidence,field_confidence)
+                  VALUES(:id,:uid,:source,'bill_due',10000,'INR','Synthetic merchant',
+                    '2026-10-24','rule','synthetic','{}','{}')"""),
+                    {"id": claim_id, "uid": uid, "source": live_source},
+                )
+                connection.execute(
+                    text("""INSERT INTO commitments(id,user_id,kind,label,
+                    amount_minor,currency,due_date,status,source_event_id,paid_transaction_id,
+                    confidence) VALUES(:id,:uid,'bill','Synthetic merchant',10000,'INR',
+                    '2026-10-24','paid',:source,:payment,.9)"""),
+                    {"id": bill_id, "uid": uid, "source": claim_id, "payment": txids[0]},
+                )
+                connection.execute(
+                    text(
+                        "UPDATE transactions SET direction='in',kind='refund', "
+                        "linked_transaction_id=:parent WHERE id=:id"
+                    ),
+                    {"parent": txids[0], "id": txids[1]},
+                )
                 values_before = connection.execute(
                     text("SELECT id,amount_minor,merchant,status FROM transactions ORDER BY id")
                 ).all()
@@ -111,12 +137,45 @@ def test_additive_upgrade_preserves_values_revisions_and_mixed_provenance():
                 assert (
                     connection.scalar(text("SELECT count(*) FROM source_events")) == sources_before
                 )
-                assert connection.scalar(text("SELECT count(*) FROM transaction_revisions")) == 1
+                assert (
+                    connection.scalar(
+                        text("SELECT count(*) FROM transaction_revisions WHERE id=:id"),
+                        {"id": revision_id},
+                    )
+                    == 1
+                )
+                assert (
+                    connection.scalar(
+                        text("SELECT linked_transaction_id FROM transactions WHERE id=:id"),
+                        {"id": txids[1]},
+                    )
+                    is None
+                )
+                assert (
+                    connection.scalar(
+                        text(
+                            "SELECT count(*) FROM transaction_revisions "
+                            "WHERE reason='dataset_isolation'"
+                        )
+                    )
+                    == 1
+                )
                 labels = {
                     str(row.id): row.dataset
                     for row in connection.execute(text("SELECT id,dataset FROM transactions"))
                 }
                 assert [labels[key] for key in txids] == ["demo", "household", "quarantined"]
+                repaired = connection.execute(
+                    text("SELECT status,paid_transaction_id FROM commitments WHERE id=:id"),
+                    {"id": bill_id},
+                ).one()
+                assert repaired.status == "upcoming" and repaired.paid_transaction_id is None
+                audit = connection.scalar(
+                    text("SELECT metadata FROM audit_events WHERE subject_id=:id"), {"id": bill_id}
+                )
+                assert (
+                    audit["previous_status"] == "paid" and audit["previous_payment_id"] == txids[0]
+                )
                 version_before = connection.scalar(
                     text("SELECT data_version FROM users WHERE id=:id"), {"id": uid}
                 )

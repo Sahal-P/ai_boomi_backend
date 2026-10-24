@@ -1042,3 +1042,133 @@ def test_deleting_last_payment_proof_reopens_shared_record_without_changing_valu
     record = client.get(f"/api/v1/transactions/{kid}").json()["transaction"]
     assert record["status"] == "needs_review" and record["payment_verification"] == "unverified"
     assert record["amount_minor"] == 10000 and record["merchant"] == "Sample Bookshop"
+
+
+def test_import_review_next_action_tracks_current_decisions_and_recovery(ux):
+    from finboy.services.imports.files import DEMO_DIRECTORY
+
+    client, factory, uid = ux
+    raw = (DEMO_DIRECTORY / "25-revieworder.eml").read_bytes()
+    created = client.post(
+        "/api/v1/imports/eml", files=[("files", ("synthetic-order.eml", raw, "message/rfc822"))]
+    )
+    assert created.status_code == 202
+    run_id = created.json()["import_run_id"]
+    assert client.get(f"/api/v1/imports/{run_id}").json()["needs_review"] == 1
+    item = client.get("/api/v1/transactions/page?scope=unresolved").json()["items"][0]
+    confirmed = client.post(
+        f"/api/v1/transactions/{item['id']}/decisions",
+        json={"expected_version": version(client), "action": "confirm"},
+    )
+    assert confirmed.status_code == 200
+    assert client.get(f"/api/v1/imports/{run_id}").json()["needs_review"] == 0
+    with factory() as session:
+        assert session.get(ImportRun, UUID(run_id)).needs_review == 1
+    reopened = client.post(
+        f"/api/v1/transactions/{item['id']}/decisions",
+        json={"expected_version": version(client), "action": "reopen"},
+    )
+    assert reopened.status_code == 200
+    assert client.get(f"/api/v1/imports/{run_id}").json()["needs_review"] == 1
+
+
+def test_category_correction_keeps_refund_drilldown_and_user_override_consistent(ux):
+    client, factory, uid = ux
+    with factory.begin() as session:
+        purchase = tx(
+            session, uid, status="confirmed", review_reason=None, reference_id="SYN-CATEGORY-PAIR"
+        )
+        refund = tx(
+            session,
+            uid,
+            status="confirmed",
+            review_reason=None,
+            direction="in",
+            kind="refund",
+            reference_id="SYN-CATEGORY-PAIR",
+        )
+        source(session, uid, purchase)
+        _, claim = source(session, uid, refund)
+        claim.event_type = "refund"
+        pid, rid = purchase.id, refund.id
+    corrected = client.post(
+        f"/api/v1/transactions/{pid}/decisions",
+        json={
+            "expected_version": version(client),
+            "action": "correct",
+            "correction": {"category": "food_dining"},
+        },
+    )
+    assert corrected.status_code == 200
+    items = client.get(
+        "/api/v1/transactions/page?scope=all&category=food_dining&status=confirmed"
+    ).json()["items"]
+    assert {row["id"] for row in items} == {str(pid), str(rid)}
+    assert (
+        next(
+            row
+            for row in client.get("/api/v1/money/summary").json()["categories"]
+            if row["category"] == "food_dining"
+        )["amount_minor"]
+        == 0
+    )
+    override = client.post(
+        f"/api/v1/transactions/{rid}/decisions",
+        json={
+            "expected_version": version(client),
+            "action": "correct",
+            "correction": {"category": "education"},
+        },
+    )
+    assert override.status_code == 200
+    categories = {
+        row["category"]: row["amount_minor"]
+        for row in client.get("/api/v1/money/summary").json()["categories"]
+    }
+    assert categories == {"food_dining": 10000, "education": -10000}
+    answer = client.post(
+        "/api/v1/assistant/ask", json={"text": "How much did I spend on education this month?"}
+    ).json()
+    assert answer["facts"][0]["amount_minor"] == -10000
+
+
+def test_real_ingestion_never_matches_sample_events_or_bills_into_household(ux):
+    from finboy.services.imports.files import DEMO_DIRECTORY
+    from finboy.services.ingestion.pipeline import InboundMessage, ingest_messages
+
+    client, factory, uid = ux
+    with factory.begin() as session:
+        demo_run = ImportRun(user_id=uid, mode="demo_mailbox", status="running")
+        real_run = ImportRun(user_id=uid, mode="eml_upload", status="running")
+        session.add_all([demo_run, real_run])
+        session.flush()
+        did, rid = demo_run.id, real_run.id
+    paths = [DEMO_DIRECTORY / "01-salary.eml", DEMO_DIRECTORY / "27-emi.eml"]
+    demo = [
+        InboundMessage(
+            source="demo_mailbox", provider_message_id=str(i), raw_rfc822=path.read_bytes()
+        )
+        for i, path in enumerate(paths)
+    ]
+    household = [
+        InboundMessage(
+            source="eml_upload", provider_message_id=str(i), raw_rfc822=path.read_bytes()
+        )
+        for i, path in enumerate(paths)
+    ]
+    first = ingest_messages(factory, user_id=uid, import_run_id=did, messages=demo)
+    second = ingest_messages(factory, user_id=uid, import_run_id=rid, messages=household)
+    assert first.transactions_created == second.transactions_created == 1
+    assert second.duplicates_merged == 0
+    with factory() as session:
+        assert set(
+            session.scalars(select(Transaction.dataset).where(Transaction.user_id == uid))
+        ) == {"demo", "household"}
+        assert set(
+            session.scalars(select(Commitment.dataset).where(Commitment.user_id == uid))
+        ) == {"demo", "household"}
+    summary = client.get("/api/v1/money/summary").json()
+    assert summary["tracked_income_minor"] == 6200000
+    assert summary["upcoming_commitments_minor"] == 650000
+    page = client.get("/api/v1/transactions/page?scope=all").json()
+    assert page["total"] == 1 and page["items"][0]["source_count"] == 1

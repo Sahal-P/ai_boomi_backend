@@ -62,7 +62,10 @@ def financial_facts(
     for row in rows:
         parent = parents.get(row.linked_transaction_id)
         effective = parent if row.kind in {"refund", "reversal"} and parent else row
-        if category and effective.category != category:
+        effective_category = (
+            row.category if "category" in (row.user_locked_fields or []) else effective.category
+        )
+        if category and effective_category != category:
             continue
         if (
             merchant

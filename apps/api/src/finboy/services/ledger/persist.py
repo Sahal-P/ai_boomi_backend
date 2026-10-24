@@ -279,6 +279,19 @@ def refresh_links(session: Session, user_id: UUID, dataset: str = "household") -
                 reason="refund_link",
             )
             transaction.linked_transaction_id = target
+            if transaction.kind in {"refund", "reversal"} and "category" not in (
+                transaction.user_locked_fields or []
+            ):
+                category = transactions[index].category
+                revision(
+                    session,
+                    transaction,
+                    "category",
+                    transaction.category,
+                    category,
+                    reason="linked_category_changed",
+                )
+                transaction.category = category
         elif (
             index is None
             and transaction.linked_transaction_id

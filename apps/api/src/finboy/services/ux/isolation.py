@@ -45,6 +45,18 @@ def inventory(connection: Connection, user_id: UUID) -> dict[str, int]:
         "mixed_transactions": transactions.mixed,
         "demo_only_obligations": obligations.demo_only,
         "mixed_obligations": obligations.mixed,
+        "cross_scope_payment_links": connection.scalar(
+            text("""
+          SELECT count(DISTINCT c.id) FROM commitments c
+          JOIN source_events bill ON bill.id=c.source_event_id
+          JOIN email_sources own ON own.id=bill.email_source_id
+          WHERE c.user_id=:uid AND c.status='paid' AND own.source<>'demo_mailbox'
+            AND EXISTS(SELECT 1 FROM source_events e
+              JOIN email_sources s ON s.id=e.email_source_id
+              WHERE e.transaction_id=c.paid_transaction_id AND s.source='demo_mailbox')
+        """),
+            {"uid": user_id},
+        ),
         "merged_transactions": connection.scalar(
             text("SELECT count(*) FROM transactions WHERE user_id=:uid AND status='merged'"),
             {"uid": user_id},
