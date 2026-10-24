@@ -61,6 +61,13 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
             session.delete(commitment)
         else:
             commitment.source_event_id = replacement
+            remaining_source = session.scalar(
+                select(EmailSource.source)
+                .join(SourceEvent, SourceEvent.email_source_id == EmailSource.id)
+                .where(SourceEvent.id == replacement)
+            )
+            if remaining_source == "demo_mailbox":
+                commitment.dataset = "quarantined"
     session.flush()
     session.execute(delete(SourceEvent).where(SourceEvent.id.in_(events)))
     session.execute(delete(EmailSource).where(*source_filter))
@@ -74,11 +81,59 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
             )
         )
     )
+    # Retained shared records may have canonical values chosen from removed evidence.
+    # Preserve corrections/history while excluding those claims until source-aware repair.
+    shared = affected_transactions - set(orphans)
+    if shared:
+        from finboy.services.ledger.categories import normalize_merchant
+        from finboy.services.ledger.matching import direction, kind
+        from finboy.services.ledger.persist import as_event, refresh_review_confidence
+
+        for transaction in session.scalars(
+            select(Transaction).where(
+                Transaction.user_id == LOCAL_USER_ID, Transaction.id.in_(shared)
+            )
+        ):
+            pairs = list(
+                session.execute(
+                    select(SourceEvent, EmailSource)
+                    .join(EmailSource, EmailSource.id == SourceEvent.email_source_id)
+                    .where(
+                        SourceEvent.user_id == LOCAL_USER_ID,
+                        SourceEvent.transaction_id == transaction.id,
+                    )
+                )
+            )
+            locked = set(transaction.user_locked_fields or [])
+            supported = False
+            for event, source in pairs:
+                claim = as_event(event)
+                values = {
+                    "amount_minor": claim.amount_minor,
+                    "direction": direction(claim),
+                    "kind": kind(claim),
+                    "merchant": normalize_merchant(claim.merchant) or "Unknown",
+                    "occurred_at": claim.occurred_at or source.received_at,
+                }
+                if source.source != "demo_mailbox" and all(
+                    field in locked or getattr(transaction, field) == value
+                    for field, value in values.items()
+                ):
+                    supported = True
+            if not supported or any(source.source == "demo_mailbox" for _, source in pairs):
+                transaction.dataset = "quarantined"
+            elif transaction.dataset == "household":
+                refresh_review_confidence(
+                    session,
+                    user_id=LOCAL_USER_ID,
+                    transaction_id=transaction.id,
+                    preserve_status=False,
+                )
     if orphans:
         session.execute(
             update(Commitment)
             .where(Commitment.user_id == LOCAL_USER_ID, Commitment.paid_transaction_id.in_(orphans))
-            .values(paid_transaction_id=None)
+            .values(paid_transaction_id=None, status="upcoming", user_resolved=False)
         )
         for column in (
             Transaction.linked_transaction_id,

@@ -16,7 +16,7 @@ COPY: dict[str, dict[str, str]] = {
         "category_spending": "Confirmed net spending for {category} in this period: {value}.",
         "income_query": "Tracked income in this period: {value}.",
         "unallocated_query": "Estimated unallocated amount: {value}.",
-        "upcoming_commitments": "Upcoming obligations in this period: {value}.",
+        "upcoming_commitments": "Unpaid tracked obligations, including overdue: {value}.",
         "simulation": (
             "Tracked income: {income}. Confirmed net outflows: {outflows}. Upcoming"
             " obligations: {upcoming}. Proposed monthly commitment: {proposed}. "
@@ -72,7 +72,7 @@ COPY: dict[str, dict[str, str]] = {
         "category_spending": "इस अवधि में {category} पर पुष्टि किया गया शुद्ध खर्च: {value}।",
         "income_query": "इस अवधि में दर्ज आय: {value}।",
         "unallocated_query": "अनुमानित अनावंटित राशि: {value}।",
-        "upcoming_commitments": "इस अवधि में आने वाले भुगतान: {value}।",
+        "upcoming_commitments": "बकाया सहित अवैतनिक दर्ज दायित्व: {value}।",
         "simulation": (
             "दर्ज आय: {income}। पुष्टि किया गया शुद्ध खर्च: {outflows}। आने वाले "
             "भुगतान: {upcoming}। प्रस्तावित मासिक भुगतान: {proposed}। प्रस्ताव के "
@@ -124,7 +124,7 @@ COPY: dict[str, dict[str, str]] = {
         "category_spending": ("ഈ കാലയളവിൽ {category} എന്ന വിഭാഗത്തിലെ സ്ഥിരീകരിച്ച അറ്റ ചെലവ്: {value}."),
         "income_query": "ഈ കാലയളവിൽ രേഖപ്പെടുത്തിയ വരുമാനം: {value}.",
         "unallocated_query": "കണക്കാക്കിയ നീക്കിവയ്ക്കാത്ത തുക: {value}.",
-        "upcoming_commitments": "ഈ കാലയളവിൽ വരാനിരിക്കുന്ന ബാധ്യതകൾ: {value}.",
+        "upcoming_commitments": "കുടിശ്ശിക ഉൾപ്പെടെയുള്ള അടയ്ക്കാത്ത രേഖപ്പെടുത്തിയ ബാധ്യതകൾ: {value}.",
         "simulation": (
             "രേഖപ്പെടുത്തിയ വരുമാനം: {income}. സ്ഥിരീകരിച്ച അറ്റ ചെലവ്: {outflows}."
             " വരാനിരിക്കുന്ന ബാധ്യതകൾ: {upcoming}. നിർദ്ദേശിച്ച പ്രതിമാസ തുക: "
@@ -183,7 +183,7 @@ COPY: dict[str, dict[str, str]] = {
         "category_spending": "Is period mein {category} ka confirmed net kharch: {value}.",
         "income_query": "Is period ki recorded income: {value}.",
         "unallocated_query": "Estimated unallocated rakam: {value}.",
-        "upcoming_commitments": "Is period ke aane wale payments: {value}.",
+        "upcoming_commitments": "Overdue samet unpaid tracked payments: {value}.",
         "simulation": (
             "Recorded income: {income}. Confirmed net kharch: {outflows}. Aane wale"
             " payments: {upcoming}. Proposed monthly payment: {proposed}. Proposal "
@@ -235,7 +235,7 @@ COPY: dict[str, dict[str, str]] = {
         "category_spending": "Ee periodil {category} categoryile confirmed net chelavu: {value}.",
         "income_query": "Ee periodil record cheytha varumanam: {value}.",
         "unallocated_query": "Kanakkakkiya neekkivaykkatha thuka: {value}.",
-        "upcoming_commitments": "Ee periodile varanirikkunna badhyathakal: {value}.",
+        "upcoming_commitments": "Kudishika ulppedeyulla adakkatha tracked badhyathakal: {value}.",
         "simulation": (
             "Record cheytha varumanam: {income}. Confirmed net chelavu: {outflows}."
             " Varanirikkunna badhyathakal: {upcoming}. Nirdeshicha prathimasa "
@@ -282,6 +282,39 @@ COPY: dict[str, dict[str, str]] = {
         ),
     },
 }
+
+for style, merchant, period in [
+    (
+        "en",
+        "Confirmed gross spending: {gross}. Refunds and reversals: {refunds}. "
+        "Net spending: {value}.",
+        "Which period should I use? Choose today, yesterday, this month, last month, or YYYY-MM.",
+    ),
+    (
+        "hi",
+        "पुष्टि किया गया कुल खर्च: {gross}। वापसी और उलटे भुगतान: {refunds}। शुद्ध खर्च: {value}।",
+        "कौन सी अवधि चाहिए? आज, बीते कल, इस महीने, पिछले महीने या YYYY-MM चुनें।",
+    ),
+    (
+        "ml",
+        "സ്ഥിരീകരിച്ച ആകെ ചെലവ്: {gross}. മടക്കങ്ങളും തിരിച്ചിടലുകളും: {refunds}. അറ്റ ചെലവ്: {value}.",
+        "ഏത് കാലയളവ് വേണം? ഇന്ന്, ഇന്നലെ, ഈ മാസം, കഴിഞ്ഞ മാസം അല്ലെങ്കിൽ YYYY-MM തിരഞ്ഞെടുക്കുക.",
+    ),
+    (
+        "hinglish",
+        "Confirmed kul kharch: {gross}. Refunds aur reversals: {refunds}. Net kharch: {value}.",
+        "Kaunsa period chahiye? Aaj, beeta kal, is mahine, pichle mahine ya YYYY-MM chunein.",
+    ),
+    (
+        "manglish",
+        "Confirmed aake chelavu: {gross}. Thirike kittiyathu: {refunds}. Net chelavu: {value}.",
+        "Ethu period venam? Innu, innale, ee masam, kazhinja masam "
+        "allenkil YYYY-MM thiranjedukkuka.",
+    ),
+]:
+    COPY[style]["merchant_total"] = merchant
+    COPY[style]["clarify_period"] = period
+
 
 CATEGORY_NAMES: dict[str, tuple[str, str, str]] = {
     "food_dining": ("food and dining", "खाने", "ഭക്ഷണം"),

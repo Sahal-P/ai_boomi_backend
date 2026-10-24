@@ -3,18 +3,31 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from finboy.db.models.ledger import EmailSource, SourceEvent, Transaction, TransactionRevision
-from finboy.services.money.engine import transaction_view
-from finboy.services.money.models import RevisionView, TransactionDetail, TransactionSource
+from finboy.db.models.ledger import (
+    EmailSource,
+    ReviewDecision,
+    SourceEvent,
+    Transaction,
+    TransactionRevision,
+)
+from finboy.services.money.engine import transaction_views
+from finboy.services.money.models import (
+    DecisionView,
+    RevisionView,
+    TransactionDetail,
+    TransactionSource,
+)
+from finboy.services.ux.state import data_version, lock_snapshot
 
 
 def transaction_detail(
     session: Session, *, user_id: UUID, transaction_id: UUID
 ) -> TransactionDetail:
+    lock_snapshot(session, user_id)
     transaction = session.scalar(
         select(Transaction).where(Transaction.user_id == user_id, Transaction.id == transaction_id)
     )
-    if transaction is None:
+    if transaction is None or transaction.dataset == "demo":
         raise ValueError("transaction_not_found")
     sources = [
         TransactionSource(
@@ -42,6 +55,7 @@ def transaction_detail(
                 SourceEvent.user_id == user_id,
                 EmailSource.user_id == user_id,
                 SourceEvent.transaction_id == transaction_id,
+                EmailSource.source != "demo_mailbox",
             )
             .order_by(EmailSource.received_at, SourceEvent.id)
         )
@@ -56,7 +70,25 @@ def transaction_detail(
         )
     ]
     return TransactionDetail(
-        transaction=transaction_view(transaction),
+        version=data_version(session, user_id),
+        decisions=[
+            DecisionView(
+                id=d.id,
+                action=d.action,
+                created_at=d.created_at,
+                undone_at=d.undone_at,
+                can_undo=d.undone_at is None and d.result_version == data_version(session, user_id),
+            )
+            for d in session.scalars(
+                select(ReviewDecision)
+                .where(
+                    ReviewDecision.user_id == user_id,
+                    ReviewDecision.transaction_id == transaction_id,
+                )
+                .order_by(ReviewDecision.created_at.desc())
+            )
+        ],
+        transaction=transaction_views(session, [transaction], user_id=user_id)[0],
         sources=sources,
         confidence_factors=transaction.confidence_factors,
         revisions=revisions,

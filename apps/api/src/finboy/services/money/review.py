@@ -41,6 +41,9 @@ def review_transaction(
                 category=correction.category,
                 merchant=correction.merchant,
                 amount_minor=correction.amount_minor,
+                occurred_at=correction.occurred_at,
+                direction=correction.direction,
+                kind=correction.kind,
             )
         elif action in {"confirm", "reject"}:
             set_review_status(

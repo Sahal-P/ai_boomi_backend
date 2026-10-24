@@ -1,5 +1,6 @@
 """Review actions run inside the caller's transaction and never commit implicitly."""
 
+from datetime import datetime
 from typing import Literal, get_args
 from uuid import UUID
 
@@ -22,8 +23,10 @@ def _get(session: Session, user_id: UUID, transaction_id: UUID) -> Transaction:
         .where(Transaction.id == transaction_id, Transaction.user_id == user_id)
         .with_for_update()
     )
-    if item is None:
+    if item is None or item.dataset == "demo":
         raise ValueError("transaction_not_found")
+    if item.dataset == "quarantined":
+        raise ValueError("quarantined_record")
     return item
 
 
@@ -69,7 +72,9 @@ def merge_transactions(session: Session, *, user_id: UUID, keep_id: UUID, merge_
     if merge.status == "merged" and merge.merged_into_id == keep_id:
         return
     if (
-        keep.status in {"merged", "rejected", "failed"}
+        keep.dataset != merge.dataset
+        or keep.dataset != "household"
+        or keep.status in {"merged", "rejected", "failed"}
         or merge.status in {"merged", "rejected", "failed"}
         or keep.direction != merge.direction
         or keep.currency != merge.currency
@@ -218,6 +223,9 @@ def correct_transaction(
     category: Category | None = None,
     merchant: str | None = None,
     amount_minor: int | None = None,
+    occurred_at: datetime | None = None,
+    direction: str | None = None,
+    kind: str | None = None,
 ) -> None:
     if category is not None and category not in get_args(Category):
         raise ValueError("invalid_correction")
@@ -235,6 +243,9 @@ def correct_transaction(
             "category": category,
             "merchant": merchant.strip() if merchant is not None else None,
             "amount_minor": amount_minor,
+            "occurred_at": occurred_at,
+            "direction": direction,
+            "kind": kind,
         }.items()
         if value is not None
     }
@@ -243,13 +254,24 @@ def correct_transaction(
     item = _get(session, user_id, transaction_id)
     if item.status in {"merged", "rejected", "failed"}:
         raise ValueError("invalid_review_action")
+    final_direction = changes.get("direction", item.direction)
+    final_kind = changes.get("kind", item.kind)
+    if (
+        final_kind in {"salary", "income_other", "refund", "reversal"} and final_direction != "in"
+    ) or (
+        final_kind in {"purchase", "fee", "bill_payment", "emi", "investment"}
+        and final_direction != "out"
+    ):
+        raise ValueError("invalid_correction")
     for field, value in changes.items():
         revision(
             session,
             item,
             field,
-            getattr(item, field),
-            value,
+            getattr(item, field).isoformat()
+            if isinstance(getattr(item, field), datetime)
+            else getattr(item, field),
+            value.isoformat() if isinstance(value, datetime) else value,
             reason="user_correction",
             changed_by="user",
         )

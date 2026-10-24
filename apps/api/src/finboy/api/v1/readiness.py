@@ -41,7 +41,7 @@ def readiness(
     try:
         session.execute(text("SELECT 1"))
         revision = session.scalar(text("SELECT version_num FROM alembic_version"))
-        schema = "current" if revision == "0003_whatsapp" else "unavailable"
+        schema = "current" if revision == "0005_scan_continuation" else "unavailable"
         active = session.scalar(
             select(func.count())
             .select_from(ImportRun)

@@ -16,6 +16,22 @@ from finboy.services.money.models import (
     TransactionFilters,
 )
 from finboy.services.money.review import ReviewAction, review_transaction
+from finboy.services.ux.decisions import (
+    DecisionPreview,
+    DecisionRequest,
+    DecisionResult,
+    VersionRequest,
+    decide,
+    preview_decision,
+    undo_decision,
+)
+from finboy.services.ux.records import (
+    MergeCandidates,
+    PageQuery,
+    TransactionPage,
+    merge_candidates,
+    transaction_page,
+)
 
 router = APIRouter(prefix="/transactions", tags=["transactions"], route_class=MoneyRoute)
 DB = Annotated[Session, Depends(get_session)]
@@ -33,6 +49,41 @@ def transactions(
         merchant=query.q,
         status=query.status,
         limit=query.limit,
+    )
+
+
+@router.get("/page")
+def page(session: DB, query: Annotated[PageQuery, Query()]) -> TransactionPage:
+    return transaction_page(session, user_id=LOCAL_USER_ID, query=query)
+
+
+@router.get("/{transaction_id}/merge-candidates")
+def candidates(transaction_id: UUID, session: DB) -> MergeCandidates:
+    return merge_candidates(session, user_id=LOCAL_USER_ID, transaction_id=transaction_id)
+
+
+@router.post("/{transaction_id}/decision-preview")
+def preview(transaction_id: UUID, body: DecisionRequest, session: DB) -> DecisionPreview:
+    return preview_decision(
+        session, user_id=LOCAL_USER_ID, transaction_id=transaction_id, request=body
+    )
+
+
+@router.post("/{transaction_id}/decisions")
+def decision(transaction_id: UUID, body: DecisionRequest, session: DB) -> DecisionResult:
+    return decide(session, user_id=LOCAL_USER_ID, transaction_id=transaction_id, request=body)
+
+
+@router.post("/{transaction_id}/decisions/{decision_id}/undo")
+def undo(
+    transaction_id: UUID, decision_id: UUID, body: VersionRequest, session: DB
+) -> DecisionResult:
+    return undo_decision(
+        session,
+        user_id=LOCAL_USER_ID,
+        transaction_id=transaction_id,
+        decision_id=decision_id,
+        expected_version=body.expected_version,
     )
 
 

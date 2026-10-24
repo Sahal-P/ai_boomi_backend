@@ -7,11 +7,19 @@ from sqlalchemy.orm import Session
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import DisplayStyle
+from finboy.services.assistant.facts import financial_facts
 from finboy.services.assistant.intent import parse_intent
+from finboy.services.assistant.labels import local_label, warning_labels
 from finboy.services.assistant.language import normalize_speech, resolve_style
-from finboy.services.assistant.models import AskRequest, AssistantAnswer, AssistantFact
-from finboy.services.assistant.templates import DISCLAIMER, RECORDS_NOTE, render, speech_disclaimer
+from finboy.services.assistant.models import (
+    AskRequest,
+    AssistantAnswer,
+    AssistantFact,
+    ResolvedPeriod,
+)
+from finboy.services.assistant.templates import DISCLAIMER, render, speech_disclaimer
 from finboy.services.money import engine
+from finboy.services.ux.state import data_version
 
 
 def answer_question(
@@ -22,6 +30,7 @@ def answer_question(
         raise ValueError("A question is required")
     parsed = parse_intent(request.text, settings)
     style, language = resolve_style(request.text, request.display_style)
+    evidence_total = 0
     facts: list[AssistantFact] = []
     evidence: list[engine.TransactionView] = []
     simulation: engine.CashFlowSimulation | None = None
@@ -35,7 +44,10 @@ def answer_question(
     elif parsed.intent == "out_of_scope":
         key, policy = "scope", "decline"
     elif parsed.intent == "clarification":
-        key, policy = "clarify", "clarify"
+        key, policy = (
+            "clarify_period" if parsed.clarification_reason == "period" else "clarify",
+            "clarify",
+        )
     elif parsed.intent == "education":
         if parsed.topic is None:
             key, policy = "clarify", "clarify"
@@ -58,7 +70,7 @@ def answer_question(
                 values = {
                     "income": summary.tracked_income_minor,
                     "outflows": summary.confirmed_outflows_minor,
-                    "upcoming": summary.upcoming_commitments_minor,
+                    "upcoming": summary.unresolved_commitments_minor,
                     "proposed": simulation.proposed_monthly_minor,
                     "remaining": simulation.remaining_after_proposal_minor,
                 }
@@ -70,29 +82,45 @@ def answer_question(
                 key = "simulation"
             else:
                 summary = engine.money_summary(session, user_id=user_id, period=parsed.period)
-                if parsed.intent == "spending_query" and parsed.category:
-                    totals = engine.category_breakdown(
-                        session,
-                        user_id=user_id,
-                        period=parsed.period,
-                        category=parsed.category,
-                    )
-                    total = next((t for t in totals if t.category == parsed.category), None)
-                    if total is None:
-                        key = "empty"
-                    else:
-                        key = "category_spending"
-                        values["value"] = total.amount_minor
-                        facts.append(
-                            AssistantFact(
-                                key=parsed.category,
-                                amount_minor=total.amount_minor,
-                                count=total.transaction_count,
-                                currency="INR",
-                            )
+                full = financial_facts(
+                    session,
+                    user_id=user_id,
+                    period=parsed.period,
+                    intent=parsed.intent,
+                    category=parsed.category,
+                    merchant=parsed.merchant,
+                )
+                evidence, evidence_total = (
+                    ([], 0)
+                    if parsed.intent == "upcoming_commitments"
+                    else (full.evidence, full.total)
+                )
+                if parsed.intent == "merchant_lookup":
+                    key = "merchant_total"
+                    values = {
+                        "gross": full.gross_minor,
+                        "refunds": full.refunds_minor,
+                        "value": full.net_minor,
+                    }
+                    facts = [
+                        AssistantFact(key=name, amount_minor=amount, currency="INR")
+                        for name, amount in [
+                            ("gross_spending", full.gross_minor),
+                            ("refunds", full.refunds_minor),
+                            ("net_spending", full.net_minor),
+                        ]
+                    ]
+                elif parsed.intent == "spending_query" and parsed.category:
+                    key = "category_spending"
+                    values["value"] = full.net_minor
+                    facts.append(
+                        AssistantFact(
+                            key=parsed.category,
+                            amount_minor=full.net_minor,
+                            count=full.total,
+                            currency="INR",
                         )
-                elif parsed.intent == "merchant_lookup":
-                    pass
+                    )
                 else:
                     field, count = {
                         "spending_query": (
@@ -102,7 +130,7 @@ def answer_question(
                         "income_query": ("tracked_income_minor", summary.income_transaction_count),
                         "unallocated_query": ("estimated_unallocated_minor", None),
                         "upcoming_commitments": (
-                            "upcoming_commitments_minor",
+                            "unresolved_commitments_minor",
                             summary.commitment_count,
                         ),
                     }[parsed.intent]
@@ -111,33 +139,15 @@ def answer_question(
                     facts.append(
                         AssistantFact(key=field, amount_minor=amount, count=count, currency="INR")
                     )
-            if parsed.intent != "upcoming_commitments":
-                evidence = engine.find_transactions(
-                    session,
-                    user_id=user_id,
-                    period=parsed.period,
-                    category=parsed.category,
-                    merchant=parsed.merchant,
-                    status="confirmed",
-                    limit=10,
+            if parsed.intent in {"affordability_check", "savings_simulation"}:
+                full = financial_facts(
+                    session, user_id=user_id, period=parsed.period, intent="unallocated_query"
                 )
-                if parsed.intent != "merchant_lookup":
-                    evidence_ids = set(summary.evidence_transaction_ids)
-                    evidence = [item for item in evidence if item.id in evidence_ids]
-                    if parsed.intent == "income_query":
-                        evidence = [
-                            item
-                            for item in evidence
-                            if item.direction == "in" and item.kind in {"salary", "income_other"}
-                        ]
-                if parsed.intent == "merchant_lookup":
-                    key = "merchant_lookup" if evidence else "empty"
-                    facts.extend(
-                        AssistantFact(
-                            key=f"transaction:{t.id}", amount_minor=t.amount_minor, currency="INR"
-                        )
-                        for t in evidence
-                    )
+                evidence, evidence_total = (
+                    ([], 0)
+                    if parsed.intent == "upcoming_commitments"
+                    else (full.evidence, full.total)
+                )
             # The money engine alone supplies this count; pending amounts never enter the answer.
             facts.append(
                 AssistantFact(key="pending_review_count", count=summary.pending_review_count)
@@ -158,13 +168,37 @@ def answer_question(
                 "pending", style, language, count=summary.pending_review_count, speech=True
             )
         display += " " + render("coverage", style, language)
-        if style != "en":
-            display += " " + RECORDS_NOTE
         speech += " " + render("coverage", style, language, speech=True)
     if simulation is not None:
-        display += " " + DISCLAIMER
+        display += " " + (
+            speech_disclaimer(language)
+            if style in {"hi", "ml"}
+            else {
+                "hinglish": "Yeh tracked cash flow model hai; security kharidne ki salah nahi.",
+                "manglish": "Tracked panamozhukku model; nikshepam vangaanulla nirdesham alla.",
+            }.get(style, DISCLAIMER)
+        )
         speech += " " + speech_disclaimer(language)
+    for fact in facts:
+        fact.label = local_label(fact.key, style)
     return AssistantAnswer(
+        data_version=summary.data_version if summary else data_version(session, user_id),
+        resolved_period=ResolvedPeriod(
+            start=summary.period_start,
+            end=summary.period_end,
+            label=f"{summary.period_start.isoformat()} – {summary.period_end.isoformat()}",
+        )
+        if summary
+        else None,
+        display_language="hi"
+        if style in {"hi", "hinglish"}
+        else "ml"
+        if style in {"ml", "manglish"}
+        else "en",
+        display_script="Deva" if style == "hi" else "Mlym" if style == "ml" else "Latn",
+        evidence_total=evidence_total,
+        evidence_sampled=evidence_total > len(evidence),
+        warning_labels=warning_labels(warnings, style),
         intent=parsed.intent,
         policy=policy,
         display_text=display,

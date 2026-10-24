@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Iterable, Iterator
-from datetime import timedelta
+from datetime import date, timedelta
 from uuid import UUID, uuid4
 
 from sqlalchemy import Engine, select
@@ -15,7 +15,7 @@ from finboy.services.imports.locking import import_lock
 from finboy.services.ingestion.pipeline import InboundMessage, IngestionStats, ingest_messages
 from finboy.services.mail.fetch import fetch_messages
 from finboy.services.mail.oauth import OAuthConfig
-from finboy.services.mail.security import MailError, decrypt
+from finboy.services.mail.security import MailError, decrypt, encrypt
 from finboy.services.privacy.audit import audit
 
 COUNTERS = tuple(IngestionStats.__dataclass_fields__)
@@ -56,6 +56,7 @@ def create_run(session: Session, *, mode: str, connection_id: UUID | None = None
         # interrupted work from a stopped process, not an active extractor.
         with import_lock(session.get_bind().engine):
             existing.status = "failed"
+            existing.outcome_detail = "interrupted"
             existing.error_code = "import_failed"
             existing.finished_at = now_ist()
             audit(session, "import.failed", "import", existing.id, mode=existing.mode)
@@ -100,10 +101,23 @@ def run_import(
         scanned[:] = [headers, candidates]
         progress(IngestionStats())
 
+    def scan_coverage(
+        start: date, end: date, truncated: bool, next_page: str | None = None
+    ) -> None:
+        with factory.begin() as session:
+            run = session.get(ImportRun, run_id)
+            if run is not None:
+                run.window_start, run.window_end, run.truncated = start, end, truncated
+                run.next_page_token_encrypted = (
+                    encrypt(settings.token_encryption_key.get_secret_value(), next_page)
+                    if next_page
+                    else None
+                )
+
     def active() -> None:
         with factory() as session:
             run = session.get(ImportRun, run_id)
-            if run is None or run.status != "running":
+            if run is None or run.status != "running" or run.cancel_requested:
                 raise MailError("import_cancelled")
             if run.mail_connection_id:
                 connection = session.get(MailConnection, run.mail_connection_id)
@@ -138,12 +152,24 @@ def run_import(
                         config.encryption_key, connection.encrypted_refresh_token
                     )
                     google = config.google()
+                    retry_ids = list(run.retry_source_ids)
+                    resume_token = (
+                        decrypt(config.encryption_key, run.resume_page_token_encrypted)
+                        if run.resume_page_token_encrypted
+                        else ""
+                    )
                     messages = fetch_messages(
                         google,
                         refresh_token=refresh_token,
                         connection_id=connection_id,
                         on_scan=scan,
                         ensure_active=active,
+                        source_ids=retry_ids,
+                        factory=factory,
+                        on_coverage=scan_coverage,
+                        page_token=resume_token,
+                        window_start=run.window_start,
+                        window_end=run.window_end,
                     )
             if messages is None:
                 raise MailError("import_failed")
@@ -153,6 +179,7 @@ def run_import(
                 import_run_id=run_id,
                 messages=guarded(messages),
                 on_progress=progress,
+                ensure_active=active,
             )
             progress(stats)
             active()
@@ -161,8 +188,9 @@ def run_import(
                 if run is None:
                     return
                 run.status = "completed"
+                run.outcome_detail = "partial" if run.failed or run.truncated else "complete"
                 run.finished_at = now_ist()
-                if run.mail_connection_id:
+                if run.mail_connection_id and not run.retry_source_ids:
                     connection = session.get(MailConnection, run.mail_connection_id)
                     if connection is not None:
                         connection.last_synced_at = now_ist()
@@ -173,6 +201,7 @@ def run_import(
             with factory.begin() as session:
                 run = session.get(ImportRun, run_id)
                 if run is not None:
+                    run.outcome_detail = "cancelled" if code == "import_cancelled" else "failed"
                     run.status, run.error_code, run.finished_at = (
                         "failed",
                         stored_error(code),

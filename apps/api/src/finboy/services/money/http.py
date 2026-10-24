@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException
 from starlette.responses import Response
 
 from finboy.core.errors import error_response
+from finboy.services.ux.state import TaskError
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ class MoneyRoute(APIRoute):
                 ):
                     raise HTTPException(403)
                 response = await handler(request)
+            except TaskError as exc:
+                response = error_response(request, exc.status, exc.code, exc.message)
             except HTTPException as exc:
                 response = error_response(
                     request, exc.status_code, "http_error", HTTPStatus(exc.status_code).phrase

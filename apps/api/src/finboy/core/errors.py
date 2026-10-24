@@ -44,6 +44,12 @@ def error_response(request: Request, status: int, code: str, message: str) -> JS
 
 
 def register_error_handlers(app: FastAPI) -> None:
+    from finboy.services.ux.state import TaskError
+
+    @app.exception_handler(TaskError)
+    async def handle_task_error(request: Request, exc: TaskError) -> JSONResponse:
+        return error_response(request, exc.status, exc.code, exc.message)
+
     @app.exception_handler(ProviderUnavailable)
     async def handle_provider_unavailable(
         request: Request, exc: ProviderUnavailable

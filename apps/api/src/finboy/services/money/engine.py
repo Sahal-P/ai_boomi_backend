@@ -11,15 +11,26 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from finboy.core.clock import IST, today_ist
-from finboy.db.models.ledger import Category, Commitment, Transaction, TransactionStatus
+from finboy.db.models.ledger import (
+    Category,
+    Commitment,
+    EmailSource,
+    SourceEvent,
+    Transaction,
+    TransactionStatus,
+)
+from finboy.services.ux.state import Coverage, coverage, data_version, lock_snapshot
 
 
 class PeriodSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["current_month", "month"] = "current_month"
+    kind: Literal["current_month", "month", "range"] = "current_month"
     year: int | None = Field(default=None, ge=1, le=9999)
     month: int | None = Field(default=None, ge=1, le=12)
+
+    start_date: date | None = None
+    end_date: date | None = None
 
     @model_validator(mode="after")
     def require_month_pair(self) -> PeriodSpec:
@@ -27,6 +38,10 @@ class PeriodSpec(BaseModel):
             raise ValueError("An explicit month requires year and month")
         if self.kind == "current_month" and (self.year is not None or self.month is not None):
             raise ValueError("current_month does not accept year or month")
+        if self.kind == "range" and (
+            self.start_date is None or self.end_date is None or self.start_date > self.end_date
+        ):
+            raise ValueError("An explicit range requires ordered dates")
         return self
 
 
@@ -48,6 +63,10 @@ class CommitmentView(BaseModel):
     confidence: float = Field(ge=0, le=1)
     source_event_id: UUID | None = None
     paid_transaction_id: UUID | None = None
+    version: str = "0"
+    dataset: Literal["household", "demo", "quarantined"] = "household"
+    liability_state: Literal["upcoming", "overdue", "paid", "dismissed"] = "upcoming"
+    uncertain: bool = False
 
 
 class TransactionView(BaseModel):
@@ -88,9 +107,22 @@ class TransactionView(BaseModel):
     possible_duplicate_of_id: UUID | None = None
     linked_transaction_id: UUID | None = None
     merged_into_id: UUID | None = None
+    dataset: Literal["household", "demo", "quarantined"] = "household"
+    source_modes: list[Literal["gmail", "eml_upload", "demo_mailbox"]] = Field(default_factory=list)
+    source_count: int = 0
+    extraction_quality: Literal["complete", "partial"] = "partial"
+    payment_verification: Literal["verified", "unverified", "failed"] = "unverified"
+    version: str = "0"
 
 
 class MoneySummary(BaseModel):
+    dataset: Literal["household", "demo"] = "household"
+    data_version: str = "0"
+    coverage: Coverage = Field(default_factory=Coverage)
+    overdue_commitments_minor: int = 0
+    uncertain_commitments_minor: int = 0
+    unresolved_commitments_minor: int = 0
+    overdue_commitment_count: int = 0
     period_start: date
     period_end: date
     as_of: date
@@ -113,6 +145,7 @@ class SimulationLine(BaseModel):
         "tracked_income",
         "confirmed_outflows",
         "upcoming_commitments",
+        "overdue_commitments",
         "proposed_monthly",
     ]
     amount_minor: int
@@ -138,6 +171,7 @@ class CashFlowSimulation(BaseModel):
 
 
 def money_summary(session: Session, *, user_id: UUID, period: PeriodSpec) -> MoneySummary:
+    version = lock_snapshot(session, user_id)
     today = today_ist()
     start, end = period_dates(period, today)
     records = [transaction_view(row) for row in session.scalars(_transactions(user_id, start, end))]
@@ -148,20 +182,25 @@ def money_summary(session: Session, *, user_id: UUID, period: PeriodSpec) -> Mon
             row.id: transaction_view(row).category
             for row in session.scalars(
                 select(Transaction).where(
-                    Transaction.user_id == user_id, Transaction.id.in_(linked_ids)
+                    Transaction.user_id == user_id,
+                    Transaction.dataset == "household",
+                    Transaction.id.in_(linked_ids),
                 )
             )
         }
         if linked_ids
         else {}
     )
-    return calculate_summary(
+    result = calculate_summary(
         records,
-        _upcoming(session, user_id=user_id, start=start, end=end, today=today),
+        _unresolved(session, user_id=user_id, end=end, today=today),
         period=period,
         today=today,
         linked_categories=linked_categories,
     )
+    result.data_version = version
+    result.coverage = coverage(session, user_id)
+    return result
 
 
 def category_breakdown(
@@ -241,6 +280,9 @@ def simulate_monthly_commitment(
 
 
 def period_dates(period: PeriodSpec, today: date) -> tuple[date, date]:
+    if period.kind == "range":
+        assert period.start_date is not None and period.end_date is not None
+        return period.start_date, period.end_date
     year = period.year if period.kind == "month" else today.year
     month = period.month if period.kind == "month" else today.month
     assert year is not None and month is not None
@@ -248,12 +290,21 @@ def period_dates(period: PeriodSpec, today: date) -> tuple[date, date]:
 
 
 def transaction_view(row: Transaction) -> TransactionView:
-    return TransactionView.model_validate(row, from_attributes=True)
+    result = TransactionView.model_validate(row, from_attributes=True)
+    result.payment_verification = (
+        "failed"
+        if row.status == "failed"
+        else "verified"
+        if row.status == "confirmed"
+        else "unverified"
+    )
+    return result
 
 
 def _transactions(user_id: UUID, start: date, end: date) -> Select[tuple[Transaction]]:
     return select(Transaction).where(
         Transaction.user_id == user_id,
+        Transaction.dataset == "household",
         Transaction.occurred_at >= datetime.combine(start, time.min, IST),
         Transaction.occurred_at <= datetime.combine(end, time.max, IST),
     )
@@ -268,6 +319,7 @@ def _upcoming(
             select(Commitment)
             .where(
                 Commitment.user_id == user_id,
+                Commitment.dataset == "household",
                 Commitment.status == "upcoming",
                 Commitment.due_date >= max(today, start),
                 Commitment.due_date <= end,
@@ -284,11 +336,16 @@ def calculate_summary(
     period: PeriodSpec,
     today: date,
     linked_categories: Mapping[UUID, Category] | None = None,
+    dataset: Literal["household", "demo"] = "household",
 ) -> MoneySummary:
     """Pure calculation; counts/evidence include each contributing canonical record once."""
     start, end = period_dates(period, today)
     in_period = sorted(
-        (row for row in records if start <= row.occurred_at.astimezone(IST).date() <= end),
+        (
+            row
+            for row in records
+            if row.dataset == dataset and start <= row.occurred_at.astimezone(IST).date() <= end
+        ),
         key=lambda row: (row.occurred_at, row.id),
     )
     income: list[TransactionView] = []
@@ -316,15 +373,18 @@ def calculate_summary(
     upcoming = [
         row
         for row in commitments
-        if row.status == "upcoming" and max(today, start) <= row.due_date <= end
+        if row.dataset == dataset and row.status == "upcoming" and row.due_date <= end
     ]
     category_totals = [
         CategoryTotal(category=key, amount_minor=amount, transaction_count=count)
-        for key, (amount, count) in sorted(categories.items())
+        for key, (amount, count) in sorted(
+            categories.items(), key=lambda item: (-abs(item[1][0]), item[0])
+        )
     ]
     income_total = sum(row.amount_minor for row in income)
     outflow_total = sum(row.amount_minor for row in category_totals)
-    upcoming_total = sum(row.amount_minor for row in upcoming)
+    upcoming_total = sum(row.amount_minor for row in upcoming if row.due_date >= today)
+    overdue_total = sum(row.amount_minor for row in upcoming if row.due_date < today)
     contributing = {row.id for row in income + outflows}
     return MoneySummary(
         period_start=start,
@@ -333,7 +393,13 @@ def calculate_summary(
         tracked_income_minor=income_total,
         confirmed_outflows_minor=outflow_total,
         upcoming_commitments_minor=upcoming_total,
-        estimated_unallocated_minor=income_total - outflow_total - upcoming_total,
+        overdue_commitments_minor=overdue_total,
+        unresolved_commitments_minor=upcoming_total + overdue_total,
+        uncertain_commitments_minor=sum(
+            row.amount_minor for row in upcoming if row.confidence < 0.8
+        ),
+        overdue_commitment_count=sum(row.due_date < today for row in upcoming),
+        estimated_unallocated_minor=income_total - outflow_total - upcoming_total - overdue_total,
         pending_review_count=len(review),
         pending_review_minor=sum(row.amount_minor for row in review),
         income_transaction_count=len(income),
@@ -378,8 +444,88 @@ def calculate_simulation(summary: MoneySummary, monthly_amount_minor: int) -> Ca
                 sign="-",
             ),
             SimulationLine(
+                label_key="overdue_commitments",
+                amount_minor=summary.overdue_commitments_minor,
+                sign="-",
+            ),
+            SimulationLine(
                 label_key="proposed_monthly", amount_minor=monthly_amount_minor, sign="-"
             ),
         ],
         warnings=warnings,
     )
+
+
+def _unresolved(session: Session, *, user_id: UUID, end: date, today: date) -> list[CommitmentView]:
+    return [
+        commitment_view(row, today=today)
+        for row in session.scalars(
+            select(Commitment)
+            .where(
+                Commitment.user_id == user_id,
+                Commitment.dataset == "household",
+                Commitment.status == "upcoming",
+                Commitment.due_date <= end,
+            )
+            .order_by(Commitment.due_date, Commitment.id)
+        )
+    ]
+
+
+def commitment_view(
+    row: Commitment, *, today: date | None = None, version: str = "0"
+) -> CommitmentView:
+    result = CommitmentView.model_validate(row, from_attributes=True)
+    result.version = version
+    result.uncertain = row.confidence < 0.8
+    result.liability_state = (
+        "overdue"
+        if row.status == "upcoming" and row.due_date < (today or today_ist())
+        else row.status
+    )
+    return result
+
+
+def transaction_views(
+    session: Session, rows: Sequence[Transaction], *, user_id: UUID
+) -> list[TransactionView]:
+    if not rows:
+        return []
+    version = data_version(session, user_id)
+    sources: dict[UUID, list[tuple[SourceEvent, EmailSource]]] = {}
+    for event, source in session.execute(
+        select(SourceEvent, EmailSource)
+        .join(EmailSource, EmailSource.id == SourceEvent.email_source_id)
+        .where(
+            SourceEvent.user_id == user_id,
+            SourceEvent.transaction_id.in_([row.id for row in rows]),
+            EmailSource.user_id == user_id,
+        )
+    ):
+        sources.setdefault(event.transaction_id, []).append((event, source))
+    result = []
+    for row in rows:
+        item = transaction_view(row)
+        pairs = [
+            (e, s)
+            for e, s in sources.get(row.id, [])
+            if (s.source == "demo_mailbox") == (row.dataset == "demo")
+        ]
+        item.source_modes = sorted({s.source for _, s in pairs})
+        item.source_count = len({s.id for _, s in pairs})
+        item.version = version
+        item.extraction_quality = (
+            "complete"
+            if any(
+                all(
+                    e.field_confidence.get(k, 0) >= 0.8
+                    for k in ("amount_minor", "merchant", "occurred_at")
+                )
+                for e, _ in pairs
+            )
+            else "partial"
+        )
+        if row.status != "failed" and any("payment_proof" in e.evidence for e, _ in pairs):
+            item.payment_verification = "verified"
+        result.append(item)
+    return result

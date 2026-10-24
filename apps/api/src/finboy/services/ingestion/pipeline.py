@@ -42,6 +42,7 @@ class InboundMessage:
     raw_rfc822: bytes
     received_at: datetime | None = None
     mail_connection_id: UUID | None = None
+    failure_reason: Literal["message_unavailable"] | None = None
 
 
 @dataclass
@@ -61,6 +62,8 @@ def _prepare(
     factory: sessionmaker[Session], inbound: InboundMessage, settings: Settings
 ) -> Prepared | None:
     try:
+        if inbound.failure_reason:
+            return None
         message = normalize(inbound.raw_rfc822, inbound.received_at)
         classification = classify(message)
         trusted = trusted_domain(message.sender_domain)
@@ -79,7 +82,9 @@ def _prepare(
             and (key is None or not key.get_secret_value())
         ):
             return Prepared(message, classification, rules, trusted)
-        cache_id = cache_key(message, model)
+        cache_id = ("demo:" if inbound.source == "demo_mailbox" else "household:") + cache_key(
+            message, model
+        )
         with factory() as session:
             cached = session.scalar(
                 select(ExtractionCache).where(ExtractionCache.cache_key == cache_id)
@@ -129,7 +134,7 @@ def _persist_message(
             EmailSource.provider_message_id == inbound.provider_message_id,
         )
     )
-    if existing is not None:
+    if existing is not None and existing.processing_status != "failed":
         return delta, set()
     if (
         inbound.mail_connection_id is not None
@@ -162,7 +167,37 @@ def _persist_message(
         if not item.extraction.events
         else "extracted",
     )
-    session.add(source)
+    if existing is not None:
+        # Failed normalization/extraction has no committed events; keep the stable source ID.
+        # A partially persisted event is not safe to retry by replacing evidence.
+        if (
+            session.scalar(
+                select(SourceEvent.id).where(SourceEvent.email_source_id == existing.id).limit(1)
+            )
+            is not None
+        ):
+            return delta, set()
+        for field in (
+            "content_sha256",
+            "sender_domain",
+            "subject_sha256",
+            "received_at",
+            "classification",
+            "processing_status",
+        ):
+            setattr(existing, field, getattr(source, field))
+        existing.attempts += 1
+        source = existing
+    else:
+        session.add(source)
+    source.last_attempt_run_id = import_run_id
+    source.issue_reason = (
+        inbound.failure_reason or "extraction_failed"
+        if item is None
+        else "no_supported_events"
+        if source.processing_status == "failed"
+        else None
+    )
     session.flush()
     if item is None:
         delta.failed = 1
@@ -203,6 +238,7 @@ def ingest_messages(
     import_run_id: UUID,
     messages: Iterable[InboundMessage],
     on_progress: Callable[[IngestionStats], None] | None = None,
+    ensure_active: Callable[[], None] | None = None,
 ) -> IngestionStats:
     stats = IngestionStats()
     with session_factory() as session:
@@ -218,6 +254,8 @@ def ingest_messages(
         while batch := list(islice(iterator, 4)):
             prepared = pool.map(lambda item: _prepare(session_factory, item, settings), batch)
             for inbound, item in zip(batch, prepared, strict=True):
+                if ensure_active:
+                    ensure_active()
                 stats.headers_checked += 1
                 try:
                     with session_factory.begin() as session:
@@ -233,6 +271,19 @@ def ingest_messages(
                         setattr(stats, name, getattr(stats, name) + value)
                     touched.update(message_ids)
                 except Exception:
+                    # Preserve a retryable source identity after a rolled-back extraction.
+                    # An unavailable database may also prevent this fixed metadata write.
+                    try:
+                        with session_factory.begin() as failure_session:
+                            _persist_message(
+                                failure_session,
+                                user_id=user_id,
+                                import_run_id=import_run_id,
+                                inbound=inbound,
+                                item=None,
+                            )
+                    except Exception:
+                        pass
                     stats.failed += 1
                     stats.emails_processed += 1
                 with session_factory() as session:

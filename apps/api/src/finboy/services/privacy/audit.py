@@ -18,22 +18,41 @@ EVENTS = frozenset(
         "import.completed",
         "import.failed",
         "data.deleted",
+        "review.completed",
+        "review.undone",
+        "obligation.corrected",
+        "task.evidence_opened",
+        "task.overview_understood",
+        "task.review_completed",
+        "data.exported",
     }
 )
 METADATA = {"mode": {"gmail", "eml_upload", "demo_mailbox"}, "result": {"success", "failure"}}
 
 
 def audit(
-    session: Session, event: str, subject_type: str, subject_id: UUID, **metadata: str
+    session: Session,
+    event: str,
+    subject_type: str,
+    subject_id: UUID,
+    *,
+    user_id: UUID | None = None,
+    **metadata: str,
 ) -> None:
-    if event not in EVENTS or subject_type not in {"connection", "import", "user"}:
+    if event not in EVENTS or subject_type not in {
+        "connection",
+        "import",
+        "user",
+        "transaction",
+        "commitment",
+    }:
         raise ValueError("Unsupported audit event")
     clean = {
         key: value for key, value in metadata.items() if key in METADATA and value in METADATA[key]
     }
     session.add(
         AuditEvent(
-            user_id=LOCAL_USER_ID,
+            user_id=user_id or LOCAL_USER_ID,
             event_type=event,
             subject_type=subject_type,
             subject_id=subject_id,

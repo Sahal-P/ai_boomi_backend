@@ -6,11 +6,13 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException
 from starlette.responses import Response
 
 from finboy.core.errors import error_response
 from finboy.services.mail.security import MailError
+from finboy.services.ux.state import TaskError
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,8 @@ class MailRoute(APIRoute):
                 response = await handler(request)
             except MailError as exc:
                 response = failure(request, exc)
+            except TaskError as exc:
+                response = error_response(request, exc.status, exc.code, exc.message)
             except HTTPException as exc:
                 response = error_response(
                     request, exc.status_code, "http_error", HTTPStatus(exc.status_code).phrase
@@ -52,6 +56,13 @@ class MailRoute(APIRoute):
             except RequestValidationError:
                 response = error_response(
                     request, 422, "validation_error", "Request validation failed."
+                )
+            except SQLAlchemyError:
+                response = error_response(
+                    request,
+                    503,
+                    "database_unavailable",
+                    "Your source history is currently unavailable.",
                 )
             except Exception as exc:
                 logger.error("mail.request_failed", extra={"error_type": type(exc).__name__})

@@ -137,7 +137,9 @@ def _set_confidence(
     transaction.updated_at = now_ist()
 
 
-def refresh_review_confidence(session: Session, *, user_id: UUID, transaction_id: UUID) -> None:
+def refresh_review_confidence(
+    session: Session, *, user_id: UUID, transaction_id: UUID, preserve_status: bool = True
+) -> None:
     """Moved merge evidence changes confidence, while the user's chosen status stays locked."""
     transaction = session.scalar(
         select(Transaction).where(Transaction.user_id == user_id, Transaction.id == transaction_id)
@@ -166,7 +168,7 @@ def refresh_review_confidence(session: Session, *, user_id: UUID, transaction_id
         source_count=len({row.email_source_id for row in sources}),
         agreement=all(claims_agree(best, as_event(row)) for row in sources),
     )
-    _set_confidence(session, transaction, confidence, preserve_status=True)
+    _set_confidence(session, transaction, confidence, preserve_status=preserve_status)
 
 
 def _commitment(
@@ -174,10 +176,16 @@ def _commitment(
 ) -> None:
     if event.due_date is None:
         return
+    dataset = (
+        "demo"
+        if session.get(EmailSource, source_event.email_source_id).source == "demo_mailbox"
+        else "household"
+    )
     label = normalize_merchant(event.merchant) or "Unidentified obligation"
     existing = session.scalar(
         select(Commitment).where(
             Commitment.user_id == user_id,
+            Commitment.dataset == dataset,
             Commitment.label == label,
             Commitment.amount_minor == event.amount_minor,
             Commitment.due_date == event.due_date,
@@ -188,6 +196,7 @@ def _commitment(
         session.add(
             Commitment(
                 user_id=user_id,
+                dataset=dataset,
                 kind="emi" if event.event_type == "emi_due" else "bill",
                 label=label,
                 amount_minor=event.amount_minor,
@@ -200,11 +209,13 @@ def _commitment(
         )
 
 
-def refresh_links(session: Session, user_id: UUID) -> None:
+def refresh_links(session: Session, user_id: UUID, dataset: str = "household") -> None:
     transactions = list(
         session.scalars(
             select(Transaction).where(
-                Transaction.user_id == user_id, Transaction.status != "merged"
+                Transaction.user_id == user_id,
+                Transaction.dataset == dataset,
+                Transaction.status != "merged",
             )
         )
     )
@@ -226,6 +237,31 @@ def refresh_links(session: Session, user_id: UUID) -> None:
                 occurred_at=transaction.occurred_at,
             )
         )
+    # Reconciliation follows corrected canonical facts; source claims remain evidence.
+    event_types = {
+        "purchase": "debit",
+        "salary": "salary",
+        "income_other": "credit",
+        "refund": "refund",
+        "reversal": "reversal",
+        "fee": "fee",
+        "bill_payment": "debit",
+        "emi": "debit",
+        "investment": "investment",
+        "transfer": "transfer",
+    }
+    events = [
+        event.model_copy(
+            update={
+                "event_type": event_types[tx.kind],
+                "amount_minor": tx.amount_minor,
+                "merchant": tx.merchant,
+                "occurred_at": tx.occurred_at,
+                "reference_id": tx.reference_id,
+            }
+        )
+        for tx, event in zip(transactions, events, strict=True)
+    ]
     for transaction, event in zip(transactions, events, strict=True):
         index = original_for(event, events)
         if index is not None and "linked_transaction_id" not in (
@@ -243,12 +279,30 @@ def refresh_links(session: Session, user_id: UUID) -> None:
                 reason="refund_link",
             )
             transaction.linked_transaction_id = target
+        elif (
+            index is None
+            and transaction.linked_transaction_id
+            and "linked_transaction_id" not in (transaction.user_locked_fields or [])
+        ):
+            revision(
+                session,
+                transaction,
+                "linked_transaction_id",
+                str(transaction.linked_transaction_id),
+                None,
+                reason="refund_link_removed",
+            )
+            transaction.linked_transaction_id = None
     commitments = session.scalars(
         select(Commitment).where(
-            Commitment.user_id == user_id, Commitment.status.in_(["upcoming", "paid"])
+            Commitment.user_id == user_id,
+            Commitment.dataset == dataset,
+            Commitment.status.in_(["upcoming", "paid"]),
         )
     )
     for commitment in commitments:
+        if commitment.user_resolved:
+            continue
         if commitment.status == "paid":
             paid = next(
                 (tx for tx in transactions if tx.id == commitment.paid_transaction_id), None
@@ -285,15 +339,20 @@ def persist_event(
     """Return (transaction created, duplicate merged); caller commits one message."""
     source_event = _source_event(session, user_id, source, event)
     trusted = trusted_domain(source.sender_domain)
+    dataset = "demo" if source.source == "demo_mailbox" else "household"
     if event.event_type in {"bill_due", "emi_due"}:
         _commitment(session, user_id, event, source_event, trusted)
         session.flush()
-        refresh_links(session, user_id)
+        refresh_links(session, user_id, dataset)
         return False, False
     transactions = list(
         session.scalars(
             select(Transaction)
-            .where(Transaction.user_id == user_id, Transaction.status != "merged")
+            .where(
+                Transaction.user_id == user_id,
+                Transaction.dataset == dataset,
+                Transaction.status != "merged",
+            )
             .order_by(Transaction.created_at)
         )
     )
@@ -360,7 +419,7 @@ def persist_event(
                     setattr(transaction, field, value)
         _set_confidence(session, transaction, confidence)
         session.flush()
-        refresh_links(session, user_id)
+        refresh_links(session, user_id, dataset)
         return False, True
     confidence = confidence_for(event, trusted=trusted)
     if match.possible_index is not None:
@@ -369,6 +428,7 @@ def persist_event(
         )
     transaction = Transaction(
         user_id=user_id,
+        dataset=dataset,
         direction=direction(event),
         kind=kind(event),
         amount_minor=event.amount_minor,
@@ -393,5 +453,5 @@ def persist_event(
     session.flush()
     source_event.transaction_id = transaction.id
     session.flush()
-    refresh_links(session, user_id)
+    refresh_links(session, user_id, dataset)
     return True, False

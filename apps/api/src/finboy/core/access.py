@@ -18,6 +18,7 @@ COOKIE = "__Host-finboy_session"
 SESSION_SECONDS = 12 * 60 * 60
 PUBLIC = {
     "/api/v1/health",
+    "/api/v1/demo",
     "/api/v1/auth/session",
     "/api/v1/auth/login",
     "/api/v1/whatsapp/webhook",

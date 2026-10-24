@@ -2,12 +2,14 @@
 
 import re
 import unicodedata
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Literal
 
 from openai import APIError, OpenAI
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from finboy.core.clock import today_ist
 from finboy.core.config import Settings
 from finboy.db.models.ledger import Category
 from finboy.services.money.engine import PeriodSpec
@@ -30,6 +32,7 @@ Intent = Literal[
 class ParsedIntent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     intent: Intent
+    clarification_reason: Literal["period", "amount"] | None = None
     category: Category | None = None
     period: PeriodSpec = Field(default_factory=PeriodSpec)
     amount_minor: int | None = Field(default=None, gt=0, le=100_000_000_00)
@@ -192,6 +195,86 @@ def amounts_in_question(text: str) -> set[int]:
     return values
 
 
+def resolve_period(q: str) -> tuple[PeriodSpec, bool]:
+    today = today_ist()
+    explicit = re.findall(r"(?<!\d)(20\d{2})-(0[1-9]|1[0-2])(?![-\d])", q)
+    choices = []
+    if len(explicit) > 1:
+        return PeriodSpec(), True
+    if explicit:
+        year, month = explicit[0]
+        choices.append(PeriodSpec(kind="month", year=int(year), month=int(month)))
+    if contains(q, ("yesterday", "बीते कल", "ഇന്നലെ", "innale")):
+        day = today - timedelta(days=1)
+        choices.append(PeriodSpec(kind="range", start_date=day, end_date=day))
+    elif contains(q, ("today", "आज", "ഇന്ന്", "aaj", "innu")):
+        choices.append(PeriodSpec(kind="range", start_date=today, end_date=today))
+    if contains(
+        q,
+        (
+            "last month",
+            "previous month",
+            "पिछले महीने",
+            "पिछले माह",
+            "കഴിഞ്ഞ മാസം",
+            "kazhinja masam",
+            "pichle mahine",
+        ),
+    ):
+        day = today.replace(day=1) - timedelta(days=1)
+        choices.append(PeriodSpec(kind="month", year=day.year, month=day.month))
+    elif contains(
+        q, ("this month", "current month", "इस महीने", "इस माह", "ഈ മാസം", "ee masam", "is mahine")
+    ):
+        choices.append(PeriodSpec())
+    if (
+        contains(
+            q,
+            (
+                "week",
+                "year",
+                "tomorrow",
+                "next month",
+                "January",
+                "February",
+                "March",
+                "April",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ),
+        )
+        or len(choices) > 1
+        or (
+            not choices
+            and (
+                contains(
+                    q,
+                    PAST
+                    + (
+                        "week",
+                        "year",
+                        "tomorrow",
+                        "कल",
+                        "अगले",
+                        "നാളെ",
+                        "next month",
+                        "2025",
+                        "2024",
+                    ),
+                )
+                or re.search(r"\b20\d{2}\b", q)
+            )
+        )
+    ):
+        return PeriodSpec(), True
+    return (choices[0] if choices else PeriodSpec()), False
+
+
 def rule_intent(text: str) -> ParsedIntent:
     q = normalized(text)
     if re.search(r"[$€£]|\b(usd|eur|dollars?|pounds?)\b", q):
@@ -233,18 +316,19 @@ def rule_intent(text: str) -> ParsedIntent:
     )
     if topic and contains(q, EDUCATION):
         return ParsedIntent(intent="education", topic=topic)
-    # Ambiguous relative periods must never silently become the current month.
-    period = PeriodSpec()
-    explicit = re.search(r"\b(20\d{2})-(0[1-9]|1[0-2])\b", q)
-    if explicit:
-        period = PeriodSpec(kind="month", year=int(explicit[1]), month=int(explicit[2]))
-    elif contains(q, PAST):
-        return ParsedIntent(intent="clarification")
+    period, unsupported = resolve_period(q)
+    if unsupported:
+        return ParsedIntent(intent="clarification", clarification_reason="period")
     amounts = amounts_in_question(q)
     amount = next(iter(amounts)) if len(amounts) == 1 else None
     if contains(q, SIMULATION) or contains(q, AFFORD) or (topic == "sip" and amount):
         intent = "savings_simulation" if contains(q, SIMULATION) else "affordability_check"
-        return ParsedIntent(intent=intent, amount_minor=amount, period=period)
+        return ParsedIntent(
+            intent=intent,
+            amount_minor=amount,
+            period=period,
+            clarification_reason="amount" if amount is None else None,
+        )
     if contains(q, UNALLOCATED):
         return ParsedIntent(intent="unallocated_query", period=period)
     if contains(q, INCOME):

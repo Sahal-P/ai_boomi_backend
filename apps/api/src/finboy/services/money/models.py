@@ -47,6 +47,31 @@ class Correction(BaseModel):
     merchant: str | None = Field(default=None, min_length=1, max_length=160, strict=True)
     amount_minor: int | None = Field(default=None, gt=0, le=10**14, strict=True)
 
+    occurred_at: datetime | None = None
+    direction: Literal["in", "out"] | None = None
+    kind: (
+        Literal[
+            "purchase",
+            "salary",
+            "income_other",
+            "refund",
+            "reversal",
+            "fee",
+            "bill_payment",
+            "emi",
+            "investment",
+            "transfer",
+        ]
+        | None
+    ) = None
+
+    @field_validator("occurred_at")
+    @classmethod
+    def aware_timestamp(cls, value: datetime | None) -> datetime | None:
+        if value is not None and (value.tzinfo is None or value.utcoffset() is None):
+            raise ValueError("A timezone is required")
+        return value
+
     @field_validator("merchant")
     @classmethod
     def valid_merchant(cls, value: str | None) -> str | None:
@@ -114,7 +139,17 @@ class RevisionView(BaseModel):
     changed_at: datetime
 
 
+class DecisionView(BaseModel):
+    id: UUID
+    action: str
+    created_at: datetime
+    undone_at: datetime | None
+    can_undo: bool
+
+
 class TransactionDetail(BaseModel):
+    version: str = "0"
+    decisions: list[DecisionView] = Field(default_factory=list)
     transaction: TransactionView
     sources: list[TransactionSource]
     confidence_factors: dict[str, float | int | None]
