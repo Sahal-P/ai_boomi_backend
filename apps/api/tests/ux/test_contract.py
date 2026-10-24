@@ -174,3 +174,12 @@ def test_literal_merchant_questions_cannot_silently_become_all_spending():
     assert rule_intent("How much did I spend on food today?").category == "food_dining"
     combined = rule_intent("Amazon shopping spending this month")
     assert combined.merchant == "amazon" and combined.category == "shopping"
+
+
+def test_category_words_inside_merchant_names_do_not_add_silent_filters():
+    merchant = rule_intent("How much did I spend at Acme Food Market today?")
+    assert merchant.merchant == "acme food market" and merchant.category is None
+    for phrase in ["my food", "food and dining"]:
+        category = rule_intent("How much did I spend on " + phrase + " today?")
+        assert category.intent == "spending_query" and category.category == "food_dining"
+    assert rule_intent("How much did I spend in September?").clarification_reason == "period"

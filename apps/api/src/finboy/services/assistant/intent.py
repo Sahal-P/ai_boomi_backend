@@ -228,25 +228,10 @@ def resolve_period(q: str) -> tuple[PeriodSpec, bool]:
     ):
         choices.append(PeriodSpec())
     if (
-        contains(
+        re.search(r"\b(?:weeks?|years?|tomorrow)\b|\bnext month\b", q)
+        or re.search(
+            r"\b(?:in|during|last|next)\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)\b",
             q,
-            (
-                "week",
-                "year",
-                "tomorrow",
-                "next month",
-                "January",
-                "February",
-                "March",
-                "April",
-                "June",
-                "July",
-                "August",
-                "September",
-                "October",
-                "November",
-                "December",
-            ),
         )
         or len(choices) > 1
         or (
@@ -331,7 +316,7 @@ def rule_intent(text: str) -> ParsedIntent:
         )
     if contains(q, UNALLOCATED):
         return ParsedIntent(intent="unallocated_query", period=period)
-    if contains(q, INCOME):
+    if contains(q, INCOME) and not contains(q, SPEND):
         return ParsedIntent(intent="income_query", period=period)
     if contains(q, UPCOMING):
         return ParsedIntent(intent="upcoming_commitments", period=period)
@@ -346,6 +331,18 @@ def rule_intent(text: str) -> ParsedIntent:
         match = re.search(r"\b(?:spend(?:ing)?|spent|paid)\s+(?:on|at|with|to)\s+(.+?)" + stop, q)
         if match:
             candidate = re.sub(r"\s+(?:in|during|for)$", "", match[1]).strip(" .\"'")
+            alias = re.sub(r"^(?:my|the)\s+", "", candidate)
+            category_alias = next((c for c, terms in CATEGORIES.items() if alias in terms), None)
+            if alias in {"food and dining", "food & dining"}:
+                category_alias = "food_dining"
+            if category_alias:
+                candidate = ""
+                category = category_alias
+            else:
+                remainder = q.replace(match[1], "", 1)
+                category = next(
+                    (c for c, terms in CATEGORIES.items() if contains(remainder, terms)), None
+                )
             if candidate and not any(
                 candidate == term for terms in CATEGORIES.values() for term in terms
             ):

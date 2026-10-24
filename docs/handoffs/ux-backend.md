@@ -1,6 +1,6 @@
 # UX Backend handoff — 24 October 2026
 
-Implementation tip: `76cb9b9` on `feat/finboy-ux-backend`, exact starting baseline
+Core implementation: `76cb9b9`, precision follow-up `3337b85` on `feat/finboy-ux-backend`, exact starting baseline
 `b572565aa521a753fbee1271ca0c68e470ff15c8`. Contract-only bootstrap `2e42622`;
 continuation contract `c05b44b`; current contract v1.1.1 in
 `docs/ux-round/api-contract.md`. Product can read committed schemas/fixtures through
@@ -46,7 +46,7 @@ private ignored env has only this disposable runtime's local settings.
 
 ## Verification actually performed
 
-- `pnpm check`: passed Ruff/format, **397 backend unit tests**, **19 existing web client
+- `pnpm check`: passed Ruff/format, **398 backend unit tests**, **19 existing web client
   tests**, ESLint and strict TypeScript. Unit tests require no PostgreSQL.
 - `pnpm build`: passed the baseline frontend build. Product changes and integrated
   browser acceptance are still separate gates.
@@ -93,3 +93,12 @@ volume and treats pre-migration missing windows as unknown. This preserves the
 same response schemas. Production read-only provenance inventory returned 26
 demo-only transactions, four demo-only obligations, and zero mixed records of either
 type. No production mutation or migration was performed for that inventory.
+
+
+Integration coordination note: a separate human-authorized ingestion eligibility
+repair is active on `feat/finboy-ingestion-eligibility`. Its owner is working from
+the same baseline in a separate worktree. Preserve its reviewed committed handoff
+and any newer main/production state during final assembly; do not edit that tree
+or overwrite its protections. The UX Product handoff remains the frontend ownership
+gate. Literal merchant/category regressions also cover a merchant name containing
+"food", so it cannot silently add a category filter.
