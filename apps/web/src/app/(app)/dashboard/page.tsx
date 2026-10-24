@@ -1,16 +1,14 @@
-"use client";
-import { DashboardScreen } from "@/components/money/dashboard-screen";
-import { useMoney } from "@/hooks/use-money";
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { LoadingPanel } from "@/components/feedback/states";
+import { OverviewScreen } from "@/components/money/overview-screen";
+
+export const metadata: Metadata = { title: "Overview" };
+
 export default function DashboardPage() {
-  const { data, error, refresh, simulation, busy, runSimulation } = useMoney();
   return (
-    <DashboardScreen
-      data={data}
-      error={error}
-      refresh={refresh}
-      simulation={simulation}
-      busy={busy}
-      onSimulate={(amount) => void runSimulation(amount)}
-    />
+    <Suspense fallback={<LoadingPanel label="Loading your overview…" />}>
+      <OverviewScreen />
+    </Suspense>
   );
 }

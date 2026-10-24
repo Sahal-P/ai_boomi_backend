@@ -39,7 +39,8 @@
     "final:db:migrate": "uv run --package finboy-api python -m finboy.core.final_runtime migrate",
     "dev:final-api": "uv run --package finboy-api python -m finboy.core.final_runtime api",
     "build:final-web": "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000 pnpm build",
-    "start:final-web": "WEB_PORT=3000 pnpm start:web"
+    "start:final-web": "WEB_PORT=3000 pnpm start:web",
+    "test:e2e": "pnpm --filter @finboy/web test:e2e"
   },
   "devDependencies": {
     "concurrently": "10.0.6"

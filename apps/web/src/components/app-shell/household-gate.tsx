@@ -1,18 +1,35 @@
 "use client";
 
+import { LoaderCircle } from "lucide-react";
 import type { ReactNode } from "react";
-import { useHousehold } from "@/hooks/use-household";
-import { Button } from "@/components/ui/button";
+import { HouseholdContext } from "@/components/app-shell/household-context";
+import { SessionExpiredDialog } from "@/components/app-shell/session-expired";
+import { ProblemNotice } from "@/components/feedback/problem-notice";
+import { useHouseholdSession } from "@/hooks/use-household";
 
 export function HouseholdGate({ children }: { children: ReactNode }) {
-  const session = useHousehold();
-  if (session.state !== "ready") return <div className="grid min-h-screen place-items-center bg-aurora p-8">
-    <div role="status" className="surface rounded-3xl p-8 text-center">
-      <p>{session.state === "loading" ? "Checking private access…" : "FinBoy is unavailable. Your records remain private."}</p>
-      {session.state === "error" && <Button className="mt-4" onClick={session.retry}>Try again</Button>}
-    </div>
-  </div>;
-  return <>{session.required && <div className="fixed right-4 bottom-20 z-50 lg:bottom-4">
-    <Button variant="outline" onClick={() => { void session.logout().catch(session.retry); }}>Sign out</Button>
-  </div>}{children}</>;
+  const session = useHouseholdSession();
+  if (session.state !== "ready") {
+    return (
+      <main className="grid min-h-dvh place-items-center bg-aurora p-6">
+        {session.state === "checking" || !session.problem ? (
+          <p role="status" className="surface flex items-center gap-3 rounded-3xl p-6 text-sm">
+            <LoaderCircle className="size-4 motion-safe:animate-spin" aria-hidden="true" />
+            Checking private access…
+          </p>
+        ) : (
+          <div className="w-full max-w-md">
+            <ProblemNotice problem={session.problem} onRetry={session.retry} />
+            <p className="mt-3 text-center text-xs text-ink-soft">Your records remain private.</p>
+          </div>
+        )}
+      </main>
+    );
+  }
+  return (
+    <HouseholdContext value={{ required: session.required }}>
+      {children}
+      <SessionExpiredDialog />
+    </HouseholdContext>
+  );
 }

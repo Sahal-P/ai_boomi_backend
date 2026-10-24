@@ -1,48 +1,75 @@
-# Product UI integration
+# Product UI
 
-Agent 5 took over the Agent 2 frontend scope with direct human authorization after
-confirming that Agent 2 was not running. Implementation is on feat/finboy-integration.
-The premium design is a reviewed uncommitted snapshot from the preserved design
-worktree, not a merge of its scaffold HEAD. Source file hashes are in
-handoffs/design-snapshot.json. No source/reset/stash/commit was made there.
+How the household web app is built after the UX remediation round (findings F01–F38).
+Behaviour, states and copy rules are specified in `docs/ux-round/ui-spec.md`; visual tokens in
+`docs/design-system.md`; the API it consumes in `docs/ux-round/api-contract.md` (v1.1.2).
+Phase-1 integration history (design snapshot, package provenance) stays in
+`docs/handoffs/agent-5.md` and `docs/handoffs/design-snapshot.json`.
 
-The snapshot supplies the marketing layout, brand, tokens, motion/3D, models and
-navigation. New presentational product components supply dashboard, transactions,
-source evidence/history, review actions, simulation and three-language assistant.
-A2 connect/import/privacy flows and shared API helpers were preserved. Binary
-speech uses the shared validated API base. Every JSON domain response is validated
-with zod, including actual Agent 1 PostgreSQL response examples in web client tests.
-Amounts stay integer paise; only display formatting/input conversion runs in web.
-All totals/simulations and assistant facts come from the backend. Empty/offline/
-failed-provider states never fabricate data or audio.
+## Shape
 
-Small hooks own requests, aborts, state and recording lifetime. Microphone input
-stops before 30 seconds, caps 3 MB, stops tracks on unmount, and stays memory-only.
-Transcripts are editable and require Ask. Audio is fetched independently, MIME/size
-checked, exposed through a Blob URL and revoked on replacement/unmount. Speech
-failure preserves text. Source evidence is capped by backend and client schemas;
-correction submits only changed fields, preserving narrow user locks.
+- Routes: `/dashboard` (Overview), `/transactions`, `/review`, `/assistant`, `/sources`,
+  `/import/<id>`, `/privacy` inside the authenticated `(app)` shell; public `/`, `/demo` and
+  `/login`. `/connect` only forwards the registered OAuth callback to Sources.
+- Desktop has a sidebar with household identity, service status, Shortcuts and Sign out.
+  Phones have a compact header with an **Account and settings** menu and a five-tab bar that
+  steps aside while a text field is focused. Nothing floats over content.
+- Every page has one task title (`<title>` "Task · FinBoy") and one `PageHeader` heading.
+- Daily screens are static (no WebGL). The 3D brand scenes stay on the marketing page, honour
+  reduced motion, and fall back to DOM with `?graphics=off` or a failed context probe.
 
-`?graphics=off` forces the same no-WebGL path as a failed context probe. All useful
-controls/text are DOM and work in that mode. Reduced-motion CSS and the snapshot's
-motion hooks remain. Marketing simulation numbers are labeled synthetic demo;
-marketing voice choreography has an explicit illustrative-preview accessibility label.
-It is not a live microphone/provider state.
+## Data and state
 
-New npm packages were imported at the snapshot's pinned versions: Plus Jakarta Sans,
-Anek Malayalam, @gsap/react, GSAP, R3F/fiber/drei/postprocessing, three/@types/three,
-postprocessing, maath, motion, lenis and gltfpack (asset build tool). Existing
-pnpm-lock.yaml was copied with the exact package snapshot, then frozen install passed.
-No Python/GPU/local Chatterbox dependencies were added. Official R3F Canvas fallback
-and GSAP React documentation were reviewed before integration. A transient pinned
-Prettier invocation formatted new files; it was not added as a project dependency.
+- `apps/web/src/lib/api/` is the only place that talks to the backend: one module per domain,
+  each response validated with zod before it reaches a component. `http.ts` adds timeouts,
+  classifies failures (session, conflict, offline, unavailable, invalid response, …) and keeps
+  only the error `code` and `request_id` from envelopes — never bodies or messages.
+- Hooks own request lifetimes: `use-resource` loads each panel independently so a failed
+  secondary panel never blanks the primary task; `use-import-run` polls with backoff and
+  survives dropped polls; voice and speech hooks own microphone and audio lifetimes.
+- Components are presentational. `lib/messages.ts` is the single failure-copy map (what didn't
+  happen, whether anything changed, what to do next, plus a reference ID);
+  `lib/import-outcome.ts` turns an import run into its title, details and next actions.
+- Money is never computed in the browser. Totals, deductions, previews, simulations and
+  answers come from the API as integer paise; the UI only formats them and converts typed
+  rupees to paise for corrections. Corrections send only changed fields with the record's
+  `expected_version`; save-and-confirm is one atomic decision, and every decision can be undone
+  while the backend allows it.
+- URL state carries filters, period, paging and the selected record (in the list and the
+  review queue), so evidence links (`/transactions?selected=<id>`) and Back work exactly.
 
-Verification: pnpm check/build passed; 15 web client tests include actual API schema
-compatibility, malformed payload rejection, exact merge request, integer input,
-MP3 failure not becoming fake audio, and multipart transcription contract.
-Chrome checked six product pages at all 1440×1000, 390×844 and 320×740 sizes without
-horizontal overflow. Actual imported totals, simulation and category correction were
-verified through the UI. Supporting screenshots live in the task's integration
-visualization directory. Default graphics and explicit fallback were inspected.
-Microphone permission was allowed by the human; denied-permission browser acceptance
-is still pending. See integration handoff for final live/remaining acceptance state.
+## Session, drafts and storage
+
+- A 401 opens **Sign in to continue** in place; unsaved corrections stay in memory and the
+  failed request can be retried after signing in. Signed-out deep links return through
+  `/login?next=` to an allow-listed app path only.
+- Unsaved corrections are kept per record in memory (never browser storage) and leaving with
+  one asks first. Browser storage holds only the reply-style choice (session) and whether
+  keyboard shortcuts are on (local) — never records, questions or answers.
+- Assistant turns live in module memory (at most 20) so evidence links and Back keep them.
+  Microphone audio is memory-only, stops before 30 seconds or 3 MB, and tracks stop on
+  unmount; transcripts are editable and never sent automatically. Speech audio is fetched
+  per tap, MIME/size checked, played from a Blob URL that is revoked on replacement or
+  unmount; a speech failure keeps the text answer.
+
+## Production configuration
+
+The deployed web app uses `NEXT_PUBLIC_API_URL=/`; Next rewrites `/api/v1/*` to the HTTPS
+`FINBOY_API_ORIGIN`, so the browser sends same-origin requests with the host-only household
+cookie (`credentials: "same-origin"`; cross-origin development uses `omit`). The origin must be
+HTTPS; local proxy checks use a temporary private certificate trusted only through
+`NODE_EXTRA_CA_CERTS`. No provider key, token or secret is ever in a `NEXT_PUBLIC_*` variable,
+client component or browser request. Product outcome events (`evidence_opened`,
+`overview_understood`, `review_completed`) go only to the backend's allowlisted audit endpoint.
+
+## Verification
+
+- `pnpm test:web`: client contract tests (synthetic contract states, phase-1 shapes rejected,
+  the backend's captured HTTP examples once that fixture is present, error redaction,
+  timeouts, uploads, speech), import outcomes, auth return paths and date formatting.
+- `pnpm test:e2e`: Playwright at 1440×1000, 390×844 and 320×740 against a test-only contract
+  double (`apps/web/e2e/support/`). It proves UI behaviour, not live integration.
+- `apps/web/e2e/live.spec.ts` (`E2E_LIVE_API=1`): the core journeys through the same-origin
+  proxy against a real API on a disposable database, with synthetic `.eml` files only.
+- Human-only acceptance (real Google consent, microphones, phone playback, screen readers,
+  device performance, observed comprehension) is recorded separately in the handoffs.

@@ -51,7 +51,7 @@ function TransactionsTile() {
 function ReviewTile() {
   return (
     <Tile>
-      <p className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-800">
         <AlertCircle className="size-3.5" aria-hidden="true" /> Needs your help
       </p>
       <p className="mt-2 font-semibold text-ink">₹1,840 · Possible Amazon order</p>

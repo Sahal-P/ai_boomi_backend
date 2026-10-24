@@ -18,7 +18,7 @@ export function FinalCta() {
             </h2>
             <div className="mt-9 flex flex-wrap justify-center gap-3">
               <Link
-                href="/connect"
+                href="/sources?intent=gmail"
                 className="group inline-flex h-12 items-center gap-3 rounded-full bg-ink pr-2 pl-6 text-sm font-semibold text-white shadow-lift transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
               >
                 Connect Gmail
@@ -26,8 +26,8 @@ export function FinalCta() {
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </span>
               </Link>
-              <Link href="/connect" className="glass inline-flex h-12 items-center rounded-full px-6 text-sm font-semibold text-ink">
-                Try the demo mailbox
+              <Link href="/demo" className="glass inline-flex h-12 items-center rounded-full px-6 text-sm font-semibold text-ink">
+                Explore sample data
               </Link>
             </div>
           </Reveal>

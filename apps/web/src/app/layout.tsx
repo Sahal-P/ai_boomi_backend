@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FinBoy — Your inbox already knows your money",
+  title: {
+    default: "FinBoy — Your inbox already knows your money",
+    template: "%s · FinBoy",
+  },
   description:
     "FinBoy turns bank alerts, receipts and bills into a verified money timeline, then answers your questions in Hindi, English, Malayalam or romanized input.",
   applicationName: "FinBoy",

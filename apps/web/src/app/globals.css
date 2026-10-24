@@ -113,7 +113,8 @@
 
   --ink: #14122b;
   --ink-soft: #57546e;
-  --ink-subtle: #8c89a3;
+  /* Darkened from #8c89a3 so small functional text meets WCAG AA (≥4.5:1) on canvas and glass. */
+  --ink-subtle: #68657f;
   --canvas: #f5f4fb;
   --lilac: #e9e3ff;
   --periwinkle: #dde6ff;
@@ -127,8 +128,9 @@
   --gold: #f2b544;
   --gold-soft: #ffd27a;
   --sky: #3e7bfa;
-  --positive: #0e9f6e;
-  --negative: #e5484d;
+  /* Text-safe semantic colours: ≥4.5:1 on white, tints and canvas (were #0e9f6e / #e5484d). */
+  --positive: #047857;
+  --negative: #c4262e;
   --warning: #d97706;
 
   --background: var(--canvas);
@@ -155,6 +157,15 @@
   html {
     @apply font-sans;
     text-rendering: optimizeLegibility;
+    /* Keep keyboard-focused controls clear of the fixed header and tab bar (WCAG 2.4.11). */
+    scroll-padding-top: 5.5rem;
+    scroll-padding-bottom: 6.5rem;
+  }
+  @media (min-width: 64rem) {
+    html {
+      scroll-padding-top: 1.5rem;
+      scroll-padding-bottom: 1.5rem;
+    }
   }
   body {
     @apply bg-background text-foreground antialiased;
@@ -248,6 +259,21 @@
   .line-up {
     display: block;
     animation: line-up 1.3s var(--ease-out-expo) both;
+  }
+}
+
+/* While typing on a phone the on-screen keyboard needs the space: hide the tab bar so it can
+   never cover the focused field or the form's primary action. */
+@media (max-width: 63.98rem) {
+  .app-shell:has(
+      :is(
+          input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="file"], [type="range"]),
+          textarea,
+          [contenteditable="true"]
+        ):focus
+    )
+    .app-tabbar {
+    display: none;
   }
 }
 
