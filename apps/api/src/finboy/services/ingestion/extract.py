@@ -5,6 +5,7 @@ from typing import Literal
 from finboy.core.config import Settings
 from finboy.services.ingestion.classifier import classify, trusted_domain
 from finboy.services.ingestion.llm import (
+    ExtractionUnavailable,
     LLMResult,
     cassette_extract,
     live_extract,
@@ -40,11 +41,16 @@ def prepare(
     rules = extract_rules(message)
     if rules.not_transaction or mode == "rules":
         return Prepared(message, classification, rules, trusted_domain(message.sender_domain))
-    result = (
-        live_extract(message, settings)
-        if mode == "live"
-        else cassette_extract(message, settings.openai_extraction_model)
-    )
+    try:
+        result = (
+            live_extract(message, settings)
+            if mode == "live"
+            else cassette_extract(message, settings.openai_extraction_model)
+        )
+    except ExtractionUnavailable:
+        if mode != "live":
+            raise
+        return Prepared(message, classification, rules, trusted_domain(message.sender_domain))
     return Prepared(
         message,
         classification,
