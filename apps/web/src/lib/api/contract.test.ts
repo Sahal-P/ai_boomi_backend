@@ -1,16 +1,22 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { z } from "zod";
 import { onSessionEvent } from "../session-events.ts";
-import { answerSchema, displayLang, speechFor, transcribeAudio } from "./assistant.ts";
+import { answerSchema, askQuestion, displayLang, speechFor, transcribeAudio } from "./assistant.ts";
 import { ApiError, failure, requestJson } from "./http.ts";
-import { fileProblem, importRunSchema, issueSchema } from "./imports.ts";
-import { baseTransactionSchema, getSummary, inputPaise, summarySchema } from "./money.ts";
-import { deletionPreviewSchema } from "./privacy.ts";
+import { getDemo } from "./demo.ts";
+import { fileProblem, getImportIssues, getImportRun, getImports, importRunSchema, issueSchema } from "./imports.ts";
+import { baseTransactionSchema, getObligation, getObligations, getSummary, inputPaise, simulate, summarySchema } from "./money.ts";
+import { deletionPreviewSchema, exportRecords, getIsolation, previewDeletion } from "./privacy.ts";
 import {
   decide,
+  getMergeCandidates,
+  getTransaction,
+  getTransactionPage,
   pageSchema,
+  previewDecision,
   previewSchema,
   recordQueryString,
   undoDecision,
@@ -185,3 +191,47 @@ test("typed summary client rejects malformed success without exposing it", async
   t.mock.method(globalThis, "fetch", async () => Response.json({ private: "sensitive" }));
   await assert.rejects(getSummary(null), (error: unknown) => error instanceof ApiError && !error.message.includes("sensitive"));
 });
+
+// Responses captured from the real API by the backend owner (contract v1.1.2). The file lives on
+// the backend branch, so this runs once both branches are assembled.
+const actualHttp = new URL("../../../../../docs/ux-round/fixtures/actual-http-v1.json", import.meta.url);
+test(
+  "actual backend HTTP examples parse through the same clients the pages use",
+  { skip: !existsSync(actualHttp) && "actual-http-v1.json arrives with the backend branch" },
+  async (t) => {
+    const actual = await read("../../../../../docs/ux-round/fixtures/actual-http-v1.json");
+    let body: unknown = null;
+    t.mock.method(globalThis, "fetch", async () => Response.json(body));
+    const id = "10000000-0000-4000-8000-000000000001";
+    const query = { scope: "all", period: null, limit: 50, offset: 0 } as const;
+    const decision: DecisionRequest = { expected_version: "1", action: "confirm" };
+    const calls: Record<string, () => Promise<unknown>> = {
+      demo: () => getDemo(),
+      summary: () => getSummary(null),
+      transaction_page: () => getTransactionPage(query),
+      filtered_empty: () => getTransactionPage(query),
+      transaction_detail: () => getTransaction(id),
+      merge_candidates: () => getMergeCandidates(id),
+      obligations: () => getObligations("unresolved"),
+      obligation_detail: () => getObligation(id),
+      import_status: () => getImportRun(id),
+      import_history: () => getImports(0),
+      import_issues: () => getImportIssues(id, 0),
+      isolation: () => getIsolation(),
+      decision_preview: () => previewDecision(id, decision),
+      decision_result: () => decide(id, decision),
+      undo_result: () => undoDecision(id, id, "1"),
+      simulation: () => simulate(100000),
+      deletion_preview: () => previewDeletion(null),
+      structured_export: () => exportRecords("1"),
+    };
+    for (const style of ["en", "hi", "ml", "hinglish", "manglish", "period_clarification"]) {
+      calls[`assistant_${style}`] = () => askQuestion("synthetic", "auto");
+    }
+    for (const [key, call] of Object.entries(calls)) {
+      body = actual[key];
+      await assert.doesNotReject(call(), `actual ${key} response`);
+    }
+    assert.deepEqual(Object.keys(actual.decision_request as object).sort(), ["action", "correction", "expected_version"]);
+  },
+);
