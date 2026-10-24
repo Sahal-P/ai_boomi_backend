@@ -1,133 +1,85 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import {
-  askQuestion,
-  speechFor,
-  transcribeAudio,
-  type Answer,
-  type DisplayStyle,
-} from "@/lib/api/assistant";
-import { useVoiceRecorder } from "./use-voice-recorder";
+
+import { useSyncExternalStore } from "react";
+import { askQuestion, styles, type DisplayStyle } from "@/lib/api/assistant";
+import { isAbort } from "@/lib/api/http";
+import { addTurn, clearTurns, getServerTurns, getTurns, subscribeTurns, updateTurn } from "@/lib/conversation";
+import { describeProblem } from "@/lib/messages";
+
+// The request in flight is module-scoped so an answer still arrives if you open its evidence
+// and come back; Cancel aborts it explicitly.
+let inflight: { id: string; controller: AbortController } | null = null;
+const STYLE_KEY = "finboy:reply-style";
+const styleListeners = new Set<() => void>();
+
+function readStyle(): DisplayStyle {
+  try {
+    const stored = window.sessionStorage.getItem(STYLE_KEY);
+    return styles.find((style) => style === stored) ?? "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+/** Reply style is a display preference remembered for this browser session only. */
+export function setReplyStyle(style: DisplayStyle) {
+  try {
+    window.sessionStorage.setItem(STYLE_KEY, style);
+  } catch {
+    // Storage unavailable: the choice still applies until the page reloads.
+  }
+  styleListeners.forEach((listener) => listener());
+}
+
+function subscribeStyle(listener: () => void) {
+  styleListeners.add(listener);
+  return () => {
+    styleListeners.delete(listener);
+  };
+}
+
+async function run(id: string, question: string, style: DisplayStyle) {
+  inflight?.controller.abort();
+  const controller = new AbortController();
+  inflight = { id, controller };
+  try {
+    const answer = await askQuestion(question, style, controller.signal);
+    updateTurn(id, { state: "answered", answer, problem: null });
+  } catch (error) {
+    if (isAbort(error) || controller.signal.aborted) updateTurn(id, { state: "cancelled" });
+    else updateTurn(id, { state: "failed", problem: describeProblem(error, "FinBoy couldn't answer that") });
+  } finally {
+    if (inflight?.id === id) inflight = null;
+  }
+}
 
 export function useAssistant() {
-  const [question, setQuestion] = useState("");
-  const [style, setStyle] = useState<DisplayStyle>("auto");
-  const [answer, setAnswer] = useState<Answer | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [voiceError, setVoiceError] = useState<string | null>(null);
-  const control = useRef<AbortController | null>(null);
-  const speechControl = useRef<AbortController | null>(null);
-  const audioRef = useRef<string | null>(null);
-  const inFlight = useRef(false);
-  const speechFlight = useRef(false);
-  const recording = useVoiceRecorder();
-  useEffect(
-    () => () => {
-      control.current?.abort();
-      speechControl.current?.abort();
-      if (audioRef.current) URL.revokeObjectURL(audioRef.current);
-    },
-    [],
-  );
-  useEffect(() => {
-    const blob = recording.blob;
-    if (!blob) return;
-    const controller = new AbortController();
-    void (async () => {
-      setTranscribing(true);
-      setVoiceError(null);
-      try {
-        const result = await transcribeAudio(blob, controller.signal);
-        if (controller.signal.aborted) return;
-        setQuestion(result.transcript);
-        setNotice(
-          `Transcript ready (${result.detected_language}). Check it, then ask your question.`,
-        );
-      } catch {
-        if (!controller.signal.aborted)
-          setVoiceError(
-            "Could not transcribe that recording. Try a shorter recording or type your question.",
-          );
-      } finally {
-        if (!controller.signal.aborted) setTranscribing(false);
-      }
-    })();
-    return () => controller.abort();
-  }, [recording.blob]);
-  async function ask(text = question) {
-    if (!text.trim() || inFlight.current) return;
-    inFlight.current = true;
-    control.current?.abort();
-    const controller = new AbortController();
-    control.current = controller;
-    speechControl.current?.abort();
-    setBusy(true);
-    setError(null);
-    setAnswer(null);
-    setAudioUrl(null);
-    setVoiceError(null);
-    setSpeaking(false);
-    if (audioRef.current) {
-      URL.revokeObjectURL(audioRef.current);
-      audioRef.current = null;
-    }
-    try {
-      const result = await askQuestion(text.trim(), style, controller.signal);
-      if (!controller.signal.aborted) setAnswer(result);
-    } catch {
-      if (!controller.signal.aborted)
-        setError(
-          "FinBoy could not answer just now. Check the API connection and try again.",
-        );
-    } finally {
-      inFlight.current = false;
-      if (!controller.signal.aborted) setBusy(false);
-    }
-  }
-  async function listen() {
-    if (!answer || speechFlight.current) return;
-    speechFlight.current = true;
-    const controller = new AbortController();
-    speechControl.current = controller;
-    setSpeaking(true);
-    setVoiceError(null);
-    try {
-      const audio = await speechFor(answer, controller.signal);
-      if (controller.signal.aborted) return;
-      if (audioRef.current) URL.revokeObjectURL(audioRef.current);
-      const url = URL.createObjectURL(audio);
-      audioRef.current = url;
-      setAudioUrl(url);
-    } catch {
-      if (!controller.signal.aborted)
-        setVoiceError(
-          "Audio is unavailable right now. Your text answer is still available.",
-        );
-    } finally {
-      speechFlight.current = false;
-      if (!controller.signal.aborted) setSpeaking(false);
-    }
-  }
+  const turns = useSyncExternalStore(subscribeTurns, getTurns, getServerTurns);
+  const style = useSyncExternalStore(subscribeStyle, readStyle, () => "auto" as const);
+  const pending = turns.some((turn) => turn.state === "pending");
   return {
-    question,
-    setQuestion,
+    turns,
+    pending,
     style,
-    setStyle,
-    answer,
-    error,
-    busy,
-    transcribing,
-    speaking,
-    audioUrl,
-    notice,
-    voiceError,
-    recording,
-    ask,
-    listen,
+    setStyle: setReplyStyle,
+    ask(question: string, askStyle: DisplayStyle = style) {
+      const text = question.trim().slice(0, 2000);
+      if (!text || pending) return false;
+      void run(addTurn(text, askStyle), text, askStyle);
+      return true;
+    },
+    retry(id: string) {
+      const turn = turns.find((item) => item.id === id);
+      if (!turn || pending) return;
+      updateTurn(id, { state: "pending", problem: null, askedAt: Date.now() });
+      void run(id, turn.question, turn.style);
+    },
+    cancel() {
+      inflight?.controller.abort();
+    },
+    clear() {
+      inflight?.controller.abort();
+      clearTurns();
+    },
   };
 }
