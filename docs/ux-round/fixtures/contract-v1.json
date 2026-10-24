@@ -1,0 +1,432 @@
+{
+  "summary_partial_overdue": {
+    "period_start": "2026-10-01",
+    "period_end": "2026-10-31",
+    "as_of": "2026-10-24",
+    "currency": "INR",
+    "tracked_income_minor": 1000000,
+    "confirmed_outflows_minor": 0,
+    "upcoming_commitments_minor": 0,
+    "overdue_commitments_minor": 100000,
+    "uncertain_commitments_minor": 100000,
+    "unresolved_commitments_minor": 100000,
+    "overdue_commitment_count": 1,
+    "estimated_unallocated_minor": 900000,
+    "pending_review_count": 4,
+    "pending_review_minor": 400000,
+    "income_transaction_count": 1,
+    "outflow_transaction_count": 0,
+    "commitment_count": 1,
+    "categories": [],
+    "evidence_transaction_ids": [],
+    "dataset": "household",
+    "data_version": "42",
+    "coverage": {
+      "sync_mode": "manual",
+      "last_successful_scan_at": "2026-10-24T09:00:00+05:30",
+      "window_start": "2026-09-24",
+      "window_end": "2026-10-24",
+      "state": "partial",
+      "truncated": false,
+      "pending_review_count": 4,
+      "failed_source_count": 2,
+      "active_import_id": null,
+      "quarantined_count": 1
+    }
+  },
+  "transactions_filtered_empty": {
+    "items": [],
+    "total": 0,
+    "unresolved_total": 4,
+    "limit": 50,
+    "offset": 0,
+    "next_offset": null,
+    "data_version": "42",
+    "dataset": "household"
+  },
+  "transactions_pending": {
+    "items": [
+      {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "direction": "out",
+        "kind": "purchase",
+        "amount_minor": 100000,
+        "currency": "INR",
+        "merchant": "Sample Bookshop",
+        "category": "shopping",
+        "occurred_at": "2026-10-24T08:00:00+05:30",
+        "status": "needs_review",
+        "confidence": 0.8,
+        "review_reason": "unverified_payment",
+        "reference_id": null,
+        "payment_instrument": null,
+        "account_last4": null,
+        "possible_duplicate_of_id": null,
+        "linked_transaction_id": null,
+        "merged_into_id": null,
+        "dataset": "household",
+        "source_modes": [
+          "eml_upload"
+        ],
+        "source_count": 1,
+        "extraction_quality": "complete",
+        "payment_verification": "unverified",
+        "version": "42"
+      }
+    ],
+    "total": 1,
+    "unresolved_total": 4,
+    "limit": 50,
+    "offset": 0,
+    "next_offset": null,
+    "data_version": "42",
+    "dataset": "household"
+  },
+  "decision_request": {
+    "expected_version": "42",
+    "action": "confirm",
+    "correction": {
+      "amount_minor": 95000
+    }
+  },
+  "decision_preview": {
+    "version": "42",
+    "action": "confirm",
+    "transaction_id": "10000000-0000-4000-8000-000000000001",
+    "keep_id": null,
+    "source_count": 1,
+    "affected_transaction_ids": [
+      "10000000-0000-4000-8000-000000000001"
+    ],
+    "before_summary": {
+      "period_start": "2026-10-01",
+      "period_end": "2026-10-31",
+      "as_of": "2026-10-24",
+      "currency": "INR",
+      "tracked_income_minor": 1000000,
+      "confirmed_outflows_minor": 0,
+      "upcoming_commitments_minor": 0,
+      "overdue_commitments_minor": 100000,
+      "uncertain_commitments_minor": 100000,
+      "unresolved_commitments_minor": 100000,
+      "overdue_commitment_count": 1,
+      "estimated_unallocated_minor": 900000,
+      "pending_review_count": 4,
+      "pending_review_minor": 400000,
+      "income_transaction_count": 1,
+      "outflow_transaction_count": 0,
+      "commitment_count": 1,
+      "categories": [],
+      "evidence_transaction_ids": [],
+      "dataset": "household",
+      "data_version": "42",
+      "coverage": {
+        "sync_mode": "manual",
+        "last_successful_scan_at": "2026-10-24T09:00:00+05:30",
+        "window_start": "2026-09-24",
+        "window_end": "2026-10-24",
+        "state": "partial",
+        "truncated": false,
+        "pending_review_count": 4,
+        "failed_source_count": 2,
+        "active_import_id": null,
+        "quarantined_count": 1
+      }
+    },
+    "after_summary": {
+      "period_start": "2026-10-01",
+      "period_end": "2026-10-31",
+      "as_of": "2026-10-24",
+      "currency": "INR",
+      "tracked_income_minor": 1000000,
+      "confirmed_outflows_minor": 95000,
+      "upcoming_commitments_minor": 0,
+      "overdue_commitments_minor": 100000,
+      "uncertain_commitments_minor": 100000,
+      "unresolved_commitments_minor": 100000,
+      "overdue_commitment_count": 1,
+      "estimated_unallocated_minor": 805000,
+      "pending_review_count": 4,
+      "pending_review_minor": 400000,
+      "income_transaction_count": 1,
+      "outflow_transaction_count": 0,
+      "commitment_count": 1,
+      "categories": [],
+      "evidence_transaction_ids": [],
+      "dataset": "household",
+      "data_version": "42",
+      "coverage": {
+        "sync_mode": "manual",
+        "last_successful_scan_at": "2026-10-24T09:00:00+05:30",
+        "window_start": "2026-09-24",
+        "window_end": "2026-10-24",
+        "state": "partial",
+        "truncated": false,
+        "pending_review_count": 4,
+        "failed_source_count": 2,
+        "active_import_id": null,
+        "quarantined_count": 1
+      }
+    }
+  },
+  "issue": {
+    "id": "20000000-0000-4000-8000-000000000001",
+    "source_id": "20000000-0000-4000-8000-000000000001",
+    "source_mode": "eml_upload",
+    "reason": "no_supported_events",
+    "retryable": true,
+    "retry_strategy": "select_original_files",
+    "attempts": 1
+  },
+  "deletion_preview": {
+    "version": "42",
+    "connection_id": null,
+    "source_count": 2,
+    "event_count": 2,
+    "removed_transaction_count": 1,
+    "retained_shared_transaction_count": 1,
+    "removed_obligation_count": 0,
+    "retained_shared_obligation_count": 1,
+    "first_received_at": "2026-10-01T09:00:00+05:30",
+    "last_received_at": "2026-10-24T09:00:00+05:30",
+    "backup_retention_days": 7
+  },
+  "import_queued": {
+    "id": "30000000-0000-4000-8000-000000000001",
+    "mode": "eml_upload",
+    "status": "queued",
+    "headers_checked": 6,
+    "candidates_found": 6,
+    "emails_processed": 6,
+    "events_extracted": 4,
+    "transactions_created": 4,
+    "duplicates_merged": 0,
+    "needs_review": 4,
+    "non_financial_skipped": 0,
+    "failed": 0,
+    "error_code": null,
+    "started_at": "2026-10-24T09:00:00+05:30",
+    "finished_at": null,
+    "outcome": "queued",
+    "retryable": false,
+    "retry_strategy": "select_original_files",
+    "cancel_requested": false,
+    "window_start": null,
+    "window_end": null,
+    "truncated": false,
+    "data_version": "42"
+  },
+  "import_running": {
+    "id": "30000000-0000-4000-8000-000000000001",
+    "mode": "eml_upload",
+    "status": "running",
+    "headers_checked": 6,
+    "candidates_found": 6,
+    "emails_processed": 6,
+    "events_extracted": 4,
+    "transactions_created": 4,
+    "duplicates_merged": 0,
+    "needs_review": 4,
+    "non_financial_skipped": 0,
+    "failed": 0,
+    "error_code": null,
+    "started_at": "2026-10-24T09:00:00+05:30",
+    "finished_at": null,
+    "outcome": "running",
+    "retryable": false,
+    "retry_strategy": "select_original_files",
+    "cancel_requested": false,
+    "window_start": null,
+    "window_end": null,
+    "truncated": false,
+    "data_version": "42"
+  },
+  "import_complete": {
+    "id": "30000000-0000-4000-8000-000000000001",
+    "mode": "eml_upload",
+    "status": "completed",
+    "headers_checked": 6,
+    "candidates_found": 6,
+    "emails_processed": 6,
+    "events_extracted": 4,
+    "transactions_created": 4,
+    "duplicates_merged": 0,
+    "needs_review": 4,
+    "non_financial_skipped": 0,
+    "failed": 0,
+    "error_code": null,
+    "started_at": "2026-10-24T09:00:00+05:30",
+    "finished_at": "2026-10-24T09:00:10+05:30",
+    "outcome": "complete",
+    "retryable": false,
+    "retry_strategy": "select_original_files",
+    "cancel_requested": false,
+    "window_start": null,
+    "window_end": null,
+    "truncated": false,
+    "data_version": "42"
+  },
+  "import_partial": {
+    "id": "30000000-0000-4000-8000-000000000001",
+    "mode": "eml_upload",
+    "status": "completed",
+    "headers_checked": 6,
+    "candidates_found": 6,
+    "emails_processed": 6,
+    "events_extracted": 4,
+    "transactions_created": 4,
+    "duplicates_merged": 0,
+    "needs_review": 4,
+    "non_financial_skipped": 0,
+    "failed": 2,
+    "error_code": null,
+    "started_at": "2026-10-24T09:00:00+05:30",
+    "finished_at": "2026-10-24T09:00:10+05:30",
+    "outcome": "partial",
+    "retryable": true,
+    "retry_strategy": "select_original_files",
+    "cancel_requested": false,
+    "window_start": null,
+    "window_end": null,
+    "truncated": false,
+    "data_version": "42"
+  },
+  "import_failed": {
+    "id": "30000000-0000-4000-8000-000000000001",
+    "mode": "eml_upload",
+    "status": "failed",
+    "headers_checked": 6,
+    "candidates_found": 6,
+    "emails_processed": 6,
+    "events_extracted": 4,
+    "transactions_created": 4,
+    "duplicates_merged": 0,
+    "needs_review": 4,
+    "non_financial_skipped": 0,
+    "failed": 0,
+    "error_code": "import_failed",
+    "started_at": "2026-10-24T09:00:00+05:30",
+    "finished_at": "2026-10-24T09:00:10+05:30",
+    "outcome": "failed",
+    "retryable": true,
+    "retry_strategy": "select_original_files",
+    "cancel_requested": false,
+    "window_start": null,
+    "window_end": null,
+    "truncated": false,
+    "data_version": "42"
+  },
+  "import_interrupted": {
+    "id": "30000000-0000-4000-8000-000000000001",
+    "mode": "eml_upload",
+    "status": "failed",
+    "headers_checked": 6,
+    "candidates_found": 6,
+    "emails_processed": 6,
+    "events_extracted": 4,
+    "transactions_created": 4,
+    "duplicates_merged": 0,
+    "needs_review": 4,
+    "non_financial_skipped": 0,
+    "failed": 0,
+    "error_code": "import_failed",
+    "started_at": "2026-10-24T09:00:00+05:30",
+    "finished_at": "2026-10-24T09:00:10+05:30",
+    "outcome": "interrupted",
+    "retryable": true,
+    "retry_strategy": "select_original_files",
+    "cancel_requested": false,
+    "window_start": null,
+    "window_end": null,
+    "truncated": false,
+    "data_version": "42"
+  },
+  "import_cancelled": {
+    "id": "30000000-0000-4000-8000-000000000001",
+    "mode": "eml_upload",
+    "status": "failed",
+    "headers_checked": 6,
+    "candidates_found": 6,
+    "emails_processed": 6,
+    "events_extracted": 4,
+    "transactions_created": 4,
+    "duplicates_merged": 0,
+    "needs_review": 4,
+    "non_financial_skipped": 0,
+    "failed": 0,
+    "error_code": "import_failed",
+    "started_at": "2026-10-24T09:00:00+05:30",
+    "finished_at": "2026-10-24T09:00:10+05:30",
+    "outcome": "cancelled",
+    "retryable": true,
+    "retry_strategy": "select_original_files",
+    "cancel_requested": true,
+    "window_start": null,
+    "window_end": null,
+    "truncated": false,
+    "data_version": "42"
+  },
+  "error_401_session_required": {
+    "error": {
+      "code": "session_required",
+      "message": "The requested task could not be completed.",
+      "request_id": "40000000-0000-4000-8000-000000000001"
+    }
+  },
+  "error_403_origin_denied": {
+    "error": {
+      "code": "origin_denied",
+      "message": "The requested task could not be completed.",
+      "request_id": "40000000-0000-4000-8000-000000000001"
+    }
+  },
+  "error_404_not_found": {
+    "error": {
+      "code": "not_found",
+      "message": "The requested task could not be completed.",
+      "request_id": "40000000-0000-4000-8000-000000000001"
+    }
+  },
+  "error_409_version_conflict": {
+    "error": {
+      "code": "version_conflict",
+      "message": "The requested task could not be completed.",
+      "request_id": "40000000-0000-4000-8000-000000000001"
+    }
+  },
+  "error_409_decision_conflict": {
+    "error": {
+      "code": "decision_conflict",
+      "message": "The requested task could not be completed.",
+      "request_id": "40000000-0000-4000-8000-000000000001"
+    }
+  },
+  "error_409_demo_read_only": {
+    "error": {
+      "code": "demo_read_only",
+      "message": "The requested task could not be completed.",
+      "request_id": "40000000-0000-4000-8000-000000000001"
+    }
+  },
+  "error_409_original_files_required": {
+    "error": {
+      "code": "original_files_required",
+      "message": "The requested task could not be completed.",
+      "request_id": "40000000-0000-4000-8000-000000000001"
+    }
+  },
+  "error_422_validation_error": {
+    "error": {
+      "code": "validation_error",
+      "message": "The requested task could not be completed.",
+      "request_id": "40000000-0000-4000-8000-000000000001"
+    }
+  },
+  "error_503_source_unavailable": {
+    "error": {
+      "code": "source_unavailable",
+      "message": "The requested task could not be completed.",
+      "request_id": "40000000-0000-4000-8000-000000000001"
+    }
+  }
+}
