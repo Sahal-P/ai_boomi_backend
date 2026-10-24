@@ -349,7 +349,8 @@ export function OverviewScreen() {
             : "Your household's tracked money"
         }
         actions={
-          <>
+          // One row even at 320 px: the period select shrinks on phones instead of wrapping.
+          <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
             <label className="sr-only" htmlFor="overview-period">Period</label>
             <select
               id="overview-period"
@@ -358,7 +359,7 @@ export function OverviewScreen() {
                 const [y, m] = event.target.value.split("-");
                 update({ year: y || null, month: m || null });
               }}
-              className="h-11 rounded-full border border-input bg-white px-4 text-sm font-semibold"
+              className="h-11 min-w-0 flex-1 rounded-full border border-input bg-white px-4 text-sm font-semibold sm:flex-none"
             >
               <option value="">This month</option>
               {months.slice(1).map((item) => (
@@ -367,10 +368,15 @@ export function OverviewScreen() {
                 </option>
               ))}
             </select>
-            <Button variant="outline" onClick={summary.reload} disabled={summary.status === "loading" || summary.status === "refreshing"}>
+            <Button
+              variant="outline"
+              className="shrink-0"
+              onClick={summary.reload}
+              disabled={summary.status === "loading" || summary.status === "refreshing"}
+            >
               <RefreshCw aria-hidden="true" /> Refresh
             </Button>
-          </>
+          </div>
         }
       />
       <RefreshingLabel active={summary.status === "refreshing"}>Refreshing your overview…</RefreshingLabel>

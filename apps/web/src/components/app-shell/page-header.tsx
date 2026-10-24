@@ -23,7 +23,7 @@ export function PageHeader({
         )}
         {children}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2 max-sm:w-full">{actions}</div>}
     </header>
   );
 }

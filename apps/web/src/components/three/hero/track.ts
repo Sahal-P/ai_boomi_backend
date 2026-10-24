@@ -3,7 +3,7 @@ import * as THREE from "three";
 export type Vec3 = readonly [number, number, number];
 
 export type TrackOptions = {
-  /** Centreline control points (centripetal Catmull-Rom). */
+  /** Centreline control points (centripetal Catmull-Rom; bends too tight for the channel are eased). */
   points: readonly Vec3[];
   /** Channel outer radius: the centreline sits this far above whatever the channel rests on. */
   outerRadius: number;
@@ -33,6 +33,38 @@ const SAMPLES = 1600;
 const UP = new THREE.Vector3(0, 1, 0);
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const MAX_LEAN = 0.6;
+/** Tightest bend, in channel radii: any tighter and the inner lip folds through itself. */
+const MIN_BEND = 1.6;
+
+/** Radius of the horizontal circle through three points (Infinity when they are collinear). */
+function bendRadius(a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3): number {
+  const cross = Math.abs((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x));
+  if (cross < 1e-9) return Infinity;
+  const sides = Math.hypot(b.x - a.x, b.z - a.z) * Math.hypot(c.x - b.x, c.z - b.z) * Math.hypot(a.x - c.x, a.z - c.z);
+  return sides / (2 * cross);
+}
+
+/**
+ * A swept channel folds through itself wherever its path turns tighter than its own
+ * half-width. Resamples the path densely and nudges only the too-tight samples toward
+ * their neighbours (horizontally, so heights over the slabs hold) until every bend is at
+ * least `minRadius`, then fits the curve through the relaxed samples.
+ */
+function relaxBends(curve: THREE.CatmullRomCurve3, minRadius: number): THREE.CatmullRomCurve3 {
+  const points = curve.getSpacedPoints(Math.ceil(curve.getLength() / (minRadius / 4)));
+  for (let pass = 0; pass < 500; pass += 1) {
+    let relaxed = false;
+    for (let index = 1; index < points.length - 1; index += 1) {
+      const [a, b, c] = [points[index - 1], points[index], points[index + 1]];
+      if (!a || !b || !c || bendRadius(a, b, c) >= minRadius) continue;
+      b.x += ((a.x + c.x) / 2 - b.x) * 0.5;
+      b.z += ((a.z + c.z) / 2 - b.z) * 0.5;
+      relaxed = true;
+    }
+    if (!relaxed) break;
+  }
+  return new THREE.CatmullRomCurve3(points, false, "centripetal", 0.5);
+}
 
 /** Three box-filter passes (≈ Gaussian) along the path, clamped at the ends. */
 function smooth(values: Float32Array, radius: number): void {
@@ -93,11 +125,14 @@ function channelProfile(outer: number, inner: number, arcSteps: number, capSteps
 
 export function createTrack(options: TrackOptions): Track {
   const { outerRadius, wall, coinRadius, gravity, drag, entrySpeed, minSpeed, bank } = options;
-  const curve = new THREE.CatmullRomCurve3(
-    options.points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
-    false,
-    "centripetal",
-    0.5,
+  const curve = relaxBends(
+    new THREE.CatmullRomCurve3(
+      options.points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
+      false,
+      "centripetal",
+      0.5,
+    ),
+    outerRadius * MIN_BEND,
   );
   const length = curve.getLength();
   const step = length / (SAMPLES - 1);

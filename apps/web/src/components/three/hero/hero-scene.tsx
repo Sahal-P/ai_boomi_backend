@@ -129,28 +129,32 @@ const SUN_SHADOW: Record<QualityTier, { size: number; radius: number }> = {
 
 /** Values GSAP tweens and the frame loop reads; nothing here triggers React renders. */
 type Motion = {
-  /** Coin clock (seconds) and its rate; the intro eases the rate up from rest. */
+  /** Coin clock (seconds) and its rate; the intro eases the rate up to full speed. */
   clock: number;
   rate: number;
-  /** Intro offsets that settle to 0. */
+  /** Intro camera offsets that settle to 0. */
   dolly: number;
   crane: number;
   orbit: number;
-  /** Light levels 0–1. */
-  glow: number;
-  sun: number;
 };
+
+/** Frames slower than this (shader compiles, texture uploads) keep the hero hidden. */
+const WARM_FRAME_SECONDS = 1 / 20;
+/** Smooth frames in a row before the reveal, and the longest the reveal may wait. */
+const WARM_FRAMES = 3;
+const WARM_TIMEOUT_SECONDS = 4;
 
 // --------------------------------------------------------------------------------- pieces
 
 /** Honed terrazzo floor, lit by the sun, the sky and the slabs' LED underglow. */
-function Floor({ quality, motion }: { quality: QualityTier; motion: RefObject<Motion> }) {
+function Floor({ quality }: { quality: QualityTier }) {
   const maxAnisotropy = useThree((state) => state.gl.capabilities.getMaxAnisotropy());
   const spill = useMemo(() => {
     const uniforms = createSpillUniforms();
-    EMITTERS.forEach((emitter, index) =>
-      emitter.corners.forEach((corner, k) => uniforms.uSpillCorners.value[index * 4 + k]?.copy(corner)),
-    );
+    EMITTERS.forEach((emitter, index) => {
+      emitter.corners.forEach((corner, k) => uniforms.uSpillCorners.value[index * 4 + k]?.copy(corner));
+      uniforms.uSpillRadiance.value[index]?.copy(emitter.radiance);
+    });
     return uniforms;
   }, []);
   const material = useMemo(() => {
@@ -168,10 +172,6 @@ function Floor({ quality, motion }: { quality: QualityTier; motion: RefObject<Mo
     },
     [material],
   );
-  useFrame(() => {
-    const level = motion.current?.glow ?? 1;
-    EMITTERS.forEach((emitter, index) => spill.uSpillRadiance.value[index]?.copy(emitter.radiance).multiplyScalar(level));
-  });
   return (
     <mesh rotation-x={-Math.PI / 2} material={material} receiveShadow>
       <planeGeometry args={[140, 140]} />
@@ -204,15 +204,13 @@ function createStripGeometry(width: number, depth: number): THREE.BufferGeometry
   return geometry;
 }
 
-type SlabProps = { spec: SlabSpec; material: THREE.Material; motion: RefObject<Motion> };
+type SlabProps = { spec: SlabSpec; material: THREE.Material };
 
 /** A floating slab; glowing ones carry an HDR LED ring under the rim (their floor light is in Floor). */
-function Slab({ spec, material, motion }: SlabProps) {
+function Slab({ spec, material }: SlabProps) {
   const [width, height, depth] = spec.size;
   const strip = useMemo(() => createStripGeometry(width, depth), [width, depth]);
-  const glowColor = useMemo(() => new THREE.Color(spec.glow ?? "#ffffff"), [spec.glow]);
-  const neon = useMemo(() => createNeon(glowColor, LED_STRENGTH), [glowColor]);
-  const strips = useRef<THREE.Mesh>(null);
+  const neon = useMemo(() => createNeon(spec.glow ?? "#ffffff", LED_STRENGTH), [spec.glow]);
   useEffect(
     () => () => {
       strip.dispose();
@@ -221,17 +219,10 @@ function Slab({ spec, material, motion }: SlabProps) {
     [strip, neon],
   );
 
-  useFrame(() => {
-    const stripMaterial = strips.current?.material;
-    if (stripMaterial instanceof THREE.MeshBasicMaterial) {
-      stripMaterial.color.copy(glowColor).multiplyScalar(LED_STRENGTH * (motion.current?.glow ?? 1));
-    }
-  });
-
   return (
     <group position={spec.position} rotation-y={SLAB_YAW}>
       <RoundedBox args={[width, height, depth]} radius={0.045} smoothness={4} material={material} castShadow receiveShadow />
-      {spec.glow ? <mesh ref={strips} geometry={strip} material={neon} position-y={-height / 2 - 0.006} /> : null}
+      {spec.glow ? <mesh geometry={strip} material={neon} position-y={-height / 2 - 0.006} /> : null}
     </group>
   );
 }
@@ -300,14 +291,12 @@ function RollingCoins({ track, motion }: { track: ReturnType<typeof createTrack>
  * Its aim wanders on a slow Lissajous (70 s / 90 s), so the shafts drift across the set
  * like late-afternoon light rather than sitting painted on the floor.
  */
-function Sun({ quality, motion, reducedMotion }: { quality: QualityTier; motion: RefObject<Motion>; reducedMotion: boolean }) {
-  const light = useRef<THREE.SpotLight>(null);
+function Sun({ quality, reducedMotion }: { quality: QualityTier; reducedMotion: boolean }) {
   const gobo = useMemo(() => createWindowGoboTexture(), []);
   const aim = useMemo(() => new THREE.Object3D(), []);
   const position = useMemo(() => SUN_TARGET.clone().addScaledVector(SUN_DIRECTION, 36), []);
   useEffect(() => () => gobo.dispose(), [gobo]);
   useFrame((state) => {
-    if (light.current) light.current.intensity = SUN_INTENSITY * (motion.current?.sun ?? 1);
     const time = reducedMotion ? 0 : state.clock.elapsedTime;
     aim.position.set(
       SUN_TARGET.x + Math.sin((TAU * time) / 70) * 0.9,
@@ -322,7 +311,6 @@ function Sun({ quality, motion, reducedMotion }: { quality: QualityTier; motion:
       {/* Keyed by tier: three allocates a shadow map once, so a new size needs a new light. */}
       <spotLight
         key={quality}
-        ref={light}
         position={position}
         target={aim}
         map={gobo}
@@ -416,30 +404,47 @@ export function HeroScene({ quality, reducedMotion, pointer, progress, onReady }
   useEffect(() => () => slabMaterial.dispose(), [slabMaterial]);
 
   // Coins start mid-journey (clock 7 s) so the first frame is already composed.
-  const motion = useRef<Motion>({ clock: 7, rate: 1, dolly: 0, crane: 0, orbit: 0, glow: 1, sun: 1 });
+  const motion = useRef<Motion>({ clock: 7, rate: 1, dolly: 0, crane: 0, orbit: 0 });
+  const intro = useRef<gsap.core.Timeline | null>(null);
+  const warmup = useRef({ smooth: 0, waited: 0, done: false });
   // The frosted channel is the only transmissive surface and its blur hides a half- or
   // smaller-resolution buffer; the full-size pass re-shaded the whole floor (~8 fps).
   const transmissionScale = quality === "high" ? 0.5 : 0.4;
 
-  useEffect(onReady, [onReady]);
-
+  // Fully lit from the first visible frame: the camera glides a little closer and settles
+  // while the canvas fades in, and the coins ease up to speed. Built paused and advanced
+  // by rendered frames below, so a stalled frame can never skip part of it.
   useGSAP(
     () => {
       if (reducedMotion) return;
       const state = motion.current;
-      gsap
-        .timeline({ defaults: { ease: "power3.inOut" } })
-        .fromTo(state, { dolly: 0.3, crane: 0.16, orbit: -0.24 }, { dolly: 0, crane: 0, orbit: 0, duration: 3.6 }, 0)
-        .fromTo(state, { sun: 0.45, glow: 0 }, { sun: 1, glow: 1, duration: 2.8, ease: "power2.inOut" }, 0.35)
-        .fromTo(state, { rate: 0 }, { rate: 1, duration: 2.4, ease: "power2.in" }, 0.8);
+      intro.current = gsap
+        .timeline({ paused: true })
+        .fromTo(state, { dolly: 0.12, crane: 0.05, orbit: -0.1 }, { dolly: 0, crane: 0, orbit: 0, duration: 4.2, ease: "power2.out" }, 0)
+        .fromTo(state, { rate: 0.35 }, { rate: 1, duration: 2.4, ease: "sine.inOut" }, 0);
     },
     { dependencies: [reducedMotion] },
   );
 
   useFrame(({ gl }, delta) => {
-    const state = motion.current;
-    if (!reducedMotion) state.clock += Math.min(delta, 0.1) * state.rate;
     if (gl.transmissionResolutionScale !== transmissionScale) gl.transmissionResolutionScale = transmissionScale;
+    const state = motion.current;
+    const gate = warmup.current;
+    if (!gate.done) {
+      // The canvas stays hidden while the first frames compile shaders and upload
+      // textures; revealing during them shows a frozen first pose that then jumps.
+      gate.waited += delta;
+      gate.smooth = delta < WARM_FRAME_SECONDS ? gate.smooth + 1 : 0;
+      if (reducedMotion || gate.smooth >= WARM_FRAMES || gate.waited > WARM_TIMEOUT_SECONDS) {
+        gate.done = true;
+        onReady();
+      }
+      return;
+    }
+    if (!reducedMotion) {
+      intro.current?.time(intro.current.time() + Math.min(delta, 1 / 30));
+      state.clock += Math.min(delta, 0.1) * state.rate;
+    }
   });
 
   return (
@@ -447,12 +452,12 @@ export function HeroScene({ quality, reducedMotion, pointer, progress, onReady }
       <color attach="background" args={[CLEAR]} />
       <fog attach="fog" args={[CLEAR, 24, 66]} />
       <HeroSkyEnvironment sunDirection={SUN_DIRECTION} />
-      <Sun quality={quality} motion={motion} reducedMotion={reducedMotion} />
+      <Sun quality={quality} reducedMotion={reducedMotion} />
       <CameraRig pointer={pointer} progress={progress} reducedMotion={reducedMotion} motion={motion} />
 
-      <Floor quality={quality} motion={motion} />
+      <Floor quality={quality} />
       {SLABS.map((spec, index) => (
-        <Slab key={index} spec={spec} material={slabMaterial} motion={motion} />
+        <Slab key={index} spec={spec} material={slabMaterial} />
       ))}
       <Channel quality={quality} track={track} />
       <RollingCoins track={track} motion={motion} />

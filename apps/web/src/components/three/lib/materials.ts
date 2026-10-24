@@ -57,25 +57,54 @@ export function createSatinAcrylic(): THREE.MeshPhysicalMaterial {
  * Satin-frosted acrylic for opaque canvases (the hero). Low tier gets the satin stand-in.
  * Don't use transmission in the shared transparent canvas: see `createSurfaceGlass`.
  */
+const GRAZING_ANCHOR = "material.clearcoat = saturate( material.clearcoat );";
+
+/**
+ * Fades the clearcoat out at grazing view angles. At a silhouette a mirror-smooth coat
+ * turns fully reflective (Fresnel → 1) and mirrors whatever the environment holds below
+ * the horizon; on a thin rounded lip that aliases into dark specks. The base layer's
+ * rougher reflection carries the silhouette instead. Perspective cameras only.
+ */
+function fadeClearcoatAtGrazing(material: THREE.MeshPhysicalMaterial): THREE.MeshPhysicalMaterial {
+  material.onBeforeCompile = (shader) => {
+    const chunk = THREE.ShaderChunk.lights_physical_fragment;
+    if (!chunk.includes(GRAZING_ANCHOR)) {
+      if (process.env.NODE_ENV !== "production") console.warn("materials: three's clearcoat chunk changed; grazing fade skipped");
+      return;
+    }
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <lights_physical_fragment>",
+      chunk.replace(
+        GRAZING_ANCHOR,
+        "material.clearcoat = saturate( material.clearcoat ) * smoothstep( 0.02, 0.3, dot( clearcoatNormal, normalize( vViewPosition ) ) );",
+      ),
+    );
+  };
+  material.customProgramCacheKey = () => "clearcoat-grazing-fade";
+  return material;
+}
+
 export function createFrostedAcrylic(tier: QualityTier): THREE.MeshPhysicalMaterial {
-  if (tier === "low") return createSatinAcrylic();
+  if (tier === "low") return fadeClearcoatAtGrazing(createSatinAcrylic());
   // Partial transmission: the lit, milky body of real frosted acrylic plus a blurred view
   // through it. Full transmission reads as clear glass and vanishes on a white set.
-  return new THREE.MeshPhysicalMaterial({
-    color: "#ffffff",
-    roughness: 0.26,
-    transmission: 0.72,
-    thickness: 0.4,
-    ior: 1.49,
-    attenuationColor: new THREE.Color("#e2d6ff"),
-    attenuationDistance: 1.1,
-    sheen: 0.25,
-    sheenColor: new THREE.Color("#ffffff"),
-    sheenRoughness: 0.4,
-    // A polished skin over the frosted body: crisp highlights run along the lips.
-    clearcoat: 1,
-    clearcoatRoughness: 0.08,
-  });
+  return fadeClearcoatAtGrazing(
+    new THREE.MeshPhysicalMaterial({
+      color: "#ffffff",
+      roughness: 0.26,
+      transmission: 0.72,
+      thickness: 0.4,
+      ior: 1.49,
+      attenuationColor: new THREE.Color("#e2d6ff"),
+      attenuationDistance: 1.1,
+      sheen: 0.25,
+      sheenColor: new THREE.Color("#ffffff"),
+      sheenRoughness: 0.4,
+      // A polished skin over the frosted body: crisp highlights run along the lips.
+      clearcoat: 1,
+      clearcoatRoughness: 0.08,
+    }),
+  );
 }
 
 type GlassOptions = {
