@@ -1,11 +1,14 @@
 # FinBoy design system — light, 3D, premium
 
-The web app follows three reference shots: an airy 3D hero (lavender slabs, neon-violet
-underglow, a frosted glass track with a gold coin), iridescent coin and chrome-check
-product renders, and a mosaic of light landing sections with glass AI orbs. Everything is
-**light theme**, real-time **WebGL**, and motion that feels weighted, never bouncy.
+The marketing page follows three reference shots: an airy 3D hero (lavender slabs,
+neon-violet underglow, a frosted glass track with a gold coin), iridescent coin and
+chrome-check product renders, and a mosaic of light landing sections with glass AI orbs.
+Everything is **light theme** and motion feels weighted, never bouncy. Real-time **WebGL**
+belongs to the marketing page; daily app screens are static and state-led (see *App screens*).
 
-Live catalogue (dev only): **`/styleguide`** — colours, primitives and every 3D scene.
+There is no `/styleguide` route in the shipped app; it exists only on the unmerged design
+branch `phase1/d-design-3d`. The product's states and patterns are specified in
+[`docs/ux-round/ui-spec.md`](ux-round/ui-spec.md); `pnpm test:e2e` exercises them in a browser.
 
 ## Principles
 
@@ -20,13 +23,13 @@ Live catalogue (dev only): **`/styleguide`** — colours, primitives and every 3
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `ink` / `ink-soft` / `ink-subtle` | `#14122b` / `#57546e` / `#8c89a3` | Text hierarchy |
+| `ink` / `ink-soft` / `ink-subtle` | `#14122b` / `#57546e` / `#68657f` | Text hierarchy; every step ≥ 4.5:1 on white, canvas and glass |
 | `canvas` | `#f5f4fb` | Page background (also every 3D scene's clear colour) |
 | `lilac` · `periwinkle` · `blush` · `sun` | soft washes | Gradients, tints |
 | `violet` · `violet-deep` · `orchid` · `magenta` · `neon` | `#6d4aff` … `#d63af9` | Accent, focus, highlights |
 | `gold` / `gold-soft` | `#f2b544` / `#ffd27a` | Money objects only |
 | `sky` | `#3e7bfa` | Assistant / AI |
-| `positive` · `negative` · `warning` | | Income, outflow, review states |
+| `positive` · `negative` · `warning` | `#047857` · `#c4262e` · `#d97706` | Verified/income, destructive, attention. `warning` is for icons/dots only; attention text uses `amber-800/900` |
 
 Shadcn variables (`--primary`, `--card`, `--border`, …) map onto these, so primitives
 inherit the system. Utilities: `glass`, `surface`, `eyebrow`, `text-gradient`, `tabular`,
@@ -34,8 +37,32 @@ inherit the system. Utilities: `glass`, `surface`, `eyebrow`, `text-gradient`, `
 `ease-out-expo` / `ease-in-out-quint`.
 
 **Type:** Plus Jakarta Sans Variable (display + UI) with Anek Malayalam Variable as the
-Malayalam fallback. Mark Malayalam text with `lang="ml"`. Headlines: weight 600,
-tracking −0.04em, `leading-[1.02–1.05]`. Eyebrows: `.eyebrow` (11 px, 0.16em caps).
+Malayalam fallback. Mark language on text: `lang="ml"`/`"hi"` for native script and
+`ml-Latn`/`hi-Latn` for romanized replies. Marketing headlines: weight 600, tracking −0.04em,
+`leading-[1.02–1.05]`. Eyebrows: `.eyebrow` (11 px, 0.16em caps) — marketing only.
+
+**Contrast (measured, WCAG 2.2 AA):** functional text ≥ 4.5:1 on its rendered surface. Phone
+header and tab bar are 94 % white glass so labels keep contrast over the dark estimate card;
+tab labels are 11 px `ink-soft` (≈ 6.4:1 worst case). Destructive buttons use `#c4262e` on a
+10 % tint (≈ 5:1). Focus ring `#8b6bff` ≥ 3:1. `layout.spec.ts` asserts the navigation case.
+
+## App screens
+
+- **One page header** (`components/app-shell/page-header.tsx`): direct task title
+  (Overview, Transactions, Review, Ask FinBoy, Sources, Import results, Privacy & data) at
+  28–32 px semibold, one supporting sentence, actions on the right. No eyebrows or poetic
+  titles on daily screens; brand voice lives in the supporting text.
+- **Surfaces:** `surface` cards with 28 px radius for panels; amber tint for attention;
+  the dark `bg-ink` estimate card is the one hero per screen. Avoid nesting cards in cards.
+- **Feedback:** `ProblemNotice` (what didn't happen, whether anything changed, next action,
+  request reference), `LoadingPanel`, `EmptyState`, `RefreshingLabel` — see the state matrix
+  in `ui-spec.md`. Successes are polite live regions; failures are alerts.
+- **Records:** `RecordGlyph` distinguishes spending, income, refunds (undo arrow), transfers and
+  failed attempts (ban, struck-through amount); rows show kind, provenance tags and the record's
+  effect on totals.
+- **Navigation chrome:** desktop glass sidebar with account footer; phones get a compact header
+  with an account menu and a content-sized five-tab bar that hides while typing. Nothing else
+  is fixed over content.
 
 ## Primitives (`components/ui`)
 
@@ -54,10 +81,10 @@ tracking −0.04em, `leading-[1.02–1.05]`. Eyebrows: `.eyebrow` (11 px, 0.16em
 | `Reveal` | Fade-up out of a blur when a block enters view (once). |
 | `AnimatedAmount` / `formatRupees` | Paise in, `₹` out; counts up in view, final value server-rendered. |
 | `TiltCard` | Pointer tilt + glare for feature cards (keep `max ≤ 3` if it contains a SceneSlot). |
-| `SmoothScroll` | Lenis inertial scroll — marketing page only, driven by the GSAP ticker. |
+| `SmoothScroll` | Lenis inertial scroll — marketing page only, driven by the GSAP ticker. App screens use native scrolling. |
 | `gsap.ts` | The page's single animation clock: `gsap`, `ScrollTrigger`, `useGSAP`. |
 | `.rise-in`, `.line-mask` + `.line-up` | CSS entrances for above-the-fold copy (no JS needed). |
-| `<ViewTransition default="page">` | App route crossfade (already in `(app)/layout.tsx`). |
+| `<ViewTransition default="page">` | App route crossfade (in `(app)/layout.tsx`; disabled under reduced motion). |
 
 Rules: durations 0.6–1.3 s for reveals, 0.2–0.35 s for UI feedback; springs
 (`stiffness≈380, damping≈32`) for selection pills. **Never branch rendered output on
@@ -83,8 +110,9 @@ Both canvases use frameloop "never" and are advanced by the GSAP ticker (TickerF
 ```
 
 - **Use 3D only through `<SceneSlot spec={...} className="h-72" />`.** Mount
-  `<SceneLayerMount />` once per layout/page (the app layout already does). The canvas and
-  three.js load only when a slot nears the viewport.
+  `<SceneLayerMount />` once per layout/page that has slots (today only the marketing page).
+  The app layout deliberately mounts none: daily screens ship no three.js (audit F35). Add 3D
+  to an app screen only when it carries task state and has a phone-tested budget.
 - Slots render **above** DOM (canvas `z-10`). DOM that must overlap a scene (buttons on a
   scene background) needs `relative z-20`.
 - Scenes: `coin-swirl` (`merge` 0–1 or `loop`), `check-orb`, `voice-orb` (`state`,
@@ -152,7 +180,7 @@ shapes (the hero track sweep, the ribbon, rounded slabs) stay procedural.
    refs that `useFrame` reads. Under reduced motion, skip the tweens and hold a pose.
 3. Add it to `SceneSpec` (`scene-spec.ts`), `STAGES` and `renderScene` (`scene-view.tsx`):
    the `dark` studio for metals, `light` for pastels and glass.
-4. Add it to `/styleguide`, then verify desktop + mobile + reduced motion.
+4. Verify desktop + mobile + reduced motion + `?graphics=off` on the page that uses it.
 
 ### three.js r186 notes (learned the hard way)
 
