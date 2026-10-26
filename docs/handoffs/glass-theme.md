@@ -51,8 +51,8 @@ search placeholder 2.68:1 (WCAG minimum 4.5:1); FinBoy's own green fell to 4.48:
   tests passed, typecheck clean. The worktree has no `.env` (gitignored), so the API unit tests
   need a `DATABASE_URL` string; they never connect, and the name points at no database.
 - `pnpm build` → exit 0.
-- `E2E_PORT=3062 pnpm test:e2e` → 202 passed, 0 failed, 116 skipped (the opt-in capture and
-  live-API specs, and checks that run at one width only). Behaviour assertions are unchanged;
+- `E2E_PORT=3062 pnpm test:e2e` on the final commit → 202 passed, 0 failed, 119 skipped (the
+  opt-in capture, perf and live-API specs, and checks that run at one width only). Behaviour assertions are unchanged;
   two styling assumptions were updated: the tab-bar contrast check measures the active label on
   its ink capsule, and the no-WebGL check ignores the 2D orb canvases.
 - `theme.spec.ts` (new, part of the suite) found three real problems, all fixed:
