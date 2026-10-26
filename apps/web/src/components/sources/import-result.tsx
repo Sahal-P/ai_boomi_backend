@@ -130,7 +130,7 @@ export function ImportResult({ runId }: { runId: string }) {
   if (!run) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Import results" />
+        <PageHeader title="Import results" back={{ href: "/sources", label: "Back to Sources" }} />
         {tracker.problem ? (
           <ProblemNotice
             problem={
@@ -188,6 +188,7 @@ export function ImportResult({ runId }: { runId: string }) {
     <div className="space-y-6">
       <PageHeader
         title="Import results"
+        back={{ href: "/sources", label: "Back to Sources" }}
         description={`${sourceLabels[run.mode]}${run.started_at ? ` · started ${formatDayTime(run.started_at)}` : ""}${run.finished_at ? ` · finished ${formatDayTime(run.finished_at)}` : ""}`}
         actions={<Badge variant={badge.variant}>{badge.label}</Badge>}
       />

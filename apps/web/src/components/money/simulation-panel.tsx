@@ -62,7 +62,7 @@ export function SimulationPanel({ current }: { current: MoneySummary | null }) {
   }
 
   return (
-    <section aria-labelledby="simulation-title" className="surface rounded-3xl p-5 sm:p-7">
+    <section id="simulation" aria-labelledby="simulation-title" className="surface scroll-mt-24 rounded-3xl p-5 sm:p-7">
       <h2 id="simulation-title" className="text-lg font-semibold">
         What if I set money aside each month?
       </h2>

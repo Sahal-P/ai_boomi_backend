@@ -34,8 +34,8 @@ export function RecordRow({
       data-record-id={row.id}
       aria-current={selected ? "true" : undefined}
       className={cn(
-        "flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-white/40 sm:px-5",
-        selected && "bg-white/60 hover:bg-white/60",
+        "surface flex w-full items-start gap-3 rounded-lg px-3.5 py-3 text-left transition-colors hover:bg-white/70 sm:px-4",
+        selected && "bg-white/90 ring-[1.5px] ring-ink hover:bg-white/90",
       )}
     >
       <RecordGlyph row={row} />
@@ -65,11 +65,14 @@ export function RecordRow({
           )}
           <SourceTags row={row} />
         </span>
+        {/* Phones: under the details, so the merchant keeps the width. Only one copy is ever
+            displayed, so assistive tech reads it once. */}
+        {!compact && <span className="mt-1.5 block text-[11px] leading-snug text-ink-soft sm:hidden">{effectLabel(row)}</span>}
       </span>
       <span className="shrink-0 text-right">
-        <RecordAmount row={row} className="block text-sm font-semibold" />
+        <RecordAmount row={row} className="block text-[15px] font-semibold" />
         {!compact && (
-          <span className="mt-1 block max-w-36 text-[11px] leading-snug text-ink-soft">
+          <span className="mt-1 hidden max-w-36 text-[11px] leading-snug text-ink-soft sm:block">
             {effectLabel(row)}
           </span>
         )}

@@ -230,7 +230,7 @@ export function ReviewScreen() {
             className={list.status === "refreshing" ? "opacity-70" : undefined}
             onClickCapture={() => setFocusPanel(true)}
           >
-            <ul aria-label="Records to review" className="surface divide-y overflow-hidden rounded-3xl">
+            <ul aria-label="Records to review" className="space-y-2">
               {items.map((row) => (
                 <li key={row.id}>
                   <RecordRow

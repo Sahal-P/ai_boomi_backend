@@ -9,6 +9,7 @@ import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { EmptyState, LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
 import { RecordDialog } from "@/components/records/record-dialog";
 import { RecordFilters } from "@/components/records/record-filters";
+import { RecordGroups } from "@/components/records/record-groups";
 import { RecordRow } from "@/components/records/record-row";
 import { Button } from "@/components/ui/button";
 import { useQueryUpdate } from "@/hooks/use-query-update";
@@ -151,13 +152,14 @@ export function TransactionsScreen() {
 
         {page && page.items.length > 0 && (
           <div className={list.stale ? "opacity-60 transition-opacity" : undefined} aria-busy={list.status === "refreshing"}>
-            <ul className="surface divide-y overflow-hidden rounded-3xl">
-              {page.items.map((row) => (
+            <RecordGroups
+              rows={page.items}
+              renderRow={(row) => (
                 <li key={row.id} onClickCapture={() => { openedFromList = row.id; }}>
                   <RecordRow row={row} href={hrefFor(row.id)} selected={row.id === selected} />
                 </li>
-              ))}
-            </ul>
+              )}
+            />
           </div>
         )}
 

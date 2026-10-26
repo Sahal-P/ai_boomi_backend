@@ -61,7 +61,7 @@ export function PrivacyScreen() {
             {live.length > 0 && (
               <ul className="mt-3 space-y-3">
                 {live.map((connection) => (
-                  <li key={connection.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
+                  <li key={connection.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-well p-4 ring-1 ring-ink/5">
                     <span className="flex min-w-0 items-center gap-3">
                       <Mail className="size-5 shrink-0 text-ink" aria-hidden="true" />
                       <span className="min-w-0">

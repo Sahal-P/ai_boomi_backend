@@ -29,7 +29,7 @@ import { describeProblem } from "@/lib/messages";
 
 function SampleTag() {
   return (
-    <span className="rounded-full bg-sunflower px-2 py-0.5 text-[11px] font-semibold text-ink">Sample</span>
+    <span className="rounded-full bg-sunflower px-2 py-0.5 text-[11px] font-semibold text-ink ring-1 ring-ink/15">Sample</span>
   );
 }
 
@@ -93,16 +93,16 @@ function DemoBody({ demo }: { demo: DemoData }) {
   const { summary } = demo;
   return (
     <div className="space-y-5">
-      <section aria-labelledby="sample-estimate" className="rounded-[2rem] bg-ink p-5 text-white sm:p-8">
-        <div className="flex flex-wrap items-center gap-2"><SampleTag /><span className="text-xs text-white/80">as of {formatDay(demo.as_of)}</span></div>
-        <h2 id="sample-estimate" className="mt-3 text-sm font-medium text-white/80">Estimated unallocated (sample)</h2>
-        <p className="mt-2 text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">{formatMoney(summary.estimated_unallocated_minor)}</p>
+      <section aria-labelledby="sample-estimate" className="solid-hero rounded-3xl p-5 sm:p-8">
+        <div className="flex flex-wrap items-center gap-2"><SampleTag /><span className="text-xs text-sunflower-ink">as of {formatDay(demo.as_of)}</span></div>
+        <h2 id="sample-estimate" className="mt-3 text-sm font-medium text-sunflower-ink">Estimated unallocated (sample)</h2>
+        <p className="mt-2 text-[2.75rem] leading-none font-semibold tracking-[-0.04em] tabular-nums sm:text-6xl">{formatMoney(summary.estimated_unallocated_minor)}</p>
         <dl className="mt-5 grid gap-2 text-sm sm:grid-cols-3">
-          <div className="rounded-2xl bg-white/[0.07] p-3"><dt className="text-white/70">Tracked income</dt><dd className="mt-1 font-semibold tabular-nums">+ {formatMoney(summary.tracked_income_minor)}</dd></div>
-          <div className="rounded-2xl bg-white/[0.07] p-3"><dt className="text-white/70">Confirmed net outflows</dt><dd className="mt-1 font-semibold tabular-nums">− {formatMoney(summary.confirmed_outflows_minor)}</dd></div>
-          <div className="rounded-2xl bg-white/[0.07] p-3"><dt className="text-white/70">Unresolved obligations</dt><dd className="mt-1 font-semibold tabular-nums">− {formatMoney(summary.unresolved_commitments_minor)}</dd></div>
+          <div className="rounded-2xl bg-white/55 p-3"><dt className="text-sunflower-ink">Tracked income</dt><dd className="mt-1 font-semibold tabular-nums">+ {formatMoney(summary.tracked_income_minor)}</dd></div>
+          <div className="rounded-2xl bg-white/55 p-3"><dt className="text-sunflower-ink">Confirmed net outflows</dt><dd className="mt-1 font-semibold tabular-nums">− {formatMoney(summary.confirmed_outflows_minor)}</dd></div>
+          <div className="rounded-2xl bg-white/55 p-3"><dt className="text-sunflower-ink">Unresolved obligations</dt><dd className="mt-1 font-semibold tabular-nums">− {formatMoney(summary.unresolved_commitments_minor)}</dd></div>
         </dl>
-        <p className="mt-4 text-sm text-white/80">
+        <p className="mt-4 text-sm text-sunflower-ink">
           {summary.pending_review_count} sample records wait for review and aren&apos;t counted. {recordsNote}
         </p>
       </section>
@@ -174,8 +174,9 @@ function DemoBody({ demo }: { demo: DemoData }) {
 export function DemoScreen() {
   const demo = useResource("demo", (signal) => getDemo(signal));
   return (
-    <div className="min-h-dvh bg-aurora">
-      <header className="sticky top-0 z-40 border-b border-gold/40 bg-[#fff7e6]/95 backdrop-blur">
+    <div className="bg-field min-h-dvh">
+      {/* Content scrolls under the sample banner, so it is blurred near-opaque glass. */}
+      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/85 shadow-hairline backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8">
           <div className="flex items-center gap-3">
             <Brand />
@@ -192,7 +193,7 @@ export function DemoScreen() {
       </header>
       <main className="mx-auto max-w-6xl space-y-5 px-4 py-6 sm:px-8 sm:py-10">
         <div>
-          <h1 className="text-[1.75rem] leading-tight font-semibold tracking-[-0.03em] sm:text-[2rem]">A sample household</h1>
+          <h1 className="text-[1.75rem] leading-tight font-medium tracking-[-0.025em] sm:text-[2rem]">A sample household</h1>
           <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-soft">
             Arun&apos;s synthetic mailbox, shown the way FinBoy shows yours. Nothing here comes from
             or changes your household records, and leaving the sample changes nothing.

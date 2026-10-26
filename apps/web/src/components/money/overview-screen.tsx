@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ArrowRight,
+  Calculator,
   CalendarClock,
   ChevronRight,
   CircleAlert,
@@ -143,55 +143,48 @@ function Estimate({ summary, period }: { summary: MoneySummary; period: Period }
     },
   ];
   return (
-    <section aria-labelledby="estimate-title" className="relative overflow-hidden rounded-[2rem] bg-ink p-5 text-white sm:p-8">
-      <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-[radial-gradient(circle,rgba(155,92,255,0.45),transparent_65%)]" />
+    <section aria-labelledby="estimate-title" className="solid-hero relative overflow-hidden rounded-3xl p-5 sm:p-8">
+      {/* Halftone corner: the illustrations' dot language, kept to the hero's empty corner. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-16 -right-16 size-64 bg-[radial-gradient(rgb(14_16_19/0.16)_1px,transparent_1.5px)] [background-size:9px_9px] [mask-image:radial-gradient(circle,#000_20%,transparent_68%)]"
+      />
       <div className="relative grid gap-6 lg:grid-cols-[1fr_1.1fr] lg:gap-10">
         <div>
-          <h2 id="estimate-title" className="text-sm font-medium text-white/80">
+          <h2 id="estimate-title" className="text-sm font-medium text-sunflower-ink">
             Estimated unallocated · {period ? monthLabel(period.year, period.month) : "this month"}
           </h2>
-          <p className="mt-3 text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">
+          <p className="mt-2 text-[2.75rem] leading-none font-semibold tracking-[-0.04em] tabular-nums sm:text-6xl">
             {formatMoney(summary.estimated_unallocated_minor)}
           </p>
-          <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/80">{recordsNote}</p>
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-sunflower-ink">{recordsNote}</p>
           <dl className="mt-5 space-y-1.5 text-sm">
             <div className="flex flex-wrap gap-x-2">
-              <dt className="text-white/70">Last successful scan</dt>
-              <dd className="font-medium">
+              <dt className="text-sunflower-ink">Last successful scan</dt>
+              <dd className="font-semibold">
                 {summary.coverage.last_successful_scan_at ? formatDayTime(summary.coverage.last_successful_scan_at) : "none yet"}
               </dd>
             </div>
             <div className="flex flex-wrap gap-x-2">
-              <dt className="text-white/70">Emails checked</dt>
-              <dd className="font-medium">{window ?? "unknown"} · {headline.label.toLowerCase()}</dd>
+              <dt className="text-sunflower-ink">Emails checked</dt>
+              <dd className="font-semibold">{window ?? "unknown"} · {headline.label.toLowerCase()}</dd>
             </div>
           </dl>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Button asChild className="bg-white text-ink hover:bg-lilac">
-              <Link href="/assistant">
-                <Sparkles aria-hidden="true" /> Ask about my money
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" className="text-white hover:bg-white/10 hover:text-white">
-              <Link href="/sources">
-                Sources <ArrowRight aria-hidden="true" />
-              </Link>
-            </Button>
-          </div>
         </div>
-        <div className="rounded-3xl bg-white/[0.07] p-4 ring-1 ring-white/15 sm:p-5">
+        {/* A white tint on yellow, never glass: blurred yellow over the blue field turns muddy. */}
+        <div className="rounded-2xl bg-white/55 p-4 sm:p-5">
           <h3 className="text-sm font-semibold">How this is calculated</h3>
-          <ul className="mt-3 divide-y divide-white/10">
+          <ul className="mt-2 divide-y divide-ink/10">
             {lines.map((line) => (
               <li key={line.label}>
                 <Link
                   href={line.href}
                   onClick={() => recordOutcome("overview_explanation_opened")}
-                  className="flex items-start justify-between gap-3 rounded-xl py-3 hover:bg-white/5"
+                  className="-mx-2 flex items-start justify-between gap-3 rounded-xl px-2 py-3 hover:bg-white/60"
                 >
                   <span>
                     <span className="block text-sm font-medium">{line.label}</span>
-                    <span className="block text-xs text-white/70">{line.note}</span>
+                    <span className="block text-xs text-ink-soft">{line.note}</span>
                   </span>
                   <span className="shrink-0 text-sm font-semibold tabular-nums">
                     {line.sign} {formatMoney(line.value)}
@@ -200,12 +193,12 @@ function Estimate({ summary, period }: { summary: MoneySummary; period: Period }
               </li>
             ))}
           </ul>
-          <p className="mt-2 flex justify-between gap-3 border-t border-white/20 pt-3 text-sm font-semibold">
+          <p className="mt-1 flex justify-between gap-3 border-t border-ink/15 pt-3 text-sm font-semibold">
             <span>Estimated unallocated</span>
             <span className="tabular-nums">{formatMoney(summary.estimated_unallocated_minor)}</span>
           </p>
           {summary.pending_review_count > 0 && (
-            <Link href="/review" className="mt-3 block rounded-2xl bg-white/10 p-3 text-xs leading-relaxed hover:bg-white/15">
+            <Link href="/review" className="mt-3 block rounded-xl bg-ink p-3 text-xs leading-relaxed text-white hover:bg-ink/90">
               <span className="font-semibold">Not included:</span>{" "}
               {plural(summary.pending_review_count, "record", "records")} ({formatMoney(summary.pending_review_minor)}) from this period
               {summary.pending_review_count === 1 ? " waits" : " wait"} for review. Review them →
@@ -214,6 +207,38 @@ function Estimate({ summary, period }: { summary: MoneySummary; period: Period }
         </div>
       </div>
     </section>
+  );
+}
+
+/** The reference's action tiles; every one opens something that already exists. */
+function ActionTiles({ summary }: { summary: MoneySummary }) {
+  const waiting = summary.coverage.pending_review_count;
+  const tiles = [
+    { href: "/assistant", label: "Ask", name: "Ask about my money", icon: Sparkles },
+    { href: "/review", label: "Review", name: waiting ? `Review ${plural(waiting, "record", "records")}` : "Review", icon: ListChecks, count: waiting },
+    { href: "/sources", label: "Sources", name: "Sources", icon: Inbox },
+    { href: "#simulation", label: "What if", name: "What if I set money aside", icon: Calculator },
+  ];
+  return (
+    <nav aria-label="Overview actions">
+      <ul className="grid grid-cols-4 gap-2 sm:max-w-md sm:gap-3">
+        {tiles.map(({ href, label, name, icon: Icon, count }) => (
+          <li key={href}>
+            <Link href={href} aria-label={name} className="group flex flex-col items-center gap-1.5 text-xs font-semibold text-ink">
+              <span className="surface relative grid h-14 w-full place-items-center rounded-2xl transition-colors group-hover:bg-white/80">
+                <Icon className="size-5" aria-hidden="true" />
+                {count ? (
+                  <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1 text-[11px] text-white tabular-nums">
+                    {count}
+                  </span>
+                ) : null}
+              </span>
+              {label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 
@@ -359,7 +384,7 @@ export function OverviewScreen() {
                 const [y, m] = event.target.value.split("-");
                 update({ year: y || null, month: m || null });
               }}
-              className="h-11 min-w-0 flex-1 rounded-full border border-input bg-white px-4 text-sm font-semibold sm:flex-none"
+              className="h-11 min-w-0 flex-1 rounded-full border border-input bg-white/80 px-4 text-sm font-semibold sm:flex-none"
             >
               <option value="">This month</option>
               {months.slice(1).map((item) => (
@@ -413,6 +438,7 @@ export function OverviewScreen() {
       {data && (
         <>
           <Estimate summary={data} period={period} />
+          <ActionTiles summary={data} />
           <Exceptions summary={data} period={period} />
           <div className="grid items-start gap-5 xl:grid-cols-2">
             <Categories summary={data} period={period} />

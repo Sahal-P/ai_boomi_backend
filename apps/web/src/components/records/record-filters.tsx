@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,11 @@ import { categories, kinds, statuses } from "@/lib/api/money";
 import { istDate, monthLabel } from "@/lib/dates";
 import { categoryLabels, kindLabels, statusLabels } from "@/lib/labels";
 import { shortcutsEnabled, typingTarget } from "@/lib/shortcuts";
+import { cn } from "@/lib/utils";
 
 const FILTER_KEYS = ["q", "status", "category", "kind", "source", "scope", "year", "month", "dataset"];
+// What the phone filter button counts: everything except the search text (shown in the field).
+const PANEL_FILTERS = [["status"], ["category"], ["kind"], ["source"], ["scope", "year", "month"]];
 
 /** Recent calendar months (IST), newest first, for the period selector. */
 function recentMonths(count: number): { year: number; month: number }[] {
@@ -21,7 +24,7 @@ function recentMonths(count: number): { year: number; month: number }[] {
   });
 }
 
-const selectClass = "mt-1.5 block h-11 w-full rounded-xl border border-input bg-white px-3 text-sm";
+const selectClass = "mt-1.5 block h-11 w-full rounded-lg border border-input bg-white/80 px-3 text-sm";
 
 /** URL-backed filters; search is debounced so typing doesn't fire a request per key. */
 export function RecordFilters({ view }: { view: "transactions" | "review" }) {
@@ -61,32 +64,52 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
   const periodValue = year && month ? `${year}-${month}` : view === "review" ? "" : scope === "all" ? "all" : "current";
   const active = FILTER_KEYS.some((key) => params.has(key));
   const set = (updates: Record<string, string | null>) => update({ ...updates, offset: null });
+  // Phones show the reference's search + filter button; wider screens keep every filter open.
+  const [open, setOpen] = useState(false);
+  const applied = PANEL_FILTERS.filter((keys) => keys.some((key) => params.has(key))).length;
 
   return (
-    <div className="surface rounded-3xl p-4 sm:p-5">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="sm:col-span-2">
-          <label htmlFor={`${ids}-q`} className="text-xs font-semibold">
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <label htmlFor={`${ids}-q`} className="sr-only">
             Search merchant or payer
           </label>
-          <div className="relative mt-1.5">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-soft" aria-hidden="true" />
-            <input
-              ref={searchRef}
-              id={`${ids}-q`}
-              type="search"
-              value={draft}
-              maxLength={160}
-              placeholder="For example, Amazon"
-              aria-describedby={`${ids}-q-hint`}
-              onChange={(event) => setDraft(event.target.value)}
-              className="block h-11 w-full rounded-xl border border-input bg-white pr-3 pl-9 text-sm"
-            />
-          </div>
+          <Search className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-ink-soft" aria-hidden="true" />
+          <input
+            ref={searchRef}
+            id={`${ids}-q`}
+            type="search"
+            value={draft}
+            maxLength={160}
+            placeholder="Search merchant or payer"
+            aria-describedby={`${ids}-q-hint`}
+            onChange={(event) => setDraft(event.target.value)}
+            className="block h-12 w-full rounded-xl border border-input bg-white/80 pr-4 pl-11 text-sm placeholder:text-ink-soft"
+          />
           <p id={`${ids}-q-hint`} className="sr-only">
             Results update as you type. Press slash to jump here.
           </p>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-lg"
+          className="relative rounded-xl border-input sm:hidden"
+          aria-expanded={open}
+          aria-controls={`${ids}-panel`}
+          aria-label={applied ? `Filters, ${applied} on` : "Filters"}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
+          {applied > 0 && (
+            <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full bg-ink text-[11px] font-semibold text-white">
+              {applied}
+            </span>
+          )}
+        </Button>
+      </div>
+      <div id={`${ids}-panel`} className={cn("surface grid gap-3 rounded-3xl p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-5", !open && "max-sm:hidden")}>
         <div>
           <label htmlFor={`${ids}-period`} className="text-xs font-semibold">
             Period
@@ -213,21 +236,19 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
             </select>
           </div>
         )}
-        {active && (
-          <div className="flex items-end">
-            <Button
-              variant="ghost"
-              className="w-full sm:w-auto"
-              onClick={() => {
-                setDraft("");
-                update(Object.fromEntries([...FILTER_KEYS, "offset"].map((key) => [key, null])));
-              }}
-            >
-              <X aria-hidden="true" /> Clear filters
-            </Button>
-          </div>
-        )}
       </div>
+      {active && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setDraft("");
+            update(Object.fromEntries([...FILTER_KEYS, "offset"].map((key) => [key, null])));
+          }}
+        >
+          <X aria-hidden="true" /> Clear filters
+        </Button>
+      )}
     </div>
   );
 }
