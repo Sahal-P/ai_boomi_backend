@@ -4,9 +4,10 @@ Daily screens follow a glass reference: a soft neutral field with a cool and a w
 frosted cards, near-black type and black pill actions. The one money number per screen sits on
 solid **sunflower** yellow, and the screens people pass through — sign-in, empty and all-done
 states, the landing hero — are flat yellow **moments** with drawn line-art illustrations. When
-FinBoy's AI is working, a dotted **thinking orb** shows it. Everything is light theme.
-Real-time WebGL remains only in the landing page's lower sections (see *3D on the landing
-page*); the hero is a yellow moment.
+FinBoy's AI is working, a dotted **thinking orb** shows it. Everything is light theme, and
+violet is retired everywhere, the logo included. Real-time WebGL remains only in the landing
+page's lower sections, on the same field as the app (see *3D on the landing page*); the hero is
+a yellow moment.
 
 The values below were measured from the reference images, not eyeballed; the measurements,
 contrast findings and verification are recorded in
@@ -34,20 +35,23 @@ specified in [`docs/ux-round/ui-spec.md`](ux-round/ui-spec.md).
 | Token | Value | Use |
 | --- | --- | --- |
 | `ink` / `ink-soft` / `ink-subtle` | `#0e1013` / `#474b52` / `#575b63` | Neutral text hierarchy; every step ≥ 4.5:1 on the field's darkest point and on glass over it |
-| `field` · `field-cool` · `field-warm` | `#e1e3e6` · `#b9deeb` · `#e8d3b0` | The app background and its two glows (measured from the reference) |
+| `field` · `field-cool` · `field-warm` | `#e1e3e6` · `#b9deeb` · `#e8d3b0` | Every page's ground and its two glows (measured from the reference); the landing's 3D recomputes it behind its glass |
 | `glass-fill` · `glass-rim` · `glass-edge` | `rgb(236 236 238 / .74)` · white 85% · white 55% | In-flow frosted glass, its lit top-left rim and edge |
 | `well` | white 50% | A lighter well inside glass |
 | `float-fill` · `glass-blur` | `rgb(250 250 251 / .74)` · `blur(24px) saturate(140%)` | Floating glass; the blur goes through the variable (see below) |
 | `sunflower` / `sunflower-ink` | `#fed234` / `#3a2c00` | Hero and moment fill / secondary text on it (9.4:1). A fill under ink only: 1.18:1 as a line or text on glass |
 | `positive` · `negative` · `warning` | `#065f46` · `#a8201a` · `#d97706` | Verified/income, destructive, attention (`warning` for icons/dots; attention text uses `amber-800/900`) |
-| `canvas` | `#f5f4fb` | The landing page and every 3D scene's clear colour (scenes are tone-matched to it) |
-| `violet-deep` | `#4b2fd1` | The wordmark on yellow (5.51:1). Violet is otherwise retired from app screens |
-| `gold` · `lilac` · `violet` · … | — | Landing page and 3D scenes only |
 
 Shadcn variables map onto these: `--primary` is ink (black pills), `--card` is glass,
 `--popover` is 90% white, `--secondary`/`--muted`/`--accent` are faint ink tints, `--input`
 (form-control boundaries) is ink at 50% (≥ 3:1), `--ring` is ink. Radii follow the reference:
 `lg` 12 px (rows, fields), `2xl` 20 px, `3xl` 24 px (panels), pills for actions.
+
+**Brand:** the logo is an ink gem with a sunflower ₹ (`components/brand.tsx`, `app/icon.svg`,
+whose faint white rim keeps it visible on dark tab strips) and the wordmark is ink — on glass,
+on white and on yellow alike. The lavender `canvas`, the violet family (`violet`, `lilac`,
+`magenta`, …) and the old landing palette are gone; `field` is deliberately not a Tailwind
+colour, so the `bg-field` material never also paints a flat background.
 
 **Keep `-webkit-backdrop-filter` and `backdrop-filter` behind a variable.** With literal values
 the CSS minifier merges the pair into the `-webkit-` form only, which Chrome and Firefox ignore
@@ -57,11 +61,11 @@ the CSS minifier merges the pair into the `-webkit-` form only, which Chrome and
 
 | Class | What it is | Where |
 | --- | --- | --- |
-| `bg-field` | Fixed pseudo-element field + grain (never repaints on scroll; iOS ignores `background-attachment: fixed`) | App shell, session check, demo, 404 |
+| `bg-field` | Fixed pseudo-element field + grain (never repaints on scroll; iOS ignores `background-attachment: fixed`) | App shell, session check, demo, 404, landing below the hero (with `isolation-auto`, so DOM marked `z-20` stays above the 3D layer) |
 | `surface` | In-flow frosted glass: tint, 1 px white edge, inset top-left rim, soft shadow; **no blur** | Cards, panels, rows, the desktop sidebar (nothing scrolls under it) |
 | `glass` | Floating glass: `float-fill` + `--glass-blur` | Phone header and tab bar (near-opaque), menus, selects, landing nav after the hero |
 | `float-panel` | Crisp near-opaque panel; its frosted scrim (`bg-ink/20 backdrop-blur-sm`) is the blurred layer | Dialogs, sheets, alert dialogs |
-| `solid-hero` | Sunflower with ink and a soft warm shadow | The one money number per screen (Overview, demo) |
+| `solid-hero` | Sunflower with ink and a soft warm shadow | The one money number per screen (Overview, demo, the landing simulator's estimate and the mosaic's overview tile) |
 | `moment` | Flat sunflower with ink | Sign-in, empty and all-done states, Ask's empty state, landing hero |
 
 Inside yellow, use white tints (`bg-white/55`), never glass. Fallbacks (unlayered, so they win
@@ -104,7 +108,7 @@ reference's welcome screen). Mark language on text: `lang="ml"`/`"hi"` for nativ
 
 `EmptyState` always renders a moment with an illustration (first on phones, beside the text
 on wider screens): no records yet, nothing matches, all reviewed, an empty month. Sign-in is
-a full-page moment (violet-deep wordmark, 2 px ink-bordered field, black pill whose chevron
+a full-page moment (logo and ink wordmark, 2 px ink-bordered field, black pill whose chevron
 capsule is decoration — never a swipe) with a sunflower `themeColor`; the landing hero is the
 same moment with the existing headline and CTAs. Ask's empty state is a moment with the
 resting orb.
@@ -180,11 +184,17 @@ SceneSlot (DOM placeholder, lazy, in-view)
 The canvas uses frameloop "never" and is advanced by the GSAP ticker (TickerFrameloop).
 ```
 
+Below the yellow hero the landing sits on the app's field (`main.bg-field.isolation-auto`) with
+the app's materials: glass cards, ink-soft eyebrows, ink icons and chips, the simulator's
+estimate on `solid-hero`, and no violet. Its scenes are re-toned to the same world.
+
 - **Use 3D only through `<SceneSlot spec={...} className="h-72" />`** with `<SceneLayerMount />`
   mounted once per page that has slots (today only the landing page). Daily screens ship no
   three.js (audit F35); thinking orbs are 2D canvases, not WebGL. Add 3D to an app screen only
   when it carries task state and has a phone-tested budget.
-- Slots render **above** DOM (canvas `z-10`); DOM that must overlap a scene needs `relative z-20`.
+- Slots render **above** DOM (canvas `z-10`); DOM that must overlap a scene needs `relative z-20`
+  (the voice demo's status pill does, on phones). That is why the landing's `main` is not
+  isolated: an isolated `bg-field` would trap `z-20` DOM below the canvas.
 - Scenes: `coin-swirl` (`merge` 0–1 or `loop`), `check-orb`, `voice-orb` (`state`, `level`
   ref 0–1), `coin-stack` (`values` 0–1), `privacy-vault`, `inbox-slab`, `ribbon`.
 - **Quality tiers** `high | medium | low` from device hints (software renderers → `low`);
@@ -197,11 +207,27 @@ The canvas uses frameloop "never" and is advanced by the GSAP ticker (TickerFram
   `pnpm --filter @finboy/web assets:3d`, Blender 5), meshopt-compressed by gltfpack. Load them
   with `useCoinGeometry("full" | "lite")` and `useDomeGeometry()`; the geometry is shared —
   never dispose it.
-- **Rendering:** linear workflow with Khronos Neutral tone mapping on the renderer;
-  `preToneMapped(css)` (`lib/tone.ts`) lands a rendered colour exactly on a CSS token (the voice
-  orb's backdrop is `--canvas`, so the landing keeps the lavender canvas). Light is image-based
-  from `ProductStudioEnvironment tone="dark"` (metals) or `"light"` (pastels, glass). Materials:
+- **Palette:** the glass world in 3D. Money objects are sunflower (`createSunflower`: half metal
+  under a clear lacquer — a full metal mirrors the dark cove and reads as brass); decisions and
+  committed money are lacquered ink (`createInk`: the verification dome, the simulator's
+  committed columns — the black pills in 3D); slabs are pearl (`createSatinAcrylic`, the inbox
+  tray); glass is neutral-cool; contact shadows and drawn rings are ink. No violet or magenta.
+  The voice orb's four states stay distinct in value and hue: idle pale cool (the field's cool
+  glow), listening vivid cool, thinking ink (as the app's thinking orbs), speaking sunflower.
+- **Rendering:** linear workflow with Khronos Neutral tone mapping on the renderer; the GLSL
+  `preToneMapped()` (`lib/tone.ts`) lands a rendered colour exactly on a CSS colour. Light is image-based from `ProductStudioEnvironment`: `tone="dark"` (an ink cove for
+  coins and the ink dome) or `"light"` (a field-grey cove for glass and pearl), with the field's
+  glows as gels — cool from the left and below, warm from the right. Materials:
   `lib/materials.ts`.
+- **Glass over the field:** the field is fixed to the viewport, so what sits behind a scene
+  changes as the page scrolls, and a flat backdrop colour would show as a disc. The voice orb's
+  refraction backdrop and its core's feathered edge paint `fieldBehind()` (`lib/field.ts`): the
+  `.bg-field` gradient and the grain's average recomputed per fragment from the slot's rectangle
+  (`useFieldUniforms(track)`; `SceneView` passes the slot element), with colours read from the
+  CSS tokens and the glows dropped under Reduce Transparency, as the CSS does. Inside and just
+  outside the sphere now agree within a few levels (before: a disc 15 levels darker). Keep the
+  shader in step with `.bg-field` (positions, radii, stops, grain). Other scenes are transparent
+  and composite over the DOM, so they need no matching.
 - **Adding a scene:** create `scenes/<name>.tsx` (GLB or parametric geometry, materials from
   `lib/materials.ts`, randomness from `lib/random.ts`; dispose what it creates), choreograph
   with `useGSAP` tweening plain objects that `useFrame` reads (hold a pose under reduced
