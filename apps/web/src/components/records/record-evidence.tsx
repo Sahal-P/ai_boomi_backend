@@ -1,4 +1,4 @@
-import { ImageIcon, Mail } from "lucide-react";
+import { ImageIcon, Mail, Mic } from "lucide-react";
 import { formatMoney, type TransactionSource } from "@/lib/api/money";
 import type { TransactionDetail } from "@/lib/api/transactions";
 import { formatDay, formatDayTime } from "@/lib/dates";
@@ -7,7 +7,8 @@ import { confidenceFactorLabels, evidenceFieldLabel, sourceLabels, sourceSender 
 function SourceCard({ source }: { source: TransactionSource }) {
   const entries = Object.entries(source.evidence);
   const screenshot = source.source === "whatsapp_image";
-  const Icon = screenshot ? ImageIcon : Mail;
+  const voice = source.source === "whatsapp_voice";
+  const Icon = screenshot ? ImageIcon : voice ? Mic : Mail;
   return (
     <li className="rounded-2xl border p-4">
       <p className="flex items-center gap-2 text-sm font-semibold">
@@ -19,7 +20,8 @@ function SourceCard({ source }: { source: TransactionSource }) {
         {source.extraction_method === "llm" ? " · read with AI assistance" : " · read by a fixed rule"}
       </p>
       <p className="mt-2 text-xs text-ink-soft">
-        {screenshot ? "This screenshot shows" : "This email says"} {formatMoney(source.amount_minor)}
+        {screenshot ? "This screenshot shows" : voice ? "Your voice note says" : "This email says"}{" "}
+        {formatMoney(source.amount_minor)}
         {source.merchant ? ` at ${source.merchant}` : ""}
         {source.occurred_at ? ` on ${formatDay(source.occurred_at)}` : ""}
         {source.due_date ? `, due ${formatDay(source.due_date)}` : ""}.
@@ -41,9 +43,13 @@ function SourceCard({ source }: { source: TransactionSource }) {
 /** The source notifications behind a record. Snippets are bounded and redacted by the server. */
 export function RecordEvidence({ detail }: { detail: TransactionDetail }) {
   const factors = Object.entries(detail.confidence_factors);
-  const screenshots = detail.sources.length > 0 && detail.sources.every((source) => source.source === "whatsapp_image");
-  const mixed = detail.sources.some((source) => source.source === "whatsapp_image") && !screenshots;
-  const noun = screenshots ? "screenshot" : mixed ? "notification" : "email";
+  const only = (mode: TransactionSource["source"]) =>
+    detail.sources.length > 0 && detail.sources.every((source) => source.source === mode);
+  const screenshots = only("whatsapp_image");
+  const voices = only("whatsapp_voice");
+  const whatsapp = detail.sources.some((source) => source.source.startsWith("whatsapp_"));
+  const mixed = whatsapp && !screenshots && !voices;
+  const noun = screenshots ? "screenshot" : voices ? "voice note" : mixed ? "notification" : "email";
   return (
     <section aria-label="Evidence">
       <h3 className="font-semibold">Evidence</h3>

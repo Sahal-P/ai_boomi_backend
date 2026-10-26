@@ -121,7 +121,9 @@ export function importOutcome(run: ImportRun): ImportOutcomeCopy {
           ? "Uploaded files aren't kept, so continuing needs the original .eml files again."
           : run.mode === "whatsapp_image"
             ? "Screenshots aren't kept, so send the screenshot again on WhatsApp."
-            : "Retrying re-fetches only the emails that failed; emails already imported are skipped.",
+            : run.mode === "whatsapp_voice"
+              ? "Voice notes aren't kept, so say it again on WhatsApp."
+              : "Retrying re-fetches only the emails that failed; emails already imported are skipped.",
         ...notes,
       ],
       primary: retry ?? continuation ?? { kind: "sources", label: "Back to Sources" },
