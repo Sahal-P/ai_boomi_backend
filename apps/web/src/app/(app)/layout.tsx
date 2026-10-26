@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ViewTransition, type ReactNode } from "react";
 
 import { AppNav } from "@/components/app-shell/app-nav";
@@ -9,11 +9,14 @@ import { OfflineBanner } from "@/components/app-shell/offline-banner";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
+// The phone's browser chrome matches the top of the glass field.
+export const viewport: Viewport = { themeColor: "#e1e3e6" };
+
 // Daily screens carry no WebGL: the brand scenes stay on the marketing page (F35).
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <HouseholdGate>
-      <div className="app-shell bg-aurora relative min-h-dvh">
+      <div className="app-shell bg-field relative min-h-dvh">
         <a
           href="#main-content"
           className="sr-only rounded-full bg-ink px-4 py-3 text-white focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50"

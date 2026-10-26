@@ -46,6 +46,10 @@
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-warning: var(--warning);
+  --color-field: var(--field);
+  --color-sunflower: var(--sunflower);
+  --color-sunflower-ink: var(--sunflower-ink);
+  --color-well: var(--well);
 
   --font-sans:
     "Plus Jakarta Sans Variable", "Anek Malayalam Variable", ui-sans-serif,
@@ -58,19 +62,20 @@
     sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
+  /* Measured from the glass reference: 12px rows, 20–24px panels, pills for actions. */
   --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
-  --radius-2xl: 1.75rem;
-  --radius-3xl: 2.25rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
 
-  --shadow-hairline: 0 0 0 1px rgb(20 16 60 / 0.06);
+  --shadow-hairline: 0 0 0 1px rgb(16 18 24 / 0.06);
   --shadow-soft:
-    0 1px 2px rgb(20 16 60 / 0.04), 0 10px 28px -14px rgb(76 52 170 / 0.2);
+    0 1px 2px rgb(16 18 24 / 0.04), 0 10px 28px -16px rgb(16 18 24 / 0.2);
   --shadow-lift:
-    0 1px 2px rgb(20 16 60 / 0.05), 0 22px 44px -22px rgb(76 52 170 / 0.3),
-    0 56px 96px -56px rgb(76 52 170 / 0.34);
+    0 1px 2px rgb(16 18 24 / 0.06), 0 18px 36px -20px rgb(16 18 24 / 0.32),
+    0 48px 80px -52px rgb(16 18 24 / 0.3);
   --shadow-glow:
     inset 0 1px 0 rgb(255 255 255 / 0.35), 0 12px 32px -12px rgb(109 74 255 / 0.6);
 
@@ -111,11 +116,27 @@
 :root {
   color-scheme: light;
 
-  --ink: #14122b;
-  --ink-soft: #57546e;
-  /* Darkened from #8c89a3 so small functional text meets WCAG AA (≥4.5:1) on canvas and glass. */
-  --ink-subtle: #68657f;
+  /* Neutral ink, as in the glass reference. Every step is ≥4.5:1 on the darkest point of the
+     field (#e8d3b0) and on frosted glass over it — the reference's own greys (4.0–4.3:1) fail. */
+  --ink: #0e1013;
+  --ink-soft: #474b52;
+  --ink-subtle: #575b63;
+  /* The landing page and every 3D scene's clear colour; app screens sit on --field. */
   --canvas: #f5f4fb;
+  /* App background, measured from the reference: neutral grey with a cool and a warm glow. */
+  --field: #e1e3e6;
+  --field-cool: #b9deeb;
+  --field-warm: #e8d3b0;
+  /* In-flow frosted glass (no blur), its lit rim and edge, and a lighter well inside it. */
+  --glass-fill: rgb(236 236 238 / 0.74);
+  --glass-rim: rgb(255 255 255 / 0.85);
+  --glass-edge: rgb(255 255 255 / 0.55);
+  --well: rgb(255 255 255 / 0.5);
+  /* Floating glass (blurred): only where content scrolls underneath. */
+  --float-fill: rgb(250 250 251 / 0.74);
+  /* The money hero and yellow moments. A fill under ink only: 1.2:1 as a line or text on glass. */
+  --sunflower: #fed234;
+  --sunflower-ink: #3a2c00;
   --lilac: #e9e3ff;
   --periwinkle: #dde6ff;
   --blush: #fbe3f1;
@@ -128,26 +149,28 @@
   --gold: #f2b544;
   --gold-soft: #ffd27a;
   --sky: #3e7bfa;
-  /* Text-safe semantic colours: ≥4.5:1 on white, tints and canvas (were #0e9f6e / #e5484d). */
-  --positive: #047857;
-  --negative: #c4262e;
+  /* Text-safe semantic colours: ≥4.5:1 on the field, on glass over it and on white
+     (#047857 fell to 4.48:1 on reference glass; #c4262e to 4.2:1). */
+  --positive: #065f46;
+  --negative: #a8201a;
   --warning: #d97706;
 
   --background: var(--canvas);
   --foreground: var(--ink);
-  --card: #ffffff;
-  --popover: #ffffff;
-  --primary: var(--violet);
+  --card: var(--glass-fill);
+  --popover: rgb(252 252 253 / 0.9);
+  --primary: var(--ink);
   --primary-foreground: #ffffff;
-  --secondary: #efecfa;
-  --muted: #f0eef8;
+  --secondary: rgb(14 16 19 / 0.06);
+  --muted: rgb(14 16 19 / 0.05);
   --muted-foreground: var(--ink-soft);
-  --accent: #ebe6ff;
+  --accent: rgb(14 16 19 / 0.06);
   --destructive: var(--negative);
-  --border: rgb(20 16 60 / 0.08);
-  --input: rgb(20 16 60 / 0.12);
-  --ring: #8b6bff;
-  --radius: 1rem;
+  --border: rgb(14 16 19 / 0.09);
+  /* Form-control boundaries: ≥3:1 against glass and the field (WCAG 1.4.11). */
+  --input: rgb(14 16 19 / 0.5);
+  --ring: var(--ink);
+  --radius: 0.75rem;
 }
 
 @layer base {
@@ -170,9 +193,16 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  /* Overscroll and safe-area edges show the page's own ground, not the landing's lavender. */
+  body:has(.bg-field) {
+    background-color: var(--field);
+  }
+  body:has(.moment-page) {
+    background-color: var(--sunflower);
+  }
   ::selection {
-    background: #ddd3ff;
-    color: var(--violet-deep);
+    background: var(--sunflower);
+    color: var(--ink);
   }
   a,
   button {
@@ -191,20 +221,64 @@
 }
 
 @layer components {
-  /* Frosted glass surface used by nav, sheets, and floating panels. */
+  /* Floating glass: the only blurred material. Use it where content scrolls underneath (phone
+     header and tab bar, sheets, dialogs, menus) — at most three in view. */
   .glass {
-    background: rgb(255 255 255 / 0.62);
-    border: 1px solid rgb(255 255 255 / 0.75);
+    background: var(--float-fill);
+    border: 1px solid rgb(255 255 255 / 0.7);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.9),
-      0 1px 2px rgb(20 16 60 / 0.04),
-      0 14px 36px -18px rgb(76 52 170 / 0.24);
-    backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
+      inset 1px 1px 0 rgb(255 255 255 / 0.9),
+      0 1px 2px rgb(16 18 24 / 0.05),
+      0 16px 40px -20px rgb(16 18 24 / 0.32);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
   }
+  /* In-flow frosted glass for cards and panels. No blur: the field behind is already soft, so a
+     backdrop filter would only cost GPU. The lit rim is brighter top-left, as measured. */
   .surface {
-    background: #ffffff;
-    box-shadow: var(--shadow-hairline), var(--shadow-soft);
+    background: var(--glass-fill);
+    border: 1px solid var(--glass-edge);
+    box-shadow:
+      inset 1px 1px 0 var(--glass-rim),
+      0 1px 2px rgb(16 18 24 / 0.03),
+      0 12px 32px -22px rgb(16 18 24 / 0.22);
+  }
+  /* The one money number per screen, on solid yellow with ink. Never put glass over it. */
+  .solid-hero {
+    background: var(--sunflower);
+    color: var(--ink);
+    box-shadow:
+      inset 1px 1px 0 rgb(255 255 255 / 0.45),
+      0 20px 44px -26px rgb(122 92 0 / 0.55);
+  }
+  /* Yellow moments (sign-in, empty and all-done states, landing hero): flat, opaque, ink. */
+  .moment {
+    background: var(--sunflower);
+    color: var(--ink);
+  }
+  /* The app's fixed background. A fixed pseudo-element never repaints on scroll (iOS ignores
+     background-attachment: fixed); the grain keeps the large gradients from banding. */
+  .bg-field {
+    isolation: isolate;
+  }
+  .bg-field::before,
+  .bg-field::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .bg-field::before {
+    background:
+      radial-gradient(120% 62% at 0% 100%, var(--field-cool), transparent 64%),
+      radial-gradient(90% 55% at 100% 56%, var(--field-warm), transparent 66%),
+      radial-gradient(80% 45% at 18% 0%, rgb(255 255 255 / 0.55), transparent 70%),
+      var(--field);
+  }
+  .bg-field::after {
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.06 0 0 0 0 0.08 0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   }
   .eyebrow {
     font-size: 0.6875rem;
@@ -277,6 +351,50 @@
     )
     .app-tabbar {
     display: none;
+  }
+}
+
+/* Material fallbacks (unlayered, so they win over utilities): without backdrop-filter, with
+   Reduce Transparency, Increase Contrast or forced colours, every surface stays legible. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: rgb(250 250 251 / 0.97);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .glass {
+    background: #f8f8f9;
+  }
+  .surface {
+    background: #ececee;
+  }
+  .bg-field::before {
+    background: var(--field);
+  }
+}
+@media (prefers-contrast: more) {
+  :root {
+    --ink-soft: #2e3136;
+    --ink-subtle: #3a3d42;
+    --glass-edge: rgb(14 16 19 / 0.45);
+    --border: rgb(14 16 19 / 0.3);
+    --input: rgb(14 16 19 / 0.75);
+  }
+  .glass {
+    border-color: rgb(14 16 19 / 0.45);
+  }
+}
+@media (forced-colors: active) {
+  .surface,
+  .glass,
+  .solid-hero,
+  .moment {
+    border: 1px solid CanvasText;
   }
 }
 
