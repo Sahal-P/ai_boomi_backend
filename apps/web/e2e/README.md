@@ -23,6 +23,24 @@ They do **not** prove live integration with the FastAPI backend, real Google con
 microphones, provider speech quality, or playback on a phone. `live.spec.ts` (below) covers the
 UI-to-API part; record human-only checks separately.
 
+## Theme checks and review tools
+
+`theme.spec.ts` checks the glass theme on rendered pages: every visible text, placeholder and
+form-control boundary against its composited background (ancestors, the nav's positioned ink
+capsule, the field's darkest point, ink under floating chrome) on every route and empty state;
+at most three blurred layers in view; real blur in Chromium; Reduce Transparency (via CDP),
+Increase Contrast and forced-colours fallbacks; and the thinking orbs' dark-ink pin, hidden
+status for assistive tech and resting behaviour. Two opt-in tools run only when asked:
+
+```sh
+cd apps/web
+E2E_CAPTURE_DIR=/abs/dir pnpm exec playwright test e2e/capture.spec.ts   # every route and state, 3 widths
+E2E_PERF=1 pnpm exec playwright test e2e/perf.spec.ts --workers=1        # scroll frame times, CPU 4x
+```
+
+Run a capture or a perf measurement on the baseline and on the change, on the same machine,
+to compare them.
+
 ## Manual checks against the double
 
 `support/mock-server.ts` serves the same double on loopback. The proxy only accepts an HTTPS

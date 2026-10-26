@@ -34,8 +34,10 @@ acceptance gaps; provider configuration alone never means completion.
 
 - Python 3.15.1, uv, FastAPI/Pydantic v2, SQLAlchemy 2, Alembic, PostgreSQL.
 - Next.js App Router, React, strict TypeScript, pnpm, Tailwind/shadcn, Lucide.
-- Preserved premium design: local fonts, GSAP/motion, lazy R3F/three scenes with
-  DOM-first controls, reduced motion and no-WebGL fallback.
+- Glass design system measured from a reference: frosted glass on a fixed field, a sunflower
+  money hero, yellow moments with drawn line-art illustrations, and dotted thinking orbs
+  (2D canvas) while FinBoy's AI works. Lazy R3F/three scenes remain in the landing page's lower
+  sections with DOM-first controls, reduced motion and no-WebGL fallback.
 - Backend-only OpenAI extraction, assistant understanding/wording and STT. Configured
   assistant requests use real AI; financial figures remain engine-calculated.
   `SPEECH_TRANSCRIBE_PROVIDER=groq` sends

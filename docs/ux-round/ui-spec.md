@@ -31,10 +31,15 @@ field or the form's action; `scroll-padding` keeps keyboard focus clear of fixed
 
 ## Page system
 
-One `PageHeader`: a direct task title (28–32 px, semibold, −0.03em), one sentence of support
-text, actions on the right. Daily screens use `surface` cards (28 px radius) and no WebGL; the
-brand scenes stay on the marketing page. Status colours: amber tints for attention, `positive`
-(#047857) for verified/income, `negative`/`destructive` (#c4262e) for destructive actions.
+One `PageHeader`: a direct task title (28–32 px, weight 500, −0.025em), one sentence of
+support text, actions on the right; a screen reached from another (Import results) gets a glass
+back button. Daily screens use in-flow glass `surface` cards (24 px panels, 12 px record rows)
+on a fixed field, one solid sunflower hero for the money number, and no WebGL; the 3D brand
+scenes stay in the landing page's lower sections. Empty and all-done states are yellow moments
+with drawn illustrations (`EmptyState`). Status colours: amber tints for attention, `positive`
+(#065f46) for verified/income, `negative`/`destructive` (#a8201a) for destructive actions —
+both darkened so they stay ≥ 4.5:1 on glass. Thinking orbs mark FinBoy's AI at work (pending
+answers, transcription, speech preparation, running imports); data loading keeps the spinner.
 
 ## State matrix
 
@@ -145,8 +150,12 @@ Export (`POST /privacy/export`) runs only on click and saves the validated JSON.
 
 ## Accessibility contract
 
-Text plus icons everywhere; WCAG AA contrast measured on rendered surfaces (tab labels 11 px,
-`ink-soft` on ≥94% white); 44 px targets; field errors linked with `aria-describedby` and
+Text plus icons everywhere (the tab bar keeps every label; the active one is white on its ink
+capsule); WCAG AA contrast measured on rendered, composited surfaces for every text,
+placeholder and form-control boundary (`theme.spec.ts`; tab labels 11 px `ink-soft` on ≥ 90%
+white); Reduce Transparency, Increase Contrast and forced colours each have a legible
+fallback; thinking orbs are `aria-hidden` beside text that says what is happening, and
+decorative ones stop moving after five seconds; 44 px targets; field errors linked with `aria-describedby` and
 `aria-invalid`; dialogs trap and return focus; outcome and decision messages use polite live
 regions, failures use `role="alert"`; skip link; keyboard help (`?`), search (`/`), queue
 (`j`/`k`) shortcuts that are inactive while typing and can be turned off.

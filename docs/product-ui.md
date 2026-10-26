@@ -11,12 +11,20 @@ Phase-1 integration history (design snapshot, package provenance) stays in
 - Routes: `/dashboard` (Overview), `/transactions`, `/review`, `/assistant`, `/sources`,
   `/import/<id>`, `/privacy` inside the authenticated `(app)` shell; public `/`, `/demo` and
   `/login`. `/connect` only forwards the registered OAuth callback to Sources.
-- Desktop has a sidebar with household identity, service status, Shortcuts and Sign out.
-  Phones have a compact header with an **Account and settings** menu and a five-tab bar that
-  steps aside while a text field is focused. Nothing floats over content.
-- Every page has one task title (`<title>` "Task · FinBoy") and one `PageHeader` heading.
-- Daily screens are static (no WebGL). The 3D brand scenes stay on the marketing page, honour
-  reduced motion, and fall back to DOM with `?graphics=off` or a failed context probe.
+- Desktop has a glass sidebar with household identity, service status, Shortcuts and Sign out.
+  Phones have a compact header with an **Account and settings** menu and the reference's
+  floating five-tab bar (black active capsule, every tab labelled) that steps aside while a
+  text field is focused. Nothing else floats over content.
+- Every page has one task title (`<title>` "Task · FinBoy") and one `PageHeader` heading;
+  Import results adds the glass back button to Sources.
+- The theme (`docs/design-system.md`): glass cards on a fixed field, the estimate on a solid
+  sunflower card with the reference's action tiles below, records as glass cards under month
+  headings, and yellow moments with drawn illustrations for sign-in, empty and all-done states
+  and the landing hero. Dotted thinking orbs appear only while FinBoy's AI is working (an answer,
+  a transcription, a spoken answer, an import) and resting on Ask's empty state.
+- Daily screens carry no WebGL (orbs are 2D canvases). The 3D brand scenes stay in the landing
+  page's lower sections, honour reduced motion, and fall back to DOM with `?graphics=off` or a
+  failed context probe.
 
 ## Data and state
 
@@ -69,6 +77,10 @@ client component or browser request. Product outcome events (`evidence_opened`,
   timeouts, uploads, speech), import outcomes, auth return paths and date formatting.
 - `pnpm test:e2e`: Playwright at 1440×1000, 390×844 and 320×740 against a test-only contract
   double (`apps/web/e2e/support/`). It proves UI behaviour, not live integration.
+  `theme.spec.ts` checks the theme on rendered pages: WCAG contrast for every text,
+  placeholder and form-control boundary, the three-blurred-layer budget, accessibility-setting
+  fallbacks and the orbs' behaviour. `capture.spec.ts` (`E2E_CAPTURE_DIR`) and `perf.spec.ts`
+  (`E2E_PERF=1`) are opt-in review tools.
 - `apps/web/e2e/live.spec.ts` (`E2E_LIVE_API=1`): the core journeys through the same-origin
   proxy against a real API on a disposable database, with synthetic `.eml` files only.
 - Human-only acceptance (real Google consent, microphones, phone playback, screen readers,
