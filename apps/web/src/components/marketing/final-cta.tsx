@@ -8,11 +8,11 @@ import { SceneSlot } from "@/components/three/scene-slot";
 export function FinalCta() {
   return (
     <section aria-labelledby="cta-title" className="px-3 pb-6 sm:px-5">
-      <div className="relative mx-auto max-w-[1400px] overflow-hidden rounded-[2.5rem] bg-[radial-gradient(60rem_30rem_at_50%_0%,#ffffff,#f1ecff_55%,#fbe9f6)] shadow-hairline">
+      <div className="surface relative mx-auto max-w-[1400px] overflow-hidden rounded-[2.5rem] bg-[radial-gradient(60rem_30rem_at_50%_0%,rgb(255_255_255/0.85),transparent_75%)]">
         <SceneSlot spec={{ name: "ribbon" }} className="absolute inset-x-0 bottom-0 h-[52%]" />
         <div className="relative z-20 px-6 pt-20 pb-[min(60vw,22rem)] text-center sm:px-10 sm:pt-24">
           <Reveal>
-            <p className="eyebrow text-violet">Start in two minutes</p>
+            <p className="eyebrow text-ink-soft">Start in two minutes</p>
             <h2 id="cta-title" className="mx-auto mt-4 max-w-3xl text-[clamp(2.3rem,5vw,4.4rem)] leading-[1.03] font-semibold tracking-[-0.045em] text-ink">
               Your money already leaves a trail. Let’s make it useful.
             </h2>

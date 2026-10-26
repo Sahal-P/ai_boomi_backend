@@ -7,18 +7,18 @@ import type * as THREE from "three";
 import { gsap, useGSAP } from "@/components/motion/gsap";
 
 import { useDomeGeometry } from "../lib/assets";
-import { createIridescentChrome } from "../lib/materials";
+import { createInk } from "../lib/materials";
 import { useOwnReflections } from "../lib/use-reflections";
 
 /**
- * The verification dome — "every rupee verified". Sculpted chrome (filleted lip, rim bead,
- * check-outline ridge) with an interference film, turning on two sine yoyos of unrelated
- * lengths so its reflections sweep continuously without a visible loop.
+ * The verification dome — "every rupee verified". Sculpted in lacquered ink, the approve
+ * pill's material (filleted lip, rim bead, check-outline ridge), turning on two sine yoyos of
+ * unrelated lengths so the studio's cool and warm reflections sweep without a visible loop.
  */
 export function CheckOrbScene() {
   const reduced = useReducedMotion() ?? false;
   const geometry = useDomeGeometry();
-  const material = useMemo(() => createIridescentChrome("#7d55ff", 0.08), []);
+  const material = useMemo(() => createInk(0.14), []);
   const turn = useRef<THREE.Group>(null);
   const bob = useRef<THREE.Group>(null);
   useOwnReflections([material]);

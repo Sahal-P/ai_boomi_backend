@@ -1,7 +1,7 @@
 "use client";
 
 import { PerspectiveCamera, View } from "@react-three/drei";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useRef, type ReactNode, type RefObject } from "react";
 
 import type { SceneSpec } from "./scene-spec";
 import { CheckOrbScene } from "./scenes/check-orb";
@@ -26,14 +26,14 @@ const STAGES: Record<SceneSpec["name"], { position: Vec3; fov: number; tone: "da
   "inbox-slab": { position: [0, 1.2, 5.4], fov: 30, tone: "light" },
 };
 
-function renderScene(spec: SceneSpec, revealed: boolean): ReactNode {
+function renderScene(spec: SceneSpec, revealed: boolean, track: RefObject<HTMLElement | null>): ReactNode {
   switch (spec.name) {
     case "coin-swirl":
       return <CoinSwirlScene merge={spec.merge ?? 0} loop={spec.loop ?? false} />;
     case "check-orb":
       return <CheckOrbScene />;
     case "voice-orb":
-      return <VoiceOrbScene state={spec.state ?? "idle"} level={spec.level} />;
+      return <VoiceOrbScene state={spec.state ?? "idle"} level={spec.level} track={track} />;
     case "coin-stack":
       return <CoinStackScene values={spec.values} revealed={revealed} />;
     case "privacy-vault":
@@ -59,12 +59,13 @@ type SceneViewProps = {
 
 export default function SceneView({ spec, revealed, className }: SceneViewProps) {
   const stage = STAGES[spec.name];
+  const track = useRef<HTMLElement>(null);
   return (
-    <View className={className}>
+    <View ref={track} className={className}>
       <PerspectiveCamera makeDefault position={stage.position} fov={stage.fov} onUpdate={(self) => self.lookAt(0, 0, 0)} />
       <ProductStudioEnvironment tone={stage.tone} />
       <directionalLight position={[-3, 5, 4]} intensity={1.2} color="#fff6ec" />
-      <Suspense fallback={null}>{renderScene(spec, revealed)}</Suspense>
+      <Suspense fallback={null}>{renderScene(spec, revealed, track)}</Suspense>
     </View>
   );
 }

@@ -4,39 +4,45 @@ import { AlertCircle, ArrowDownLeft, ArrowUpRight, Check, Mail, ShieldCheck, Spa
 import { motion, useScroll, useTransform } from "motion/react";
 import { useRef, type ReactNode } from "react";
 
+import { cn } from "@/lib/utils";
+
 import { SectionHeading } from "./section-heading";
 
-function Tile({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`surface w-[300px] shrink-0 rounded-[1.6rem] p-5 ${className}`}>{children}</div>;
+function Tile({ children, className = "surface" }: { children: ReactNode; className?: string }) {
+  return <div className={cn("w-[300px] shrink-0 rounded-[1.6rem] p-5", className)}>{children}</div>;
 }
 
+/** The overview's money number, on sunflower as in the app. */
 function SummaryTile() {
   return (
-    <Tile>
-      <p className="text-xs font-semibold text-ink-soft">Estimated unallocated</p>
-      <p className="tabular mt-1 text-3xl font-semibold tracking-[-0.03em] text-ink">₹14,780</p>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-lilac">
-        <div className="h-full w-[62%] rounded-full bg-[linear-gradient(90deg,#6d4aff,#d63af9)]" />
+    <Tile className="solid-hero">
+      <p className="text-xs font-semibold text-sunflower-ink">Estimated unallocated</p>
+      <p className="tabular mt-1 text-3xl font-semibold tracking-[-0.03em]">₹14,780</p>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/55">
+        <div className="h-full w-[62%] rounded-full bg-ink" />
       </div>
-      <p className="mt-3 text-[11px] text-ink-subtle">Your actual bank balance may differ.</p>
+      <p className="mt-3 text-[11px] text-sunflower-ink">Your actual bank balance may differ.</p>
     </Tile>
   );
 }
 
+// The app's record glyphs: money in on green, money out on white.
+const OUT = "bg-white/80 text-ink ring-1 ring-ink/[0.06]";
+
 function TransactionsTile() {
   const rows = [
-    { name: "Salary · Acme Labs", amount: "+₹62,000", icon: ArrowDownLeft, tone: "text-positive" },
-    { name: "Rent · UPI", amount: "−₹15,000", icon: ArrowUpRight, tone: "text-ink" },
-    { name: "Swiggy", amount: "−₹842", icon: ArrowUpRight, tone: "text-ink" },
-    { name: "Amazon · 3 sources", amount: "−₹799", icon: ArrowUpRight, tone: "text-ink" },
+    { name: "Salary · Acme Labs", amount: "+₹62,000", icon: ArrowDownLeft, tone: "text-positive", glyph: "bg-emerald-50 text-positive" },
+    { name: "Rent · UPI", amount: "−₹15,000", icon: ArrowUpRight, tone: "text-ink", glyph: OUT },
+    { name: "Swiggy", amount: "−₹842", icon: ArrowUpRight, tone: "text-ink", glyph: OUT },
+    { name: "Amazon · 3 sources", amount: "−₹799", icon: ArrowUpRight, tone: "text-ink", glyph: OUT },
   ];
   return (
     <Tile>
       <p className="text-xs font-semibold text-ink-soft">This week</p>
       <ul className="mt-3 space-y-2.5">
-        {rows.map(({ name, amount, icon: Icon, tone }) => (
+        {rows.map(({ name, amount, icon: Icon, tone, glyph }) => (
           <li key={name} className="flex items-center gap-3 text-sm">
-            <span className="grid size-8 place-items-center rounded-full bg-lilac text-violet">
+            <span className={cn("grid size-8 place-items-center rounded-full", glyph)}>
               <Icon className="size-4" aria-hidden="true" />
             </span>
             <span className="flex-1 text-ink">{name}</span>
@@ -58,7 +64,7 @@ function ReviewTile() {
       <p className="text-xs text-ink-soft">No payment proof found yet</p>
       <div className="mt-4 flex gap-2 text-xs font-semibold">
         <span className="rounded-full bg-ink px-3 py-1.5 text-white">Confirm</span>
-        <span className="rounded-full bg-lilac px-3 py-1.5 text-violet">Edit</span>
+        <span className="rounded-full bg-white px-3 py-1.5 text-ink ring-1 ring-ink/10">Edit</span>
         <span className="rounded-full bg-muted px-3 py-1.5 text-ink-soft">Not mine</span>
       </div>
     </Tile>
@@ -67,8 +73,8 @@ function ReviewTile() {
 
 function AssistantTile() {
   return (
-    <Tile className="bg-[linear-gradient(140deg,#ffffff,#f1f4ff)]">
-      <p className="flex items-center gap-1.5 text-xs font-semibold text-violet">
+    <Tile>
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-ink">
         <Sparkles className="size-3.5" aria-hidden="true" /> FinBoy
       </p>
       <p lang="ml" className="mt-2 text-[0.95rem] leading-relaxed text-ink">
@@ -102,7 +108,7 @@ function PrivacyTile() {
   return (
     <Tile>
       <p className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
-        <ShieldCheck className="size-3.5 text-violet" aria-hidden="true" /> Connected accounts
+        <ShieldCheck className="size-3.5 text-ink" aria-hidden="true" /> Connected accounts
       </p>
       <p className="mt-2 font-semibold text-ink">arun••••@gmail.com</p>
       <p className="text-xs text-ink-soft">Read-only · Last scan 2 min ago</p>

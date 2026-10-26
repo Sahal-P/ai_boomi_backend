@@ -28,7 +28,7 @@ function Row({ hidden = false }: { hidden?: boolean }) {
           key={label}
           className="glass flex items-center gap-2.5 rounded-full px-4 py-2.5 text-sm font-semibold whitespace-nowrap text-ink"
         >
-          <Icon className="size-4 text-violet" aria-hidden="true" />
+          <Icon className="size-4 text-ink" aria-hidden="true" />
           {label}
         </li>
       ))}

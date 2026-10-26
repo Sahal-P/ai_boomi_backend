@@ -151,14 +151,10 @@ export function VoiceSection() {
       aria-labelledby="voice-title"
       className="relative scroll-mt-24 overflow-hidden py-24 sm:py-28"
     >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-[radial-gradient(48rem_32rem_at_78%_40%,rgba(125,150,255,0.18),transparent_70%),radial-gradient(40rem_28rem_at_10%_80%,rgba(214,58,249,0.08),transparent_70%)]"
-      />
       <div className="mx-auto grid max-w-[1360px] items-center gap-14 px-6 sm:px-10 lg:grid-cols-[1.05fr_1fr] lg:px-16">
         <div>
           <Reveal>
-            <p className="eyebrow text-violet">English · हिन्दी · മലയാളം</p>
+            <p className="eyebrow text-ink-soft">English · हिन्दी · മലയാളം</p>
             <h2
               id="voice-title"
               className="mt-4 text-[clamp(2.1rem,4.2vw,3.6rem)] leading-[1.05] font-semibold tracking-[-0.04em] text-ink"
@@ -235,16 +231,16 @@ export function VoiceSection() {
                     animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
-                    className="mt-4 rounded-[1.25rem] rounded-bl-md bg-[#f4f1ff] p-4"
+                    className="mt-4 rounded-[1.25rem] rounded-bl-md bg-well p-4 ring-1 ring-ink/5"
                   >
                     <p
                       lang={script.lang}
                       className="flex gap-2 text-[0.95rem] leading-relaxed text-ink"
                     >
-                      <Sparkles className="mt-1 size-4 shrink-0 text-violet" />
+                      <Sparkles className="mt-1 size-4 shrink-0 text-ink" />
                       {script.answer}
                     </p>
-                    <div className="mt-4 flex items-end justify-between gap-4 border-t border-violet/10 pt-4">
+                    <div className="mt-4 flex items-end justify-between gap-4 border-t border-ink/10 pt-4">
                       <div>
                         <p className="text-xs font-semibold text-ink-soft">
                           Food &amp; dining · October
@@ -267,7 +263,7 @@ export function VoiceSection() {
                           <span className="text-ink">
                             {row.merchant}
                             {"note" in row ? (
-                              <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-violet">
+                              <span className="ml-2 rounded-full bg-ink/[0.07] px-2 py-0.5 text-[11px] font-semibold text-ink">
                                 {row.note}
                               </span>
                             ) : null}
@@ -286,7 +282,7 @@ export function VoiceSection() {
                 ) : null}
               </AnimatePresence>
               <details className="group mt-4 text-sm text-ink-soft">
-                <summary className="flex cursor-pointer list-none items-center gap-1.5 font-semibold text-violet">
+                <summary className="flex cursor-pointer list-none items-center gap-1.5 font-semibold text-ink">
                   How was this calculated?
                   <ChevronDown
                     className="size-4 transition-transform group-open:rotate-180"
@@ -310,7 +306,7 @@ export function VoiceSection() {
           />
           <div
             aria-live="polite"
-            className="glass absolute bottom-8 left-1/2 flex -translate-x-1/2 items-center gap-2.5 rounded-full px-4 py-2 text-sm font-semibold text-ink"
+            className="glass absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2.5 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap text-ink"
           >
             {ORB[state] ? (
               <ThinkingOrb state={ORB[state]} size={20} />

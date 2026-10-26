@@ -9,29 +9,30 @@ import * as THREE from "three";
 import { gsap, useGSAP } from "@/components/motion/gsap";
 
 import { useCoinGeometry } from "../lib/assets";
-import { createGold, createNeon, createSurfaceGlass } from "../lib/materials";
+import { createNeon, createSunflower, createSurfaceGlass } from "../lib/materials";
 import { useOwnReflections } from "../lib/use-reflections";
 
 /**
- * A gold ₹ sealed in a glass block — "your data stays yours". The coin turns slowly inside
+ * A sunflower ₹ sealed in a glass block — "your data stays yours". The coin turns slowly inside
  * while the block sways on two unrelated sine yoyos; its bevels and inner faces carry the
- * studio's reflections, and an LED ring and a contact shadow anchor it to the card.
+ * studio's reflections, and a drawn ring and a contact shadow anchor it to the card.
  */
 export function PrivacyVaultScene() {
   const reduced = useReducedMotion() ?? false;
   const coinGeometry = useCoinGeometry("full");
-  const gold = useMemo(() => createGold(0.17), []);
-  const glass = useMemo(() => createSurfaceGlass("#f3eeff", 0.16), []);
-  const ring = useMemo(() => createNeon("#b48cff", 1.8), []);
+  const sunflower = useMemo(() => createSunflower(0.17), []);
+  const glass = useMemo(() => createSurfaceGlass("#f2f6f8", 0.16), []);
+  // An ink line, like the illustrations' line art, softened so it frames rather than outlines.
+  const ring = useMemo(() => createNeon("#474b52", 1), []);
   const block = useRef<THREE.Group>(null);
   const coin = useRef<THREE.Mesh>(null);
-  useOwnReflections([gold, glass]);
+  useOwnReflections([sunflower, glass]);
   useEffect(
     () => () => {
-      gold.dispose();
+      sunflower.dispose();
       ring.dispose();
     },
-    [gold, ring],
+    [sunflower, ring],
   );
   useEffect(() => () => glass.dispose(), [glass]);
 
@@ -55,13 +56,13 @@ export function PrivacyVaultScene() {
   return (
     <group>
       <group ref={block} rotation={[0.16, -0.6, 0]} position-y={0.08}>
-        <mesh ref={coin} geometry={coinGeometry} material={gold} scale={0.46} />
+        <mesh ref={coin} geometry={coinGeometry} material={sunflower} scale={0.46} />
         <RoundedBox args={[1.55, 1.55, 1.55]} radius={0.24} smoothness={8} material={glass} />
       </group>
       <mesh material={ring} position-y={-1.02} rotation-x={Math.PI / 2}>
         <torusGeometry args={[1.12, 0.008, 12, 180]} />
       </mesh>
-      <ContactShadows position-y={-1.06} scale={4} far={2.6} blur={3} opacity={0.26} resolution={256} color="#2b1f5e" />
+      <ContactShadows position-y={-1.06} scale={4} far={2.6} blur={3} opacity={0.26} resolution={256} color="#0e1013" />
     </group>
   );
 }

@@ -9,7 +9,7 @@ import * as THREE from "three";
 import { gsap, useGSAP } from "@/components/motion/gsap";
 
 import { useCoinGeometry } from "../lib/assets";
-import { createAnodised, createGold, createSatinAcrylic } from "../lib/materials";
+import { createInk, createSatinAcrylic, createSunflower } from "../lib/materials";
 import { createRandom, randomBetween } from "../lib/random";
 import { useOwnReflections } from "../lib/use-reflections";
 
@@ -20,19 +20,19 @@ const COLUMN_GAP = 0.74;
 const DROP = 2.4;
 const PLATE_TOP = 0.06; // plate is 0.16 thick, centred 0.02 below the origin
 
-type Placement = { column: number; x: number; y: number; twist: number; jitter: readonly [number, number]; gold: boolean };
+type Placement = { column: number; x: number; y: number; twist: number; jitter: readonly [number, number]; money: boolean };
 
 /**
  * Cash-flow columns that are built when the card is revealed: coins drop in column by
- * column and settle (no bounce) on a frosted plate; first and last columns are gold
- * (money in / left), the middle anodised violet (committed). Heights are 0–1 values.
+ * column and settle (no bounce) on a pearl plate; first and last columns are sunflower
+ * (money in / left), the middle lacquered ink (committed). Heights are 0–1 values.
  */
 export function CoinStackScene({ values, revealed }: { values: readonly number[]; revealed: boolean }) {
   const reduced = useReducedMotion() ?? false;
   const geometry = useCoinGeometry("lite");
-  const materials = useMemo(() => ({ gold: createGold(0.21), violet: createAnodised("#9a7bff", 0.24) }), []);
+  const materials = useMemo(() => ({ money: createSunflower(0.21), committed: createInk(0.3) }), []);
   const plate = useMemo(() => createSatinAcrylic(), []);
-  useOwnReflections([materials.gold, materials.violet, plate]);
+  useOwnReflections([materials.money, materials.committed, plate]);
   useEffect(() => () => Object.values(materials).forEach((material) => material.dispose()), [materials]);
   useEffect(() => () => plate.dispose(), [plate]);
 
@@ -48,7 +48,7 @@ export function CoinStackScene({ values, revealed }: { values: readonly number[]
           y: PLATE_TOP + STEP * (index + 0.5),
           twist: randomBetween(random, 0, Math.PI * 2),
           jitter: [randomBetween(random, -0.012, 0.012), randomBetween(random, -0.012, 0.012)],
-          gold: column === 0 || column === values.length - 1,
+          money: column === 0 || column === values.length - 1,
         });
       }
     });
@@ -56,8 +56,8 @@ export function CoinStackScene({ values, revealed }: { values: readonly number[]
   }, [values]);
 
   const drops = useRef<Array<{ p: number }>>([]);
-  const gold = useRef<THREE.InstancedMesh>(null);
-  const violet = useRef<THREE.InstancedMesh>(null);
+  const money = useRef<THREE.InstancedMesh>(null);
+  const committed = useRef<THREE.InstancedMesh>(null);
   const group = useRef<THREE.Group>(null);
   const settled = useRef(false);
 
@@ -87,8 +87,8 @@ export function CoinStackScene({ values, revealed }: { values: readonly number[]
 
   useFrame(() => {
     if (settled.current) return;
-    let goldIndex = 0;
-    let violetIndex = 0;
+    let moneyIndex = 0;
+    let committedIndex = 0;
     let moving = false;
     placements.forEach((placement, index) => {
       const p = drops.current[index]?.p ?? 0;
@@ -96,12 +96,12 @@ export function CoinStackScene({ values, revealed }: { values: readonly number[]
       scratch.position.set(placement.x + placement.jitter[0], placement.y + (1 - p) * DROP, placement.jitter[1]);
       scratch.quaternion.setFromEuler(scratch.euler.set(-Math.PI / 2, 0, placement.twist + (1 - p) * 1.4));
       scratch.matrix.compose(scratch.position, scratch.quaternion, scratch.scale);
-      const mesh = placement.gold ? gold.current : violet.current;
-      mesh?.setMatrixAt(placement.gold ? goldIndex++ : violetIndex++, scratch.matrix);
+      const mesh = placement.money ? money.current : committed.current;
+      mesh?.setMatrixAt(placement.money ? moneyIndex++ : committedIndex++, scratch.matrix);
     });
     for (const [mesh, count] of [
-      [gold.current, goldIndex],
-      [violet.current, violetIndex],
+      [money.current, moneyIndex],
+      [committed.current, committedIndex],
     ] as const) {
       if (!mesh) continue;
       mesh.count = count;
@@ -115,8 +115,8 @@ export function CoinStackScene({ values, revealed }: { values: readonly number[]
   const width = values.length * COLUMN_GAP + 0.36;
   return (
     <group ref={group} position-y={-0.62}>
-      <instancedMesh ref={gold} args={[geometry, materials.gold, placements.length]} frustumCulled={false} />
-      <instancedMesh ref={violet} args={[geometry, materials.violet, placements.length]} frustumCulled={false} />
+      <instancedMesh ref={money} args={[geometry, materials.money, placements.length]} frustumCulled={false} />
+      <instancedMesh ref={committed} args={[geometry, materials.committed, placements.length]} frustumCulled={false} />
       <RoundedBox args={[width, 0.16, 1.15]} radius={0.06} smoothness={4} position-y={-0.02} material={plate} />
       <ContactShadows
         position-y={PLATE_TOP + 0.002}
@@ -126,7 +126,7 @@ export function CoinStackScene({ values, revealed }: { values: readonly number[]
         blur={1.6}
         opacity={0.55}
         resolution={256}
-        color="#2a1d5c"
+        color="#0e1013"
       />
     </group>
   );

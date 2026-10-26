@@ -50,10 +50,11 @@ function GradientDome({ zenith, horizon, ground, intensity = 1 }: GradientDomePr
 }
 
 /**
- * Product studio. "dark": a near-black cove so metals on light cards keep contrast in their
- * reflections. "light": an airy lavender cove for pastel dielectrics and glass. Both share
- * a large key softbox, two strip lights and violet / pink / blue gels that give anodised
- * coins and the chrome dome their colour shifts.
+ * Product studio in the glass palette. "dark": an ink cove so metals on light cards keep
+ * contrast in their reflections. "light": a cove in the field's grey for pale dielectrics and
+ * glass. Both share a large key softbox and two strip lights, and the field's glows as gels —
+ * cool from the left and below, warm from the right — so metals and glass catch the same light
+ * as the page around them.
  */
 export function ProductStudioEnvironment({ tone = "dark" }: { tone?: "dark" | "light" }) {
   const light = tone === "light";
@@ -61,21 +62,21 @@ export function ProductStudioEnvironment({ tone = "dark" }: { tone?: "dark" | "l
     <Environment resolution={512} frames={1}>
       {light ? (
         // Pale ground and a lit floor card: down-tilted metal faces stay golden, not muddy.
-        <GradientDome zenith="#ffffff" horizon="#e3dcf7" ground="#c4bbe3" intensity={0.9} />
+        <GradientDome zenith="#ffffff" horizon="#e4e6e9" ground="#c5cad0" intensity={0.9} />
       ) : (
-        <GradientDome zenith="#2a2148" horizon="#0f0c1d" ground="#050409" />
+        <GradientDome zenith="#2a2e35" horizon="#0e1013" ground="#050506" />
       )}
       <Lightformer form="rect" color="#ffffff" intensity={3.4} position={[-3.5, 5.5, 4]} scale={[6, 5, 1]} />
-      {/* Overhead box: up-facing chrome (the dome's face) rolls from bright lavender to dark. */}
-      <Lightformer form="rect" color="#efe9ff" intensity={3.2} position={[-1, 7, -1.5]} scale={[8, 6, 1]} />
-      <Lightformer form="rect" color="#f3efff" intensity={4.2} position={[6, 0.5, 1.5]} scale={[1.3, 9, 1]} />
-      <Lightformer form="rect" color="#c2b0ff" intensity={2.4} position={[-6.5, 0, -1]} scale={[1, 8, 1]} />
-      <Lightformer form="rect" color="#b49cff" intensity={2} position={[0, 3, -7]} scale={[9, 2.2, 1]} />
-      <Lightformer form="ring" color="#ff6ad5" intensity={2.4} position={[-5, -2, -3]} scale={4.5} />
-      <Lightformer form="rect" color="#5a8dff" intensity={1.1} position={[5, -3.5, -2.5]} scale={[3.5, 3, 1]} />
+      {/* Overhead box: up-facing faces (the dome's face) roll from bright to dark. */}
+      <Lightformer form="rect" color="#f2f5f7" intensity={3.2} position={[-1, 7, -1.5]} scale={[8, 6, 1]} />
+      <Lightformer form="rect" color="#f7f8fa" intensity={4.2} position={[6, 0.5, 1.5]} scale={[1.3, 9, 1]} />
+      <Lightformer form="rect" color="#b9deeb" intensity={2.4} position={[-6.5, 0, -1]} scale={[1, 8, 1]} />
+      <Lightformer form="rect" color="#e8d3b0" intensity={2} position={[0, 3, -7]} scale={[9, 2.2, 1]} />
+      <Lightformer form="ring" color="#b9deeb" intensity={2.4} position={[-5, -2, -3]} scale={4.5} />
+      <Lightformer form="rect" color="#f2c879" intensity={1.4} position={[5, -3.5, -2.5]} scale={[3.5, 3, 1]} />
       <Lightformer
         form="rect"
-        color={light ? "#f4efff" : "#6d4aff"}
+        color={light ? "#f3f4f6" : "#62666d"}
         intensity={light ? 1.2 : 0.5}
         position={[0, -6, 0]}
         scale={[12, 12, 1]}

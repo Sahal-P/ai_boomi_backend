@@ -8,7 +8,7 @@ import * as THREE from "three";
 import { gsap, useGSAP } from "@/components/motion/gsap";
 
 import { useCoinGeometry } from "../lib/assets";
-import { createGold } from "../lib/materials";
+import { createSunflower } from "../lib/materials";
 import { useOwnReflections } from "../lib/use-reflections";
 
 type Vec3 = readonly [number, number, number];
@@ -28,7 +28,8 @@ const SEGMENTS = 520;
 const SAMPLES = 900;
 const COIN_RADIUS = 0.25;
 const COINS = 3;
-const STOPS = ["#c7b6ff", "#efb2ff", "#ffa9d8", "#b59cff"].map((color) => new THREE.Color(color));
+// The field's light as a ribbon: cool glow → pearl → warm glow → cool again.
+const STOPS = ["#b9deeb", "#f3f5f7", "#e8d3b0", "#cfe6ef"].map((color) => new THREE.Color(color));
 const UP = new THREE.Vector3(0, 1, 0);
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
@@ -66,9 +67,9 @@ function ribbonProfile(steps = 5): Array<{ x: number; y: number; nx: number; ny:
 type Frame = { centre: THREE.Vector3; tangent: THREE.Vector3; up: THREE.Vector3; side: THREE.Vector3 };
 
 /**
- * A glossy pastel ribbon sweeping across the call to action, twisting to catch the light,
- * with gold coins riding its surface through every twist. Coins speed up on descents and
- * ease over crests, so the stream never feels mechanical.
+ * A glossy ribbon in the field's glows sweeping across the call to action, twisting to catch
+ * the light, with sunflower coins riding its surface through every twist. Coins speed up on
+ * descents and ease over crests, so the stream never feels mechanical.
  */
 export function RibbonScene() {
   const reduced = useReducedMotion() ?? false;
@@ -155,7 +156,7 @@ export function RibbonScene() {
         clearcoat: 1,
         clearcoatRoughness: 0.07,
         sheen: 0.7,
-        sheenColor: new THREE.Color("#ffe1f5"),
+        sheenColor: new THREE.Color("#fff6e6"),
         sheenRoughness: 0.35,
         iridescence: 0.35,
         iridescenceIOR: 1.3,
@@ -163,7 +164,7 @@ export function RibbonScene() {
     [],
   );
   const coin = useCoinGeometry("lite");
-  const gold = useMemo(() => createGold(0.2), []);
+  const sunflower = useMemo(() => createSunflower(0.2), []);
   const coins = useRef<Array<THREE.Mesh | null>>([]);
   const group = useRef<THREE.Group>(null);
   const scratch = useMemo(
@@ -175,14 +176,14 @@ export function RibbonScene() {
     }),
     [],
   );
-  useOwnReflections([material, gold]);
+  useOwnReflections([material, sunflower]);
   useEffect(
     () => () => {
       geometry.dispose();
       material.dispose();
-      gold.dispose();
+      sunflower.dispose();
     },
-    [geometry, material, gold],
+    [geometry, material, sunflower],
   );
 
   useGSAP(
@@ -230,7 +231,7 @@ export function RibbonScene() {
             coins.current[index] = mesh;
           }}
           geometry={coin}
-          material={gold}
+          material={sunflower}
           scale={COIN_RADIUS}
         />
       ))}

@@ -8,7 +8,7 @@ import * as THREE from "three";
 import { gsap, useGSAP } from "@/components/motion/gsap";
 
 import { useCoinGeometry } from "../lib/assets";
-import { createGold, createNeon } from "../lib/materials";
+import { createNeon, createSunflower } from "../lib/materials";
 import { useOwnReflections } from "../lib/use-reflections";
 
 const COINS = 3;
@@ -16,20 +16,22 @@ const CYCLE = 4.2;
 const TRAY = { width: 2.7, height: 0.34, depth: 1.75 } as const;
 const SLOT = { width: 1.55, depth: 0.12 } as const;
 const COIN_SCALE = 0.32;
+// The field's cool glow, deepened so it reads as light against the pearl tray.
+const SLOT_LIGHT = "#6fc6ea";
 
 /**
- * Connect Gmail: a satin acrylic inbox with a lit mail slot. Gold coins stay hidden inside
- * until they rise crisply through the slot — rim-lit violet as they clear it — turn half a
- * revolution and leave the frame, one after another in a continuous stream.
+ * Connect Gmail: a pearl acrylic inbox with a lit mail slot. Sunflower coins stay hidden inside
+ * until they rise crisply through the slot — rim-lit by its cool light as they clear it — turn
+ * half a revolution and leave the frame, one after another in a continuous stream.
  */
 export function InboxSlabScene() {
   const reduced = useReducedMotion() ?? false;
   const coin = useCoinGeometry("lite");
-  const gold = useMemo(() => createGold(0.2), []);
+  const sunflower = useMemo(() => createSunflower(0.2), []);
   const tray = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
-        color: "#f6f2ff",
+        color: "#f2f4f6",
         roughness: 0.38,
         clearcoat: 0.7,
         clearcoatRoughness: 0.12,
@@ -38,15 +40,15 @@ export function InboxSlabScene() {
       }),
     [],
   );
-  const slotWell = useMemo(() => new THREE.MeshStandardMaterial({ color: "#1d1638", roughness: 0.6 }), []);
-  const slotLight = useMemo(() => createNeon("#b46bff", 3.2), []);
+  const slotWell = useMemo(() => new THREE.MeshStandardMaterial({ color: "#0e1013", roughness: 0.6 }), []);
+  const slotLight = useMemo(() => createNeon(SLOT_LIGHT, 3.2), []);
   const coins = useRef<Array<THREE.Group | null>>([]);
-  useOwnReflections([gold, tray]);
+  useOwnReflections([sunflower, tray]);
   useEffect(
     () => () => {
-      [gold, tray, slotWell, slotLight].forEach((material) => material.dispose());
+      [sunflower, tray, slotWell, slotLight].forEach((material) => material.dispose());
     },
-    [gold, tray, slotWell, slotLight],
+    [sunflower, tray, slotWell, slotLight],
   );
 
   useGSAP(
@@ -79,7 +81,7 @@ export function InboxSlabScene() {
       <mesh material={slotLight} position-y={top - 0.004} rotation-x={-Math.PI / 2}>
         <planeGeometry args={[SLOT.width - 0.08, SLOT.depth * 0.45]} />
       </mesh>
-      <pointLight position={[0, top + 0.25, 0.05]} color="#b46bff" intensity={2.6} distance={2.2} decay={2} />
+      <pointLight position={[0, top + 0.25, 0.05]} color={SLOT_LIGHT} intensity={2.6} distance={2.2} decay={2} />
       {Array.from({ length: COINS }, (_, index) => (
         <group
           key={index}
@@ -87,7 +89,7 @@ export function InboxSlabScene() {
             coins.current[index] = group;
           }}
         >
-          <mesh geometry={coin} material={gold} scale={COIN_SCALE} />
+          <mesh geometry={coin} material={sunflower} scale={COIN_SCALE} />
         </group>
       ))}
     </group>

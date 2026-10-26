@@ -11,21 +11,21 @@ const steps: Array<{ number: string; title: string; body: string; spec: SceneSpe
     title: "Connect Gmail, read-only",
     body: "FinBoy uses sender and keyword filters to scan recent likely financial mail — bank alerts, receipts and bills.",
     spec: { name: "inbox-slab" },
-    tint: "from-[#f3efff] to-white",
+    tint: "from-field-cool/60 to-white/70",
   },
   {
     number: "02",
     title: "Three alerts, one transaction",
     body: "A bank alert, an order email and an invoice for the same ₹799 become one entry — with all three kept as evidence.",
     spec: { name: "coin-swirl", loop: true },
-    tint: "from-[#fdf0fb] to-white",
+    tint: "from-field-warm/70 to-white/70",
   },
   {
     number: "03",
     title: "You approve what’s uncertain",
     body: "Low-confidence items wait for one tap. Nothing guessed slips silently into your totals.",
     spec: { name: "check-orb" },
-    tint: "from-[#eef2ff] to-white",
+    tint: "from-white/90 to-white/50",
   },
 ];
 
@@ -50,7 +50,7 @@ export function HowItWorks() {
               <TiltCard max={3} className="surface h-full overflow-hidden rounded-[2rem]">
                 <SceneSlot spec={step.spec} className={`h-64 bg-gradient-to-b ${step.tint}`} />
                 <div className="border-t border-black/[0.04] p-7">
-                  <span className="font-mono text-xs font-semibold text-violet">/{step.number}</span>
+                  <span className="font-mono text-xs font-semibold text-ink-soft">/{step.number}</span>
                   <h3 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-ink">{step.title}</h3>
                   <p className="mt-2.5 text-[0.95rem] leading-relaxed text-ink-soft">{step.body}</p>
                 </div>

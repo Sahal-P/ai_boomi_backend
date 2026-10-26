@@ -8,7 +8,7 @@ import * as THREE from "three";
 import { gsap, useGSAP } from "@/components/motion/gsap";
 
 import { useCoinGeometry } from "../lib/assets";
-import { createAnodised } from "../lib/materials";
+import { createSunflower } from "../lib/materials";
 import { createRandom, randomBetween } from "../lib/random";
 import { useOwnReflections } from "../lib/use-reflections";
 
@@ -19,7 +19,8 @@ const ORBIT_SPEED = 0.3;
 const STAGGER = 0.4;
 const STACK_TILT = 0.36;
 const STACK_STEP = 0.2 * SCALE * 1.03;
-const TINTS = ["#ff4fb4", "#c34bff", "#ff7d9c"] as const;
+// Three sources, three sunflowers: the merge reads as one stack of the same money.
+const TINTS = ["#fed234", "#ffe27a", "#f5c518"] as const;
 const TAU = Math.PI * 2;
 const RING_TILT = new THREE.Quaternion().setFromEuler(new THREE.Euler(-1.05, 0.12, -0.38));
 const STACK_AXIS = new THREE.Vector3(0, Math.cos(STACK_TILT), Math.sin(STACK_TILT));
@@ -44,14 +45,14 @@ type CoinSwirlProps = {
 };
 
 /**
- * Anodised coins threaded on a tilted ring (faces along the ring, each spinning slowly on
+ * Sunflower coins threaded on a tilted ring (faces along the ring, each spinning slowly on
  * the wire). The merge spirals them inward in a staggered cascade into one hand-stacked
  * column, then releases them — a seamless GSAP loop.
  */
 export function CoinSwirlScene({ merge = 0, loop = false }: CoinSwirlProps) {
   const reduced = useReducedMotion() ?? false;
   const geometry = useCoinGeometry("lite");
-  const materials = useMemo(() => TINTS.map((tint) => createAnodised(tint)), []);
+  const materials = useMemo(() => TINTS.map((tint) => createSunflower(0.24, tint)), []);
   useOwnReflections(materials);
   useEffect(() => () => materials.forEach((material) => material.dispose()), [materials]);
 

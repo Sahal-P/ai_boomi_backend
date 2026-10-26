@@ -39,9 +39,9 @@ export function SimulatorSection() {
                 </div>
               ))}
             </dl>
-            <div className="mt-2 flex items-baseline justify-between rounded-2xl bg-[linear-gradient(110deg,#f3efff,#fdf0fb)] px-5 py-5">
-              <p className="font-semibold text-ink">Estimated remaining</p>
-              <AnimatedAmount amountMinor={978_000} className="text-gradient text-4xl font-semibold tracking-[-0.03em]" duration={2} />
+            <div className="solid-hero mt-2 flex items-baseline justify-between rounded-2xl px-5 py-5">
+              <p className="font-semibold">Estimated remaining</p>
+              <AnimatedAmount amountMinor={978_000} className="text-4xl font-semibold tracking-[-0.03em]" duration={2} />
             </div>
             <p className="mt-5 flex items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
               <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />2 transactions are awaiting your confirmation.
@@ -50,7 +50,7 @@ export function SimulatorSection() {
               This models cash flow from FinBoy's tracked records. It is not a recommendation to purchase any security.
             </p>
           </Reveal>
-          <Reveal delay={0.12} className="surface relative flex flex-col overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_50%_30%,#ffffff,#f3f0fc)]">
+          <Reveal delay={0.12} className="surface relative flex flex-col overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_50%_32%,rgb(255_255_255/0.9),transparent_68%)]">
             <SceneSlot spec={{ name: "coin-stack", values: [1, 0.6, 0.16, 0.08, 0.16] }} className="min-h-[380px] w-full flex-1" />
             <ul className="mx-auto grid w-full max-w-[34rem] grid-cols-5 border-t border-black/[0.05] px-4 py-4 text-center text-xs font-semibold text-ink-soft">
               {COLUMNS.map((column) => (

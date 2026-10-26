@@ -7,23 +7,24 @@ import * as THREE from "three";
 
 import { gsap, useGSAP } from "@/components/motion/gsap";
 
+import { FIELD_GLSL, useFieldUniforms } from "../lib/field";
 import { createGlass } from "../lib/materials";
 import { useQualityTier } from "../lib/quality";
-import { preToneMapped } from "../lib/tone";
 import { useOwnReflections } from "../lib/use-reflections";
 import type { VoiceOrbState } from "../scene-spec";
 
-/** The page canvas colour behind the orb (globals.css `--canvas`). */
-const PAGE = "#f5f4fb";
-
 type Palette = { deep: string; mid: string; hot: string; swirl: number; energy: number };
 
-/** Luminous centre (`deep`) → halo (`mid`) → pale rim (`hot`). */
+/**
+ * Centre (`deep`) → halo (`mid`) → pale rim (`hot`), in the glass palette: the field's cool glow
+ * at rest, vivid cool while listening, ink while checking the ledger (the app's thinking orbs
+ * are ink), sunflower while it speaks the answer.
+ */
 const PALETTES: Record<VoiceOrbState, Palette> = {
-  idle: { deep: "#3d5bff", mid: "#8d8cff", hot: "#efeaff", swirl: 0, energy: 0.1 },
-  listening: { deep: "#7a3cff", mid: "#d07cff", hot: "#ffe1f2", swirl: 0.35, energy: 0.35 },
-  thinking: { deep: "#3446ff", mid: "#7f6dff", hot: "#e9e4ff", swirl: 1, energy: 0.25 },
-  speaking: { deep: "#2f63ff", mid: "#8a7dff", hot: "#ffe4f4", swirl: 0.25, energy: 0.3 },
+  idle: { deep: "#6f97ab", mid: "#d9e4ea", hot: "#ffffff", swirl: 0, energy: 0.1 },
+  listening: { deep: "#1688c4", mid: "#8fd2ec", hot: "#e8f8ff", swirl: 0.35, energy: 0.35 },
+  thinking: { deep: "#14171c", mid: "#6e7a86", hot: "#dbe6ee", swirl: 1, energy: 0.25 },
+  speaking: { deep: "#ffc81f", mid: "#fed234", hot: "#fff6d6", swirl: 0.25, energy: 0.3 },
 };
 
 // 3D simplex noise: Ashima Arts / Stefan Gustavson (MIT).
@@ -89,6 +90,7 @@ const coreVertex = /* glsl */ `
   varying vec3 vObject;
   varying vec3 vNormal;
   varying vec3 vView;
+  varying vec4 vClip;
   ${NOISE}
   void main() {
     vec3 p = position;
@@ -99,6 +101,7 @@ const coreVertex = /* glsl */ `
     vNormal = normalize(normalMatrix * normal);
     vView = normalize(-mv.xyz);
     gl_Position = projectionMatrix * mv;
+    vClip = gl_Position;
   }
 `;
 
@@ -109,11 +112,11 @@ const coreFragment = /* glsl */ `
   uniform vec3 uDeep;
   uniform vec3 uMid;
   uniform vec3 uHot;
-  uniform vec3 uPage;
   varying vec3 vObject;
   varying vec3 vNormal;
   varying vec3 vView;
   ${NOISE}
+  ${FIELD_GLSL}
   void main() {
     vec3 p = normalize(vObject);
     float t = uTime * (0.1 + uSwirl * 0.5);
@@ -121,30 +124,53 @@ const coreFragment = /* glsl */ `
     float warp = fbm(p * 1.1 + vec3(t, -t * 0.6, t * 0.4));
     float n = fbm(p * 1.35 + warp * (0.7 + uEnergy * 0.8) + vec3(0.0, t, 0.0));
     float facing = clamp(dot(normalize(vNormal), normalize(vView)), 0.0, 1.0);
-    // Light pooled in the centre, a lilac halo, a pale rim; the flow bends the boundaries.
+    // Light pooled in the centre, a soft halo, a pale rim; the flow bends the boundaries.
     float centre = smoothstep(0.35, 1.0, facing + n * 0.3);
     vec3 color = mix(uMid * 0.9, uMid, smoothstep(0.0, 0.5, facing));
     color = mix(color, uDeep * 1.35, centre);
     color += uHot * smoothstep(0.3, 0.8, n) * 0.14 * facing;
     color *= 0.92 + uEnergy * 0.55;
-    // Feather the silhouette into the page colour so the core reads as light, not a ball.
-    color = mix(uPage, color, smoothstep(0.02, 0.5, facing));
+    // Feather the silhouette into the field behind so the core reads as light, not a ball.
+    color = mix(fieldBehind(), color, smoothstep(0.02, 0.5, facing));
     gl_FragColor = vec4(color, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
 `;
 
-type VoiceOrbSceneProps = { state?: VoiceOrbState; level?: RefObject<number> | undefined };
+const backdropVertex = /* glsl */ `
+  varying vec4 vClip;
+  void main() {
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vClip = gl_Position;
+  }
+`;
+
+const backdropFragment = /* glsl */ `
+  ${FIELD_GLSL}
+  void main() {
+    gl_FragColor = vec4(fieldBehind(), 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+type VoiceOrbSceneProps = {
+  state?: VoiceOrbState;
+  level?: RefObject<number> | undefined;
+  /** The slot element, so the backdrop can paint the field behind it. */
+  track: RefObject<HTMLElement | null>;
+};
 
 /**
  * The assistant: a dispersive glass sphere refracting a living plasma core (domain-warped
  * noise in the state's palette). State changes ease the palette and flow with GSAP; the
  * live voice level adds energy every frame.
  */
-export function VoiceOrbScene({ state = "idle", level }: VoiceOrbSceneProps) {
+export function VoiceOrbScene({ state = "idle", level, track }: VoiceOrbSceneProps) {
   const quality = useQualityTier();
   const reduced = useReducedMotion() ?? false;
+  const field = useFieldUniforms(track);
   const core = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -157,22 +183,25 @@ export function VoiceOrbScene({ state = "idle", level }: VoiceOrbSceneProps) {
           uDeep: { value: new THREE.Color(PALETTES.idle.deep) },
           uMid: { value: new THREE.Color(PALETTES.idle.mid) },
           uHot: { value: new THREE.Color(PALETTES.idle.hot) },
-          // Pre-image under Neutral tone mapping, so the feathered edge lands exactly on --canvas.
-          uPage: { value: preToneMapped(PAGE) },
+          ...field,
         },
       }),
-    [],
+    [field],
   );
   const shell = useMemo(
     () =>
       quality === "low"
         ? new THREE.MeshPhysicalMaterial({ color: "#ffffff", transparent: true, opacity: 0.18, roughness: 0.05, clearcoat: 1 })
-        : createGlass({ roughness: 0.02, thickness: 0.9, dispersion: 0.3, tint: "#f2f0ff", absorption: 10 }),
+        : createGlass({ roughness: 0.02, thickness: 0.9, dispersion: 0.3, tint: "#eef4f7", absorption: 10 }),
     [quality],
   );
-  // GSAP eases these plain values; the frame loop copies them into the core's uniforms.
-  const backdrop = useMemo(() => new THREE.MeshBasicMaterial({ color: PAGE, toneMapped: false }), []);
+  // Shares the field uniforms with the core, so both track the slot in the same frame.
+  const backdrop = useMemo(
+    () => new THREE.ShaderMaterial({ vertexShader: backdropVertex, fragmentShader: backdropFragment, uniforms: { ...field } }),
+    [field],
+  );
   useEffect(() => () => backdrop.dispose(), [backdrop]);
+  // GSAP eases these plain values; the frame loop copies them into the core's uniforms.
   const tween = useRef({
     swirl: PALETTES.idle.swirl,
     energy: PALETTES.idle.energy,
@@ -225,8 +254,8 @@ export function VoiceOrbScene({ state = "idle", level }: VoiceOrbSceneProps) {
       <mesh material={shell}>
         <sphereGeometry args={[1, 96, 64]} />
       </mesh>
-      {/* Something opaque for the glass to refract: the page colour, sized to stay hidden
-          behind the sphere's silhouette (three otherwise refracts a 50% white clear). */}
+      {/* Something opaque for the glass to refract: the field behind the slot, sized to stay
+          hidden behind the sphere's silhouette (three otherwise refracts a 50% white clear). */}
       <mesh position-z={-1.05} material={backdrop}>
         <circleGeometry args={[1.18, 96]} />
       </mesh>

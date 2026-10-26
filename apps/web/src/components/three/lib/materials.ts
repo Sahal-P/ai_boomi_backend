@@ -1,49 +1,39 @@
 import * as THREE from "three";
 
-import type { QualityTier } from "./quality";
-
 /**
- * Physically based materials shared by every scene. Metals carry no clearcoat (a lacquer
- * layer washes their colour into plastic); colour comes from the base and thin-film
- * iridescence, contrast from the studio environment's dark flags and bright softboxes.
+ * Physically based materials shared by every scene, in the glass palette: sunflower for money,
+ * ink for decisions, pearl and clear glass for the rest. Contrast comes from the studio
+ * environment's dark flags and bright softboxes, colour shifts from its cool and warm gels.
  */
 
-/** Minted gold: warm, saturated F0 with a polished but not mirror finish. */
-export function createGold(roughness = 0.19): THREE.MeshPhysicalMaterial {
-  return new THREE.MeshPhysicalMaterial({ color: "#f3b84e", metalness: 1, roughness });
-}
-
 /**
- * Anodised aluminium with a thin-film sheen: pink → peach → violet as faces turn. A narrow
- * film-thickness range keeps the shift within warm tones instead of swinging to blue.
+ * Sunflower for money objects. Half metal under a clear lacquer: a full metal mirrors the dark
+ * cove and reads as brass, while the yellow body keeps every face the theme's money colour.
  */
-export function createAnodised(color: THREE.ColorRepresentation, roughness = 0.24): THREE.MeshPhysicalMaterial {
+export function createSunflower(roughness = 0.19, color: THREE.ColorRepresentation = "#fed234"): THREE.MeshPhysicalMaterial {
   return new THREE.MeshPhysicalMaterial({
     color,
-    metalness: 1,
-    roughness,
-    iridescence: 0.6,
-    iridescenceIOR: 1.5,
-    iridescenceThicknessRange: [320, 520],
+    metalness: 0.5,
+    roughness: roughness + 0.06,
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.12,
   });
 }
 
-/** Polished chrome with a strong interference film (violet face, cyan-blue grazing rims). */
-export function createIridescentChrome(color: THREE.ColorRepresentation, roughness = 0.09): THREE.MeshPhysicalMaterial {
+/** Lacquered ink, the black pills in 3D: a dark body with crisp highlights and bright rims. */
+export function createInk(roughness = 0.3): THREE.MeshPhysicalMaterial {
   return new THREE.MeshPhysicalMaterial({
-    color,
-    metalness: 1,
+    color: "#14171c",
     roughness,
-    iridescence: 1,
-    iridescenceIOR: 1.33,
-    iridescenceThicknessRange: [140, 620],
+    clearcoat: 1,
+    clearcoatRoughness: 0.06,
   });
 }
 
-/** Opaque satin acrylic: milky body, soft sheen, lacquered highlights. No transmission pass. */
+/** Opaque satin acrylic: pearl body, soft sheen, lacquered highlights. No transmission pass. */
 export function createSatinAcrylic(): THREE.MeshPhysicalMaterial {
   return new THREE.MeshPhysicalMaterial({
-    color: "#efe9fb",
+    color: "#eef1f4",
     roughness: 0.32,
     sheen: 1,
     sheenColor: new THREE.Color("#ffffff"),
@@ -51,60 +41,6 @@ export function createSatinAcrylic(): THREE.MeshPhysicalMaterial {
     clearcoat: 0.5,
     clearcoatRoughness: 0.28,
   });
-}
-
-/**
- * Satin-frosted acrylic for opaque canvases (the hero). Low tier gets the satin stand-in.
- * Don't use transmission in the shared transparent canvas: see `createSurfaceGlass`.
- */
-const GRAZING_ANCHOR = "material.clearcoat = saturate( material.clearcoat );";
-
-/**
- * Fades the clearcoat out at grazing view angles. At a silhouette a mirror-smooth coat
- * turns fully reflective (Fresnel → 1) and mirrors whatever the environment holds below
- * the horizon; on a thin rounded lip that aliases into dark specks. The base layer's
- * rougher reflection carries the silhouette instead. Perspective cameras only.
- */
-function fadeClearcoatAtGrazing(material: THREE.MeshPhysicalMaterial): THREE.MeshPhysicalMaterial {
-  material.onBeforeCompile = (shader) => {
-    const chunk = THREE.ShaderChunk.lights_physical_fragment;
-    if (!chunk.includes(GRAZING_ANCHOR)) {
-      if (process.env.NODE_ENV !== "production") console.warn("materials: three's clearcoat chunk changed; grazing fade skipped");
-      return;
-    }
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <lights_physical_fragment>",
-      chunk.replace(
-        GRAZING_ANCHOR,
-        "material.clearcoat = saturate( material.clearcoat ) * smoothstep( 0.02, 0.3, dot( clearcoatNormal, normalize( vViewPosition ) ) );",
-      ),
-    );
-  };
-  material.customProgramCacheKey = () => "clearcoat-grazing-fade";
-  return material;
-}
-
-export function createFrostedAcrylic(tier: QualityTier): THREE.MeshPhysicalMaterial {
-  if (tier === "low") return fadeClearcoatAtGrazing(createSatinAcrylic());
-  // Partial transmission: the lit, milky body of real frosted acrylic plus a blurred view
-  // through it. Full transmission reads as clear glass and vanishes on a white set.
-  return fadeClearcoatAtGrazing(
-    new THREE.MeshPhysicalMaterial({
-      color: "#ffffff",
-      roughness: 0.26,
-      transmission: 0.72,
-      thickness: 0.4,
-      ior: 1.49,
-      attenuationColor: new THREE.Color("#e2d6ff"),
-      attenuationDistance: 1.1,
-      sheen: 0.25,
-      sheenColor: new THREE.Color("#ffffff"),
-      sheenRoughness: 0.4,
-      // A polished skin over the frosted body: crisp highlights run along the lips.
-      clearcoat: 1,
-      clearcoatRoughness: 0.08,
-    }),
-  );
 }
 
 type GlassOptions = {
@@ -122,7 +58,7 @@ type GlassOptions = {
  * opacity and Fresnel reflections carry the form; double-sided so inner faces reflect too
  * (three draws the back faces first).
  */
-export function createSurfaceGlass(tint: THREE.ColorRepresentation = "#f6f2ff", opacity = 0.2): THREE.MeshPhysicalMaterial {
+export function createSurfaceGlass(tint: THREE.ColorRepresentation = "#f4f7f9", opacity = 0.2): THREE.MeshPhysicalMaterial {
   return new THREE.MeshPhysicalMaterial({
     color: tint,
     roughness: 0.05,
@@ -145,7 +81,7 @@ export function createGlass({
   roughness = 0.03,
   thickness = 0.8,
   dispersion = 0.2,
-  tint = "#efe9ff",
+  tint = "#eef4f7",
   absorption = 3,
 }: GlassOptions = {}): THREE.MeshPhysicalMaterial {
   return new THREE.MeshPhysicalMaterial({
