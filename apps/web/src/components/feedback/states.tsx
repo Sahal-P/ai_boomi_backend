@@ -1,5 +1,5 @@
 import { LoaderCircle } from "lucide-react";
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** Loading placeholder announced politely once; keeps layout stable without fake data. */
@@ -15,25 +15,31 @@ export function LoadingPanel({ label, className }: { label: string; className?: 
   );
 }
 
+/**
+ * Empty and all-done states are yellow moments: flat sunflower, ink, a drawn illustration
+ * (first on phones, as in the reference; beside the text on wider screens). Never glass.
+ */
 export function EmptyState({
-  icon: Icon,
+  illustration,
   title,
   children,
   actions,
   className,
 }: {
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" }>;
+  illustration: ReactNode;
   title: string;
   children?: ReactNode;
   actions?: ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn("surface rounded-3xl p-6 sm:p-8", className)}>
-      <Icon className="size-7 text-ink" aria-hidden="true" />
-      <h2 className="mt-4 text-lg font-semibold">{title}</h2>
-      {children && <div className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">{children}</div>}
-      {actions && <div className="mt-5 flex flex-wrap gap-2">{actions}</div>}
+    <div className={cn("moment grid items-center gap-5 rounded-3xl p-6 sm:grid-cols-[minmax(0,1fr)_13rem] sm:gap-8 sm:p-8", className)}>
+      <div className="min-w-0">
+        <h2 className="text-xl font-semibold tracking-[-0.02em]">{title}</h2>
+        {children && <div className="mt-2 max-w-xl text-sm leading-relaxed text-sunflower-ink">{children}</div>}
+        {actions && <div className="mt-5 flex flex-wrap gap-2">{actions}</div>}
+      </div>
+      <div className="mx-auto w-full max-w-52 max-sm:order-first sm:max-w-none">{illustration}</div>
     </div>
   );
 }

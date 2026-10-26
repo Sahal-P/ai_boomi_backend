@@ -1,12 +1,13 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, CircleCheckBig, FileSearch, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { EmptyState, LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
+import { AllReviewedArt, NoMatchArt } from "@/components/illustrations/scenes";
 import { RecordDecision } from "@/components/records/record-decision";
 import { RecordDialog } from "@/components/records/record-dialog";
 import { RecordFilters } from "@/components/records/record-filters";
@@ -194,7 +195,7 @@ export function ReviewScreen() {
 
       {empty && (page.unresolved_total > 0 ? (
         <EmptyState
-          icon={FileSearch}
+          illustration={<NoMatchArt />}
           title="No records match these filters"
           actions={
             <Button variant="outline" onClick={() => update({ q: null, category: null, kind: null, source: null, year: null, month: null, offset: null })}>
@@ -206,7 +207,7 @@ export function ReviewScreen() {
         </EmptyState>
       ) : (
         <EmptyState
-          icon={CircleCheckBig}
+          illustration={<AllReviewedArt />}
           title="You're all caught up"
           actions={
             <>

@@ -17,7 +17,9 @@ export function SiteNav() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    // Glass only once the yellow hero has scrolled away: never put glass over yellow.
+    const hero = document.querySelector("[data-hero]");
+    const onScroll = () => setScrolled(hero ? hero.getBoundingClientRect().bottom <= 72 : window.scrollY > 24);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -52,7 +54,7 @@ export function SiteNav() {
           </Link>
           <Link
             href="/sources"
-            className="inline-flex h-10 items-center rounded-full bg-white px-5 text-[13px] font-semibold text-ink shadow-[0_1px_2px_rgba(20,16,60,0.06),0_8px_24px_-10px_rgba(76,52,170,0.35)] transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
+            className="inline-flex h-10 items-center rounded-full bg-white px-5 text-[13px] font-semibold text-ink shadow-[0_1px_2px_rgba(16,18,24,0.06),0_8px_24px_-10px_rgba(16,18,24,0.35)] transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
           >
             Get started
           </Link>

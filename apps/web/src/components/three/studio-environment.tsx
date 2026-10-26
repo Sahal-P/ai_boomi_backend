@@ -50,25 +50,6 @@ function GradientDome({ zenith, horizon, ground, intensity = 1 }: GradientDomePr
 }
 
 /**
- * Hero image-based light: bright zenith over a darker lavender ground, so matte slabs get
- * real form shading (lit tops, cooler sides, darker undersides) instead of flat ambient,
- * plus the warm studio window the sun comes through and a magenta floor bounce that the
- * gold and acrylic pick up.
- */
-export function HeroSkyEnvironment({ sunDirection }: { sunDirection: THREE.Vector3 }) {
-  const windowLight = useMemo(() => sunDirection.clone().multiplyScalar(22), [sunDirection]);
-  return (
-    <Environment resolution={256} frames={1} environmentIntensity={0.5}>
-      <GradientDome zenith="#ffffff" horizon="#e6e0f6" ground="#8f86ad" intensity={1.05} />
-      <Lightformer form="rect" color="#fff0dc" intensity={5} position={windowLight} scale={[7, 12, 1]} />
-      <Lightformer form="rect" color="#ffffff" intensity={1.2} position={[0, 20, 0]} scale={[26, 26, 1]} />
-      <Lightformer form="rect" color="#d9d2ff" intensity={0.9} position={[14, 5, 12]} scale={[12, 6, 1]} />
-      <Lightformer form="rect" color="#ff5ed4" intensity={1.4} position={[-9, 0.6, 5]} scale={[7, 1.4, 1]} />
-    </Environment>
-  );
-}
-
-/**
  * Product studio. "dark": a near-black cove so metals on light cards keep contrast in their
  * reflections. "light": an airy lavender cove for pastel dielectrics and glass. Both share
  * a large key softbox, two strip lights and violet / pink / blue gels that give anodised

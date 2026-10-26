@@ -52,15 +52,22 @@ test("navigation labels meet WCAG AA contrast as rendered", async ({ page }) => 
       .map((link) => {
         const label = link.querySelector<HTMLElement>("span:last-child") ?? link;
         const parse = (value: string) => (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
-        return { text: label.textContent, color: parse(getComputedStyle(label).color), size: parseFloat(getComputedStyle(label).fontSize) };
+        return {
+          text: label.textContent,
+          active: link.getAttribute("aria-current") === "page",
+          color: parse(getComputedStyle(label).color),
+          size: parseFloat(getComputedStyle(label).fontSize),
+        };
       }),
   );
   expect(samples.length).toBeGreaterThan(0);
-  // Worst case surface under the near-opaque bar: 94% white over the darkest ink (#14122b).
-  const worstSurface = [0.94 * 255 + 0.06 * 20, 0.94 * 255 + 0.06 * 18, 0.94 * 255 + 0.06 * 43];
+  // The active label sits on the solid ink capsule (#0e1013). Every other label sits on the bar:
+  // worst case 90% white (the lighter of the header and tab bar) over the darkest ink.
+  const ink = [14, 16, 19];
+  const worstSurface = ink.map((channel) => 0.9 * 255 + 0.1 * channel);
   for (const sample of samples) {
     expect(sample.size).toBeGreaterThanOrEqual(11);
-    expect(contrast(sample.color, worstSurface), `${sample.text}`).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(sample.color, sample.active ? ink : worstSurface), `${sample.text}`).toBeGreaterThanOrEqual(4.5);
   }
 });
 
@@ -113,11 +120,13 @@ test("daily screens load no WebGL, and the landing page works without it", async
   page.on("request", (request) => {
     if (request.resourceType() === "script") scripts.push(request.url());
   });
+  // Thinking orbs are small 2D canvases, not WebGL; every other canvas is a 3D layer.
+  const webgl = page.locator("canvas:not([data-thinking-orb])");
   await page.goto("/dashboard");
   await expect(page.getByRole("region", { name: /Estimated unallocated/ })).toBeVisible();
-  expect(await page.locator("canvas").count()).toBe(0);
+  expect(await webgl.count()).toBe(0);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?graphics=off");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Your inbox");
-  await expect(page.locator("canvas")).toHaveCount(0);
+  await expect(webgl).toHaveCount(0);
 });

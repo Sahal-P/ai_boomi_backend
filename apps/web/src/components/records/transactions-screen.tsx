@@ -1,12 +1,13 @@
 "use client";
 
-import { FileSearch, Inbox, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { EmptyState, LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
+import { EmptyMonthArt, NoMatchArt } from "@/components/illustrations/scenes";
 import { RecordDialog } from "@/components/records/record-dialog";
 import { RecordFilters } from "@/components/records/record-filters";
 import { RecordGroups } from "@/components/records/record-groups";
@@ -120,7 +121,7 @@ export function TransactionsScreen() {
         {page && page.items.length === 0 && !list.stale && (
           filtered ? (
             <EmptyState
-              icon={FileSearch}
+              illustration={<NoMatchArt />}
               title="No records match these filters"
               actions={
                 <Button variant="outline" onClick={() => update({ q: null, status: null, category: null, kind: null, source: null, offset: null })}>
@@ -132,7 +133,7 @@ export function TransactionsScreen() {
             </EmptyState>
           ) : (
             <EmptyState
-              icon={Inbox}
+              illustration={<EmptyMonthArt />}
               title={`No records for ${periodLabel}`}
               actions={
                 <>

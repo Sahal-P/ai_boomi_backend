@@ -17,6 +17,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { EmptyState, LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
+import { EmptyMonthArt, NoRecordsArt } from "@/components/illustrations/scenes";
 import { ObligationDialog } from "@/components/money/obligation-dialog";
 import { SimulationPanel } from "@/components/money/simulation-panel";
 import { coverageHeadline } from "@/components/sources/coverage-summary";
@@ -413,13 +414,13 @@ export function OverviewScreen() {
         />
       )}
       {empty && period && (
-        <EmptyState icon={Inbox} title={`No records for ${monthLabel(period.year, period.month)}`}>
+        <EmptyState illustration={<EmptyMonthArt />} title={`No records for ${monthLabel(period.year, period.month)}`}>
           Nothing was imported for this month. Choose another period, or add a source that covers it.
         </EmptyState>
       )}
       {empty && !period && (
         <EmptyState
-          icon={Inbox}
+          illustration={<NoRecordsArt />}
           title="No household records yet"
           actions={
             <>
