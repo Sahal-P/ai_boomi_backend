@@ -89,7 +89,7 @@ async def test_demo_is_read_only_and_old_import_is_disabled(mail_app, mail_facto
 
 
 def test_progress_uses_independent_sessions(mail_factory, mail_settings, monkeypatch, eml):
-    monkeypatch.setattr("finboy.services.imports.runner.import_lock", lambda _: nullcontext())
+    monkeypatch.setattr("finboy.services.imports.runner.import_lock", lambda *_args: nullcontext())
     with mail_factory() as session:
         run = create_run(session, mode="eml_upload")
         run_id = run.id
@@ -124,7 +124,7 @@ def test_abandoned_import_allows_a_fresh_run(mail_factory, monkeypatch):
 
     from finboy.core.clock import now_ist
 
-    monkeypatch.setattr("finboy.services.imports.runner.import_lock", lambda _: nullcontext())
+    monkeypatch.setattr("finboy.services.imports.runner.import_lock", lambda *_args: nullcontext())
     with mail_factory() as session:
         first = create_run(session, mode="eml_upload")
         with pytest.raises(MailError, match="import_busy"):
@@ -145,7 +145,7 @@ def test_background_failure_recording_is_redacted(mail_settings, monkeypatch, ca
         def begin(self):
             raise RuntimeError("SENSITIVE_DATABASE_DETAILS")
 
-    monkeypatch.setattr("finboy.services.imports.runner.import_lock", lambda _: nullcontext())
+    monkeypatch.setattr("finboy.services.imports.runner.import_lock", lambda *_args: nullcontext())
     monkeypatch.setattr(
         "finboy.services.imports.runner.sessionmaker", lambda *args, **kwargs: UnavailableFactory()
     )
@@ -203,7 +203,7 @@ async def test_upload_error_does_not_expose_content(mail_app, capsys):
 def test_failures_are_fixed(mail_factory, mail_settings, monkeypatch, error, code):
     from finboy.core.clock import now_ist
 
-    monkeypatch.setattr("finboy.services.imports.runner.import_lock", lambda _: nullcontext())
+    monkeypatch.setattr("finboy.services.imports.runner.import_lock", lambda *_args: nullcontext())
     with mail_factory() as session:
         connection = MailConnection(
             id=uuid4(),

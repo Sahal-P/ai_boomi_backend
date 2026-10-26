@@ -32,15 +32,21 @@ def stored_error(code: str) -> str:
     return "import_failed"
 
 
-def create_run(session: Session, *, mode: str, connection_id: UUID | None = None) -> ImportRun:
-    # Serializes admission for this local user's runs (including simultaneous HTTP requests).
+def create_run(
+    session: Session,
+    *,
+    mode: str,
+    connection_id: UUID | None = None,
+    user_id: UUID = LOCAL_USER_ID,
+) -> ImportRun:
+    # Serializes admission for this household's runs (including simultaneous HTTP requests).
     # Existing active jobs are not duplicated by repeated clicks.
     from finboy.db.models.core import User
 
-    session.scalar(select(User).where(User.id == LOCAL_USER_ID).with_for_update())
+    session.scalar(select(User).where(User.id == user_id).with_for_update())
     existing = session.scalar(
         select(ImportRun).where(
-            ImportRun.user_id == LOCAL_USER_ID, ImportRun.status.in_(["queued", "running"])
+            ImportRun.user_id == user_id, ImportRun.status.in_(["queued", "running"])
         )
     )
     if existing:
@@ -54,15 +60,17 @@ def create_run(session: Session, *, mode: str, connection_id: UUID | None = None
             raise MailError("import_busy")
         # The worker holds this lock throughout ingestion. If it is absent, this is
         # interrupted work from a stopped process, not an active extractor.
-        with import_lock(session.get_bind().engine):
+        with import_lock(session.get_bind().engine, user_id):
             existing.status = "failed"
             existing.outcome_detail = "interrupted"
             existing.error_code = "import_failed"
             existing.finished_at = now_ist()
-            audit(session, "import.failed", "import", existing.id, mode=existing.mode)
+            audit(
+                session, "import.failed", "import", existing.id, user_id=user_id, mode=existing.mode
+            )
     run = ImportRun(
         id=uuid4(),
-        user_id=LOCAL_USER_ID,
+        user_id=user_id,
         mode=mode,
         mail_connection_id=connection_id,
         status="queued",
@@ -70,7 +78,7 @@ def create_run(session: Session, *, mode: str, connection_id: UUID | None = None
     )
     session.add(run)
     session.flush()
-    audit(session, "import.started", "import", run.id, mode=mode)
+    audit(session, "import.started", "import", run.id, user_id=user_id, mode=mode)
     session.commit()
     return run
 
@@ -131,7 +139,12 @@ def run_import(
 
     google = None
     try:
-        with import_lock(engine):
+        with factory() as session:
+            # The run names its household; pilot captures never touch the owner's records.
+            owner = session.scalar(select(ImportRun.user_id).where(ImportRun.id == run_id))
+        if owner is None:
+            return
+        with import_lock(engine, owner):
             with factory.begin() as session:
                 run = session.get(ImportRun, run_id)
                 if run is None or run.status != "queued":
@@ -175,7 +188,7 @@ def run_import(
                 raise MailError("import_failed")
             stats = ingest_messages(
                 factory,
-                user_id=LOCAL_USER_ID,
+                user_id=owner,
                 import_run_id=run_id,
                 messages=guarded(messages),
                 on_progress=progress,
@@ -194,7 +207,7 @@ def run_import(
                     connection = session.get(MailConnection, run.mail_connection_id)
                     if connection is not None:
                         connection.last_synced_at = now_ist()
-                audit(session, "import.completed", "import", run.id, mode=run.mode)
+                audit(session, "import.completed", "import", run.id, user_id=owner, mode=run.mode)
     except Exception as exc:
         code = exc.code if isinstance(exc, MailError) else "import_failed"
         try:
@@ -207,7 +220,14 @@ def run_import(
                         stored_error(code),
                         now_ist(),
                     )
-                    audit(session, "import.failed", "import", run.id, mode=run.mode)
+                    audit(
+                        session,
+                        "import.failed",
+                        "import",
+                        run.id,
+                        user_id=run.user_id,
+                        mode=run.mode,
+                    )
                     if code == "reconnect_required" and run.mail_connection_id:
                         connection = session.get(MailConnection, run.mail_connection_id)
                         if connection and connection.status not in {"revoked", "paused"}:

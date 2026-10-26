@@ -30,6 +30,14 @@ export const categoryLabels: Record<Category, string> = {
   loan_emi: "Loan EMI",
   fees: "Fees",
   transfer: "Transfer",
+  farming: "Farming",
+  livestock: "Livestock",
+  phone_recharge: "Phone recharge",
+  family_events: "Weddings & festivals",
+  remittance: "Family money",
+  wages: "Wages",
+  farm_sales: "Farm sales",
+  govt_benefit: "Government payments",
   other: "Other",
 };
 
@@ -59,11 +67,17 @@ export const sourceLabels: Record<SourceMode, string> = {
   eml_upload: "Uploaded email",
   demo_mailbox: "Sample mailbox",
   whatsapp_image: "WhatsApp screenshot",
+  whatsapp_voice: "WhatsApp voice note",
 };
 
-/** Screenshots carry a placeholder sender domain; name the household's own message instead. */
+const ownMessages: Partial<Record<SourceMode, string>> = {
+  whatsapp_image: "Your WhatsApp screenshot",
+  whatsapp_voice: "Your WhatsApp voice note",
+};
+
+/** WhatsApp sources carry a placeholder sender domain; name the household's own message instead. */
 export function sourceSender(source: { source: SourceMode; sender_domain: string }): string {
-  return source.source === "whatsapp_image" ? "Your WhatsApp screenshot" : source.sender_domain;
+  return ownMessages[source.source] ?? source.sender_domain;
 }
 
 export const datasetLabels: Record<Dataset, string> = {
@@ -120,20 +134,35 @@ const screenshotExtractionLabels: Record<Transaction["extraction_quality"], stri
   partial: "Some details were missing from the screenshot",
 };
 
+const voiceExtractionLabels: Record<Transaction["extraction_quality"], string> = {
+  complete: "All key details heard in your voice note",
+  partial: "Some details were unclear in your voice note",
+};
+
+function onlyFrom(row: { source_modes?: readonly SourceMode[] }, mode: SourceMode): boolean {
+  return Boolean(row.source_modes?.length) && Boolean(row.source_modes?.every((item) => item === mode));
+}
+
 /** Records evidenced only by WhatsApp screenshots; email wording would misdescribe them. */
 export function screenshotOnly(row: { source_modes?: readonly SourceMode[] }): boolean {
-  return Boolean(row.source_modes?.length) && Boolean(row.source_modes?.every((mode) => mode === "whatsapp_image"));
+  return onlyFrom(row, "whatsapp_image");
+}
+
+/** Records the household told FinBoy about in a WhatsApp voice note or message. */
+export function voiceOnly(row: { source_modes?: readonly SourceMode[] }): boolean {
+  return onlyFrom(row, "whatsapp_voice");
 }
 
 export function extractionLabel(row: Pick<Transaction, "extraction_quality" | "source_modes">): string {
-  return (screenshotOnly(row) ? screenshotExtractionLabels : extractionLabels)[row.extraction_quality];
+  const labels = screenshotOnly(row) ? screenshotExtractionLabels : voiceOnly(row) ? voiceExtractionLabels : extractionLabels;
+  return labels[row.extraction_quality];
 }
 
-/** A screenshot never proves settlement; a confirmed one was confirmed by the household. */
+/** A screenshot or voice note never proves settlement; a confirmed one was confirmed by the household. */
 export function paymentLabel(row: Pick<Transaction, "payment_verification" | "source_modes">): string {
-  return screenshotOnly(row) && row.payment_verification === "verified"
-    ? "Confirmed by you from a payment screenshot"
-    : paymentLabels[row.payment_verification];
+  if (row.payment_verification === "verified" && screenshotOnly(row)) return "Confirmed by you from a payment screenshot";
+  if (row.payment_verification === "verified" && voiceOnly(row)) return "Confirmed by you from a voice note";
+  return paymentLabels[row.payment_verification];
 }
 
 const screenshotReasonDetails: Partial<Record<ReviewReason, string>> = {
@@ -141,11 +170,17 @@ const screenshotReasonDetails: Partial<Record<ReviewReason, string>> = {
   merchant_uncertain: "FinBoy couldn't read a clear payee name from the screenshot.",
 };
 
+const voiceReasonDetails: Partial<Record<ReviewReason, string>> = {
+  unverified_payment: "A voice note records what you told FinBoy; it doesn't prove that money moved.",
+  merchant_uncertain: "FinBoy couldn't hear a clear name in your voice note.",
+};
+
 export const obligationKindLabels: Record<Commitment["kind"], string> = {
   bill: "Bill",
   emi: "EMI",
   subscription: "Subscription",
   sip: "SIP",
+  loan: "Loan",
 };
 
 export const liabilityLabels: Record<Commitment["liability_state"], string> = {
@@ -224,7 +259,11 @@ export function reasonFor(
 ) {
   if (row.status !== "needs_review" || !row.review_reason) return null;
   const reason = reviewReasons[row.review_reason];
-  const detail = screenshotOnly(row) ? screenshotReasonDetails[row.review_reason] : undefined;
+  const detail = screenshotOnly(row)
+    ? screenshotReasonDetails[row.review_reason]
+    : voiceOnly(row)
+      ? voiceReasonDetails[row.review_reason]
+      : undefined;
   return detail ? { ...reason, detail } : reason;
 }
 

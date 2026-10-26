@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from typing import Literal
+from uuid import UUID
 
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import sessionmaker
@@ -34,7 +35,11 @@ class Capture:
 
 
 def capture_screenshot(
-    engine: Engine, settings: Settings, client: MetaClient, question: InboundQuestion
+    engine: Engine,
+    settings: Settings,
+    client: MetaClient,
+    question: InboundQuestion,
+    user_id: UUID = LOCAL_USER_ID,
 ) -> Capture:
     try:
         image = client.download_image(question.media_id or "", question.mime_type or "")
@@ -50,7 +55,7 @@ def capture_screenshot(
     factory = sessionmaker(engine, expire_on_commit=False)
     try:
         with factory() as session:
-            run_id = create_run(session, mode="whatsapp_image").id
+            run_id = create_run(session, mode="whatsapp_image", user_id=user_id).id
     except MailError:
         # Nothing is queued: the image is not retained, so the sender resends it.
         return Capture("busy")
@@ -76,7 +81,7 @@ def capture_screenshot(
             .join(SourceEvent, SourceEvent.transaction_id == Transaction.id)
             .join(EmailSource, EmailSource.id == SourceEvent.email_source_id)
             .where(
-                EmailSource.user_id == LOCAL_USER_ID,
+                EmailSource.user_id == user_id,
                 EmailSource.source == "whatsapp_image",
                 EmailSource.provider_message_id == question.message_id,
             )

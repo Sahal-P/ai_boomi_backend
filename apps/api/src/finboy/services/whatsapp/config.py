@@ -9,6 +9,9 @@ from uuid import UUID
 
 from finboy.core.config import LOCAL_USER_ID, Settings
 
+# docs/pilot/contract.md: at most 10 hand-enrolled village pilot households besides the owner.
+MAX_PILOT_HOUSEHOLDS = 10
+
 
 class ChannelUnavailable(Exception):
     pass
@@ -58,9 +61,12 @@ def channel_config(settings: Settings) -> ChannelConfig:
         for sender, user in approved.items():
             if not isinstance(sender, str) or not re.fullmatch(r"[0-9]{7,20}", sender):
                 raise ValueError
-            if not isinstance(user, str) or UUID(user) != LOCAL_USER_ID:
+            if not isinstance(user, str):
                 raise ValueError
+            # Non-owner households must also be enrolled pilots; admission checks the database.
             allowlist[sender] = UUID(user)
+        if len(set(allowlist.values()) - {LOCAL_USER_ID}) > MAX_PILOT_HOUSEHOLDS:
+            raise ValueError
         if not all(re.fullmatch(r"[0-9]{5,32}", item) for item in raw[3:5]):
             raise ValueError
     except ValueError, TypeError:

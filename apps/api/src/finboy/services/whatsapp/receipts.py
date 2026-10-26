@@ -8,6 +8,8 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from finboy.core.config import LOCAL_USER_ID
+from finboy.db.models.core import User
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppDelivery, WhatsAppReceipt
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion, Status
@@ -51,6 +53,11 @@ def admit(
         user = config.allowlist.get(question.sender)
         if user is None:
             continue
+        # Fail closed: a household must exist, and any household other than the owner's must
+        # be an enrolled pilot (docs/pilot/contract.md).
+        pilot = session.scalar(select(User.pilot).where(User.id == user))
+        if pilot is None or (user != LOCAL_USER_ID and pilot is not True):
+            continue
         sender_hash = config.digest("sender", question.sender)
         session.execute(
             insert(WhatsAppBinding)
@@ -59,6 +66,8 @@ def admit(
                 user_id=user,
                 sender_hash=sender_hash,
                 enabled=True,
+                # Village pilot households speak Hindi; the owner keeps automatic detection.
+                language="hi" if user != LOCAL_USER_ID else None,
                 last_inbound_at=question.provider_at,
             )
             .on_conflict_do_nothing(index_elements=[WhatsAppBinding.sender_hash])

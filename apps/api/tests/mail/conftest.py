@@ -75,7 +75,7 @@ def mail_app(mail_factory, mail_settings, monkeypatch):
         "finboy.api.v1.connections",
         "finboy.api.v1.privacy",
     ):
-        monkeypatch.setattr(f"{module}.import_lock", lambda _engine: nullcontext())
+        monkeypatch.setattr(f"{module}.import_lock", lambda *_args: nullcontext())
     return app
 
 

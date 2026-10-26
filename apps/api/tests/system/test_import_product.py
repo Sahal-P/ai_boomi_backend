@@ -41,6 +41,7 @@ def assembled_app(monkeypatch):
         "finboy_ux_api",
         "finboy_ux_ui",
         "finboy_capture",
+        "finboy_pilot",
         "finboy_test",
     }, "Use integration disposable DB"
     user = uuid4()

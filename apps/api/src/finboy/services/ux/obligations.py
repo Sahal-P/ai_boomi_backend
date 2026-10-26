@@ -46,6 +46,7 @@ def obligation_detail(session: Session, *, user_id: UUID, obligation_id: UUID) -
             Commitment.user_id == user_id,
             Commitment.id == obligation_id,
             Commitment.dataset == "household",
+            Commitment.status != "pending",
         )
     )
     if row is None:

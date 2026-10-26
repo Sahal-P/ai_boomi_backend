@@ -18,6 +18,14 @@ export const categories = [
   "loan_emi",
   "fees",
   "transfer",
+  "farming",
+  "livestock",
+  "phone_recharge",
+  "family_events",
+  "remittance",
+  "wages",
+  "farm_sales",
+  "govt_benefit",
   "other",
 ] as const;
 export const categorySchema = z.enum(categories);
@@ -50,7 +58,7 @@ export const reviewReasons = [
   "unverified_payment",
 ] as const;
 export type ReviewReason = (typeof reviewReasons)[number];
-export const sourceModeSchema = z.enum(["gmail", "eml_upload", "demo_mailbox", "whatsapp_image"]);
+export const sourceModeSchema = z.enum(["gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice"]);
 export type SourceMode = z.infer<typeof sourceModeSchema>;
 export const datasetSchema = z.enum(["household", "demo", "quarantined"]);
 export type Dataset = z.infer<typeof datasetSchema>;
@@ -152,7 +160,7 @@ export type DemoSummary = z.infer<typeof demoSummarySchema>;
 
 export const commitmentSchema = z.object({
   id: z.uuid(),
-  kind: z.enum(["bill", "emi", "subscription", "sip"]),
+  kind: z.enum(["bill", "emi", "subscription", "sip", "loan"]),
   label: z.string(),
   amount_minor: integer,
   currency: z.literal("INR"),

@@ -375,6 +375,14 @@ CATEGORY_NAMES: dict[str, tuple[str, str, str]] = {
     "other": ("other", "अन्य", "മറ്റുള്ളവ"),
     "salary": ("salary", "वेतन", "ശമ്പളം"),
     "other_income": ("other income", "अन्य आय", "മറ്റു വരുമാനം"),
+    "farming": ("farming", "खेती", "കൃഷി"),
+    "livestock": ("livestock", "पशुओं", "കന്നുകാലികൾ"),
+    "phone_recharge": ("phone recharge", "मोबाइल रिचार्ज", "ഫോൺ റീചാർജ്"),
+    "family_events": ("weddings and festivals", "शादी-त्योहारों", "കല്യാണവും ഉത്സവങ്ങളും"),
+    "remittance": ("money to or from family", "परिवार के लेन-देन", "കുടുംബത്തിനുള്ള പണം"),
+    "wages": ("wages", "मज़दूरी", "കൂലി"),
+    "farm_sales": ("farm sales", "फसल और दूध की बिक्री", "കാർഷിക വിൽപ്പന"),
+    "govt_benefit": ("government payments", "सरकारी पैसों", "സർക്കാർ സഹായം"),
 }
 
 

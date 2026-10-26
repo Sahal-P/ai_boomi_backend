@@ -53,7 +53,13 @@ def household(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Engine, UUID]]:
     engine = build_engine(settings)
     assert settings.environment != "production"
     assert engine.url.host in {"127.0.0.1", "localhost"}
-    assert engine.url.database in {"finboy_capture", "finboy_p5", "finboy_ux_api", "finboy_test"}
+    assert engine.url.database in {
+        "finboy_capture",
+        "finboy_p5",
+        "finboy_ux_api",
+        "finboy_test",
+        "finboy_pilot",
+    }
     user = uuid4()
     for name in USER_MODULES:
         monkeypatch.setattr(importlib.import_module(name), "LOCAL_USER_ID", user)

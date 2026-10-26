@@ -151,7 +151,9 @@ def process_question(
             if question.kind == "image":
                 # End this read snapshot; the import pipeline commits through its own sessions.
                 session.rollback()
-                result = capture.capture_screenshot(session.get_bind(), settings, client, question)
+                result = capture.capture_screenshot(
+                    session.get_bind(), settings, client, question, binding.user_id
+                )
                 ok = send_reply(
                     session,
                     config,

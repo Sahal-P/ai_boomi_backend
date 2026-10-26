@@ -39,6 +39,14 @@ Category = Literal[
     "loan_emi",
     "fees",
     "transfer",
+    "farming",
+    "livestock",
+    "phone_recharge",
+    "family_events",
+    "remittance",
+    "wages",
+    "farm_sales",
+    "govt_benefit",
     "other",
 ]
 TransactionStatus = Literal["confirmed", "needs_review", "rejected", "merged", "failed"]
@@ -49,7 +57,8 @@ class EmailSource(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "source", "provider_message_id"),
         CheckConstraint(
-            "source IN ('gmail','eml_upload','demo_mailbox','whatsapp_image')", name="source"
+            "source IN ('gmail','eml_upload','demo_mailbox','whatsapp_image','whatsapp_voice')",
+            name="source",
         ),
         CheckConstraint(
             "classification IN ('bank_alert','card_alert','upi_alert','merchant_receipt',"
@@ -107,7 +116,8 @@ class Transaction(Base):
         CheckConstraint(
             "category IN ('salary','other_income','rent','food_dining','groceries','transport',"
             "'shopping','utilities','subscriptions','travel','health','education','investments',"
-            "'loan_emi','fees','transfer','other')",
+            "'loan_emi','fees','transfer','farming','livestock','phone_recharge','family_events',"
+            "'remittance','wages','farm_sales','govt_benefit','other')",
             name="category",
         ),
         Index("ix_transactions_user_id_occurred_at", "user_id", "occurred_at"),
@@ -201,9 +211,10 @@ class TransactionRevision(Base):
 class Commitment(Base):
     __tablename__ = "commitments"
     __table_args__ = (
-        CheckConstraint("kind IN ('bill','emi','subscription','sip')", name="kind"),
+        CheckConstraint("kind IN ('bill','emi','subscription','sip','loan')", name="kind"),
         CheckConstraint("currency = 'INR'", name="currency"),
-        CheckConstraint("status IN ('upcoming','paid','dismissed')", name="status"),
+        # 'pending' is a spoken pilot due awaiting "हाँ"; it never counts in any total.
+        CheckConstraint("status IN ('upcoming','paid','dismissed','pending')", name="status"),
         CheckConstraint("confidence BETWEEN 0 AND 1", name="confidence"),
         Index("ix_commitments_user_id_status", "user_id", "status"),
         Index("ix_commitments_user_id_due_date", "user_id", "due_date"),

@@ -16,6 +16,18 @@ class InvalidWebhook(Exception):
     pass
 
 
+# Hindi बंद/शुरू work like STOP/START for households who don't type English.
+COMMANDS = {
+    "stop": "stop",
+    "start": "start",
+    "en": "en",
+    "hi": "hi",
+    "ml": "ml",
+    "बंद": "stop",
+    "शुरू": "start",
+}
+
+
 @dataclass(frozen=True)
 class InboundQuestion:
     message_id: str
@@ -28,8 +40,7 @@ class InboundQuestion:
 
     @property
     def command(self) -> str | None:
-        value = self.text.strip().lower()
-        return value if value in {"stop", "start", "en", "hi", "ml"} else None
+        return COMMANDS.get(self.text.strip().lower())
 
 
 class TextBody(BaseModel):
