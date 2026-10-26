@@ -32,17 +32,23 @@ def stored_error(code: str) -> str:
     return "import_failed"
 
 
+def _lock_owner(user_id: UUID) -> UUID | None:
+    """The owner's imports keep the original global lock; each pilot household has its own."""
+    return None if user_id == LOCAL_USER_ID else user_id
+
+
 def create_run(
     session: Session,
     *,
     mode: str,
     connection_id: UUID | None = None,
-    user_id: UUID = LOCAL_USER_ID,
+    user_id: UUID | None = None,
 ) -> ImportRun:
     # Serializes admission for this household's runs (including simultaneous HTTP requests).
     # Existing active jobs are not duplicated by repeated clicks.
     from finboy.db.models.core import User
 
+    user_id = user_id or LOCAL_USER_ID  # existing callers import for the owner
     session.scalar(select(User).where(User.id == user_id).with_for_update())
     existing = session.scalar(
         select(ImportRun).where(
@@ -60,7 +66,7 @@ def create_run(
             raise MailError("import_busy")
         # The worker holds this lock throughout ingestion. If it is absent, this is
         # interrupted work from a stopped process, not an active extractor.
-        with import_lock(session.get_bind().engine, user_id):
+        with import_lock(session.get_bind().engine, _lock_owner(user_id)):
             existing.status = "failed"
             existing.outcome_detail = "interrupted"
             existing.error_code = "import_failed"
@@ -144,7 +150,7 @@ def run_import(
             owner = session.scalar(select(ImportRun.user_id).where(ImportRun.id == run_id))
         if owner is None:
             return
-        with import_lock(engine, owner):
+        with import_lock(engine, _lock_owner(owner)):
             with factory.begin() as session:
                 run = session.get(ImportRun, run_id)
                 if run is None or run.status != "queued":

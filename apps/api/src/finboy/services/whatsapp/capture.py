@@ -44,7 +44,7 @@ def capture_screenshot(
     settings: Settings,
     client: MetaClient,
     question: InboundQuestion,
-    user_id: UUID = LOCAL_USER_ID,
+    user_id: UUID | None = None,
 ) -> Capture:
     try:
         image = client.download_image(question.media_id or "", question.mime_type or "")
@@ -60,7 +60,7 @@ def capture_screenshot(
     return _import_one(
         engine,
         settings,
-        user_id=user_id,
+        user_id=user_id or LOCAL_USER_ID,
         source="whatsapp_image",
         message_id=question.message_id,
         raw=screenshot.as_message(line, question.provider_at),
