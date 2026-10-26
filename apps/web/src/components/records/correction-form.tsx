@@ -171,7 +171,7 @@ export function CorrectionForm({
       }}
     >
       {restored && dirty && (
-        <p role="status" className="mb-3 rounded-xl bg-lilac/60 px-3 py-2 text-xs font-medium text-ink">
+        <p role="status" className="mb-3 rounded-xl bg-white/60 px-3 py-2 text-xs font-medium text-ink">
           Your unsaved changes to this record were restored.
         </p>
       )}

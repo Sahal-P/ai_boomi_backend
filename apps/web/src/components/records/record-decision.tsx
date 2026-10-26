@@ -175,14 +175,14 @@ export function RecordDecision({
       )}
 
       <dl className="grid gap-2 text-sm sm:grid-cols-2">
-        <div className="rounded-2xl bg-canvas p-3">
+        <div className="rounded-2xl bg-white/60 p-3 ring-1 ring-ink/[0.06]">
           <dt className="text-xs text-ink-soft">Payment</dt>
           <dd className="mt-0.5 flex items-center gap-1.5 font-medium">
             {tx.payment_verification === "verified" && <BadgeCheck className="size-4 text-positive" aria-hidden="true" />}
             {paymentLabel(tx)}
           </dd>
         </div>
-        <div className="rounded-2xl bg-canvas p-3">
+        <div className="rounded-2xl bg-white/60 p-3 ring-1 ring-ink/[0.06]">
           <dt className="text-xs text-ink-soft">
             {screenshotOnly(tx) ? "Details in the screenshot" : voiceOnly(tx) ? "Details in your voice note" : "Details in the email"}
           </dt>
@@ -200,7 +200,7 @@ export function RecordDecision({
       {tx.status === "merged" && tx.merged_into_id && (
         <p className="text-sm">
           This record was merged into{" "}
-          <Link href={`/transactions?selected=${tx.merged_into_id}`} className="font-semibold text-violet-deep underline underline-offset-4">
+          <Link href={`/transactions?selected=${tx.merged_into_id}`} className="font-semibold text-ink underline underline-offset-4">
             the record that kept its evidence
           </Link>
           . Undo the merge from the history below if it was a mistake.
@@ -263,7 +263,7 @@ export function RecordDecision({
       )}
       <div role="status" aria-live="polite" className="text-sm font-medium">
         {message && (
-          <p className="flex flex-wrap items-center gap-3 rounded-2xl bg-lilac/60 px-4 py-3 text-ink">
+          <p className="flex flex-wrap items-center gap-3 rounded-2xl bg-white/60 px-4 py-3 text-ink">
             {message}
             {showUndo && last && detail.decisions.some((item) => item.id === last.decisionId && item.can_undo && !item.undone_at) && (
               <Button

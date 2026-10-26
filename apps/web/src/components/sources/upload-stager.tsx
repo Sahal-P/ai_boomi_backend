@@ -29,7 +29,7 @@ export function UploadStager({ retryCount }: { retryCount?: number }) {
   return (
     <section aria-labelledby={headingId} id="upload" className="surface rounded-3xl p-5 sm:p-6">
       <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-lilac text-violet-deep">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/80 text-ink ring-1 ring-ink/[0.06]">
           <FileUp className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
@@ -44,7 +44,7 @@ export function UploadStager({ retryCount }: { retryCount?: number }) {
         </div>
       </div>
 
-      <details className="mt-4 rounded-2xl bg-canvas px-4 py-3 text-sm">
+      <details className="mt-4 rounded-2xl bg-well px-4 py-3 text-sm ring-1 ring-ink/5">
         <summary className="cursor-pointer font-semibold text-ink">
           How do I save an email as .eml?
         </summary>

@@ -65,7 +65,7 @@ function ObligationBody({ detail, onChanged }: { detail: ObligationDetail; onCha
           {item.liability_state === "overdue" ? "Was due" : "Due"} {formatDay(item.due_date)}
         </p>
       </header>
-      <p className="rounded-2xl bg-canvas p-4 text-sm leading-relaxed">
+      <p className="rounded-2xl bg-ink/[0.04] p-4 text-sm leading-relaxed">
         {resolved
           ? "This obligation is resolved, so it isn't deducted from your estimate."
           : item.liability_state === "overdue"
@@ -140,7 +140,7 @@ function ObligationBody({ detail, onChanged }: { detail: ObligationDetail; onCha
       )}
 
       <div role="status" aria-live="polite">
-        {message && <p className="rounded-2xl bg-lilac/60 px-4 py-3 text-sm font-medium">{message}</p>}
+        {message && <p className="rounded-2xl bg-white/60 px-4 py-3 text-sm font-medium">{message}</p>}
       </div>
       {action.problem && (
         <ProblemNotice problem={action.problem}>
@@ -192,14 +192,14 @@ export function ObligationDialog({
   return (
     <Dialog.Root open={id !== null} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/20 backdrop-blur-sm" />
         <Dialog.Content
           aria-describedby={undefined}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             if (id) document.querySelector<HTMLElement>(`[data-obligation-id="${CSS.escape(id)}"]`)?.focus();
           }}
-          className="fixed inset-x-0 bottom-0 z-50 max-h-[94dvh] overflow-y-auto rounded-t-3xl bg-white p-5 pb-8 shadow-lift sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-7"
+          className="fixed inset-x-0 bottom-0 z-50 max-h-[94dvh] overflow-y-auto rounded-t-3xl float-panel p-5 pb-8 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-7"
         >
           <Dialog.Title className="sr-only">Obligation details</Dialog.Title>
           <div className="mb-2 flex justify-end">

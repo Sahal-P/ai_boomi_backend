@@ -48,7 +48,7 @@ export function VoiceControls({
       ) : null}
 
       {state.step === "requesting" && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-canvas p-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-well p-3 text-sm ring-1 ring-ink/5">
           <span role="status">Waiting for microphone permission — answer your browser&apos;s prompt.</span>
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
             <X aria-hidden="true" /> Cancel
@@ -57,7 +57,7 @@ export function VoiceControls({
       )}
 
       {state.step === "recording" && (
-        <div className="rounded-2xl border border-violet/30 bg-lilac/40 p-3">
+        <div className="rounded-2xl border border-ink/15 bg-white/55 p-3">
           <div className="flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-2 text-sm font-semibold" role="status">
               <span className="size-2.5 rounded-full bg-negative motion-safe:animate-pulse" aria-hidden="true" />
@@ -74,7 +74,7 @@ export function VoiceControls({
             </div>
           </div>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white" aria-hidden="true">
-            <div className="h-full rounded-full bg-violet transition-[width] duration-100" style={{ width: `${Math.round(level * 100)}%` }} />
+            <div className="h-full rounded-full bg-ink transition-[width] duration-100" style={{ width: `${Math.round(level * 100)}%` }} />
           </div>
           <p className="mt-2 text-xs text-ink-soft">
             Stops by itself at {RECORDING_LIMITS.seconds} seconds. The recording stays on this device until you stop it, and FinBoy doesn&apos;t keep it.
@@ -83,7 +83,7 @@ export function VoiceControls({
       )}
 
       {state.step === "transcribing" && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-canvas p-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-well p-3 text-sm ring-1 ring-ink/5">
           <span role="status">Transcribing your recording…</span>
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
             <X aria-hidden="true" /> Cancel

@@ -61,7 +61,7 @@ export function TurnCard({
 
       {turn.state === "pending" && (
         <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-          <LoaderCircle className="size-4 text-violet-deep motion-safe:animate-spin" aria-hidden="true" />
+          <LoaderCircle className="size-4 text-ink motion-safe:animate-spin" aria-hidden="true" />
           <span>Thinking through your question… this can take up to a minute.</span>
           <Button size="sm" variant="ghost" onClick={onCancel}>
             Cancel
@@ -83,7 +83,7 @@ export function TurnCard({
       {answer && turn.state === "answered" && (
         <div className="mt-4 space-y-5" lang={lang}>
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-            <span className="rounded-full bg-lilac px-2.5 py-1 text-violet-deep">{copy[answer.policy]}</span>
+            <span className="rounded-full bg-ink/[0.07] px-2.5 py-1 text-ink">{copy[answer.policy]}</span>
             {answer.resolved_period && (
               // The API's period label is an ISO range; show the product's one date style instead.
               <span className="rounded-full bg-muted px-2.5 py-1 text-ink-soft">
@@ -97,7 +97,7 @@ export function TurnCard({
           {answer.facts.length > 0 && (
             <dl className="grid gap-3 sm:grid-cols-2" lang={lang}>
               {answer.facts.map((fact) => (
-                <div key={fact.key} className="rounded-2xl bg-canvas p-4">
+                <div key={fact.key} className="rounded-2xl bg-well p-4 ring-1 ring-ink/5">
                   <dt className="text-xs text-ink-soft">{fact.label}</dt>
                   <dd className="mt-1 text-lg font-semibold tabular-nums">
                     {fact.amount_minor !== null ? formatMoney(fact.amount_minor) : (fact.count ?? "—")}
@@ -129,10 +129,10 @@ export function TurnCard({
                     <Link
                       href={`/transactions?selected=${tx.id}`}
                       onClick={() => recordOutcome("evidence_opened", tx.id)}
-                      className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-canvas"
+                      className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-white/60"
                     >
                       <span className="min-w-0">
-                        <span className="block font-semibold break-words text-violet-deep underline underline-offset-4">{tx.merchant}</span>
+                        <span className="block font-semibold break-words text-ink underline underline-offset-4">{tx.merchant}</span>
                         <span className="block text-xs text-ink-soft">
                           {answerDate(tx.occurred_at, copy.locale)} · <span lang="en">{kindLabels[tx.kind]}</span>
                           {tx.source_count ? ` · ${tx.source_count} ${tx.source_count === 1 ? "email" : "emails"}` : ""}

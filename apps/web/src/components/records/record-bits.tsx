@@ -20,12 +20,12 @@ export function RecordGlyph({
     <span
       aria-hidden="true"
       className={cn(
-        "grid size-10 shrink-0 place-items-center rounded-2xl",
+        "grid size-10 shrink-0 place-items-center rounded-full",
         failed || transfer
           ? "bg-muted text-ink-soft"
           : row.direction === "in"
             ? "bg-emerald-50 text-positive"
-            : "bg-lilac text-violet-deep",
+            : "bg-white/80 text-ink ring-1 ring-ink/[0.06]",
         className,
       )}
     >

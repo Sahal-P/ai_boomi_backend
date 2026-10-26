@@ -81,7 +81,7 @@ export function SourcesScreen({ errorCode, intent }: { errorCode: string | null;
       )}
       <div role="status" aria-live="polite">
         {notice && (
-          <p className="rounded-2xl border border-violet/20 bg-lilac/50 p-4 text-sm text-ink">{notice}</p>
+          <p className="rounded-2xl border border-ink/15 bg-white/60 p-4 text-sm text-ink">{notice}</p>
         )}
       </div>
 
@@ -120,7 +120,7 @@ export function SourcesScreen({ errorCode, intent }: { errorCode: string | null;
                     <li key={connection.id} className="rounded-2xl border p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex min-w-0 items-start gap-3">
-                          <Mail className="mt-0.5 size-5 shrink-0 text-violet-deep" aria-hidden="true" />
+                          <Mail className="mt-0.5 size-5 shrink-0 text-ink" aria-hidden="true" />
                           <div className="min-w-0">
                             <p className="font-semibold break-all">{connection.account_email_masked}</p>
                             <p className="mt-0.5 text-sm text-ink-soft">
@@ -180,7 +180,7 @@ export function SourcesScreen({ errorCode, intent }: { errorCode: string | null;
             {connections.data && (
               <p className="mt-4 text-xs leading-relaxed text-ink-soft">
                 To revoke access or delete imported records, go to{" "}
-                <Link href="/privacy" className="font-semibold text-violet-deep underline underline-offset-4">
+                <Link href="/privacy" className="font-semibold text-ink underline underline-offset-4">
                   Privacy &amp; data
                 </Link>
                 .
@@ -209,14 +209,14 @@ export function SourcesScreen({ errorCode, intent }: { errorCode: string | null;
 
           <section aria-labelledby="history-title" className="surface rounded-3xl p-5 sm:p-6">
             <h2 id="history-title" className="flex items-center gap-2 text-lg font-semibold">
-              <History className="size-5 text-violet-deep" aria-hidden="true" /> Recent imports
+              <History className="size-5 text-ink" aria-hidden="true" /> Recent imports
             </h2>
             <ImportHistory />
           </section>
 
           <section aria-labelledby="sample-title" className="rounded-3xl bg-[linear-gradient(140deg,#efe9ff,#fbe6f6)] p-5 sm:p-6">
             <h2 id="sample-title" className="flex items-center gap-2 text-lg font-semibold">
-              <Eye className="size-5 text-violet-deep" aria-hidden="true" /> Explore sample data
+              <Eye className="size-5 text-ink" aria-hidden="true" /> Explore sample data
             </h2>
             <p className="mt-1 text-sm leading-relaxed text-ink-soft">
               A read-only synthetic household. Viewing it never adds anything to your records.

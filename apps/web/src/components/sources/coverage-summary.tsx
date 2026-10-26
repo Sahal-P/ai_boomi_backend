@@ -73,7 +73,7 @@ export function CoverageSummary({ coverage, className }: { coverage: Coverage; c
           {coverage.active_import_id && (
             <Link
               href={`/import/${coverage.active_import_id}`}
-              className="text-violet-deep underline underline-offset-4"
+              className="text-ink underline underline-offset-4"
             >
               Import in progress — view it
             </Link>
@@ -81,7 +81,7 @@ export function CoverageSummary({ coverage, className }: { coverage: Coverage; c
           {coverage.quarantined_count > 0 && (
             <Link
               href="/transactions?dataset=quarantined&scope=all"
-              className="inline-flex items-center gap-1.5 text-violet-deep underline underline-offset-4"
+              className="inline-flex items-center gap-1.5 text-ink underline underline-offset-4"
             >
               <ShieldAlert className="size-4" aria-hidden="true" />
               {plural(coverage.quarantined_count, "record is", "records are")} on hold

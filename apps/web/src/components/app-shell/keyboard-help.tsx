@@ -56,10 +56,10 @@ export function KeyboardHelp() {
   return (
     <Dialog.Root open={isOpen} onOpenChange={setOpen}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl bg-white p-6 shadow-lift">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/20 backdrop-blur-sm" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl float-panel p-6">
           <Dialog.Title className="flex items-center gap-2 pr-10 text-lg font-semibold">
-            <Keyboard className="size-5 text-violet-deep" aria-hidden="true" /> Keyboard shortcuts
+            <Keyboard className="size-5 text-ink" aria-hidden="true" /> Keyboard shortcuts
           </Dialog.Title>
           <Dialog.Description className="mt-1 text-sm text-ink-soft">
             Single-key shortcuts work when you aren&apos;t typing in a field.
@@ -72,7 +72,7 @@ export function KeyboardHelp() {
                   {row.keys.map((key) => (
                     <kbd
                       key={key}
-                      className="min-w-7 rounded-lg border bg-canvas px-2 py-1 text-center font-mono text-xs font-semibold text-ink"
+                      className="min-w-7 rounded-lg border bg-ink/[0.05] px-2 py-1 text-center font-mono text-xs font-semibold text-ink"
                     >
                       {key}
                     </kbd>
@@ -81,7 +81,7 @@ export function KeyboardHelp() {
               </div>
             ))}
           </dl>
-          <label className="mt-5 flex min-h-11 items-center gap-3 rounded-2xl bg-canvas px-4 text-sm font-medium">
+          <label className="mt-5 flex min-h-11 items-center gap-3 rounded-2xl bg-ink/[0.04] px-4 text-sm font-medium">
             <input
               type="checkbox"
               className="size-4 accent-[var(--violet)]"

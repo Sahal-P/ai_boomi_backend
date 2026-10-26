@@ -12,7 +12,7 @@ function SourceCard({ source }: { source: TransactionSource }) {
   return (
     <li className="rounded-2xl border p-4">
       <p className="flex items-center gap-2 text-sm font-semibold">
-        <Icon className="size-4 shrink-0 text-violet-deep" aria-hidden="true" />
+        <Icon className="size-4 shrink-0 text-ink" aria-hidden="true" />
         <span className="break-all">{sourceSender(source)}</span>
       </p>
       <p className="mt-1 text-xs text-ink-soft">

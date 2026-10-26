@@ -35,7 +35,7 @@ function Impact({ preview }: { preview: DeletionPreview }) {
           <li>Their evidence snippets and the corrections you made to them</li>
         </ul>
       </div>
-      <div className="rounded-2xl bg-canvas p-4">
+      <div className="rounded-2xl bg-ink/[0.04] p-4">
         <p className="font-semibold">Will stay</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-soft">
           <li>
@@ -136,8 +136,8 @@ export function DeletionDialog({
   return (
     <Dialog.Root open={target !== null} onOpenChange={(open) => !open && close()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm" />
-        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[94dvh] overflow-y-auto rounded-t-3xl bg-white p-5 pb-8 shadow-lift sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-7">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/20 backdrop-blur-sm" />
+        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[94dvh] overflow-y-auto rounded-t-3xl float-panel p-5 pb-8 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-7">
           <div className="flex items-start justify-between gap-3">
             <Dialog.Title className="text-xl font-semibold">{title}</Dialog.Title>
             <Dialog.Close asChild>

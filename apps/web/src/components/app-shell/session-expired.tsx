@@ -24,12 +24,12 @@ export function SessionExpiredDialog() {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[60] bg-ink/50 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-[60] bg-ink/20 backdrop-blur-sm" />
         <Dialog.Content
           aria-describedby="session-expired-description"
-          className="fixed top-1/2 left-1/2 z-[60] max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl bg-white p-6 shadow-lift sm:p-7"
+          className="fixed top-1/2 left-1/2 z-[60] max-h-[90dvh] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl float-panel p-6 sm:p-7"
         >
-          <LockKeyhole className="size-6 text-violet-deep" aria-hidden="true" />
+          <LockKeyhole className="size-6 text-ink" aria-hidden="true" />
           <Dialog.Title className="mt-3 text-xl font-semibold">Sign in to continue</Dialog.Title>
           <Dialog.Description
             id="session-expired-description"
@@ -78,7 +78,7 @@ export function SessionExpiredDialog() {
           <p className="mt-5 text-xs leading-relaxed text-ink-soft">
             Prefer the full sign-in page?{" "}
             <a
-              className="font-semibold text-violet-deep underline underline-offset-4"
+              className="font-semibold text-ink underline underline-offset-4"
               href={`/login?next=${encodeURIComponent(here)}`}
             >
               Open it

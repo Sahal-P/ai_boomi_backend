@@ -34,8 +34,8 @@ export function RecordRow({
       data-record-id={row.id}
       aria-current={selected ? "true" : undefined}
       className={cn(
-        "flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-lilac/30 sm:px-5",
-        selected && "bg-lilac/50 hover:bg-lilac/50",
+        "flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-white/40 sm:px-5",
+        selected && "bg-white/60 hover:bg-white/60",
       )}
     >
       <RecordGlyph row={row} />

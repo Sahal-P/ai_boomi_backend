@@ -114,7 +114,7 @@ export function SimulationPanel({ current }: { current: MoneySummary | null }) {
       {result && (
         <div
           className={cn(
-            "mt-5 rounded-2xl bg-lilac/50 p-5 transition-opacity",
+            "mt-5 rounded-2xl bg-white/60 p-5 transition-opacity",
             stale && "opacity-70",
           )}
           aria-live="polite"
@@ -142,7 +142,7 @@ export function SimulationPanel({ current }: { current: MoneySummary | null }) {
           </dl>
           <div className="mt-4 flex flex-wrap items-baseline justify-between gap-3 border-t border-ink/10 pt-4">
             <p className="text-sm font-medium">Estimated remaining</p>
-            <strong className="text-2xl tracking-tight text-violet-deep tabular-nums">
+            <strong className="text-2xl tracking-tight text-ink tabular-nums">
               {formatMoney(result.remaining_after_proposal_minor)}
             </strong>
           </div>

@@ -243,6 +243,15 @@
       0 1px 2px rgb(16 18 24 / 0.03),
       0 12px 32px -22px rgb(16 18 24 / 0.22);
   }
+  /* Dialogs and sheets: crisp, near-opaque panels. Their frosted scrim is the blurred layer. */
+  .float-panel {
+    background: rgb(252 252 253 / 0.96);
+    border: 1px solid rgb(255 255 255 / 0.85);
+    box-shadow:
+      inset 1px 1px 0 #ffffff,
+      0 1px 2px rgb(16 18 24 / 0.06),
+      0 28px 64px -28px rgb(16 18 24 / 0.5);
+  }
   /* The one money number per screen, on solid yellow with ink. Never put glass over it. */
   .solid-hero {
     background: var(--sunflower);
@@ -370,6 +379,9 @@
   .glass {
     background: #f8f8f9;
   }
+  .float-panel {
+    background: #fcfcfd;
+  }
   .surface {
     background: #ececee;
   }
@@ -392,6 +404,7 @@
 @media (forced-colors: active) {
   .surface,
   .glass,
+  .float-panel,
   .solid-hero,
   .moment {
     border: 1px solid CanvasText;

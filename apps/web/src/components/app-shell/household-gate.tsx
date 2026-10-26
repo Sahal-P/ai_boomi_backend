@@ -11,7 +11,7 @@ export function HouseholdGate({ children }: { children: ReactNode }) {
   const session = useHouseholdSession();
   if (session.state !== "ready") {
     return (
-      <main className="grid min-h-dvh place-items-center bg-aurora p-6">
+      <main className="bg-field grid min-h-dvh place-items-center p-6">
         {session.state === "checking" || !session.problem ? (
           <p role="status" className="surface flex items-center gap-3 rounded-3xl p-6 text-sm">
             <LoaderCircle className="size-4 motion-safe:animate-spin" aria-hidden="true" />

@@ -40,7 +40,8 @@ export function AppNav() {
 
   return (
     <>
-      <aside className="glass fixed top-3 bottom-3 left-3 z-40 hidden w-[264px] flex-col rounded-[1.75rem] p-4 lg:flex">
+      {/* In-flow glass: content never scrolls under the sidebar, so it needs no blur. */}
+      <aside className="surface fixed top-3 bottom-3 left-3 z-40 hidden w-[264px] flex-col rounded-3xl p-4 lg:flex">
         <Brand className="px-2 pt-1" />
         <nav aria-label="App navigation" className="mt-8 flex-1">
           <ul className="space-y-1">
@@ -52,21 +53,18 @@ export function AppNav() {
                     href={href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "relative flex h-11 items-center gap-3 rounded-2xl px-3 text-sm font-semibold transition-colors",
-                      active ? "text-ink" : "text-ink-soft hover:bg-white/60 hover:text-ink",
+                      "relative flex h-11 items-center gap-3 rounded-full px-3.5 text-sm font-semibold transition-colors",
+                      active ? "text-white" : "text-ink-soft hover:bg-white/60 hover:text-ink",
                     )}
                   >
                     {active ? (
                       <motion.span
                         layoutId="app-nav-active"
-                        className="absolute inset-0 rounded-2xl bg-white shadow-soft"
+                        className="absolute inset-0 rounded-full bg-ink shadow-lift"
                         transition={{ type: "spring", stiffness: 420, damping: 36 }}
                       />
                     ) : null}
-                    <Icon
-                      className={cn("relative size-[18px]", active && "text-violet")}
-                      aria-hidden="true"
-                    />
+                    <Icon className="relative size-[18px]" aria-hidden="true" />
                     <span className="relative">{label}</span>
                   </GuardedLink>
                 </li>
@@ -77,9 +75,9 @@ export function AppNav() {
         <AccountPanel />
       </aside>
 
-      {/* Near-opaque on phones: content (including the dark estimate card) scrolls beneath,
+      {/* Near-opaque blurred glass on phones: content (black pills included) scrolls beneath,
           and labels must keep their contrast over it. */}
-      <header className="glass fixed inset-x-3 top-3 z-40 flex h-14 items-center justify-between rounded-full bg-white/[0.94] pr-1.5 pl-4 lg:hidden">
+      <header className="glass fixed inset-x-3 top-3 z-40 flex h-14 items-center justify-between rounded-full bg-white/[0.9] pr-1.5 pl-4 lg:hidden">
         <Brand />
         <AccountMenu />
       </header>
@@ -88,7 +86,8 @@ export function AppNav() {
         aria-label="App navigation"
         className="app-tabbar glass fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-full bg-white/[0.94] p-1.5 lg:hidden"
       >
-        {/* Content-sized cells so "Transactions" fits at 320px without shrinking labels. */}
+        {/* The reference's black active capsule, but every tab keeps its label. Content-sized
+            cells so "Transactions" fits at 320px without shrinking labels. */}
         <ul className="flex">
           {APP_NAVIGATION.filter((item) => item.mobile).map(({ label, href, icon: Icon }) => {
             const active = isActive(pathname, href);
@@ -99,20 +98,17 @@ export function AppNav() {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "relative flex h-12 flex-col items-center justify-center gap-1 rounded-full px-1 text-[11px] leading-none font-semibold whitespace-nowrap",
-                    active ? "text-ink" : "text-ink-soft",
+                    active ? "px-2.5 text-white" : "text-ink-soft",
                   )}
                 >
                   {active ? (
                     <motion.span
                       layoutId="app-tab-active"
-                      className="absolute inset-0 rounded-full bg-white shadow-soft"
+                      className="absolute inset-0 rounded-full bg-ink shadow-lift"
                       transition={{ type: "spring", stiffness: 420, damping: 36 }}
                     />
                   ) : null}
-                  <Icon
-                    className={cn("relative size-[18px]", active && "text-violet")}
-                    aria-hidden="true"
-                  />
+                  <Icon className="relative size-[18px]" aria-hidden="true" />
                   <span className="relative">{label}</span>
                 </GuardedLink>
               </li>

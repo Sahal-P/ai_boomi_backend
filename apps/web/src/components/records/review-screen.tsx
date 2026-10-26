@@ -134,7 +134,7 @@ export function ReviewScreen() {
           <span>
             {verbs[last.outcome.action] ?? "Decided"}: <span className="font-semibold">{last.outcome.merchant}</span>
           </span>
-          <Button size="sm" className="bg-white text-ink hover:bg-lilac" disabled={undo.busy !== null} onClick={() => void undoLast()}>
+          <Button size="sm" className="bg-white text-ink hover:bg-white/85" disabled={undo.busy !== null} onClick={() => void undoLast()}>
             {undo.busy ? "Undoing…" : "Undo"}
           </Button>
           <button

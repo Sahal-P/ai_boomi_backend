@@ -143,8 +143,13 @@ export function AccountMenu() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="Account and settings">
-            <CircleUserRound className="size-6" aria-hidden="true" />
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Account and settings"
+            className="bg-white shadow-hairline hover:bg-white aria-expanded:bg-white"
+          >
+            <CircleUserRound className="size-5" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2">

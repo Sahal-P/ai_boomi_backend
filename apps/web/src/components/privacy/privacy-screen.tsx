@@ -41,7 +41,7 @@ export function PrivacyScreen() {
         description="What FinBoy keeps, and how to export, disconnect or delete it. Each choice shows its effect first."
       />
       <div role="status" aria-live="polite">
-        {notice && <p className="rounded-2xl bg-lilac/60 p-4 text-sm font-medium">{notice}</p>}
+        {notice && <p className="rounded-2xl bg-white/60 p-4 text-sm font-medium">{notice}</p>}
       </div>
 
       <div className="grid items-start gap-5 lg:grid-cols-[1.4fr_1fr]">
@@ -55,7 +55,7 @@ export function PrivacyScreen() {
             {connections.data && !live.length && (
               <p className="mt-2 text-sm text-ink-soft">
                 No Gmail account is connected.{" "}
-                <Link href="/sources" className="font-semibold text-violet-deep underline underline-offset-4">Go to Sources</Link> to add one.
+                <Link href="/sources" className="font-semibold text-ink underline underline-offset-4">Go to Sources</Link> to add one.
               </p>
             )}
             {live.length > 0 && (
@@ -63,7 +63,7 @@ export function PrivacyScreen() {
                 {live.map((connection) => (
                   <li key={connection.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
                     <span className="flex min-w-0 items-center gap-3">
-                      <Mail className="size-5 shrink-0 text-violet-deep" aria-hidden="true" />
+                      <Mail className="size-5 shrink-0 text-ink" aria-hidden="true" />
                       <span className="min-w-0">
                         <span className="block font-semibold break-all">{connection.account_email_masked}</span>
                         <span className="block text-xs text-ink-soft">Read-only · can&apos;t send, edit or delete your emails</span>
@@ -117,7 +117,7 @@ export function PrivacyScreen() {
                 {isolation.data.mixed_transactions > 0 && (
                   <li>
                     {isolation.data.mixed_transactions} records mixed sample and household emails, so they&apos;re{" "}
-                    <Link href="/transactions?dataset=quarantined&scope=all" className="font-semibold text-violet-deep underline underline-offset-4">on hold</Link>{" "}
+                    <Link href="/transactions?dataset=quarantined&scope=all" className="font-semibold text-ink underline underline-offset-4">on hold</Link>{" "}
                     and excluded until repaired.
                   </li>
                 )}
@@ -141,9 +141,9 @@ export function PrivacyScreen() {
                   const href = eventLink(event);
                   const label = auditEventLabels[event.event_type] ?? "Account activity";
                   return (
-                    <li key={event.id} className="border-l-2 border-lilac pl-4">
+                    <li key={event.id} className="border-l-2 border-ink/10 pl-4">
                       {href ? (
-                        <Link href={href} className="text-sm font-medium text-violet-deep underline underline-offset-4">{label}</Link>
+                        <Link href={href} className="text-sm font-medium text-ink underline underline-offset-4">{label}</Link>
                       ) : (
                         <p className="text-sm font-medium">{label}</p>
                       )}
@@ -157,7 +157,7 @@ export function PrivacyScreen() {
         </div>
 
         <aside className="rounded-3xl bg-secondary/70 p-5 text-sm leading-relaxed sm:p-6">
-          <ShieldCheck className="size-7 text-violet-deep" aria-hidden="true" />
+          <ShieldCheck className="size-7 text-ink" aria-hidden="true" />
           <h2 className="mt-3 text-lg font-semibold">What FinBoy keeps</h2>
           <p className="mt-2 text-ink-soft">
             Masked account details, message identifiers and hashes, structured financial records,

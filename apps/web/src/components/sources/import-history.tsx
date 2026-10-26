@@ -52,7 +52,7 @@ export function ImportHistory() {
               <li key={run.id}>
                 <Link
                   href={`/import/${run.id}`}
-                  className="flex min-h-14 items-center gap-3 py-3 hover:bg-canvas/70"
+                  className="flex min-h-14 items-center gap-3 py-3 hover:bg-white/50"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold">{sourceLabels[run.mode]}</p>

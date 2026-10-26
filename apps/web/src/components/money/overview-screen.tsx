@@ -237,7 +237,7 @@ function Categories({ summary, period }: { summary: MoneySummary; period: Period
                 <Link
                   href={`/transactions?category=${item.category}&status=confirmed${periodParams(period)}`}
                   onClick={() => recordOutcome("overview_explanation_opened")}
-                  className="block rounded-2xl px-2 py-2.5 hover:bg-canvas"
+                  className="block rounded-2xl px-2 py-2.5 hover:bg-white/50"
                 >
                   <span className="flex justify-between gap-4 text-sm">
                     <span>
@@ -250,7 +250,7 @@ function Categories({ summary, period }: { summary: MoneySummary; period: Period
                   </span>
                   <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
                     <span
-                      className={cn("block h-full rounded-full", refund ? "bg-positive" : "bg-violet")}
+                      className={cn("block h-full rounded-full", refund ? "bg-positive" : "bg-ink")}
                       style={{ width: `${Math.max(2, (Math.abs(item.amount_minor) / largest) * 100)}%` }}
                     />
                   </span>
@@ -295,7 +295,7 @@ function Obligations({ onOpen, version }: { onOpen: (id: string) => void; versio
                 type="button"
                 data-obligation-id={item.id}
                 onClick={() => onOpen(item.id)}
-                className="flex w-full items-center justify-between gap-4 py-3 text-left hover:bg-canvas"
+                className="flex w-full items-center justify-between gap-4 py-3 text-left hover:bg-white/50"
               >
                 <span className="min-w-0">
                   <span className="block text-sm font-medium break-words">{item.label}</span>

@@ -55,7 +55,7 @@ export function RecordDialog({
     <>
       <Dialog.Root open={id !== null} onOpenChange={(open) => !open && requestClose()}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm" />
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/20 backdrop-blur-sm" />
           <Dialog.Content
             aria-describedby={undefined}
             // Radix focuses Close first; the record heading takes focus once evidence loads.
@@ -66,7 +66,7 @@ export function RecordDialog({
                 : null;
               (row ?? focusFallback?.())?.focus();
             }}
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[94dvh] overflow-y-auto rounded-t-3xl bg-white p-5 pb-8 shadow-lift sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-8"
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[94dvh] overflow-y-auto rounded-t-3xl float-panel p-5 pb-8 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-8"
           >
             <Dialog.Title className="sr-only">Record details</Dialog.Title>
             <div className="mb-2 flex justify-end">

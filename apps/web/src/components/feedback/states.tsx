@@ -30,7 +30,7 @@ export function EmptyState({
 }) {
   return (
     <div className={cn("surface rounded-3xl p-6 sm:p-8", className)}>
-      <Icon className="size-7 text-violet-deep" aria-hidden="true" />
+      <Icon className="size-7 text-ink" aria-hidden="true" />
       <h2 className="mt-4 text-lg font-semibold">{title}</h2>
       {children && <div className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">{children}</div>}
       {actions && <div className="mt-5 flex flex-wrap gap-2">{actions}</div>}

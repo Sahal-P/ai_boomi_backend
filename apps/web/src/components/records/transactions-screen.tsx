@@ -91,7 +91,7 @@ export function TransactionsScreen() {
               : `Records for ${periodLabel}`}
           </h2>
           {page && page.unresolved_total > 0 && (
-            <Link href="/review" className="text-sm font-semibold text-violet-deep underline underline-offset-4">
+            <Link href="/review" className="text-sm font-semibold text-ink underline underline-offset-4">
               {page.unresolved_total} {page.unresolved_total === 1 ? "record needs" : "records need"} review
             </Link>
           )}

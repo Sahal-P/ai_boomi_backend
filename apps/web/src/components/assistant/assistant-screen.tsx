@@ -53,7 +53,7 @@ export function AssistantScreen() {
         <h2 id={`${ids}-ask`} className="sr-only">
           Ask a question
         </h2>
-        <details className="rounded-2xl bg-canvas px-4 py-3 text-sm">
+        <details className="rounded-2xl bg-well px-4 py-3 text-sm ring-1 ring-ink/5">
           <summary className="cursor-pointer font-semibold">What can I ask?</summary>
           <ul className="mt-2 list-disc space-y-1 pl-5 leading-relaxed text-ink-soft">
             <li>Spending for today, yesterday, this month, last month or a month like 2026-09.</li>
@@ -80,7 +80,7 @@ export function AssistantScreen() {
             maxLength={2000}
             rows={3}
             placeholder="How much did I spend on food this month?"
-            className="mt-2 block w-full resize-y rounded-2xl border border-input bg-canvas/60 p-4 text-base leading-relaxed"
+            className="mt-2 block w-full resize-y rounded-2xl border border-input bg-white/80 p-4 text-base leading-relaxed"
             disabled={voiceBusy}
           />
           <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -140,7 +140,7 @@ export function AssistantScreen() {
                 type="button"
                 lang={example.lang}
                 onClick={() => setDraft(example.text)}
-                className="min-h-11 rounded-2xl border bg-white/80 px-4 py-2.5 text-left text-sm leading-relaxed text-ink hover:bg-lilac"
+                className="min-h-11 rounded-2xl border bg-white/80 px-4 py-2.5 text-left text-sm leading-relaxed text-ink hover:bg-white"
               >
                 {example.text}
               </button>

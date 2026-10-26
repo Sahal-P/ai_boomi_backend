@@ -67,7 +67,7 @@ export function MergePanel({
   return (
     <section aria-labelledby={`merge-${tx.id}`} className="rounded-2xl border p-4">
       <h3 id={`merge-${tx.id}`} className="flex items-center gap-2 font-semibold">
-        <GitMerge className="size-4 text-violet-deep" aria-hidden="true" /> Is this the same payment as another record?
+        <GitMerge className="size-4 text-ink" aria-hidden="true" /> Is this the same payment as another record?
       </h3>
       {candidates.status === "loading" && <LoadingPanel className="mt-3 shadow-none" label="Finding records it could match…" />}
       {candidates.error !== null && (
@@ -86,7 +86,7 @@ export function MergePanel({
             </legend>
             <div className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
               {items.map((item) => (
-                <label key={item.id} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm", item.id === chosenId && "border-violet bg-lilac/40")}>
+                <label key={item.id} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm", item.id === chosenId && "border-ink bg-white/55")}>
                   <input type="radio" name={`merge-target-${tx.id}`} className="accent-[var(--violet)]" checked={item.id === chosenId} onChange={() => setPicked(item.id)} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{item.merchant}</span>
@@ -102,12 +102,12 @@ export function MergePanel({
           </fieldset>
           {chosen && (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-canvas p-3">
+              <div className="rounded-xl bg-white/60 p-3 ring-1 ring-ink/[0.06]">
                 <p className="mb-2 text-xs font-semibold">This record (will be merged)</p>
                 <p className="mb-2 truncate text-sm font-semibold">{tx.merchant}</p>
                 <Facts row={tx} />
               </div>
-              <div className="rounded-xl bg-lilac/40 p-3">
+              <div className="rounded-xl bg-white/55 p-3">
                 <p className="mb-2 text-xs font-semibold">Match (stays)</p>
                 <p className="mb-2 truncate text-sm font-semibold">{chosen.merchant}</p>
                 <Facts row={chosen} />
@@ -115,7 +115,7 @@ export function MergePanel({
             </div>
           )}
           {currentPreview && chosen && (
-            <div role="status" className="mt-3 rounded-xl border border-violet/30 bg-white p-3 text-sm leading-relaxed">
+            <div role="status" className="mt-3 rounded-xl border border-ink/15 bg-white p-3 text-sm leading-relaxed">
               <p className="font-semibold">If you merge</p>
               <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-soft">
                 <li>&ldquo;{chosen.merchant}&rdquo; stays; this record&apos;s {currentPreview.source_count} source {currentPreview.source_count === 1 ? "email moves" : "emails move"} to it.</li>

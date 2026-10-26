@@ -29,7 +29,7 @@ import { describeProblem } from "@/lib/messages";
 
 function SampleTag() {
   return (
-    <span className="rounded-full bg-gold-soft/70 px-2 py-0.5 text-[11px] font-semibold text-ink">Sample</span>
+    <span className="rounded-full bg-sunflower px-2 py-0.5 text-[11px] font-semibold text-ink">Sample</span>
   );
 }
 
@@ -38,14 +38,14 @@ function SampleRecord({ row, onClose }: { row: Transaction | null; onClose: () =
   return (
     <Dialog.Root open={row !== null} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/20 backdrop-blur-sm" />
         <Dialog.Content
           aria-describedby={undefined}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             if (row) document.querySelector<HTMLElement>(`[data-sample-id="${CSS.escape(row.id)}"]`)?.focus();
           }}
-          className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-y-auto rounded-t-3xl bg-white p-5 pb-8 shadow-lift sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-7"
+          className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-y-auto rounded-t-3xl float-panel p-5 pb-8 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-7"
         >
           {row && (
             <>
@@ -119,7 +119,7 @@ function DemoBody({ demo }: { demo: DemoData }) {
                     type="button"
                     data-sample-id={row.id}
                     onClick={() => update({ selected: row.id }, "push")}
-                    className="flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left hover:bg-canvas"
+                    className="flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left hover:bg-white/60"
                   >
                     <RecordGlyph row={row} />
                     <span className="min-w-0 flex-1">

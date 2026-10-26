@@ -70,12 +70,12 @@ export function HouseholdLogin({ next }: { next: string }) {
           </Button>
         </form>
         <div className="mt-7 flex gap-3 rounded-2xl bg-canvas p-4 text-xs leading-relaxed text-ink-soft">
-          <LockKeyhole className="mt-0.5 size-4 shrink-0 text-violet-deep" aria-hidden="true" />
+          <LockKeyhole className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden="true" />
           <p>
             FinBoy is a private space for one household — there&apos;s no public sign-up or
             password reset. Ask the person who set it up for the password. Want to look around
             first?{" "}
-            <Link href="/demo" className="font-semibold text-violet-deep underline underline-offset-4">
+            <Link href="/demo" className="font-semibold text-ink underline underline-offset-4">
               View the sample data
             </Link>
             .

@@ -9,13 +9,11 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-ink text-white shadow-lift hover:-translate-y-px hover:bg-ink/90",
-        brand:
-          "bg-[linear-gradient(110deg,var(--violet-deep),var(--violet)_45%,var(--magenta))] text-white shadow-glow hover:-translate-y-px hover:brightness-110",
-        glass: "glass text-ink hover:-translate-y-px hover:bg-white/80",
+        glass: "surface text-ink hover:-translate-y-px hover:bg-white/80",
         outline:
-          "border-border bg-white hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-ink/15 bg-white/70 hover:bg-white hover:text-foreground aria-expanded:bg-white aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "bg-accent text-violet-deep hover:bg-[color-mix(in_oklch,var(--accent),var(--violet)_10%)] aria-expanded:bg-accent",
+          "bg-ink/[0.06] text-ink hover:bg-ink/10 aria-expanded:bg-ink/10",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:

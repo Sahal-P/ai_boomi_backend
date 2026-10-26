@@ -83,7 +83,7 @@ function IssueList({ run }: { run: ImportRun }) {
     <div>
       <ul className="space-y-2">
         {[...groups.entries()].map(([reason, items]) => (
-          <li key={reason} className="flex items-start justify-between gap-3 rounded-2xl bg-canvas p-3 text-sm">
+          <li key={reason} className="flex items-start justify-between gap-3 rounded-2xl bg-well p-3 text-sm ring-1 ring-ink/5">
             <div>
               <p className="font-semibold">{issueReasonLabels[reason]}</p>
               <p className="text-xs text-ink-soft">
@@ -204,7 +204,7 @@ export function ImportResult({ runId }: { runId: string }) {
           <Icon
             className={cn(
               "mt-1 size-6 shrink-0",
-              copy.tone === "progress" && "text-violet-deep motion-safe:animate-spin",
+              copy.tone === "progress" && "text-ink motion-safe:animate-spin",
               copy.tone === "success" && "text-positive",
               (copy.tone === "attention" || copy.tone === "problem") && "text-amber-800",
             )}
