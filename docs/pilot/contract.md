@@ -68,16 +68,27 @@ the records, how to stop, and that the helper or operator deletes everything on 
   received become one notification line through the existing import pipeline with source
   `whatsapp_voice`, always landing in review. Questions use the existing assistant. Unclear
   messages get a short example of how to say it; nothing is kept to retry later.
-- **Dues:** a due becomes a `commitments` row with kind `loan` and status `pending` (never counted)
-  until हाँ makes it `upcoming`; नहीं makes it `dismissed`. After a reminder's [✅ भर दिया] the due
-  is marked paid through `obligations.correct_obligation`, and "अगले महीने भी?" can create the next
-  one. There is no recurrence engine.
-- **Reminders:** only for bindings with `reminders_opt_in_at`, asked after a household's first due.
-  Two days before and on the due date, 08:00–20:00 IST, through approved Hindi utility templates
-  with [✅ भर दिया] [⏰ अभी नहीं]. Each (due, kind) is sent at most once. If templates are not
-  available on the test number, the due notice is added to replies inside the 24-hour window.
-- **हिसाब / hisaab:** this week (Monday to today): money in, money out, dues in the next 7 days,
-  and the top 3 categories, from `money_summary`, in text and voice.
+- **Dues:** a due needs a day of the month ("10 तारीख"), otherwise FinBoy asks for it. It becomes
+  a `commitments` row with kind `loan` and status `pending` (never counted) until हाँ makes it
+  `upcoming`; नहीं makes it `dismissed`; both can be undone, and बदलें changes a pending amount.
+- **Paid:** a reminder's [✅ भर दिया] records the instalment as one `whatsapp_voice` line paid to the
+  due's label (category `loan_emi`), confirms it through `decide`, and links it with
+  `obligations.correct_obligation`, so money left falls only by what was paid. An already-paid due
+  is not paid again; a busy import records nothing and the button stays usable. [⏰ अभी नहीं]
+  also keeps the button usable. "अगले महीने भी यही देना है?" [✅ हाँ, अगले महीने] saves next
+  month's due as `upcoming` (same day, clamped to the month's length) with undo. There is no
+  recurrence engine.
+- **Reminders:** only for bindings with `reminders_opt_in_at`, asked once after a household's
+  first due. A due gets at most one `two_days` reminder (due within the next two days) and one
+  `due_day` reminder (due today or overdue). With `WHATSAPP_REMINDER_TEMPLATE` set, the `remind`
+  job sends the approved Hindi utility template 08:00–20:00 IST with [✅ भर दिया] [⏰ अभी नहीं],
+  under the same consent lock as replies. Without a template, the nearest unreminded due (from
+  two days ahead to seven days overdue) follows the household's next reply as its own card
+  (delivery kind `reminder`) with the same buttons, inside the 24-hour window.
+- **हिसाब / hisaab** (typed or spoken; also "हिसाब बताओ", "hisaab batao"): this week (Monday to
+  today) from `money_summary`: money in, money out, the top 3 outflow categories, dues in the next
+  7 days, overdue dues and the number of records still waiting for हाँ, in text and voice. It
+  works even while an amount question is open.
 
 ## Data kept and never kept
 
@@ -94,25 +105,50 @@ kept: message text, transcripts, audio, images, captions, questions or answers.
   keyed fingerprint, state, created/expires/answered timestamps. No text columns.
 - New `whatsapp_reminders`: due, kind (`two_days`, `due_day`), state, outbound message ID,
   provider status, timestamps; unique (due, kind).
-- Widened CHECKs: receipt kind `button`; delivery kinds `interactive` and `template`; new receipt
-  error codes; source and import mode `whatsapp_voice`; classification `self_reported`;
-  commitment kind `loan` and status `pending`; categories `farming`, `livestock`,
-  `phone_recharge`, `family_events`, `remittance`, `wages`, `farm_sales`, `govt_benefit`. The
-  category list is a draft to confirm in the week-0 interviews.
+- Widened CHECKs: receipt kind `button`; delivery kinds `interactive` and `reminder`; receipt
+  error codes `prompt_expired`, `record_changed`, `amount_unclear`, `statement_unavailable`;
+  source and import mode `whatsapp_voice`; commitment kind `loan` and status `pending`;
+  categories `farming`, `livestock`, `phone_recharge`, `family_events`, `remittance`, `wages`,
+  `farm_sales`, `govt_benefit`. Voice lines keep the existing source classifications; no new
+  classification is needed. The category list is a draft to confirm in the week-0 interviews.
+- `pending` dues are excluded from every total, list and obligation route; the engine accepts
+  kind `loan`.
 
 ## Operator tools (`finboy.services.pilot.cli`)
 
-`enroll` (create a pilot household and print its ID), `erase` (delete one pilot household's
-records, dues, decisions, prompts, reminders, receipts and binding; keep audit counts; refuses
-`LOCAL_USER_ID`), `report` (weekly counts per household), and `remind` (the reminder job, run by a
-systemd timer). Output never includes amounts, names, numbers or message content.
+`enroll` (create the next "Pilot household N" and print its ID), `owner on|off` (the owner's
+dogfood week), `erase <household> --confirm` (delete one pilot household's records, sources,
+dues, decisions, prompts, reminders, receipts, deliveries and binding, and clear the shared,
+regenerable extraction cache as privacy deletion does; keep the numbered user row with
+`pilot = false` and the audit counts; refuses `LOCAL_USER_ID`; runs under that household's
+import lock), `report [--weeks 1-12]` (one JSON line per household and
+week) and `remind` (the template job, run by `deploy/finboy-pilot-remind.timer`). Output never
+includes amounts, names, labels, numbers or message content.
 
 ## Metrics allowlist
 
-Per household and ISO week: active days; records captured by channel (voice, screenshot);
-confirm, change, reject and undo counts; dues created, confirmed, paid and reminded; reminder
-deliveries by provider status; speech, parse and amount-grounding failures; consent and STOP
-changes. Amounts, categories, names and text are never reported.
+Per household ("Pilot household N" or "owner") and IST week from Monday, exactly what
+`pilot.cli report` prints: active days; messages by kind (audio, text, image, button, command);
+captures by channel (voice or text, screenshot); confirm, correct, reject and undo counts; dues
+spoken, paid, paid by the due date and reminded; receipt failure codes (speech, statement,
+amount, assistant, provider, capture, image, expired prompt, changed record); consented and
+reminders opted in by the week's end; stopped now. Amounts, categories, labels, names and text
+are never reported. Template provider statuses stay in `whatsapp_reminders` for inspection.
+
+## Reminder template (human step)
+
+Create on the existing WhatsApp Business Account, then set `WHATSAPP_REMINDER_TEMPLATE` to its
+name only after Meta approves it:
+
+- Name `finboy_due_reminder`, category Utility, language Hindi (`hi`).
+- Body: `📌 याद दिलाना: {{1}} — {{2}} — {{3}} को देना है। भर दिया हो तो ✅ दबाइए।`
+  with samples `समूह की किस्त`, `₹1,200`, `10 नवंबर` (FinBoy sends the due label, the amount and
+  the date, in that order).
+- Two quick-reply buttons, in this order: `✅ भर दिया`, `⏰ अभी नहीं`. FinBoy sets each button's
+  payload at send time to its own `fb1:` prompt ID.
+
+A weekly Sunday summary template was planned as optional and is not built: households ask
+"हिसाब" instead, and the helper encourages a daily or weekly हिसाब message.
 
 ## Human-only steps and acceptance
 

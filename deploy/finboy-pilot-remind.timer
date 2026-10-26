@@ -1,0 +1,10 @@
+[Unit]
+Description=FinBoy pilot due reminders every 30 minutes (the job sends only 08:00-20:00 IST)
+
+[Timer]
+OnCalendar=*-*-* 02..14:00,30:00 UTC
+Persistent=false
+RandomizedDelaySec=2m
+
+[Install]
+WantedBy=timers.target

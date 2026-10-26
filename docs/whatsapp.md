@@ -68,16 +68,20 @@ Required when enabling the channel:
 - `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`
 - `WHATSAPP_GRAPH_API_VERSION=v26.0` after the actual capability check
 - `WHATSAPP_SENDER_ALLOWLIST_JSON`: a private JSON object mapping the explicitly
-  approved provider sender ID (country code and digits, no plus) to `LOCAL_USER_ID`.
-  No identity is guessed or paired from inbound traffic. At most 100 mappings;
-  currently only the local demo UUID is permitted. Outbound addressing adds the
-  leading plus to avoid country-code ambiguity.
+  approved provider sender ID (country code and digits, no plus) to `LOCAL_USER_ID`
+  or, for the village pilot, to an enrolled pilot household's UUID (at most 10 pilot
+  households; see [the pilot contract](pilot/contract.md)). No identity is guessed or
+  paired from inbound traffic. At most 100 mappings. Messages from a mapping whose
+  household does not exist or is not `LOCAL_USER_ID`/`pilot = true` are ignored.
+  Outbound addressing adds the leading plus to avoid country-code ambiguity.
 - Existing stable `TOKEN_ENCRYPTION_KEY`: domain-separated HMAC key for sender and
   content hashes. Preserve it across Meta token refreshes and restarts. Rotating it
   without migrating bindings loses consent identity and must be planned separately.
 
 Optional: `WHATSAPP_TIMEOUT_SECONDS` (default 15),
-`WHATSAPP_MAX_WEBHOOK_BYTES` (default 262144, upper bound 1048576).
+`WHATSAPP_MAX_WEBHOOK_BYTES` (default 262144, upper bound 1048576),
+`WHATSAPP_REMINDER_TEMPLATE` (the approved pilot reminder template's name, lowercase
+letters, digits and underscores; blank means reminders follow replies instead).
 The ingress has its own stricter fixed 256 KiB limit and 15-second body deadline.
 The channel stays unavailable when disabled/misconfigured; health and imports remain
 usable. App ID, WABA, phone, raw sender and credentials are never logged.
@@ -311,3 +315,24 @@ for the verified token expiry, configuration and operational checks.
 The screenshot reader's real OpenAI synthetic-image capability check passed with
 `gpt-6-luna`; screenshot-only records remain review-only. Real phone image capture and
 voice playback are still unverified, and the prior voice deferral remains in effect.
+
+## Village pilot households (26 October 2026)
+
+The human approved a Hindi, WhatsApp-first village pilot; [the pilot contract](pilot/contract.md)
+is binding and supersedes this document only as written there. Everything below applies only
+to households with `users.pilot = true`. The owner's household keeps the question flow above
+unless the owner switches the dogfood flag on (`pilot.cli owner on`).
+
+- A consent card in Hindi (text and voice) gates every pilot household; बंद/शुरू work like
+  STOP/START.
+- Voice or text statements ("दूधवाले को 500 दिए") become one `whatsapp_voice` line through the
+  import pipeline, always into review. FinBoy replies with a confirm card and reply buttons
+  (हाँ, रकम बदलें, नहीं) plus a Hindi voice readback. Taps go through the versioned review
+  decisions with undo. Screenshots use the same card.
+- Spoken dues, the paid and next-month flows, opt-in reminders (an approved template, or a card
+  after the next reply) and the "हिसाब" weekly summary are described in the contract.
+- New receipt kind `button`; new delivery kinds `interactive` (a reply with buttons) and
+  `reminder` (a due card after the reply), each at most once per inbound message. Template
+  reminder statuses update `whatsapp_reminders` only for the matching household's number.
+- Prompts keep only IDs, a keyed fingerprint, state and expiry. No message text, transcript,
+  audio or image is stored, as before.

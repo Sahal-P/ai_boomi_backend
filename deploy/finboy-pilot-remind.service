@@ -1,0 +1,19 @@
+[Unit]
+Description=FinBoy pilot due reminders (opted-in pilot households only)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=finboy
+Group=finboy
+WorkingDirectory=/opt/finboy/current
+EnvironmentFile=/etc/finboy/production.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/finboy/current/.venv/bin/python -m finboy.services.pilot.cli remind
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/finboy
