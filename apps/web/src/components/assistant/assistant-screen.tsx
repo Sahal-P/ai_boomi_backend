@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { styleLabels, TurnCard } from "@/components/assistant/turn-card";
 import { VoiceControls } from "@/components/assistant/voice-controls";
+import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { Button } from "@/components/ui/button";
 import { useAssistant } from "@/hooks/use-assistant";
 import { useSpeech } from "@/hooks/use-speech";
@@ -96,7 +97,7 @@ export function AssistantScreen() {
                   const next = styles.find((style) => style === event.target.value);
                   if (next) assistant.setStyle(next);
                 }}
-                className="mt-1.5 block h-11 w-full rounded-xl border border-input bg-white px-3 text-sm"
+                className="mt-1.5 block h-11 w-full rounded-lg border border-input bg-white/80 px-3 text-sm"
               >
                 {styles.map((style) => (
                   <option key={style} value={style} lang={styleLabels[style].lang}>
@@ -131,20 +132,24 @@ export function AssistantScreen() {
       </section>
 
       {!assistant.turns.length && (
-        <section aria-label="Example questions">
-          <h2 className="text-sm font-semibold">Try one of these</h2>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {examples.map((example) => (
-              <button
-                key={example.text}
-                type="button"
-                lang={example.lang}
-                onClick={() => setDraft(example.text)}
-                className="min-h-11 rounded-2xl border bg-white/80 px-4 py-2.5 text-left text-sm leading-relaxed text-ink hover:bg-white"
-              >
-                {example.text}
-              </button>
-            ))}
+        // A yellow moment: FinBoy at rest until the first question of the session.
+        <section aria-label="Example questions" className="moment flex flex-col gap-5 rounded-3xl p-5 sm:flex-row sm:items-start sm:p-7">
+          <ThinkingOrb state="breathing" rest className="shrink-0" />
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold tracking-[-0.02em]">Try one of these</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {examples.map((example) => (
+                <button
+                  key={example.text}
+                  type="button"
+                  lang={example.lang}
+                  onClick={() => setDraft(example.text)}
+                  className="min-h-11 rounded-2xl border border-ink/10 bg-white/80 px-4 py-2.5 text-left text-sm leading-relaxed text-ink hover:bg-white"
+                >
+                  {example.text}
+                </button>
+              ))}
+            </div>
           </div>
         </section>
       )}

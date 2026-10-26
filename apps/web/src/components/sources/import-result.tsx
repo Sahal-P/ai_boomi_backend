@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { LoadingPanel } from "@/components/feedback/states";
 import { outcomeBadges } from "@/components/sources/import-history";
@@ -202,15 +203,18 @@ export function ImportResult({ runId }: { runId: string }) {
         )}
       >
         <div className="flex items-start gap-3">
+          {copy.tone === "progress" ? (
+            <ThinkingOrb state="working" className="-my-1.5 shrink-0" />
+          ) : (
           <Icon
             className={cn(
               "mt-1 size-6 shrink-0",
-              copy.tone === "progress" && "text-ink motion-safe:animate-spin",
               copy.tone === "success" && "text-positive",
               (copy.tone === "attention" || copy.tone === "problem") && "text-amber-800",
             )}
             aria-hidden="true"
           />
+          )}
           <div className="min-w-0">
             <h2
               id="outcome-title"

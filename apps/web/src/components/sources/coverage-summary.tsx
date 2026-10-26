@@ -1,5 +1,6 @@
 import { CalendarRange, CircleAlert, CircleCheck, CircleHelp, Clock3, ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import type { Coverage } from "@/lib/api/money";
 import { formatDayTime, formatRange } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -73,8 +74,9 @@ export function CoverageSummary({ coverage, className }: { coverage: Coverage; c
           {coverage.active_import_id && (
             <Link
               href={`/import/${coverage.active_import_id}`}
-              className="text-ink underline underline-offset-4"
+              className="inline-flex items-center gap-2 text-ink underline underline-offset-4"
             >
+              <ThinkingOrb state="working" size={20} />
               Import in progress — view it
             </Link>
           )}

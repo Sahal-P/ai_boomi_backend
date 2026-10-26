@@ -8,7 +8,9 @@ import {
   useReducedMotion,
 } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import type { OrbState } from "thinking-orbs";
 
+import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { AnimatedAmount } from "@/components/motion/animated-amount";
 import { EASE_OUT_EXPO, Reveal } from "@/components/motion/reveal";
 import { SceneSlot } from "@/components/three/scene-slot";
@@ -69,6 +71,14 @@ const STATUS: Record<VoiceOrbState, string> = {
   listening: "Listening…",
   thinking: "Checking your ledger…",
   speaking: "Speaking in your language",
+};
+
+// The app's thinking-orb verbs for the same moments, so the demo and the product match.
+const ORB: Record<VoiceOrbState, OrbState | null> = {
+  idle: null,
+  listening: "listening",
+  thinking: "searching",
+  speaking: "composing",
 };
 
 export function VoiceSection() {
@@ -302,18 +312,11 @@ export function VoiceSection() {
             aria-live="polite"
             className="glass absolute bottom-8 left-1/2 flex -translate-x-1/2 items-center gap-2.5 rounded-full px-4 py-2 text-sm font-semibold text-ink"
           >
-            <span
-              className={cn(
-                "size-2 rounded-full",
-                state === "listening"
-                  ? "animate-pulse bg-magenta"
-                  : state === "thinking"
-                    ? "animate-pulse bg-violet"
-                    : state === "speaking"
-                      ? "bg-sky"
-                      : "bg-ink-subtle",
-              )}
-            />
+            {ORB[state] ? (
+              <ThinkingOrb state={ORB[state]} size={20} />
+            ) : (
+              <span className="size-2 rounded-full bg-ink-subtle" aria-hidden="true" />
+            )}
             {STATUS[state]}
           </div>
         </div>

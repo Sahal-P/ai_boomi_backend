@@ -1,8 +1,9 @@
 "use client";
 
-import { LoaderCircle, Pause, Play, Square, Volume2 } from "lucide-react";
+import { Pause, Play, Square, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
+import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { RecordAmount } from "@/components/records/record-bits";
 import { Button } from "@/components/ui/button";
 import type { Playback } from "@/hooks/use-speech";
@@ -60,9 +61,9 @@ export function TurnCard({
       </header>
 
       {turn.state === "pending" && (
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-          <LoaderCircle className="size-4 text-ink motion-safe:animate-spin" aria-hidden="true" />
-          <span>Thinking through your question… this can take up to a minute.</span>
+        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-3 text-sm">
+          <ThinkingOrb state="searching" />
+          <span className="min-w-0 flex-1 basis-48">Thinking through your question… this can take up to a minute.</span>
           <Button size="sm" variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
@@ -152,7 +153,7 @@ export function TurnCard({
             ) : mine && playback.step === "preparing" ? (
               <>
                 <Button variant="outline" disabled>
-                  <LoaderCircle className="motion-safe:animate-spin" aria-hidden="true" /> {copy.preparing}
+                  <ThinkingOrb state="composing" size={20} /> {copy.preparing}
                 </Button>
                 <Button variant="ghost" onClick={onStop}>{copy.cancel}</Button>
               </>

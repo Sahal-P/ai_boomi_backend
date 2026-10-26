@@ -2,6 +2,7 @@
 
 import { Mic, Square, X } from "lucide-react";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
+import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { Button } from "@/components/ui/button";
 import type { VoiceState } from "@/hooks/use-voice-recorder";
 import { RECORDING_LIMITS } from "@/lib/api/assistant";
@@ -84,6 +85,7 @@ export function VoiceControls({
 
       {state.step === "transcribing" && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-well p-3 text-sm ring-1 ring-ink/5">
+          <ThinkingOrb state="listening" size={20} />
           <span role="status">Transcribing your recording…</span>
           <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
             <X aria-hidden="true" /> Cancel
