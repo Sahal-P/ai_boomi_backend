@@ -54,7 +54,7 @@ class CategoryTotal(BaseModel):
 
 class CommitmentView(BaseModel):
     id: UUID
-    kind: Literal["bill", "emi", "subscription", "sip"]
+    kind: Literal["bill", "emi", "subscription", "sip", "loan"]  # loan: a pilot's spoken due
     label: str
     amount_minor: int
     currency: Literal["INR"] = "INR"

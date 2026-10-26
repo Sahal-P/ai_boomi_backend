@@ -6,6 +6,7 @@ records go through the existing review decisions, and prompts keep only IDs and 
 """
 
 import logging
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -24,6 +25,7 @@ from finboy.db.models.ledger import Commitment, Transaction
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt, WhatsAppReceipt
 from finboy.services.assistant import service as assistant
 from finboy.services.ingestion.hindi_numbers import parse_amount
+from finboy.services.money.engine import PeriodSpec, money_summary, upcoming_commitments
 from finboy.services.money.models import Correction
 from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
@@ -38,6 +40,11 @@ from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavaila
 IST = ZoneInfo("Asia/Kolkata")
 logger = logging.getLogger(__name__)
 Reply = Callable[..., bool]
+WEEK = re.compile(
+    r"\s*(?:मेरा\s+|my\s+)?(?:हिसाब|हिसाब-किताब|hisaab|hisab)"
+    r"(?:\s+(?:बताओ|बताइए|बताइये|दिखाओ|दिखाइए|दो|दीजिए|batao|dikhao))?\s*[।.!?]*\s*",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -106,6 +113,8 @@ def _handle(conversation: Conversation) -> str | None:
         conversation.session.rollback()
         sent = conversation.send("आवाज़ साफ़ नहीं आई। फिर से बोलिए या लिखिए।")
         return conversation.done(sent, "invalid_audio")
+    if WEEK.fullmatch(text):
+        return _week(conversation)
     change = prompts.pending_change(conversation.session, binding)
     if change is not None:
         return _changed_amount(conversation, change, text)
@@ -438,6 +447,46 @@ def _record_money(conversation: Conversation, reading: statement.Statement) -> s
     if result.outcome == "busy":
         return conversation.done(conversation.send(hindi.BUSY), "capture_busy")
     return conversation.done(conversation.send(hindi.UNAVAILABLE), "capture_unavailable")
+
+
+def _week(conversation: Conversation) -> str | None:
+    """The reply to हिसाब: engine figures for Monday to today, plus dues in the next 7 days."""
+    session, user_id = conversation.session, conversation.binding.user_id
+    today = today_ist()
+    monday = today - timedelta(days=today.weekday())
+    summary = money_summary(
+        session,
+        user_id=user_id,
+        period=PeriodSpec(kind="range", start_date=monday, end_date=today),
+    )
+    ahead = upcoming_commitments(
+        session,
+        user_id=user_id,
+        period=PeriodSpec(kind="range", start_date=today, end_date=today + timedelta(days=7)),
+    )
+    session.rollback()  # release the snapshot lock before any network call
+    top = [(item.category, item.amount_minor) for item in summary.categories if item.amount_minor]
+    dues = [(row.amount_minor, row.label, row.due_date) for row in ahead[:3]]
+    if not (
+        summary.tracked_income_minor
+        or summary.confirmed_outflows_minor
+        or dues
+        or summary.overdue_commitments_minor
+        or summary.pending_review_count
+    ):
+        return _say(conversation, hindi.WEEK_EMPTY, hindi.WEEK_EMPTY_SPEECH)
+    text, spoken = hindi.week(
+        income=summary.tracked_income_minor,
+        outflow=summary.confirmed_outflows_minor,
+        top=top[:3],
+        dues=dues,
+        overdue=summary.overdue_commitments_minor,
+        waiting=summary.pending_review_count,
+    )
+    sent = conversation.send(text)
+    if sent:
+        conversation.speak(spoken)
+    return conversation.done(sent)
 
 
 def _due_row(conversation: Conversation, commitment_id: UUID | None) -> Commitment | None:

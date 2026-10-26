@@ -4,20 +4,23 @@ uv run --package finboy-api python -m finboy.services.pilot.cli enroll
 uv run --package finboy-api python -m finboy.services.pilot.cli owner on|off
 uv run --package finboy-api python -m finboy.services.pilot.cli erase <household-uuid> --confirm
 uv run --package finboy-api python -m finboy.services.pilot.cli remind
+uv run --package finboy-api python -m finboy.services.pilot.cli report [--weeks 4]
 """
 
 import argparse
+import json
 import sys
 from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.orm import sessionmaker
 
+from finboy.core.clock import today_ist
 from finboy.core.config import Settings
 from finboy.db.session import build_engine
 from finboy.services.imports.locking import import_lock
 from finboy.services.mail.security import MailError
-from finboy.services.pilot import households
+from finboy.services.pilot import households, report
 from finboy.services.whatsapp import reminders
 from finboy.services.whatsapp.config import ChannelUnavailable, channel_config
 from finboy.services.whatsapp.meta import MetaClient
@@ -37,6 +40,8 @@ def main(argv: list[str] | None = None) -> int:
     erase.add_argument("household", type=UUID)
     erase.add_argument("--confirm", action="store_true", help="required: erasure is permanent")
     commands.add_parser("remind", help="send due reminder templates (timer; 08:00-20:00 IST)")
+    weekly = commands.add_parser("report", help="weekly counts per pilot household (no content)")
+    weekly.add_argument("--weeks", type=int, choices=range(1, 13), default=4, metavar="1-12")
     args = parser.parse_args(argv)
 
     settings = Settings()
@@ -57,6 +62,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Owner pilot flows: {args.state}")
         elif args.command == "remind":
             return _remind(settings, factory)
+        elif args.command == "report":
+            with factory() as session:
+                rows = report.weekly(session, today=today_ist(), weeks=args.weeks)
+            for row in rows:
+                print(json.dumps(row, sort_keys=True))
         else:
             if not args.confirm:
                 print("Refused: add --confirm to erase this household permanently.")

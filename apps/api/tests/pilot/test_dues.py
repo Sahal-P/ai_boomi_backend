@@ -367,3 +367,11 @@ def test_remind_command_prints_counts_only(monkeypatch, capsys) -> None:
     monkeypatch.setattr(cli, "channel_config", unavailable)
     assert cli.main(["remind"]) == 2
     assert capsys.readouterr().out == "Refused: WhatsApp is not configured.\n"
+
+
+def test_spoken_dues_are_valid_engine_commitments(home) -> None:
+    from finboy.services.money.engine import commitment_view
+
+    row = home.session.get(Commitment, add_due(home.session, home.user_id, -1))
+    view = commitment_view(row, today=today_ist())
+    assert (view.kind, view.liability_state, view.amount_minor) == ("loan", "overdue", 120000)

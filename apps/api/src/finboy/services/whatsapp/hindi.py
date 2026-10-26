@@ -191,3 +191,35 @@ def due_notice(amount_minor: int, label: str, due: date, today: date) -> str:
         when = f"📅 {relative + ', ' if relative else ''}{date_label(due)} — देना है"
     lines = ["📌 याद दिलाना", f"{money(amount_minor)} · {label}", when, "भर दिया हो तो ✅ दबाइए।"]
     return "\n".join(lines)
+
+
+WEEK_EMPTY = 'इस हफ़्ते अभी कुछ नहीं जुड़ा।\nबोलकर बताइए, जैसे:\n🎤 "दूधवाले को 500 दिए"'
+WEEK_EMPTY_SPEECH = "इस हफ़्ते अभी कुछ नहीं जुड़ा। बोलकर बताइए, जैसे, दूधवाले को पाँच सौ दिए।"
+
+
+def week(
+    *,
+    income: int,
+    outflow: int,
+    top: list[tuple[str, int]],
+    dues: list[tuple[int, str, date]],
+    overdue: int,
+    waiting: int,
+) -> tuple[str, str]:
+    """The reply to हिसाब: this week's money in and out, where it went, and what is due next."""
+    lines = ["📒 इस हफ़्ते का हिसाब (सोमवार से आज तक)", f"💰 आए: {money(income)}"]
+    lines.append(f"💸 गए: {money(outflow)}")
+    names = [(CATEGORY.get(category, CATEGORY["other"]), amount) for category, amount in top]
+    if names:
+        lines.append("🏷️ सबसे ज़्यादा: " + " · ".join(f"{name} {money(a)}" for name, a in names))
+    lines += [f"📌 आगे देना है: {money(a)} · {label} · {date_label(day)}" for a, label, day in dues]
+    if overdue:
+        lines.append(f"⚠️ तारीख निकल गई, अभी बाकी: {money(overdue)}")
+    if waiting:
+        lines.append(f"⏳ {waiting} बातें अभी नहीं जुड़ीं — उनके संदेश में ✅ हाँ दबाइए।")
+    speech = f"इस हफ़्ते {spoken_money(income, 'hi')} आए, {spoken_money(outflow, 'hi')} गए।"
+    if names:
+        speech += f" सबसे ज़्यादा {names[0][0]} पर।"
+    if dues:
+        speech += f" आगे {spoken_money(sum(a for a, _, _ in dues), 'hi')} देने हैं।"
+    return "\n".join(lines), speech
