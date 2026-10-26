@@ -115,3 +115,15 @@ signup, new recipient, business phone, app, billing setup or unsolicited send.
 Production speech remains OpenAI; screenshot reading uses capability-verified
 `gpt-6-luna` and every screenshot-only event still requires review. Record actual
 Meta delivery/read status separately from human voice/screenshot acceptance.
+
+## Village pilot round — 26 October 2026
+
+From main b2110a9 the human approved a Hindi, WhatsApp voice-first village pilot on the
+existing Meta test number: 4 village households plus the owner, at most 10 pilot households.
+Pilot households may confirm, correct the amount of and reject their own records by button,
+with undo; record money and dues by voice; and receive opt-in reminders. WhatsApp never
+merges or deletes records, and erasure stays operator-run. `docs/pilot/contract.md`
+supersedes earlier WhatsApp non-goals and the "no new recipient or unsolicited send" rule
+only as documented there. One agent on feat/finboy-village-pilot, loopback 8051/3051,
+disposable finboy_pilot. The owner's web app and WhatsApp question flow stay unchanged
+unless the owner's pilot flag is set. Never store messages, audio, images or transcripts.
