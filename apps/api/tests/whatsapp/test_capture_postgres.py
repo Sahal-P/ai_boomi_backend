@@ -44,6 +44,7 @@ USER_MODULES = (
     "finboy.services.privacy.delete",
     "finboy.services.whatsapp.capture",
     "finboy.services.whatsapp.config",
+    "finboy.services.whatsapp.receipts",
 )
 
 
@@ -53,7 +54,13 @@ def household(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Engine, UUID]]:
     engine = build_engine(settings)
     assert settings.environment != "production"
     assert engine.url.host in {"127.0.0.1", "localhost"}
-    assert engine.url.database in {"finboy_capture", "finboy_p5", "finboy_ux_api", "finboy_test"}
+    assert engine.url.database in {
+        "finboy_capture",
+        "finboy_p5",
+        "finboy_ux_api",
+        "finboy_test",
+        "finboy_pilot",
+    }
     user = uuid4()
     for name in USER_MODULES:
         monkeypatch.setattr(importlib.import_module(name), "LOCAL_USER_ID", user)
@@ -118,9 +125,8 @@ def active_transactions(session: Session, user: UUID) -> list[Transaction]:
 def test_screenshot_becomes_one_household_review_record(household, meta) -> None:
     engine, user = household
     question = screenshot()
-    assert capture_screenshot(engine, Settings(), meta, question) == Capture(
-        "saved", 50000, "Ravi Kumar"
-    )
+    result = capture_screenshot(engine, Settings(), meta, question)
+    assert (result.outcome, result.amount_minor, result.merchant) == ("saved", 50000, "Ravi Kumar")
     with Session(engine) as session:
         (source,) = session.scalars(select(EmailSource).where(EmailSource.user_id == user))
         assert (source.source, source.provider_message_id) == (
@@ -132,6 +138,7 @@ def test_screenshot_becomes_one_household_review_record(household, meta) -> None
         (transaction,) = active_transactions(session, user)
         assert (transaction.status, transaction.dataset) == ("needs_review", "household")
         assert (transaction.amount_minor, transaction.merchant) == (50000, "Ravi Kumar")
+        assert result.transaction_id == transaction.id, "the reply's card points at this record"
         assert transaction.occurred_at == datetime.fromisoformat("2026-10-24T10:42:00+05:30")
         assert transaction.reference_id and transaction.reference_id.startswith("H-")
         (run,) = session.scalars(select(ImportRun).where(ImportRun.user_id == user))

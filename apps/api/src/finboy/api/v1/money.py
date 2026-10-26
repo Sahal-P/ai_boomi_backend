@@ -57,8 +57,11 @@ def simulate(session: DB, body: SimulationRequest) -> CashFlowSimulation:
 def obligations(
     session: DB, status: Literal["unresolved", "all", "paid", "dismissed"] = "unresolved"
 ) -> dict:
+    # A spoken pilot due waiting for the household's "हाँ" is never listed or counted.
     query = select(Commitment).where(
-        Commitment.user_id == LOCAL_USER_ID, Commitment.dataset == "household"
+        Commitment.user_id == LOCAL_USER_ID,
+        Commitment.dataset == "household",
+        Commitment.status != "pending",
     )
     if status != "all":
         query = query.where(Commitment.status == ("upcoming" if status == "unresolved" else status))

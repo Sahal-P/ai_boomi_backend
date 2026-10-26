@@ -26,10 +26,12 @@ EVENTS = frozenset(
         "task.overview_explanation_opened",
         "task.review_completed",
         "data.exported",
+        "pilot.enrolled",
+        "pilot.erased",
     }
 )
 METADATA = {
-    "mode": {"gmail", "eml_upload", "demo_mailbox", "whatsapp_image"},
+    "mode": {"gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice"},
     "result": {"success", "failure"},
 }
 

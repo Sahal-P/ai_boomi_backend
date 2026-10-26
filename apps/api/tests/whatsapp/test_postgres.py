@@ -35,6 +35,7 @@ def factory(config: ChannelConfig) -> Iterator[sessionmaker[Session]]:
             "finboy_ux_api",
             "finboy_ux_ui",
             "finboy_capture",
+            "finboy_pilot",
             "finboy_test",
         }
     ):

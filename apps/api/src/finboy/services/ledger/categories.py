@@ -25,7 +25,15 @@ def normalize_merchant(merchant: str | None) -> str | None:
     return ALIASES.get(clean.lower(), clean)
 
 
+# Village incomes a household names when money arrives; they refine the generic "credit".
+INCOME_CATEGORIES: frozenset[Category] = frozenset(
+    {"wages", "farm_sales", "govt_benefit", "remittance"}
+)
+
+
 def category_for(event: Event) -> Category:
+    if event.event_type == "credit" and event.category in INCOME_CATEGORIES:
+        return event.category
     special: dict[str, Category] = {
         "salary": "salary",
         "credit": "other_income",

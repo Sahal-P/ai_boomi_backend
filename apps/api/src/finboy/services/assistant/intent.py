@@ -88,6 +88,14 @@ CATEGORIES: dict[Category, tuple[str, ...]] = {
     "other": ("other spending", "अन्य खर्च", "മറ്റു ചെല"),
     "salary": ("salary spending",),
     "other_income": ("other income spending",),
+    "farming": ("farming", "fertiliser", "fertilizer", "seeds", "खेती", "खाद", "बीज", "കൃഷി"),
+    "livestock": ("livestock", "cattle", "fodder", "पशु", "चारा", "കന്നുകാലി"),
+    "phone_recharge": ("recharge", "रिचार्ज", "റീചാർജ്"),
+    "family_events": ("wedding", "festival", "शादी", "त्योहार", "കല്യാണ", "ഉത്സവ"),
+    "remittance": ("sent home", "remittance", "घर भेजे", "परिवार को भेज", "വീട്ടിലേക്ക് അയച്ച"),
+    "wages": ("wages", "mazdoori", "मज़दूरी", "मजदूरी", "കൂലി"),
+    "farm_sales": ("crop sale", "milk sale", "फसल बेच", "दूध बेच", "വിള വിൽപ്പന"),
+    "govt_benefit": ("pm kisan", "pension", "सरकारी पैस", "किसान सम्मान", "पेंशन", "പെൻഷൻ"),
 }
 MERCHANTS = ("swiggy", "zomato", "amazon", "hotel arya", "netflix", "uber")
 ADVICE = (

@@ -15,7 +15,9 @@ FinBoy imports Gmail, saved `.eml` files, or a synthetic demo mailbox into an
 evidence-backed ledger. A deterministic money engine provides tracked income,
 confirmed net spending, commitments and cash-flow simulations. Review/correction,
 privacy controls, and an English/Hindi/Malayalam text/voice assistant share the same
-records. WhatsApp supports approved-sender ledger QUESTIONS only.
+records. WhatsApp supports approved-sender ledger questions and screenshot capture;
+hand-enrolled village pilot households also record money and dues by Hindi voice and
+confirm them by button ([pilot contract](docs/pilot/contract.md)).
 
 The assembled product is merged into **main** and published to both requested repositories.
 The authorized private production site is **https://finboy.antlegs.in**, with its
@@ -47,8 +49,9 @@ acceptance gaps; provider configuration alone never means completion.
   session gate and an HTTPS proxy; finance/privacy routes reject unauthenticated users.
 
 Money stays integer paise in INR and dates use IST. Production supports private
-household login only. No public signup, bank API, WhatsApp confirmations/edits/deletions
-(screenshots only enter review), stock/fund recommendations, or training.
+household login only. No public signup, bank API, WhatsApp merges/deletions, automatic
+confirmation (only pilot households confirm, reject or correct the amount of their own
+records by an explicit button tap, with undo), stock/fund recommendations, or training.
 “Estimated unallocated amount” comes from email-derived and confirmed records;
 actual bank balances may differ. Simulations are not investment recommendations.
 
@@ -133,6 +136,11 @@ allowlist, signature/context checks, temporary token expiry, restricted tunnel,
 metadata-only persistence and durable duplicate suppression. Accepted Graph sends
 are distinct from delivered/read replies; confirm actual receipt on the approved
 phone. No arbitrary send endpoint, broad public API tunnel, or production publishing.
+
+[Village pilot](docs/pilot/contract.md): Hindi WhatsApp-first pilot for at most 10
+hand-enrolled households (4 plus the owner on the Meta test number), consent card, voice
+records through review, dues, opt-in reminders, "हिसाब" summaries and the counts-only
+`pilot.cli report`. Enrollment, templates and erasure are operator steps.
 
 Human performs login/2FA/CAPTCHA/consent/billing. Identify browser profiles by account
 and stable identity, not numeric IDs after restart. Never send tests to unapproved

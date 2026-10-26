@@ -16,6 +16,8 @@ from finboy.services.mail.security import MailError
 from finboy.services.ux.decisions import VersionRequest
 from finboy.services.ux.state import TaskError, data_version, require_version
 
+WHATSAPP_SOURCES = {"whatsapp_image", "whatsapp_voice"}
+
 
 class ImportView(BaseModel):
     id: UUID
@@ -193,12 +195,12 @@ def issues(session: Session, *, user_id: UUID, run_id: UUID, limit: int, offset:
             "source_id": row.id,
             "source_mode": row.source,
             "reason": row.issue_reason or "extraction_failed",
-            # Screenshots are never retained; the sender resends them on WhatsApp instead.
-            "retryable": row.source != "whatsapp_image",
+            # Screenshots and voice notes are never retained; the sender resends on WhatsApp.
+            "retryable": row.source not in WHATSAPP_SOURCES,
             "retry_strategy": "refetch_gmail"
             if row.source == "gmail"
             else "none"
-            if row.source == "whatsapp_image"
+            if row.source in WHATSAPP_SOURCES
             else "select_original_files",
             "attempts": row.attempts,
         }

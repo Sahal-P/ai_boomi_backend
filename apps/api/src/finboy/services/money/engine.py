@@ -54,7 +54,7 @@ class CategoryTotal(BaseModel):
 
 class CommitmentView(BaseModel):
     id: UUID
-    kind: Literal["bill", "emi", "subscription", "sip"]
+    kind: Literal["bill", "emi", "subscription", "sip", "loan"]  # loan: a pilot's spoken due
     label: str
     amount_minor: int
     currency: Literal["INR"] = "INR"
@@ -108,9 +108,9 @@ class TransactionView(BaseModel):
     linked_transaction_id: UUID | None = None
     merged_into_id: UUID | None = None
     dataset: Literal["household", "demo", "quarantined"] = "household"
-    source_modes: list[Literal["gmail", "eml_upload", "demo_mailbox", "whatsapp_image"]] = Field(
-        default_factory=list
-    )
+    source_modes: list[
+        Literal["gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice"]
+    ] = Field(default_factory=list)
     source_count: int = 0
     extraction_quality: Literal["complete", "partial"] = "partial"
     payment_verification: Literal["verified", "unverified", "failed"] = "unverified"

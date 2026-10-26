@@ -6,10 +6,10 @@ import { z } from "zod";
 import { onSessionEvent } from "../session-events.ts";
 import { answerSchema, askQuestion, displayLang, speechFor, transcribeAudio } from "./assistant.ts";
 import { ApiError, failure, requestJson } from "./http.ts";
-import { extractionLabel, paymentLabel, reasonFor, sourceLabels, sourceSender } from "../labels.ts";
+import { categoryLabels, extractionLabel, obligationKindLabels, paymentLabel, reasonFor, sourceLabels, sourceSender } from "../labels.ts";
 import { getDemo } from "./demo.ts";
 import { fileProblem, getImportIssues, getImportRun, getImports, importRunSchema, issueSchema } from "./imports.ts";
-import { baseTransactionSchema, getObligation, getObligations, getSummary, inputPaise, simulate, summarySchema } from "./money.ts";
+import { baseTransactionSchema, commitmentSchema, getObligation, getObligations, getSummary, inputPaise, simulate, summarySchema } from "./money.ts";
 import { deletionPreviewSchema, exportRecords, getIsolation, previewDeletion } from "./privacy.ts";
 import {
   decide,
@@ -253,6 +253,42 @@ test("WhatsApp screenshot sources validate and read as the household's own messa
     recordQueryString({ limit: 50, offset: 0, scope: "all", period: null, source: "whatsapp_image" }),
     "?scope=all&source=whatsapp_image&limit=50&offset=0",
   );
+});
+
+test("pilot voice records, village categories and spoken loan dues validate and read plainly", () => {
+  const fixture = (key: string) => z.record(z.string(), z.unknown()).parse(contract[key]);
+  const pending = fixture("transactions_pending");
+  const page = z.object({ items: z.array(z.record(z.string(), z.unknown())) }).parse(pending);
+  const item = { ...page.items[0], source_modes: ["whatsapp_voice"], category: "farming" };
+  const parsed = pageSchema.parse({ ...pending, items: [item] }).items[0];
+  assert.deepEqual(parsed?.source_modes, ["whatsapp_voice"]);
+  assert.equal(parsed && categoryLabels[parsed.category], "Farming");
+  const run = importRunSchema.parse({ ...fixture("import_complete"), mode: "whatsapp_voice", retry_strategy: "none" });
+  assert.equal(sourceLabels[run.mode], "WhatsApp voice note");
+  assert.equal(sourceSender({ source: "whatsapp_voice", sender_domain: "whatsapp.invalid" }), "Your WhatsApp voice note");
+  const voice = { source_modes: ["whatsapp_voice" as const], extraction_quality: "partial" as const };
+  assert.equal(paymentLabel({ ...voice, payment_verification: "verified" }), "Confirmed by you from a voice note");
+  assert.equal(extractionLabel(voice), "Some details were unclear in your voice note");
+  const reason = reasonFor({ status: "needs_review", review_reason: "unverified_payment", source_modes: ["whatsapp_voice"] });
+  assert.match(reason?.detail ?? "", /voice note/);
+  assert.doesNotMatch(reason?.detail ?? "", /email|screenshot/);
+  const due = commitmentSchema.parse({
+    id: "40000000-0000-4000-8000-000000000001",
+    kind: "loan",
+    label: "समूह की किस्त",
+    amount_minor: 120000,
+    currency: "INR",
+    due_date: "2026-11-10",
+    status: "upcoming",
+    confidence: 1,
+    source_event_id: null,
+    paid_transaction_id: null,
+    version: "7:2026-10-26",
+    dataset: "household",
+    liability_state: "upcoming",
+    uncertain: false,
+  });
+  assert.equal(obligationKindLabels[due.kind], "Loan");
 });
 
 test("screenshot-only records never borrow email or bank-email wording", () => {

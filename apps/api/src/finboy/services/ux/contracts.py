@@ -44,7 +44,7 @@ class ImportStarted(BaseModel):
 class ImportIssue(BaseModel):
     id: UUID
     source_id: UUID
-    source_mode: Literal["gmail", "eml_upload", "demo_mailbox", "whatsapp_image"]
+    source_mode: Literal["gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice"]
     reason: Literal["extraction_failed", "no_supported_events", "message_unavailable"]
     retryable: bool
     retry_strategy: Literal["refetch_gmail", "select_original_files", "none"]

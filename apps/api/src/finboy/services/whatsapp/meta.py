@@ -11,12 +11,15 @@ import httpx
 from pydantic import BaseModel, Field, ValidationError
 
 from finboy.services.whatsapp.config import ChannelConfig
+from finboy.services.whatsapp.events import BUTTON_ID
 
 AUDIO_TYPES = {"audio/aac", "audio/amr", "audio/mpeg", "audio/mp4", "audio/ogg"}
 IMAGE_TYPES = {"image/jpeg", "image/png"}
 MEDIA_HOSTS = {"lookaside.fbsbx.com", "mmg.whatsapp.net"}
 MAX_AUDIO_BYTES = 3 * 1024 * 1024
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+BUTTON_PATTERN = re.compile(BUTTON_ID)
+TEMPLATE_NAME = re.compile(r"[a-z0-9_]{1,64}")
 
 
 class MetaUnavailable(Exception):
@@ -152,21 +155,93 @@ class MetaClient:
         return media_id
 
     def send(self, recipient: str, *, text: str | None = None, media_id: str | None = None) -> str:
-        if recipient not in self.config.allowlist:
-            raise MetaUnavailable
         if (text is None) == (media_id is None):
+            raise MetaUnavailable
+        if text is not None:
+            if not 1 <= len(text) <= 4096:
+                raise MetaUnavailable
+            return self._send(
+                recipient, {"type": "text", "text": {"body": text, "preview_url": False}}
+            )
+        return self._send(recipient, {"type": "audio", "audio": {"id": media_id}})
+
+    def send_buttons(self, recipient: str, *, text: str, buttons: list[tuple[str, str]]) -> str:
+        """Reply buttons only: at most 3 with titles of 20 characters or fewer and our own IDs."""
+        if not 1 <= len(text) <= 1024 or not 1 <= len(buttons) <= 3:
+            raise MetaUnavailable
+        if len({key for key, _ in buttons}) != len(buttons) or any(
+            not BUTTON_PATTERN.fullmatch(key) or not 1 <= len(title) <= 20 for key, title in buttons
+        ):
+            raise MetaUnavailable
+        replies = [
+            {"type": "reply", "reply": {"id": key, "title": title}} for key, title in buttons
+        ]
+        return self._send(
+            recipient,
+            {
+                "type": "interactive",
+                "interactive": {
+                    "type": "button",
+                    "body": {"text": text},
+                    "action": {"buttons": replies},
+                },
+            },
+        )
+
+    def send_template(
+        self,
+        recipient: str,
+        *,
+        name: str,
+        language: str,
+        parameters: list[str],
+        quick_replies: list[str],
+    ) -> str:
+        """An approved template (reminders): text parameters plus quick replies with our IDs."""
+        if (
+            not TEMPLATE_NAME.fullmatch(name)
+            or language not in {"hi", "en"}
+            or len(parameters) > 10
+            or len(quick_replies) > 3
+            or any(not 1 <= len(item) <= 1024 or re.search(r"[\n\t]", item) for item in parameters)
+            or any(not BUTTON_PATTERN.fullmatch(item) for item in quick_replies)
+        ):
+            raise MetaUnavailable
+        components: list[dict[str, object]] = []
+        if parameters:
+            components.append(
+                {"type": "body", "parameters": [{"type": "text", "text": p} for p in parameters]}
+            )
+        for index, payload in enumerate(quick_replies):
+            components.append(
+                {
+                    "type": "button",
+                    "sub_type": "quick_reply",
+                    "index": str(index),
+                    "parameters": [{"type": "payload", "payload": payload}],
+                }
+            )
+        return self._send(
+            recipient,
+            {
+                "type": "template",
+                "template": {
+                    "name": name,
+                    "language": {"code": language},
+                    "components": components,
+                },
+            },
+        )
+
+    def _send(self, recipient: str, message: dict[str, object]) -> str:
+        if recipient not in self.config.allowlist:
             raise MetaUnavailable
         payload: dict[str, object] = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
             "to": "+" + recipient,
+            **message,
         }
-        if text is not None:
-            if not 1 <= len(text) <= 4096:
-                raise MetaUnavailable
-            payload.update(type="text", text={"body": text, "preview_url": False})
-        else:
-            payload.update(type="audio", audio={"id": media_id})
         # Unlike read/upload failures, a transport/5xx failure after send may be ambiguous.
         try:
             with self.client.stream(

@@ -151,7 +151,11 @@ function ObligationBody({ detail, onChanged }: { detail: ObligationDetail; onCha
       <section>
         <h3 className="font-semibold">Evidence</h3>
         {!detail.sources.length ? (
-          <p className="mt-1 text-sm text-ink-soft">No source email is linked to this obligation.</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            {item.kind === "loan"
+              ? "You told FinBoy about this due on WhatsApp. No email is linked."
+              : "No source email is linked to this obligation."}
+          </p>
         ) : (
           <ul className="mt-2 space-y-2">
             {detail.sources.map((source) => (

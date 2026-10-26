@@ -8,7 +8,14 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppDelivery, WhatsAppReceipt
+from finboy.core.config import LOCAL_USER_ID
+from finboy.db.models.core import User
+from finboy.db.models.whatsapp import (
+    WhatsAppBinding,
+    WhatsAppDelivery,
+    WhatsAppReceipt,
+    WhatsAppReminder,
+)
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion, Status
 
@@ -51,6 +58,11 @@ def admit(
         user = config.allowlist.get(question.sender)
         if user is None:
             continue
+        # Fail closed: a household must exist, and any household other than the owner's must
+        # be an enrolled pilot (docs/pilot/contract.md).
+        pilot = session.scalar(select(User.pilot).where(User.id == user))
+        if pilot is None or (user != LOCAL_USER_ID and pilot is not True):
+            continue
         sender_hash = config.digest("sender", question.sender)
         session.execute(
             insert(WhatsAppBinding)
@@ -59,6 +71,8 @@ def admit(
                 user_id=user,
                 sender_hash=sender_hash,
                 enabled=True,
+                # Village pilot households speak Hindi; the owner keeps automatic detection.
+                language="hi" if user != LOCAL_USER_ID else None,
                 last_inbound_at=question.provider_at,
             )
             .on_conflict_do_nothing(index_elements=[WhatsAppBinding.sender_hash])
@@ -88,7 +102,9 @@ def admit(
                 id=uuid4(),
                 binding_id=binding.id,
                 inbound_message_id=question.message_id,
-                content_hash=config.digest("content", question.text or question.media_id or ""),
+                content_hash=config.digest(
+                    "content", question.text or question.media_id or question.button_id or ""
+                ),
                 kind="command" if command else question.kind,
                 language=binding.language,
                 state=state,
@@ -118,13 +134,21 @@ def admit(
             .where(WhatsAppDelivery.outbound_message_id == status.id)
             .with_for_update(of=WhatsAppDelivery)
         ).first()
+        if row is None:
+            # A pilot reminder template FinBoy sent first, outside any reply.
+            row = session.execute(
+                select(WhatsAppReminder, WhatsAppBinding.sender_hash)
+                .join(WhatsAppBinding, WhatsAppBinding.id == WhatsAppReminder.binding_id)
+                .where(WhatsAppReminder.outbound_message_id == status.id)
+                .with_for_update(of=WhatsAppReminder)
+            ).first()
         if row is None or row[1] != config.digest("sender", status.recipient_id):
             continue
-        delivery = row[0]
+        sent = row[0]
         rank = {None: 0, "sent": 1, "failed": 2, "delivered": 3, "read": 4}
-        if rank[status.status] > rank[delivery.provider_status] or delivery.provider_status is None:
-            delivery.provider_status = status.status
-            delivery.updated_at = now
+        if rank[status.status] > rank[sent.provider_status] or sent.provider_status is None:
+            sent.provider_status = status.status
+            sent.updated_at = now
     session.commit()
     return admitted
 

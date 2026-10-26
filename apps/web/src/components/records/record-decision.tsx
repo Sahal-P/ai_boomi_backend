@@ -22,6 +22,7 @@ import {
   paymentLabel,
   reasonFor,
   screenshotOnly,
+  voiceOnly,
   statusLabels,
 } from "@/lib/labels";
 import { describeProblem } from "@/lib/messages";
@@ -183,7 +184,7 @@ export function RecordDecision({
         </div>
         <div className="rounded-2xl bg-canvas p-3">
           <dt className="text-xs text-ink-soft">
-            {screenshotOnly(tx) ? "Details in the screenshot" : "Details in the email"}
+            {screenshotOnly(tx) ? "Details in the screenshot" : voiceOnly(tx) ? "Details in your voice note" : "Details in the email"}
           </dt>
           <dd className="mt-0.5 font-medium">{extractionLabel(tx)}</dd>
         </div>

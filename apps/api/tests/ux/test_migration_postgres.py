@@ -18,7 +18,12 @@ def test_additive_upgrade_preserves_values_revisions_and_mixed_provenance():
     settings = Settings()
     engine = build_engine(settings)
     assert settings.environment != "production" and engine.url.host in {"127.0.0.1", "localhost"}
-    assert engine.url.database in {"finboy_ux_api", "finboy_ux_ui", "finboy_capture"}
+    assert engine.url.database in {
+        "finboy_ux_api",
+        "finboy_ux_ui",
+        "finboy_capture",
+        "finboy_pilot",
+    }
     migrations = Path(__file__).parents[2] / "alembic" / "versions"
 
     def load(name):

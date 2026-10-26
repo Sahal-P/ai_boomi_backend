@@ -293,3 +293,31 @@ of a hard-coded old revision. Current 0007 reports current; 0006 remains degrade
 `pnpm check` passed 733 backend unit and 39 web tests, lint and strict TypeScript;
 the production-shaped build passed. No schema or dependency change accompanies this
 readiness correction, and no test suite was run against production.
+
+## Village pilot release procedure (not yet executed)
+
+The pilot code is on `feat/finboy-village-pilot`; nothing here has been deployed. Releasing it
+needs the human's explicit go-ahead and follows the release steps above: validated private
+backup, active-import check, additive migration `0008_village_pilot`, drift check, restart of
+`finboy.service` only. Record counts must stay unchanged; with every `users.pilot` false the
+owner's web app and WhatsApp question flow behave as before.
+
+Then, in order and only as the human approves each step:
+
+1. Dogfood week: `python -m finboy.services.pilot.cli owner on` switches the owner's own number
+   to the pilot flows; `owner off` switches back.
+2. Enroll each household: `pilot.cli enroll` prints "Pilot household N" and its UUID. The human
+   registers the number as a Meta test recipient (at most 5 recipients on the test number),
+   adds `"<number>": "<uuid>"` privately to `WHATSAPP_SENDER_ALLOWLIST_JSON` in
+   `/etc/finboy/production.env`, and restarts only `finboy.service`.
+3. Reminders: after Meta approves the template in [the pilot contract](pilot/contract.md#reminder-template-human-step),
+   set `WHATSAPP_REMINDER_TEMPLATE`, restart, then install
+   `deploy/finboy-pilot-remind.service` and `.timer` and enable the timer. The job runs every 30
+   minutes and sends only 08:00–20:00 IST; it prints counts only. Without a template, leave the
+   timer disabled: reminders then follow each household's next reply.
+4. Weekly: `pilot.cli report --weeks 1` prints counts only for the pilot review.
+5. Erasure on request: `pilot.cli erase <uuid> --confirm`, then remove the number from the
+   allowlist and from Meta's test recipients.
+
+Never run tests against production; real Hindi voice, phone taps, low-end Android playback and
+reminder delivery are recorded as human acceptance, separately from automated checks.

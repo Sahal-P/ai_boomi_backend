@@ -2,10 +2,11 @@ import hashlib
 import hmac
 import json
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from finboy.api.v1 import whatsapp as routes
-from finboy.core.config import Settings
+from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.main import create_app
 from finboy.services.whatsapp.config import ChannelConfig, ChannelUnavailable, channel_config
 from finboy.services.whatsapp.events import InvalidWebhook, parse_events, verify_signature
@@ -93,6 +94,25 @@ def test_status_only_and_unsupported_events(config: ChannelConfig) -> None:
     assert not questions and statuses[0].status == "delivered"
 
 
+def test_pilot_households_are_configurable_but_bounded(wa_settings: Settings) -> None:
+    from pydantic import SecretStr
+
+    pilots = {f"9190000001{index:02}": str(uuid4()) for index in range(10)}
+    allowlist = {"919000000001": str(LOCAL_USER_ID), **pilots}
+    settings = Settings(
+        **{
+            **wa_settings.model_dump(),
+            "whatsapp_sender_allowlist_json": SecretStr(json.dumps(allowlist)),
+        },
+        _env_file=None,
+    )
+    config = channel_config(settings)
+    assert len(config.allowlist) == 11
+    assert {str(user) for user in config.allowlist.values()} - {str(LOCAL_USER_ID)} == set(
+        pilots.values()
+    )
+
+
 @pytest.mark.parametrize(
     "override",
     [
@@ -100,8 +120,9 @@ def test_status_only_and_unsupported_events(config: ChannelConfig) -> None:
         {"whatsapp_app_id": "another-app"},
         {"whatsapp_sender_allowlist_json": "{}"},
         {
-            "whatsapp_sender_allowlist_json": (
-                '{"919000000001":"00000000-0000-0000-0000-000000000002"}'
+            # docs/pilot/contract.md: at most 10 pilot households besides the owner.
+            "whatsapp_sender_allowlist_json": json.dumps(
+                {f"9190000001{index:02}": str(uuid4()) for index in range(11)}
             )
         },
         {"whatsapp_graph_api_version": "../../attack"},

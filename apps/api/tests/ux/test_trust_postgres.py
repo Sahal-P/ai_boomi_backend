@@ -36,7 +36,12 @@ def ux(monkeypatch):
     engine = build_engine(settings)
     assert settings.environment != "production"
     assert engine.url.host in {"127.0.0.1", "localhost"}
-    assert engine.url.database in {"finboy_ux_api", "finboy_ux_ui", "finboy_capture"}
+    assert engine.url.database in {
+        "finboy_ux_api",
+        "finboy_ux_ui",
+        "finboy_capture",
+        "finboy_pilot",
+    }
     factory = sessionmaker(engine, expire_on_commit=False)
     uid = uuid4()
     for name in (

@@ -31,18 +31,20 @@ from finboy.services.ingestion.llm import (
 )
 from finboy.services.ingestion.normalize import normalize
 from finboy.services.ingestion.rules import extract_rules
-from finboy.services.ingestion.types import Extraction
+from finboy.services.ingestion.types import Category, Extraction
 from finboy.services.ledger.persist import persist_event
 
 
 @dataclass(frozen=True)
 class InboundMessage:
-    source: Literal["gmail", "eml_upload", "demo_mailbox", "whatsapp_image"]
+    source: Literal["gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice"]
     provider_message_id: str
     raw_rfc822: bytes
     received_at: datetime | None = None
     mail_connection_id: UUID | None = None
     failure_reason: Literal["message_unavailable"] | None = None
+    # A pilot household's spoken category; used only where extraction found none.
+    category_hint: Category | None = None
 
 
 @dataclass
@@ -75,8 +77,10 @@ def _prepare(
         mode = os.environ.get("FINBOY_EXTRACTION_MODE", "live")
         model = settings.openai_extraction_model
         key = settings.openai_api_key
+        # FinBoy renders voice lines itself in the rules format: no model call, nothing cached.
         if (
             mode == "rules"
+            or inbound.source == "whatsapp_voice"
             or not model
             or mode != "offline"
             and (key is None or not key.get_secret_value())
@@ -210,6 +214,8 @@ def _persist_message(
     else:
         delta.candidates_found = 1
         for event in item.extraction.events:
+            if inbound.category_hint and event.category in {None, "other"}:
+                event = event.model_copy(update={"category": inbound.category_hint})
             created, duplicate = persist_event(
                 session,
                 user_id=user_id,

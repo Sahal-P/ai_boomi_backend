@@ -57,6 +57,12 @@ test("interrupted uploads ask for the original files instead of implying a resum
   assert.ok(copy.detail.some((line) => line.includes("original .eml files")));
 });
 
+test("a stopped WhatsApp voice capture asks to say it again, not to retry emails", () => {
+  const copy = importOutcome({ ...base, mode: "whatsapp_voice", status: "failed", outcome: "interrupted", retryable: false, retry_strategy: "none", failed: 0 });
+  assert.ok(copy.detail.includes("Voice notes aren't kept, so say it again on WhatsApp."));
+  assert.ok(!copy.detail.some((line) => line.includes("emails")));
+});
+
 test("cancelled imports keep saved records and offer review", () => {
   const copy = importOutcome({ ...base, status: "failed", outcome: "cancelled", cancel_requested: true, failed: 0 });
   assert.equal(copy.title, "Import cancelled");

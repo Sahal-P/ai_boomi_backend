@@ -19,6 +19,7 @@ from finboy.services.ingestion.types import Event
 from finboy.services.ledger.categories import category_for, normalize_merchant
 from finboy.services.ledger.confidence import Confidence, confidence_for
 from finboy.services.ledger.matching import (
+    Match,
     choose_match,
     claims_agree,
     direction,
@@ -391,7 +392,13 @@ def persist_event(
     excluded = {
         i for i, item in enumerate(transactions) if "dedupe" in (item.user_locked_fields or [])
     }
-    match = choose_match(event, existing_events, excluded=excluded)
+    # Each voice note is the household's own separate statement ("50 to the milkman" daily),
+    # so it never auto-merges; the household confirms every one by button.
+    match = (
+        Match()
+        if source.source == "whatsapp_voice"
+        else choose_match(event, existing_events, excluded=excluded)
+    )
     if match.index is not None:
         transaction = transactions[match.index]
         source_event.transaction_id = transaction.id

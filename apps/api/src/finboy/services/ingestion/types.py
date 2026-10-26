@@ -47,6 +47,14 @@ Category = Literal[
     "loan_emi",
     "fees",
     "transfer",
+    "farming",
+    "livestock",
+    "phone_recharge",
+    "family_events",
+    "remittance",
+    "wages",
+    "farm_sales",
+    "govt_benefit",
     "other",
 ]
 
