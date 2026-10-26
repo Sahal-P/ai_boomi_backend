@@ -28,16 +28,16 @@ jobs:
         env:
           POSTGRES_USER: finboy
           POSTGRES_PASSWORD: finboy_local_only
-          POSTGRES_DB: finboy_ux_api
+          POSTGRES_DB: finboy_pilot
         ports: [5432:5432]
         options: >-
-          --health-cmd "pg_isready -U finboy -d finboy_ux_api"
+          --health-cmd "pg_isready -U finboy -d finboy_pilot"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
     env:
       ENVIRONMENT: test
-      DATABASE_URL: postgresql+psycopg://finboy:finboy_local_only@127.0.0.1:5432/finboy_ux_api
+      DATABASE_URL: postgresql+psycopg://finboy:finboy_local_only@127.0.0.1:5432/finboy_pilot
       CORS_ORIGINS: '["http://127.0.0.1:3031"]'
       WEB_APP_URL: http://127.0.0.1:3031
       FINBOY_EXTRACTION_MODE: rules

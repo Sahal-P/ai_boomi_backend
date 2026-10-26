@@ -86,6 +86,7 @@ test("a recording is transcribed for review and never sent automatically", async
       const destination = context.createMediaStreamDestination();
       oscillator.connect(destination);
       oscillator.start();
+      await context.resume();
       return destination.stream;
     };
     Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
@@ -94,6 +95,8 @@ test("a recording is transcribed for review and never sent automatically", async
   await page.getByRole("button", { name: "Record a question" }).click();
   await expect(page.getByText(/Recording · 0:0\d/)).toBeVisible();
   await expect(page.getByText(/left\)/)).toBeVisible();
+  // An immediate stop can legitimately capture no frames; wait for actual recording time.
+  await expect(page.getByText(/Recording · 0:0[1-9]/)).toBeVisible();
   await page.getByRole("button", { name: "Stop and transcribe" }).click();
   await expect(page.getByLabel(/Your question/)).toHaveValue("How much did I spend on food this month?");
   await expect(page.getByText("nothing is sent until you do")).toBeVisible();

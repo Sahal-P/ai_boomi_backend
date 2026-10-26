@@ -294,10 +294,10 @@ of a hard-coded old revision. Current 0007 reports current; 0006 remains degrade
 the production-shaped build passed. No schema or dependency change accompanies this
 readiness correction, and no test suite was run against production.
 
-## Village pilot release procedure (not yet executed)
+## Village pilot release procedure
 
-The pilot code is on `feat/finboy-village-pilot`; nothing here has been deployed. Releasing it
-needs the human's explicit go-ahead and follows the release steps above: validated private
+The human authorized release of `feat/finboy-village-pilot` through `194c6e2` on 26 October
+2026 and separately selected owner pilot mode. Release follows the steps above: validated private
 backup, active-import check, additive migration `0008_village_pilot`, drift check, restart of
 `finboy.service` only. Record counts must stay unchanged; with every `users.pilot` false the
 owner's web app and WhatsApp question flow behave as before.
