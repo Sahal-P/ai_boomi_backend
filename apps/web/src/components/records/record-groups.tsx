@@ -16,7 +16,7 @@ export function RecordGroups({ rows, renderRow }: { rows: Transaction[]; renderR
     <div className="space-y-6">
       {groups.map((group) => (
         <div key={group.key}>
-          <h3 className="px-1 pb-2.5 text-lg font-medium tracking-[-0.02em]">{group.label}</h3>
+          <h3 className="px-1 pb-2.5 text-xl font-medium tracking-[-0.02em]">{group.label}</h3>
           <ul className="space-y-2">{group.rows.map(renderRow)}</ul>
         </div>
       ))}

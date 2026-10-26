@@ -27,7 +27,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="px-4 pt-[5.25rem] pb-28 outline-none sm:px-8 lg:pt-10 lg:pr-10 lg:pb-12 lg:pl-[300px]"
+          className="px-4 pt-[5.25rem] pb-28 outline-none min-[390px]:px-6 sm:px-8 lg:pt-10 lg:pr-10 lg:pb-12 lg:pl-[300px]"
         >
           <div className="mx-auto max-w-6xl">
             <OfflineBanner />

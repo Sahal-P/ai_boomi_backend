@@ -85,7 +85,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
             placeholder="Search merchant or payer"
             aria-describedby={`${ids}-q-hint`}
             onChange={(event) => setDraft(event.target.value)}
-            className="block h-12 w-full rounded-xl border border-input bg-white/80 pr-4 pl-11 text-sm placeholder:text-ink-soft"
+            className="block h-12 w-full rounded-lg border border-input bg-white/80 pr-4 pl-11 text-sm placeholder:text-ink-soft"
           />
           <p id={`${ids}-q-hint`} className="sr-only">
             Results update as you type. Press slash to jump here.
@@ -95,7 +95,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
           type="button"
           variant="outline"
           size="icon-lg"
-          className="relative rounded-xl border-input sm:hidden"
+          className="relative rounded-lg border-input sm:hidden"
           aria-expanded={open}
           aria-controls={`${ids}-panel`}
           aria-label={applied ? `Filters, ${applied} on` : "Filters"}
