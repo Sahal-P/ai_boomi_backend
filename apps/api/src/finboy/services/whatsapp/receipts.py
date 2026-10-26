@@ -97,7 +97,9 @@ def admit(
                 id=uuid4(),
                 binding_id=binding.id,
                 inbound_message_id=question.message_id,
-                content_hash=config.digest("content", question.text or question.media_id or ""),
+                content_hash=config.digest(
+                    "content", question.text or question.media_id or question.button_id or ""
+                ),
                 kind="command" if command else question.kind,
                 language=binding.language,
                 state=state,

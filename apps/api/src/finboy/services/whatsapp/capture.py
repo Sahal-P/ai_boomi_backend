@@ -32,6 +32,7 @@ class Capture:
     outcome: Outcome
     amount_minor: int | None = None
     merchant: str | None = field(default=None, repr=False)
+    transaction_id: UUID | None = None
 
 
 def capture_screenshot(
@@ -77,7 +78,7 @@ def capture_screenshot(
         if run is None or run.status != "completed":
             return Capture("unavailable")
         row = session.execute(
-            select(Transaction.amount_minor, Transaction.merchant)
+            select(Transaction.id, Transaction.amount_minor, Transaction.merchant)
             .join(SourceEvent, SourceEvent.transaction_id == Transaction.id)
             .join(EmailSource, EmailSource.id == SourceEvent.email_source_id)
             .where(
@@ -91,7 +92,9 @@ def capture_screenshot(
         created = bool(run.transactions_created)
     if row is None:
         return Capture("no_payment")
-    return Capture("saved" if created else "already_recorded", row.amount_minor, row.merchant)
+    return Capture(
+        "saved" if created else "already_recorded", row.amount_minor, row.merchant, row.id
+    )
 
 
 def capture_reply(capture: Capture, language: Language | None) -> str:

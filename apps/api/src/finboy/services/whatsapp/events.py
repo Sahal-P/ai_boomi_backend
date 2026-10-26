@@ -33,10 +33,12 @@ class InboundQuestion:
     message_id: str
     sender: str = field(repr=False)
     provider_at: datetime
-    kind: Literal["text", "audio", "image"]
+    kind: Literal["text", "audio", "image", "button"]
     text: str = field(default="", repr=False)
     media_id: str | None = None
     mime_type: str | None = None
+    # Our own opaque reply-button ID (fb1:<prompt>:<choice>); never the button's title.
+    button_id: str | None = None
 
     @property
     def command(self) -> str | None:
@@ -56,6 +58,26 @@ class ImageBody(AudioBody):
     """Only the Graph media ID and MIME are read; caption and webhook URL are ignored."""
 
 
+BUTTON_ID = r"^fb1:[0-9a-f]{32}:[a-z]{2,8}$"
+
+
+class ButtonReply(BaseModel):
+    """Only our opaque ID is read; the displayed title is ignored."""
+
+    id: str = Field(pattern=BUTTON_ID)
+
+
+class InteractiveBody(BaseModel):
+    type: str = Field(max_length=32)
+    button_reply: ButtonReply | None = None
+
+
+class TemplateButton(BaseModel):
+    """A template quick reply carries our ID as its payload."""
+
+    payload: str = Field(pattern=BUTTON_ID)
+
+
 class Message(BaseModel):
     id: str = Field(min_length=1, max_length=256, pattern=r"^[A-Za-z0-9_.=+/-]+$")
     from_: str = Field(alias="from", pattern=r"^[0-9]{7,20}$", repr=False)
@@ -64,6 +86,8 @@ class Message(BaseModel):
     text: TextBody | None = None
     audio: AudioBody | None = None
     image: ImageBody | None = None
+    interactive: InteractiveBody | None = None
+    button: TemplateButton | None = None
 
 
 class Status(BaseModel):
@@ -115,7 +139,14 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                 for item in messages:
                     if not isinstance(item, dict):
                         raise InvalidWebhook
-                    if item.get("type") not in {"text", "audio", "image"}:
+                    if item.get("type") not in {"text", "audio", "image", "interactive", "button"}:
+                        continue
+                    interactive = item.get("interactive")
+                    if item.get("type") == "interactive" and (
+                        not isinstance(interactive, dict)
+                        or interactive.get("type") != "button_reply"
+                    ):
+                        # List/flow replies are not used by FinBoy; acknowledge without acting.
                         continue
                     msg = Message.model_validate(item)
                     when = datetime.fromtimestamp(int(msg.timestamp), UTC)
@@ -143,6 +174,26 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                                 "image",
                                 media_id=msg.image.id,
                                 mime_type=msg.image.mime_type,
+                            )
+                        )
+                    elif (
+                        msg.type == "interactive"
+                        and msg.interactive is not None
+                        and msg.interactive.button_reply is not None
+                    ):
+                        questions.append(
+                            InboundQuestion(
+                                msg.id,
+                                msg.from_,
+                                when,
+                                "button",
+                                button_id=msg.interactive.button_reply.id,
+                            )
+                        )
+                    elif msg.type == "button" and msg.button is not None:
+                        questions.append(
+                            InboundQuestion(
+                                msg.id, msg.from_, when, "button", button_id=msg.button.payload
                             )
                         )
                     else:

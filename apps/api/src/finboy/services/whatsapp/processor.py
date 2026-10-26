@@ -12,11 +12,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
+from finboy.db.models.core import User
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppDelivery, WhatsAppReceipt
 from finboy.services.assistant import service as assistant
 from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
-from finboy.services.whatsapp import capture, receipts
+from finboy.services.whatsapp import capture, pilot, receipts
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable, SendUnknown
@@ -35,6 +36,12 @@ def phone_text(text: str) -> str:
     )
 
 
+PILOT_COMMANDS = {
+    "stop": 'FinBoy के जवाब बंद कर दिए। फिर से शुरू करने के लिए "शुरू" लिखिए।',
+    "start": 'FinBoy फिर से शुरू हो गया। बोलकर बताइए, जैसे: "दूधवाले को 500 दिए"।',
+}
+
+
 def language(value: str | None) -> Language | None:
     return value if value in {"en", "hi", "ml"} else None
 
@@ -48,6 +55,7 @@ def send_reply(
     *,
     text: str | None = None,
     media_id: str | None = None,
+    buttons: list[tuple[str, str]] | None = None,
     allow_disabled: bool = False,
 ) -> bool:
     # Lock consent while admitting a send. A STOP that commits first blocks the send.
@@ -67,7 +75,7 @@ def send_reply(
     if question.provider_at < datetime.now(UTC) - timedelta(hours=24):
         session.rollback()
         return False
-    kind = "text" if text is not None else "audio"
+    kind = "audio" if media_id is not None else "interactive" if buttons else "text"
     delivery_id = session.scalar(
         insert(WhatsAppDelivery)
         .values(id=uuid4(), receipt_id=receipt.id, kind=kind, state="sending")
@@ -92,7 +100,11 @@ def send_reply(
         session.commit()
         return False
     try:
-        delivery.outbound_message_id = client.send(question.sender, text=text, media_id=media_id)
+        delivery.outbound_message_id = (
+            client.send_buttons(question.sender, text=text or "", buttons=buttons)
+            if buttons
+            else client.send(question.sender, text=text, media_id=media_id)
+        )
         delivery.state = "sent"
     except SendUnknown:
         delivery.state = "unknown"
@@ -124,6 +136,8 @@ def process_question(
                 receipts.finish(session, receipt_id, error="window_expired")
                 return
             preferred = language(binding.language)
+            # Only an explicit database true enables the village pilot flows (contract).
+            is_pilot = session.scalar(select(User.pilot).where(User.id == binding.user_id)) is True
             if question.command:
                 response = {
                     "stop": (
@@ -136,6 +150,7 @@ def process_question(
                     "en": "English replies selected. Ask a question about your FinBoy ledger.",
                     "hi": "हिन्दी चुनी गई है। FinBoy के रिकॉर्ड के बारे में सवाल पूछें।",
                     "ml": "മലയാളം തിരഞ്ഞെടുത്തു. FinBoy രേഖകളെക്കുറിച്ച് ചോദിക്കാം.",
+                    **(PILOT_COMMANDS if is_pilot else {}),
                 }[question.command]
                 ok = send_reply(
                     session,
@@ -147,6 +162,18 @@ def process_question(
                     allow_disabled=question.command == "stop",
                 )
                 receipts.finish(session, receipt_id, error=None if ok else "provider_unavailable")
+                return
+            if is_pilot:
+                error = pilot.handle(
+                    pilot.Conversation(
+                        session, settings, config, client, receipt, question, binding, send_reply
+                    )
+                )
+                receipts.finish(session, receipt_id, error=error)
+                return
+            if question.kind == "button":
+                # Only pilot households are ever sent buttons; acknowledge without acting.
+                receipts.finish(session, receipt_id, error="prompt_expired")
                 return
             if question.kind == "image":
                 # End this read snapshot; the import pipeline commits through its own sessions.
