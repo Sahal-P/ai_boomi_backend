@@ -81,7 +81,7 @@ export function AssistantScreen() {
             maxLength={2000}
             rows={3}
             placeholder="How much did I spend on food this month?"
-            className="mt-2 block w-full resize-y rounded-2xl border border-input bg-white/80 p-4 text-base leading-relaxed"
+            className="mt-2 block w-full resize-y rounded-2xl border border-input bg-white/80 p-4 text-base leading-relaxed placeholder:text-ink-soft"
             disabled={voiceBusy}
           />
           <div className="mt-3 flex flex-wrap items-end gap-3">

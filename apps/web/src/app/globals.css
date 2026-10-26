@@ -134,6 +134,7 @@
   --well: rgb(255 255 255 / 0.5);
   /* Floating glass (blurred): only where content scrolls underneath. */
   --float-fill: rgb(250 250 251 / 0.74);
+  --glass-blur: blur(24px) saturate(140%);
   /* The money hero and yellow moments. A fill under ink only: 1.2:1 as a line or text on glass. */
   --sunflower: #fed234;
   --sunflower-ink: #3a2c00;
@@ -230,8 +231,10 @@
       inset 1px 1px 0 rgb(255 255 255 / 0.9),
       0 1px 2px rgb(16 18 24 / 0.05),
       0 16px 40px -20px rgb(16 18 24 / 0.32);
-    backdrop-filter: blur(24px) saturate(140%);
-    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    /* Through a variable: with literal values the CSS minifier merges the pair into the
+       -webkit- form only, which Chrome and Firefox ignore — the old .glass never blurred there. */
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
   }
   /* In-flow frosted glass for cards and panels. No blur: the field behind is already soft, so a
      backdrop filter would only cost GPU. The lit rim is brighter top-left, as measured. */
@@ -371,10 +374,12 @@
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .glass,
+  :root {
+    --glass-blur: none;
+  }
   [class*="backdrop-blur"] {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+    -webkit-backdrop-filter: var(--glass-blur) !important;
+    backdrop-filter: var(--glass-blur) !important;
   }
   .glass {
     background: #f8f8f9;

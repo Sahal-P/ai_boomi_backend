@@ -33,13 +33,15 @@ export function RecordRow({
       scroll={false}
       data-record-id={row.id}
       aria-current={selected ? "true" : undefined}
+      // One effect label, placed by the grid: under the details on phones (the merchant keeps the
+      // width), under the amount on wider screens.
       className={cn(
-        "surface flex w-full items-start gap-3 rounded-lg px-3.5 py-3 text-left transition-colors hover:bg-white/70 sm:px-4",
+        "surface grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 rounded-lg px-3.5 py-3 text-left transition-colors hover:bg-white/70 sm:px-4",
         selected && "bg-white/90 ring-[1.5px] ring-ink hover:bg-white/90",
       )}
     >
-      <RecordGlyph row={row} />
-      <span className="min-w-0 flex-1">
+      <RecordGlyph row={row} className="row-span-2" />
+      <span className="col-start-2 row-start-1 min-w-0 sm:row-span-2">
         {reason && (
           <span className="mb-0.5 block text-xs font-semibold text-amber-900">{reason.title}</span>
         )}
@@ -65,18 +67,13 @@ export function RecordRow({
           )}
           <SourceTags row={row} />
         </span>
-        {/* Phones: under the details, so the merchant keeps the width. Only one copy is ever
-            displayed, so assistive tech reads it once. */}
-        {!compact && <span className="mt-1.5 block text-[11px] leading-snug text-ink-soft sm:hidden">{effectLabel(row)}</span>}
       </span>
-      <span className="shrink-0 text-right">
-        <RecordAmount row={row} className="block text-[15px] font-semibold" />
-        {!compact && (
-          <span className="mt-1 hidden max-w-36 text-[11px] leading-snug text-ink-soft sm:block">
-            {effectLabel(row)}
-          </span>
-        )}
-      </span>
+      <RecordAmount row={row} className="col-start-3 row-start-1 block text-right text-[15px] font-semibold" />
+      {!compact && (
+        <span className="col-span-2 col-start-2 row-start-2 mt-1.5 block text-[11px] leading-snug text-ink-soft sm:col-span-1 sm:col-start-3 sm:mt-1 sm:max-w-36 sm:justify-self-end sm:text-right">
+          {effectLabel(row)}
+        </span>
+      )}
     </Link>
   );
 }
