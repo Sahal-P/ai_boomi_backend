@@ -52,7 +52,7 @@ def upgrade() -> None:
     replace("commitments", "status", "status IN ('upcoming','paid','dismissed','pending')")
     replace("whatsapp_receipts", "kind", "kind IN ('text','audio','image','command','button')")
     replace("whatsapp_receipts", "error_code", f"error_code IN ({RECEIPT_ERRORS}{PILOT_ERRORS})")
-    replace("whatsapp_deliveries", "kind", "kind IN ('text','audio','interactive')")
+    replace("whatsapp_deliveries", "kind", "kind IN ('text','audio','interactive','reminder')")
 
     op.create_table(
         "whatsapp_prompts",

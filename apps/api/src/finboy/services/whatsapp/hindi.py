@@ -170,3 +170,24 @@ def due_card(*, amount_minor: int, label: str, due: date) -> tuple[str, str]:
 
 def due_saved(amount_minor: int, label: str, due: date) -> str:
     return f"📌 याद रख लिया: {money(amount_minor)} · {label} · {date_label(due)}"
+
+
+REPEAT_ASK = "अगले महीने भी यही देना है?"
+LATER_OK = "ठीक है। भर दें तो ऊपर ✅ भर दिया दबाइए।"
+ALREADY_PAID = "✅ यह पहले ही भरा हुआ है।"
+OK = "ठीक है।"
+
+
+def paid_done(amount_minor: int, label: str) -> str:
+    return f"✅ {money(amount_minor)} भर दिया — {label} — हिसाब में जोड़ दिया।"
+
+
+def due_notice(amount_minor: int, label: str, due: date, today: date) -> str:
+    """A reminder card: what, how much and when, then the one thing to tap."""
+    if due < today:
+        when = f"📅 {date_label(due)} को देना था"
+    else:
+        relative = {0: "आज", 1: "कल", 2: "परसों"}.get((due - today).days)
+        when = f"📅 {relative + ', ' if relative else ''}{date_label(due)} — देना है"
+    lines = ["📌 याद दिलाना", f"{money(amount_minor)} · {label}", when, "भर दिया हो तो ✅ दबाइए।"]
+    return "\n".join(lines)

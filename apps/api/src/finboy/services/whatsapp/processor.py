@@ -57,6 +57,7 @@ def send_reply(
     media_id: str | None = None,
     buttons: list[tuple[str, str]] | None = None,
     allow_disabled: bool = False,
+    reminder: bool = False,
 ) -> bool:
     # Lock consent while admitting a send. A STOP that commits first blocks the send.
     binding = session.scalar(
@@ -76,6 +77,8 @@ def send_reply(
         session.rollback()
         return False
     kind = "audio" if media_id is not None else "interactive" if buttons else "text"
+    if reminder:
+        kind = "reminder"  # a pilot due card after the reply, still once per inbound message
     delivery_id = session.scalar(
         insert(WhatsAppDelivery)
         .values(id=uuid4(), receipt_id=receipt.id, kind=kind, state="sending")

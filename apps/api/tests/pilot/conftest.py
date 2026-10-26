@@ -1,11 +1,14 @@
+import json
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 import pytest
 from finboy.core.clock import now_ist
-from finboy.core.config import LOCAL_USER_ID
+from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.db.base import Base
 from finboy.db.models import User
 from finboy.db.models.ledger import (
@@ -24,6 +27,11 @@ from finboy.db.models.whatsapp import (
     WhatsAppPrompt,
     WhatsAppReceipt,
 )
+from finboy.services.speech.models import SynthesizedAudio
+from finboy.services.ux.state import TaskError, data_version
+from finboy.services.whatsapp import pilot
+from finboy.services.whatsapp.config import ChannelConfig, channel_config
+from finboy.services.whatsapp.events import InboundQuestion
 from sqlalchemy import JSON, MetaData, create_engine, event
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Session, sessionmaker
@@ -189,3 +197,201 @@ def make_ledger(session: Session, user_id: UUID) -> dict[str, UUID]:
     )
     session.flush()
     return {"transaction": transaction.id, "binding": binding.id, "commitment": commitment.id}
+
+
+@pytest.fixture
+def settings() -> Settings:
+    return Settings(
+        _env_file=None,
+        database_url="postgresql+psycopg://test:test@127.0.0.1:1/finboy_test",
+        cors_origins=["http://localhost:3000"],
+        environment="test",
+        whatsapp_enabled=True,
+        whatsapp_app_id="953180210789448",
+        whatsapp_graph_api_version="v26.0",
+        whatsapp_app_secret="synthetic-app-secret",
+        whatsapp_verify_token="synthetic-verify",
+        whatsapp_access_token="synthetic-access",
+        whatsapp_phone_number_id="12345678",
+        whatsapp_business_account_id="87654321",
+        token_encryption_key="eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHg=",
+        whatsapp_sender_allowlist_json=json.dumps({"919000000001": str(LOCAL_USER_ID)}),
+    )
+
+
+@pytest.fixture
+def channel(settings: Settings) -> ChannelConfig:
+    return channel_config(settings)
+
+
+class Household:
+    """One pilot household's conversation with recording fakes for Meta, speech and decisions."""
+
+    def __init__(self, factory, settings, channel, monkeypatch, *, consented: bool = True):
+        self.session = factory()
+        self.settings, self.channel = settings, channel
+        self.user_id = make_household(self.session)
+        self.binding = WhatsAppBinding(
+            id=uuid4(),
+            user_id=self.user_id,
+            sender_hash=uuid4().hex,
+            enabled=True,
+            language="hi",
+            consented_at=datetime.now(UTC) if consented else None,
+            last_inbound_at=datetime.now(UTC),
+        )
+        self.session.add(self.binding)
+        self.session.commit()
+        self.sent: list[dict] = []
+        self.decided: list = []
+        self.undo_error: TaskError | None = None
+        self.obligation_error: TaskError | None = None
+        self.client = MagicMock()
+        self.client.upload_audio.return_value = "4321"
+        monkeypatch.setattr(
+            pilot.speech, "synthesize_speech", lambda **_: SynthesizedAudio(b"synthetic mp3")
+        )
+        monkeypatch.setattr(pilot.decisions, "decide", self.decide)
+        monkeypatch.setattr(pilot.decisions, "undo_decision", self.undo)
+        # The real versioned paths take PostgreSQL advisory locks: tests/pilot/test_postgres.py.
+        monkeypatch.setattr(pilot, "correct_obligation", self.correct_obligation)
+
+    def reply(self, _session, _config, _client, _receipt, _question, **kwargs) -> bool:
+        self.sent.append(kwargs)
+        return True
+
+    def decide(self, session, *, user_id, transaction_id, request):
+        assert user_id == self.user_id
+        assert request.expected_version == data_version(session, user_id)
+        self.decided.append(request)
+        row = session.get(Transaction, transaction_id)
+        if request.action in {"confirm", "reject"}:
+            row.status = "confirmed" if request.action == "confirm" else "rejected"
+        if request.correction is not None:
+            row.amount_minor = request.correction.amount_minor
+        decision = ReviewDecision(
+            id=uuid4(),
+            user_id=user_id,
+            transaction_id=transaction_id,
+            action=request.action,
+            before_state={},
+            after_state={},
+            result_version="synthetic",
+        )
+        session.add(decision)
+        session.commit()
+        return SimpleNamespace(decision_id=decision.id)
+
+    def correct_obligation(self, session, *, user_id, obligation_id, request):
+        assert user_id == self.user_id
+        assert request.expected_version == data_version(session, user_id)
+        if self.obligation_error:
+            session.rollback()
+            raise self.obligation_error
+        payment = session.get(Transaction, request.paid_transaction_id)
+        row = session.get(Commitment, obligation_id)
+        assert request.status == "paid" and payment.status == "confirmed"
+        assert (payment.direction, payment.amount_minor) == ("out", row.amount_minor)
+        row.status, row.paid_transaction_id = "paid", payment.id
+        session.commit()
+
+    def undo(self, session, *, user_id, transaction_id, decision_id, expected_version):
+        if self.undo_error:
+            session.rollback()
+            raise self.undo_error
+        session.get(Transaction, transaction_id).status = "needs_review"
+        session.commit()
+
+    def record(self, *, amount: int = 50000, out: bool = True) -> UUID:
+        row = Transaction(
+            id=uuid4(),
+            user_id=self.user_id,
+            direction="out" if out else "in",
+            kind="purchase" if out else "income_other",
+            amount_minor=amount,
+            currency="INR",
+            merchant="दूधवाला",
+            category="groceries" if out else "govt_benefit",
+            occurred_at=now_ist(),
+            confidence=Decimal("0.700"),
+            confidence_factors={},
+            status="needs_review",
+            review_reason="low_confidence",
+            fingerprint=uuid4().hex,
+            user_locked_fields=[],
+        )
+        self.session.add(row)
+        self.session.commit()
+        return row.id
+
+    def run(self, question: InboundQuestion, *, binding: WhatsAppBinding | None = None):
+        receipt = WhatsAppReceipt(id=uuid4(), binding_id=self.binding.id, state="processing")
+        conversation = pilot.Conversation(
+            self.session,
+            self.settings,
+            self.channel,
+            self.client,
+            receipt,
+            question,
+            binding or self.binding,
+            self.reply,
+        )
+        return pilot.handle(conversation)
+
+    def say(self, text: str, kind: str = "text"):
+        return self.run(
+            InboundQuestion(
+                "wamid." + uuid4().hex,
+                "919000000002",
+                datetime.now(UTC),
+                kind,
+                text=text,
+                media_id="1234",
+                mime_type="audio/ogg",
+            )
+        )
+
+    def card(self, transaction_id: UUID):
+        receipt = WhatsAppReceipt(id=uuid4(), binding_id=self.binding.id, state="processing")
+        question = InboundQuestion("wamid.card", "919000000002", datetime.now(UTC), "image")
+        conversation = pilot.Conversation(
+            self.session,
+            self.settings,
+            self.channel,
+            self.client,
+            receipt,
+            question,
+            self.binding,
+            self.reply,
+        )
+        return pilot.offer_card(conversation, transaction_id)
+
+    def buttons(self) -> list[tuple[str, str]]:
+        return next(item["buttons"] for item in reversed(self.sent) if item.get("buttons"))
+
+    def tap(
+        self, choice: str, *, binding: WhatsAppBinding | None = None, button: str | None = None
+    ):
+        if button is None:
+            button = next(key for key, _ in self.buttons() if key.endswith(":" + choice))
+        return self.run(
+            InboundQuestion(
+                "wamid." + uuid4().hex,
+                "919000000002",
+                datetime.now(UTC),
+                "button",
+                button_id=button,
+            ),
+            binding=binding,
+        )
+
+    def texts(self) -> list[str]:
+        return [item["text"] for item in self.sent if item.get("text")]
+
+    def spoke(self) -> int:
+        return sum(1 for item in self.sent if item.get("media_id"))
+
+
+@pytest.fixture
+def household(pilot_factory, settings, channel, monkeypatch) -> Household:
+    return Household(pilot_factory, settings, channel, monkeypatch)

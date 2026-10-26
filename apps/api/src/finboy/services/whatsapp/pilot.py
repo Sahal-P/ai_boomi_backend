@@ -8,7 +8,7 @@ records go through the existing review decisions, and prompts keep only IDs and 
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
@@ -28,8 +28,9 @@ from finboy.services.money.models import Correction
 from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
 from finboy.services.ux import decisions
+from finboy.services.ux.obligations import ObligationCorrection, correct_obligation
 from finboy.services.ux.state import TaskError, data_version
-from finboy.services.whatsapp import capture, hindi, prompts, statement
+from finboy.services.whatsapp import capture, hindi, prompts, reminders, statement
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable
@@ -85,6 +86,13 @@ class Conversation:
 
 def handle(conversation: Conversation) -> str | None:
     """Returns the receipt error code (None when the household got a correct reply)."""
+    error = _handle(conversation)
+    if conversation.binding.consented_at is not None:
+        _remind(conversation)
+    return error
+
+
+def _handle(conversation: Conversation) -> str | None:
     question, binding = conversation.question, conversation.binding
     if question.kind == "button":
         return _tap(conversation)
@@ -566,6 +574,178 @@ def _reminders(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str)
     return conversation.done(sent)
 
 
+def _remind(conversation: Conversation) -> None:
+    """Without a reminder template, a due coming up follows the reply as its own card."""
+    session, binding = conversation.session, conversation.binding
+    session.rollback()
+    today = today_ist()
+    due = reminders.fallback_due(session, conversation.settings, binding, today)
+    reminder = reminders.claim(session, due, "sending") if due else None
+    if due is None or reminder is None:
+        session.rollback()
+        return
+    row = due.commitment
+    prompt = prompts.open_prompt(
+        session,
+        binding,
+        "due_paid",
+        commitment_id=row.id,
+        fingerprint=prompts.due_fingerprint(conversation.config, row),
+    )
+    text = hindi.due_notice(row.amount_minor, row.label, row.due_date, today)
+    buttons = [
+        (prompts.button(prompt, "paid"), hindi.PAID),
+        (prompts.button(prompt, "later"), hindi.LATER),
+    ]
+    session.commit()
+    sent = conversation.reply(
+        session,
+        conversation.config,
+        conversation.client,
+        conversation.receipt,
+        conversation.question,
+        text=text,
+        buttons=buttons,
+        reminder=True,
+    )
+    reminder.state = "sent" if sent else "failed"
+    reminder.updated_at = datetime.now(UTC)
+    session.commit()
+
+
+def _reopen(session: Session, prompt_id: UUID) -> None:
+    """Nothing was recorded, so the same button may be tapped again."""
+    session.rollback()
+    prompt = session.get(WhatsAppPrompt, prompt_id, with_for_update=True)
+    if prompt is not None and prompt.state == "answered":
+        prompt.state, prompt.answered_at = "open", None
+    session.commit()
+
+
+def _paid(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str) -> str | None:
+    """Records the payment as a confirmed outflow and links it to the due.
+
+    The due then stops being deducted, so money left falls only by the amount actually paid.
+    `decide` may already link it (payee equals the due label); `correct_obligation` makes sure.
+    """
+    session, binding, question = conversation.session, conversation.binding, conversation.question
+    row = _due_row(conversation, prompt.commitment_id)
+    if row is not None and row.status == "paid":
+        prompts.answer(prompt)
+        session.commit()
+        return conversation.done(conversation.send(hindi.ALREADY_PAID))
+    if (
+        row is None
+        or row.status != "upcoming"
+        or prompts.due_fingerprint(conversation.config, row) != prompt.fingerprint
+    ):
+        return _changed(conversation, prompt.id, "record")
+    prompt_id, due_id, amount, label = prompt.id, row.id, row.amount_minor, row.label
+    prompts.answer(prompt)  # committed first: a second tap cannot record a second payment
+    session.commit()
+    payment = statement.Statement("spent", amount, label, "unknown", today_ist(), "loan_emi")
+    result = capture.record_voice(
+        session.get_bind(),
+        conversation.settings,
+        user_id=binding.user_id,
+        message_id=question.message_id,
+        line=statement.payment_line(payment, question.provider_at),
+        received_at=question.provider_at,
+        category="loan_emi",
+    )
+    paid = _record(conversation, result.transaction_id)
+    if paid is None or paid.amount_minor != amount or paid.direction != "out":
+        _reopen(session, prompt_id)
+        if result.outcome == "busy":
+            return conversation.done(conversation.send(hindi.BUSY), "capture_busy")
+        return conversation.done(conversation.send(hindi.UNAVAILABLE), "capture_unavailable")
+    paid_id = paid.id
+    try:
+        if paid.status == "needs_review":
+            decisions.decide(
+                session,
+                user_id=binding.user_id,
+                transaction_id=paid_id,
+                request=decisions.DecisionRequest(
+                    action="confirm", expected_version=data_version(session, binding.user_id)
+                ),
+            )
+        correct_obligation(
+            session,
+            user_id=binding.user_id,
+            obligation_id=due_id,
+            request=ObligationCorrection(
+                expected_version=data_version(session, binding.user_id),
+                status="paid",
+                paid_transaction_id=paid_id,
+            ),
+        )
+    except TaskError:
+        return _changed(conversation, prompt_id, "record")
+    repeat = prompts.open_prompt(session, binding, "due_repeat", commitment_id=due_id)
+    session.commit()
+    sent = conversation.send(
+        hindi.paid_done(amount, label) + "\n\n" + hindi.REPEAT_ASK,
+        [
+            (prompts.button(repeat, "again"), hindi.AGAIN),
+            (prompts.button(repeat, "skip"), hindi.NO),
+        ],
+    )
+    if sent:
+        conversation.speak("जोड़ दिया। अगले महीने भी यही देना है?")
+    return conversation.done(sent)
+
+
+def _later(conversation: Conversation, _prompt: WhatsAppPrompt, _choice: str) -> str | None:
+    """The reminder's "भर दिया" button stays usable until the household has paid."""
+    conversation.session.commit()
+    return conversation.done(conversation.send(hindi.LATER_OK))
+
+
+def _next_month(day: date) -> date:
+    first = (day.replace(day=1) + timedelta(days=32)).replace(day=1)
+    following = (first + timedelta(days=32)).replace(day=1)
+    return first.replace(day=min(day.day, (following - timedelta(days=1)).day))
+
+
+def _repeat(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> str | None:
+    """Next month's due is saved directly: the household just said it repeats. Undoable."""
+    session = conversation.session
+    row = _due_row(conversation, prompt.commitment_id)
+    prompts.answer(prompt)
+    if choice != "again" or row is None:
+        session.commit()
+        return conversation.done(conversation.send(hindi.OK))
+    following = Commitment(
+        id=uuid4(),
+        user_id=conversation.binding.user_id,
+        kind=row.kind,
+        label=row.label,
+        amount_minor=row.amount_minor,
+        due_date=_next_month(row.due_date),
+        status="upcoming",
+        confidence=Decimal("1.000"),
+        user_resolved=False,
+    )
+    session.add(following)
+    session.flush()
+    undo = prompts.open_prompt(
+        session,
+        conversation.binding,
+        "undo",
+        commitment_id=following.id,
+        fingerprint=prompts.due_fingerprint(conversation.config, following),
+    )
+    session.commit()
+    sent = conversation.send(
+        hindi.due_saved(following.amount_minor, following.label, following.due_date),
+        [(prompts.button(undo, "undo"), hindi.UNDO)],
+    )
+    if sent:
+        conversation.speak("याद रख लिया।")
+    return conversation.done(sent)
+
+
 HANDLERS: dict[tuple[str, str], Callable[[Conversation, WhatsAppPrompt, str], str | None]] = {
     ("consent", "agree"): _consent,
     ("consent", "decline"): _consent,
@@ -574,4 +754,8 @@ HANDLERS: dict[tuple[str, str], Callable[[Conversation, WhatsAppPrompt, str], st
     ("confirm", "change"): _ask_amount,
     ("undo", "undo"): _undo,
     ("reminder_opt_in", "remind"): _reminders,
+    ("due_paid", "paid"): _paid,
+    ("due_paid", "later"): _later,
+    ("due_repeat", "again"): _repeat,
+    ("due_repeat", "skip"): _repeat,
 }

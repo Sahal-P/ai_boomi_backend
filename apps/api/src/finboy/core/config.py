@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     whatsapp_timeout_seconds: float = Field(default=15, ge=1, le=60)
     whatsapp_max_webhook_bytes: int = Field(default=256 * 1024, ge=1, le=1024 * 1024)
     whatsapp_ingress_port: int = Field(default=8095, ge=1024, le=65535)
+    # Village pilot: an approved Hindi utility template for due reminders (name only). Unset
+    # means reminders are added to replies inside the 24-hour window instead.
+    whatsapp_reminder_template: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,64}$")
 
     @field_validator(
         "resemble_api_key",
@@ -98,6 +101,7 @@ class Settings(BaseSettings):
         "whatsapp_business_account_id",
         "whatsapp_graph_api_version",
         "whatsapp_sender_allowlist_json",
+        "whatsapp_reminder_template",
         "openai_api_key",
         "openai_extraction_model",
         "openai_assistant_model",

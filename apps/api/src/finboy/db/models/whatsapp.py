@@ -75,7 +75,7 @@ class WhatsAppDelivery(Base):
     __tablename__ = "whatsapp_deliveries"
     __table_args__ = (
         UniqueConstraint("receipt_id", "kind"),
-        CheckConstraint("kind IN ('text','audio','interactive')", name="kind"),
+        CheckConstraint("kind IN ('text','audio','interactive','reminder')", name="kind"),
         CheckConstraint("state IN ('pending','sending','sent','failed','unknown')", name="state"),
         CheckConstraint("provider_status IN ('sent','delivered','read','failed')", name="status"),
     )

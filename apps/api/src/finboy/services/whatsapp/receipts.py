@@ -10,7 +10,12 @@ from sqlalchemy.orm import Session
 
 from finboy.core.config import LOCAL_USER_ID
 from finboy.db.models.core import User
-from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppDelivery, WhatsAppReceipt
+from finboy.db.models.whatsapp import (
+    WhatsAppBinding,
+    WhatsAppDelivery,
+    WhatsAppReceipt,
+    WhatsAppReminder,
+)
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion, Status
 
@@ -129,13 +134,21 @@ def admit(
             .where(WhatsAppDelivery.outbound_message_id == status.id)
             .with_for_update(of=WhatsAppDelivery)
         ).first()
+        if row is None:
+            # A pilot reminder template FinBoy sent first, outside any reply.
+            row = session.execute(
+                select(WhatsAppReminder, WhatsAppBinding.sender_hash)
+                .join(WhatsAppBinding, WhatsAppBinding.id == WhatsAppReminder.binding_id)
+                .where(WhatsAppReminder.outbound_message_id == status.id)
+                .with_for_update(of=WhatsAppReminder)
+            ).first()
         if row is None or row[1] != config.digest("sender", status.recipient_id):
             continue
-        delivery = row[0]
+        sent = row[0]
         rank = {None: 0, "sent": 1, "failed": 2, "delivered": 3, "read": 4}
-        if rank[status.status] > rank[delivery.provider_status] or delivery.provider_status is None:
-            delivery.provider_status = status.status
-            delivery.updated_at = now
+        if rank[status.status] > rank[sent.provider_status] or sent.provider_status is None:
+            sent.provider_status = status.status
+            sent.updated_at = now
     session.commit()
     return admitted
 
