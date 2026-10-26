@@ -84,7 +84,7 @@ export function KeyboardHelp() {
           <label className="mt-5 flex min-h-11 items-center gap-3 rounded-2xl bg-ink/[0.04] px-4 text-sm font-medium">
             <input
               type="checkbox"
-              className="size-4 accent-[var(--violet)]"
+              className="size-4 accent-ink"
               checked={enabled}
               onChange={(event) => setShortcutsEnabled(event.target.checked)}
             />

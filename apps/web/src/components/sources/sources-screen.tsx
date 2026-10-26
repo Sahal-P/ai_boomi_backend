@@ -214,7 +214,7 @@ export function SourcesScreen({ errorCode, intent }: { errorCode: string | null;
             <ImportHistory />
           </section>
 
-          <section aria-labelledby="sample-title" className="rounded-3xl bg-[linear-gradient(140deg,#efe9ff,#fbe6f6)] p-5 sm:p-6">
+          <section aria-labelledby="sample-title" className="surface rounded-3xl p-5 sm:p-6">
             <h2 id="sample-title" className="flex items-center gap-2 text-lg font-semibold">
               <Eye className="size-5 text-ink" aria-hidden="true" /> Explore sample data
             </h2>

@@ -28,7 +28,7 @@ export function HouseholdLogin({ next }: { next: string }) {
       {/* Phones: intro, scene, form. Wider screens: intro and form beside the scene. */}
       <div className="mx-auto grid min-h-dvh max-w-6xl content-center gap-x-14 gap-y-7 px-5 py-10 sm:px-8 lg:grid-cols-2 lg:py-16">
         <div className="lg:col-start-1">
-          <Link href="/" className="inline-flex items-center gap-2 text-[1.45rem] font-bold tracking-[-0.05em] text-violet-deep">
+          <Link href="/" className="inline-flex items-center gap-2 text-[1.45rem] font-bold tracking-[-0.05em] text-ink">
             <BrandMark className="size-8" /> finboy
           </Link>
           <h1 id="login-title" className="mt-8 max-w-[12ch] text-[2.5rem] leading-[1.02] font-extrabold tracking-[-0.045em] sm:text-5xl">

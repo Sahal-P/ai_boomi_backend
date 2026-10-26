@@ -3,20 +3,20 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 /**
- * Faceted violet gem with a ₹ — reads as "money, refined" at 20–40 px.
- * Built from CSS gradients (no SVG ids), so any number of instances render even when
- * one of them sits inside a hidden subtree.
+ * Faceted ink gem with a sunflower ₹ — the theme's two accents, reading as "money, refined" at
+ * 20–40 px on glass, white and yellow alike. Built from CSS gradients (no SVG ids), so any number
+ * of instances render even when one of them sits inside a hidden subtree.
  */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <span aria-hidden="true" className={cn("relative inline-grid size-8 shrink-0 place-items-center", className)}>
-      <span className="absolute inset-[14%] rotate-45 rounded-[32%] bg-[linear-gradient(200deg,#9b6bff,#7a4dff_50%,#d63af9)] shadow-[0_4px_12px_-4px_rgba(122,77,255,0.7)]" />
-      <span className="absolute inset-[14%] rotate-45 rounded-[32%] bg-[linear-gradient(135deg,rgba(255,255,255,0.4),rgba(255,255,255,0)_55%)]" />
+      <span className="absolute inset-[14%] rotate-45 rounded-[32%] bg-[linear-gradient(200deg,#454a53,#0e1013_58%)] shadow-[0_4px_12px_-4px_rgba(14,16,19,0.55)]" />
+      <span className="absolute inset-[14%] rotate-45 rounded-[32%] bg-[linear-gradient(135deg,rgba(255,255,255,0.3),rgba(255,255,255,0)_55%)]" />
       <svg
         viewBox="0 0 24 24"
         className="relative size-[42%]"
         fill="none"
-        stroke="#ffffff"
+        stroke="#fed234"
         strokeWidth="2.8"
         strokeLinecap="round"
         strokeLinejoin="round"

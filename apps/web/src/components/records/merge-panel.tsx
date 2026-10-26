@@ -87,7 +87,7 @@ export function MergePanel({
             <div className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">
               {items.map((item) => (
                 <label key={item.id} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm", item.id === chosenId && "border-ink bg-white/55")}>
-                  <input type="radio" name={`merge-target-${tx.id}`} className="accent-[var(--violet)]" checked={item.id === chosenId} onChange={() => setPicked(item.id)} />
+                  <input type="radio" name={`merge-target-${tx.id}`} className="accent-ink" checked={item.id === chosenId} onChange={() => setPicked(item.id)} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{item.merchant}</span>
                     <span className="block text-xs text-ink-soft">

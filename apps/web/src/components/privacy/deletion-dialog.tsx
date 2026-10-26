@@ -156,11 +156,11 @@ export function DeletionDialog({
             <fieldset className="mt-4 space-y-2 text-sm" disabled={action.busy !== null}>
               <legend className="mb-1 font-semibold">Records already imported</legend>
               <label className="flex min-h-11 items-center gap-3 rounded-xl border px-3">
-                <input type="radio" name="disconnect-data" checked={!alsoDelete} onChange={() => setAlsoDelete(false)} className="accent-[var(--violet)]" />
+                <input type="radio" name="disconnect-data" checked={!alsoDelete} onChange={() => setAlsoDelete(false)} className="accent-ink" />
                 Keep them in my records
               </label>
               <label className="flex min-h-11 items-center gap-3 rounded-xl border px-3">
-                <input type="radio" name="disconnect-data" checked={alsoDelete} onChange={() => setAlsoDelete(true)} className="accent-[var(--violet)]" />
+                <input type="radio" name="disconnect-data" checked={alsoDelete} onChange={() => setAlsoDelete(true)} className="accent-ink" />
                 Also delete records imported from this account
               </label>
             </fieldset>
