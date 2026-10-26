@@ -31,7 +31,7 @@ from finboy.services.ingestion.llm import (
 )
 from finboy.services.ingestion.normalize import normalize
 from finboy.services.ingestion.rules import extract_rules
-from finboy.services.ingestion.types import Extraction
+from finboy.services.ingestion.types import Category, Extraction
 from finboy.services.ledger.persist import persist_event
 
 
@@ -43,6 +43,8 @@ class InboundMessage:
     received_at: datetime | None = None
     mail_connection_id: UUID | None = None
     failure_reason: Literal["message_unavailable"] | None = None
+    # A pilot household's spoken category; used only where extraction found none.
+    category_hint: Category | None = None
 
 
 @dataclass
@@ -212,6 +214,8 @@ def _persist_message(
     else:
         delta.candidates_found = 1
         for event in item.extraction.events:
+            if inbound.category_hint and event.category in {None, "other"}:
+                event = event.model_copy(update={"category": inbound.category_hint})
             created, duplicate = persist_event(
                 session,
                 user_id=user_id,

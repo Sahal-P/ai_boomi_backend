@@ -1,6 +1,8 @@
-"""Payment screenshots enter the review queue through the shared import pipeline only."""
+"""Screenshots and pilot voice entries enter review through the shared import pipeline only."""
 
+import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -15,7 +17,9 @@ from finboy.services.assistant.language import money
 from finboy.services.imports.runner import create_run, run_import
 from finboy.services.ingestion import screenshot
 from finboy.services.ingestion.pipeline import InboundMessage
+from finboy.services.ingestion.types import Category
 from finboy.services.mail.security import MailError
+from finboy.services.whatsapp import statement
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable
 
@@ -53,23 +57,75 @@ def capture_screenshot(
         return Capture("unavailable")
     if line is None:
         return Capture("no_payment")
+    return _import_one(
+        engine,
+        settings,
+        user_id=user_id,
+        source="whatsapp_image",
+        message_id=question.message_id,
+        raw=screenshot.as_message(line, question.provider_at),
+        received_at=question.provider_at,
+    )
+
+
+def record_voice(
+    engine: Engine,
+    settings: Settings,
+    *,
+    user_id: UUID,
+    message_id: str,
+    line: str,
+    received_at: datetime,
+    category: Category | None,
+) -> Capture:
+    """A pilot household's spoken payment line enters review exactly like a screenshot."""
+    return _import_one(
+        engine,
+        settings,
+        user_id=user_id,
+        source="whatsapp_voice",
+        message_id=message_id,
+        raw=statement.as_message(line, received_at),
+        received_at=received_at,
+        category_hint=category,
+        attempts=3,
+    )
+
+
+def _import_one(
+    engine: Engine,
+    settings: Settings,
+    *,
+    user_id: UUID,
+    source: Literal["whatsapp_image", "whatsapp_voice"],
+    message_id: str,
+    raw: bytes,
+    received_at: datetime,
+    category_hint: Category | None = None,
+    attempts: int = 1,
+) -> Capture:
     factory = sessionmaker(engine, expire_on_commit=False)
-    try:
-        with factory() as session:
-            run_id = create_run(session, mode="whatsapp_image", user_id=user_id).id
-    except MailError:
-        # Nothing is queued: the image is not retained, so the sender resends it.
-        return Capture("busy")
+    for attempt in range(attempts):
+        try:
+            with factory() as session:
+                run_id = create_run(session, mode=source, user_id=user_id).id
+            break
+        except MailError:
+            # Nothing is queued: the message is not retained, so the sender resends it.
+            if attempt + 1 == attempts:
+                return Capture("busy")
+            time.sleep(1.5)
     run_import(
         engine,
         settings,
         run_id,
         [
             InboundMessage(
-                source="whatsapp_image",
-                provider_message_id=question.message_id,
-                raw_rfc822=screenshot.as_message(line, question.provider_at),
-                received_at=question.provider_at,
+                source=source,
+                provider_message_id=message_id,
+                raw_rfc822=raw,
+                received_at=received_at,
+                category_hint=category_hint,
             )
         ],
     )
@@ -83,8 +139,8 @@ def capture_screenshot(
             .join(EmailSource, EmailSource.id == SourceEvent.email_source_id)
             .where(
                 EmailSource.user_id == user_id,
-                EmailSource.source == "whatsapp_image",
-                EmailSource.provider_message_id == question.message_id,
+                EmailSource.source == source,
+                EmailSource.provider_message_id == message_id,
             )
             .order_by(SourceEvent.created_at, SourceEvent.id)
             .limit(1)

@@ -9,7 +9,8 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from uuid import UUID
+from decimal import Decimal
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -19,7 +20,7 @@ from finboy.core.clock import today_ist
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
-from finboy.db.models.ledger import Transaction
+from finboy.db.models.ledger import Commitment, Transaction
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt, WhatsAppReceipt
 from finboy.services.assistant import service as assistant
 from finboy.services.ingestion.hindi_numbers import parse_amount
@@ -28,7 +29,7 @@ from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
 from finboy.services.ux import decisions
 from finboy.services.ux.state import TaskError, data_version
-from finboy.services.whatsapp import capture, hindi, prompts
+from finboy.services.whatsapp import capture, hindi, prompts, statement
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable
@@ -100,7 +101,31 @@ def handle(conversation: Conversation) -> str | None:
     change = prompts.pending_change(conversation.session, binding)
     if change is not None:
         return _changed_amount(conversation, change, text)
-    return _answer(conversation, text)
+    try:
+        reading = statement.read_statement(text, conversation.settings, today_ist())
+    except ProviderUnavailable:
+        conversation.session.rollback()
+        sent = conversation.send(hindi.UNAVAILABLE)
+        return conversation.done(sent, "statement_unavailable")
+    if reading.kind == "question":
+        return _answer(conversation, text)
+    if reading.kind == "unclear":
+        return _say(conversation, hindi.UNCLEAR, hindi.UNCLEAR_SPEECH)
+    if reading.amount_minor is None:
+        return _say(
+            conversation, hindi.AMOUNT_MISSING, hindi.AMOUNT_MISSING_SPEECH, "amount_unclear"
+        )
+    if reading.kind == "due":
+        return _save_due(conversation, reading)
+    return _record_money(conversation, reading)
+
+
+def _say(conversation: Conversation, text: str, spoken: str, error: str | None = None):
+    conversation.session.rollback()
+    sent = conversation.send(text)
+    if sent:
+        conversation.speak(spoken)
+    return conversation.done(sent, error)
 
 
 def _heard(conversation: Conversation) -> str:
@@ -233,6 +258,8 @@ def offer_card(conversation: Conversation, transaction_id: UUID, prefix: str = "
 
 
 def _decide(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> str | None:
+    if prompt.commitment_id is not None:
+        return _decide_due(conversation, prompt, choice)
     session, binding = conversation.session, conversation.binding
     row = _record(conversation, prompt.transaction_id)
     if row is None or prompts.record_fingerprint(conversation.config, row) != prompt.fingerprint:
@@ -264,15 +291,21 @@ def _decide(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> 
 
 
 def _ask_amount(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str) -> str | None:
-    row = _record(conversation, prompt.transaction_id)
-    if row is None or prompts.record_fingerprint(conversation.config, row) != prompt.fingerprint:
+    if prompt.commitment_id is not None:
+        due = _due_row(conversation, prompt.commitment_id)
+        current = prompts.due_fingerprint(conversation.config, due) if due else None
+    else:
+        row = _record(conversation, prompt.transaction_id)
+        current = prompts.record_fingerprint(conversation.config, row) if row else None
+    if current is None or current != prompt.fingerprint:
         return _changed(conversation, prompt.id, "record")
     prompts.answer(prompt)
     prompts.open_prompt(
         conversation.session,
         conversation.binding,
         "change_amount",
-        transaction_id=row.id,
+        transaction_id=prompt.transaction_id,
+        commitment_id=prompt.commitment_id,
         fingerprint=prompt.fingerprint,
     )
     conversation.session.commit()
@@ -289,6 +322,8 @@ def _changed_amount(conversation: Conversation, change: WhatsAppPrompt, text: st
     if amount is None:
         session.rollback()
         return conversation.done(conversation.send(hindi.AMOUNT_UNCLEAR), "amount_unclear")
+    if change.commitment_id is not None:
+        return _changed_due_amount(conversation, change, amount)
     row = _record(conversation, change.transaction_id)
     if row is None or prompts.record_fingerprint(conversation.config, row) != change.fingerprint:
         return _changed(conversation, change.id, "record")
@@ -314,6 +349,8 @@ def _changed_amount(conversation: Conversation, change: WhatsAppPrompt, text: st
 
 
 def _undo(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str) -> str | None:
+    if prompt.commitment_id is not None:
+        return _undo_due(conversation, prompt)
     session, binding = conversation.session, conversation.binding
     prompt_id, transaction_id, decision_id = prompt.id, prompt.transaction_id, prompt.decision_id
     if transaction_id is None or decision_id is None:
@@ -372,6 +409,163 @@ def _answer(conversation: Conversation, text: str) -> str | None:
     return conversation.done(sent)
 
 
+def _record_money(conversation: Conversation, reading: statement.Statement) -> str | None:
+    """Money spent or received, said by voice: one line through review, then the card."""
+    session, question = conversation.session, conversation.question
+    session.rollback()  # end this read snapshot; the import pipeline commits on its own
+    result = capture.record_voice(
+        session.get_bind(),
+        conversation.settings,
+        user_id=conversation.binding.user_id,
+        message_id=question.message_id,
+        line=statement.payment_line(reading, question.provider_at),
+        received_at=question.provider_at,
+        category=reading.category,
+    )
+    row = _record(conversation, result.transaction_id)
+    if row is not None and row.status == "needs_review":
+        return offer_card(conversation, row.id)
+    if row is not None and row.status == "confirmed":
+        return conversation.done(conversation.send(hindi.ALREADY))
+    if result.outcome == "busy":
+        return conversation.done(conversation.send(hindi.BUSY), "capture_busy")
+    return conversation.done(conversation.send(hindi.UNAVAILABLE), "capture_unavailable")
+
+
+def _due_row(conversation: Conversation, commitment_id: UUID | None) -> Commitment | None:
+    if commitment_id is None:
+        return None
+    return conversation.session.scalar(
+        select(Commitment).where(
+            Commitment.id == commitment_id,
+            Commitment.user_id == conversation.binding.user_id,
+            Commitment.dataset == "household",
+        )
+    )
+
+
+def _save_due(conversation: Conversation, reading: statement.Statement) -> str | None:
+    """A spoken due is kept as `pending` (never counted) until the household taps हाँ."""
+    if reading.due_date is None or reading.amount_minor is None:
+        return _say(conversation, hindi.DUE_DAY_MISSING, hindi.DUE_DAY_MISSING_SPEECH)
+    row = Commitment(
+        id=uuid4(),
+        user_id=conversation.binding.user_id,
+        kind="loan",
+        label=reading.label or "किस्त",
+        amount_minor=reading.amount_minor,
+        due_date=reading.due_date,
+        status="pending",
+        confidence=Decimal("1.000"),
+        user_resolved=False,
+    )
+    conversation.session.add(row)
+    conversation.session.flush()
+    return offer_due_card(conversation, row.id)
+
+
+def offer_due_card(conversation: Conversation, commitment_id: UUID, prefix: str = "") -> str | None:
+    session, binding = conversation.session, conversation.binding
+    row = _due_row(conversation, commitment_id)
+    if row is None or row.status != "pending":
+        session.rollback()
+        return conversation.done(conversation.send(prefix + hindi.CHANGED), "record_changed")
+    prompt = prompts.open_prompt(
+        session,
+        binding,
+        "confirm",
+        commitment_id=row.id,
+        fingerprint=prompts.due_fingerprint(conversation.config, row),
+    )
+    text, spoken = hindi.due_card(amount_minor=row.amount_minor, label=row.label, due=row.due_date)
+    session.commit()
+    sent = conversation.send(
+        prefix + text,
+        [
+            (prompts.button(prompt, "yes"), hindi.YES),
+            (prompts.button(prompt, "change"), hindi.CHANGE),
+            (prompts.button(prompt, "no"), hindi.NO),
+        ],
+    )
+    if sent:
+        conversation.speak(spoken)
+    return conversation.done(sent)
+
+
+def _decide_due(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> str | None:
+    session, binding = conversation.session, conversation.binding
+    row = _due_row(conversation, prompt.commitment_id)
+    if (
+        row is None
+        or row.status != "pending"
+        or prompts.due_fingerprint(conversation.config, row) != prompt.fingerprint
+    ):
+        return _changed(conversation, prompt.id, "record")
+    prompts.answer(prompt)
+    row.status = "upcoming" if choice == "yes" else "dismissed"
+    row.user_resolved = choice != "yes"
+    session.flush()
+    undo = prompts.open_prompt(
+        session,
+        binding,
+        "undo",
+        commitment_id=row.id,
+        fingerprint=prompts.due_fingerprint(conversation.config, row),
+    )
+    buttons = [(prompts.button(undo, "undo"), hindi.UNDO)]
+    text = hindi.due_saved(row.amount_minor, row.label, row.due_date)
+    if choice != "yes":
+        text = hindi.REJECTED
+    elif binding.reminders_opt_in_at is None:
+        # Asked once, after the household's first due; reminders are strictly opt-in.
+        opt_in = prompts.open_prompt(session, binding, "reminder_opt_in")
+        buttons.insert(0, (prompts.button(opt_in, "remind"), hindi.REMIND))
+        text += "\n\n" + hindi.REMIND_ASK
+    session.commit()
+    sent = conversation.send(text, buttons)
+    if sent:
+        conversation.speak("याद रख लिया।" if choice == "yes" else "नहीं जोड़ा।")
+    return conversation.done(sent)
+
+
+def _changed_due_amount(conversation: Conversation, change: WhatsAppPrompt, amount: int):
+    row = _due_row(conversation, change.commitment_id)
+    if (
+        row is None
+        or row.status != "pending"
+        or prompts.due_fingerprint(conversation.config, row) != change.fingerprint
+    ):
+        return _changed(conversation, change.id, "record")
+    prompts.answer(change)
+    row.amount_minor = amount  # still pending: nothing counts until हाँ
+    conversation.session.flush()
+    return offer_due_card(conversation, row.id)
+
+
+def _undo_due(conversation: Conversation, prompt: WhatsAppPrompt) -> str | None:
+    row = _due_row(conversation, prompt.commitment_id)
+    if (
+        row is None
+        or row.status not in {"upcoming", "dismissed"}
+        or prompts.due_fingerprint(conversation.config, row) != prompt.fingerprint
+    ):
+        return _changed(conversation, prompt.id, "undo")
+    prompts.answer(prompt)
+    row.status, row.user_resolved = "pending", False
+    conversation.session.flush()
+    return offer_due_card(conversation, row.id, prefix=hindi.UNDONE + "\n\n")
+
+
+def _reminders(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str) -> str | None:
+    prompts.answer(prompt)
+    conversation.binding.reminders_opt_in_at = datetime.now(UTC)
+    conversation.session.commit()
+    sent = conversation.send(hindi.REMINDERS_ON)
+    if sent:
+        conversation.speak(hindi.REMINDERS_ON)
+    return conversation.done(sent)
+
+
 HANDLERS: dict[tuple[str, str], Callable[[Conversation, WhatsAppPrompt, str], str | None]] = {
     ("consent", "agree"): _consent,
     ("consent", "decline"): _consent,
@@ -379,4 +573,5 @@ HANDLERS: dict[tuple[str, str], Callable[[Conversation, WhatsAppPrompt, str], st
     ("confirm", "no"): _decide,
     ("confirm", "change"): _ask_amount,
     ("undo", "undo"): _undo,
+    ("reminder_opt_in", "remind"): _reminders,
 }

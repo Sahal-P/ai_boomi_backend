@@ -132,3 +132,41 @@ def confirmed(amount_minor: int, out: bool, counterparty: str | None) -> str:
 
 REJECTED = "❌ नहीं जोड़ा।"
 UNDONE = "↩️ वापस ले लिया।"
+
+UNCLEAR = 'समझ नहीं आया। ऐसे बोलिए:\n🎤 "दूधवाले को 500 दिए"\n🎤 "इस हफ़्ते कितना खर्च हुआ?"'
+UNCLEAR_SPEECH = "समझ नहीं आया। ऐसे बोलिए, दूधवाले को पाँच सौ दिए।"
+AMOUNT_MISSING = 'कितने रुपये? रकम के साथ पूरी बात फिर से बोलिए, जैसे: "दूधवाले को 500 दिए"'
+AMOUNT_MISSING_SPEECH = "कितने रुपये? रकम के साथ पूरी बात फिर से बोलिए।"
+DUE_DAY_MISSING = 'किस तारीख को देना है? ऐसे बोलिए: "समूह की किस्त 1200, हर महीने 10 तारीख"'
+DUE_DAY_MISSING_SPEECH = "किस तारीख को देना है? तारीख के साथ फिर से बोलिए।"
+ALREADY = "✅ यह पहले से आपके हिसाब में है।"
+BUSY = "अभी पिछला संदेश लिखा जा रहा है। एक मिनट बाद फिर भेजिए।"
+REMIND_ASK = "क्या तारीख से पहले WhatsApp पर याद दिलाऊँ?"
+REMINDERS_ON = "🔔 ठीक है, तारीख से 2 दिन पहले और उसी दिन याद दिलाऊँगा।"
+
+
+def date_label(day: date) -> str:
+    return f"{day.day} {MONTHS[day.month - 1]}"
+
+
+def due_card(*, amount_minor: int, label: str, due: date) -> tuple[str, str]:
+    """A spoken due, waiting for "हाँ" before it counts or is reminded."""
+    text = "\n".join(
+        [
+            f"📌 {money(amount_minor)} देना है",
+            f"🏷️ {label}",
+            f"📅 {date_label(due)}",
+            "",
+            "सही है?",
+            "हाँ दबाने पर ही याद रखूँगा।",
+        ]
+    )
+    speech = (
+        f"{spoken_money(amount_minor, 'hi')}, {label}, {date_label(due)} को देना है। "
+        "सही है तो हाँ दबाइए।"
+    )
+    return text, speech
+
+
+def due_saved(amount_minor: int, label: str, due: date) -> str:
+    return f"📌 याद रख लिया: {money(amount_minor)} · {label} · {date_label(due)}"

@@ -352,3 +352,123 @@ def test_prompt_ids_round_trip_and_fingerprints_follow_the_record(household, cha
     prompt = household.session.scalars(select(WhatsAppPrompt)).first() or WhatsAppPrompt(id=uuid4())
     assert prompts.parse(prompts.button(prompt, "yes")) == (prompt.id, "yes")
     assert prompts.parse("fb1:" + uuid4().hex + ":delete") is None
+
+
+def test_spoken_money_goes_through_review_and_comes_back_as_a_card(household, monkeypatch) -> None:
+    from finboy.core.clock import today_ist
+    from finboy.services.whatsapp.statement import Statement
+
+    spoken = Statement("spent", 50000, "दूधवाले", "cash", today_ist(), "groceries")
+    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: spoken)
+    recorded: dict = {}
+
+    def record_voice(_engine, _settings, **kwargs):
+        recorded.update(kwargs)
+        return Capture("saved", 50000, "दूधवाले", household.record())
+
+    monkeypatch.setattr(pilot.capture, "record_voice", record_voice)
+    assert household.say("दूधवाले को पाँच सौ नकद दिए") is None
+    assert recorded["user_id"] == household.user_id and recorded["category"] == "groceries"
+    assert recorded["line"].startswith("Rs. 500.00 paid to दूधवाले via cash on ")
+    assert "सही है?" in household.texts()[-1]
+    assert [title for _, title in household.buttons()] == [hindi.YES, hindi.CHANGE, hindi.NO]
+
+
+def test_unclear_messages_and_missing_amounts_are_explained_not_guessed(
+    household, monkeypatch
+) -> None:
+    from finboy.services.whatsapp.statement import Statement
+
+    monkeypatch.setattr(pilot.capture, "record_voice", MagicMock(side_effect=AssertionError))
+    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: Statement("unclear"))
+    assert household.say("नमस्ते") is None and household.texts()[-1] == hindi.UNCLEAR
+    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: Statement("spent"))
+    assert household.say("दूधवाले को पैसे दिए") == "amount_unclear"
+    assert household.texts()[-1] == hindi.AMOUNT_MISSING
+
+
+def test_an_already_confirmed_payment_is_not_offered_again(household, monkeypatch) -> None:
+    from finboy.core.clock import today_ist
+    from finboy.services.whatsapp.statement import Statement
+
+    record = household.record()
+    household.session.get(Transaction, record).status = "confirmed"
+    household.session.commit()
+    spoken = Statement("spent", 50000, "दूधवाले", "unknown", today_ist(), "groceries")
+    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: spoken)
+    monkeypatch.setattr(
+        pilot.capture,
+        "record_voice",
+        lambda *_args, **_kwargs: Capture("already_recorded", 50000, "दूधवाले", record),
+    )
+    assert household.say("दूधवाले को 500 दिए") is None
+    assert household.texts()[-1] == hindi.ALREADY
+
+
+def spoken_due(monkeypatch, due_date=None):
+    from datetime import date as day
+
+    from finboy.services.whatsapp.statement import Statement
+
+    due = Statement(
+        "due",
+        120000,
+        category="loan_emi",
+        due_date=due_date or day(2026, 11, 10),
+        label="समूह की किस्त",
+    )
+    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: due)
+
+
+def test_a_spoken_due_waits_as_pending_then_asks_once_about_reminders(
+    household, monkeypatch
+) -> None:
+    from finboy.db.models.ledger import Commitment
+
+    spoken_due(monkeypatch)
+    assert household.say("समूह की किस्त 1200, हर महीने 10 तारीख") is None
+    due = household.session.scalars(select(Commitment)).one()
+    assert (due.status, due.kind, due.amount_minor) == ("pending", "loan", 120000)
+    assert "📌 ₹1,200 देना है" in household.texts()[-1] and "10 नवंबर" in household.texts()[-1]
+    assert household.tap("yes") is None
+    assert household.session.get(Commitment, due.id).status == "upcoming"
+    assert hindi.REMIND_ASK in household.texts()[-1]
+    assert [title for _, title in household.buttons()] == [hindi.REMIND, hindi.UNDO]
+    assert household.tap("remind") is None
+    assert household.binding.reminders_opt_in_at is not None
+    assert household.texts()[-1] == hindi.REMINDERS_ON
+    spoken_due(monkeypatch)
+    household.say("समूह की किस्त 1200, हर महीने 10 तारीख")
+    household.tap("yes")
+    assert hindi.REMIND_ASK not in household.texts()[-1], "reminders are only asked once"
+
+
+def test_a_due_can_be_rejected_undone_and_its_amount_changed(household, monkeypatch) -> None:
+    from finboy.db.models.ledger import Commitment
+
+    spoken_due(monkeypatch)
+    household.say("समूह की किस्त 1200, हर महीने 10 तारीख")
+    due_id = household.session.scalars(select(Commitment.id)).one()
+    assert household.tap("no") is None
+    assert household.session.get(Commitment, due_id).status == "dismissed"
+    assert household.tap("undo") is None
+    assert household.session.get(Commitment, due_id).status == "pending"
+    assert household.texts()[-1].startswith(hindi.UNDONE)
+    assert household.tap("change") is None and household.texts()[-1] == hindi.CHANGE_ASK
+    assert household.say("पंद्रह सौ") is None
+    assert household.session.get(Commitment, due_id).amount_minor == 150000
+    assert "₹1,500 देना है" in household.texts()[-1]
+
+
+def test_a_due_without_a_day_asks_for_it(household, monkeypatch) -> None:
+    from finboy.db.models.ledger import Commitment
+    from finboy.services.whatsapp.statement import Statement
+
+    monkeypatch.setattr(
+        pilot.statement,
+        "read_statement",
+        lambda *_args: Statement("due", 120000, category="loan_emi", label="किस्त"),
+    )
+    assert household.say("किस्त 1200 देनी है") is None
+    assert household.texts()[-1] == hindi.DUE_DAY_MISSING
+    assert household.session.scalars(select(Commitment)).all() == []
