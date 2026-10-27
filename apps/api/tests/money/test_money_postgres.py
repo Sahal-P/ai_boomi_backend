@@ -3,6 +3,7 @@ from email.parser import BytesParser
 from uuid import uuid4
 
 import pytest
+from finboy.api.deps import current_user_id
 from finboy.db.models.ledger import (
     Commitment,
     EmailSource,
@@ -146,7 +147,6 @@ def test_real_mailbox_apis_truth_evidence_and_category_correction(mailbox_api):
 
 
 def test_filters_order_literal_search_and_missing_user_records(mailbox_api, monkeypatch):
-    from finboy.api.v1 import money, transactions
 
     api = mailbox_api
     query = (
@@ -159,8 +159,8 @@ def test_filters_order_literal_search_and_missing_user_records(mailbox_api, monk
     assert api.client.get("/api/v1/transactions?q=%25").json() == []
     assert api.client.get("/api/v1/transactions?period=month&year=2026&month=9").json() == []
     own_id = first.json()[0]["id"]
-    monkeypatch.setattr(transactions, "LOCAL_USER_ID", uuid4())
-    monkeypatch.setattr(money, "LOCAL_USER_ID", uuid4())
+    stranger = uuid4()
+    api.client.app.dependency_overrides[current_user_id] = lambda: stranger
     assert api.client.get("/api/v1/transactions").json() == []
     assert api.client.get("/api/v1/money/summary").json()["tracked_income_minor"] == 0
     assert api.client.get(f"/api/v1/transactions/{own_id}").status_code == 404

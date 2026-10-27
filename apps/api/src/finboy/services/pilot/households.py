@@ -2,22 +2,12 @@
 
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from finboy.core.config import LOCAL_USER_ID
 from finboy.db.models.core import User
-from finboy.db.models.ledger import (
-    Commitment,
-    EmailSource,
-    ExtractionCache,
-    ReviewDecision,
-    SourceEvent,
-    Transaction,
-    TransactionRevision,
-)
-from finboy.db.models.mail import ImportRun, MailConnection
-from finboy.db.models.whatsapp import WhatsAppBinding
+from finboy.services.accounts.households import remove_household_data
 from finboy.services.privacy.audit import audit
 from finboy.services.whatsapp.config import MAX_PILOT_HOUSEHOLDS
 
@@ -39,7 +29,13 @@ def enroll(session: Session) -> User:
         raise PilotError("pilot_limit")
     # Erased households keep their row, so numbers are never reused.
     number = (
-        session.scalar(select(func.count()).select_from(User).where(User.id != LOCAL_USER_ID)) or 0
+        session.scalar(
+            select(func.count())
+            .select_from(User)
+            # Self-serve households are numbered apart (docs/signup-round/contract.md).
+            .where(User.id != LOCAL_USER_ID, User.joined_via.is_(None))
+        )
+        or 0
     ) + 1
     user = User(id=uuid4(), display_name=f"Pilot household {number}", pilot=True)
     session.add(user)
@@ -70,31 +66,7 @@ def erase(session: Session, user_id: UUID) -> dict[str, int]:
     user = session.get(User, user_id, with_for_update=True)
     if user is None:
         raise PilotError("not_found")
-    transactions = select(Transaction.id).where(Transaction.user_id == user_id)
-    counts: dict[str, int] = {}
-
-    def remove(name: str, statement) -> None:
-        counts[name] = session.execute(statement).rowcount or 0
-
-    # Bindings cascade to prompts, reminders, receipts and deliveries.
-    remove("whatsapp_bindings", delete(WhatsAppBinding).where(WhatsAppBinding.user_id == user_id))
-    remove("review_decisions", delete(ReviewDecision).where(ReviewDecision.user_id == user_id))
-    remove("commitments", delete(Commitment).where(Commitment.user_id == user_id))
-    remove(
-        "transaction_revisions",
-        delete(TransactionRevision).where(TransactionRevision.transaction_id.in_(transactions)),
-    )
-    remove("source_events", delete(SourceEvent).where(SourceEvent.user_id == user_id))
-    session.execute(
-        update(Transaction)
-        .where(Transaction.user_id == user_id)
-        .values(possible_duplicate_of_id=None, linked_transaction_id=None, merged_into_id=None)
-    )
-    remove("transactions", delete(Transaction).where(Transaction.user_id == user_id))
-    remove("email_sources", delete(EmailSource).where(EmailSource.user_id == user_id))
-    remove("import_runs", delete(ImportRun).where(ImportRun.user_id == user_id))
-    remove("mail_connections", delete(MailConnection).where(MailConnection.user_id == user_id))
-    session.execute(delete(ExtractionCache))
+    counts = remove_household_data(session, user_id)
     user.pilot = False
     user.data_version += 1
     audit(session, "pilot.erased", "user", user_id, user_id=user_id)

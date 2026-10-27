@@ -238,7 +238,13 @@ def run_import(
                         connection = session.get(MailConnection, run.mail_connection_id)
                         if connection and connection.status not in {"revoked", "paused"}:
                             connection.status = "error"
-                            audit(session, "gmail.reconnect_required", "connection", connection.id)
+                            audit(
+                                session,
+                                "gmail.reconnect_required",
+                                "connection",
+                                connection.id,
+                                user_id=run.user_id,
+                            )
         except Exception as persistence_error:
             # BackgroundTasks exceptions run after the HTTP response. Contain them
             # here so Uvicorn cannot print chained provider/database exception text.

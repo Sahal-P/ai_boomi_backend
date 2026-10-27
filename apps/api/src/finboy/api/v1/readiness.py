@@ -10,7 +10,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from finboy.core.config import API_ROOT, LOCAL_USER_ID
+from finboy.api.deps import CurrentUser
+from finboy.core.config import API_ROOT
 from finboy.db.models.mail import ImportRun
 from finboy.db.session import get_session
 from finboy.services.whatsapp.config import ChannelUnavailable, channel_config
@@ -36,7 +37,10 @@ class Readiness(BaseModel):
 
 @router.get("/readiness", response_model=Readiness)
 def readiness(
-    request: Request, response: Response, session: Annotated[Session, Depends(get_session)]
+    request: Request,
+    response: Response,
+    session: Annotated[Session, Depends(get_session)],
+    user_id: CurrentUser,
 ) -> Readiness:
     settings = request.app.state.settings
     database, schema, active = "connected", "unavailable", None
@@ -47,7 +51,7 @@ def readiness(
         active = session.scalar(
             select(func.count())
             .select_from(ImportRun)
-            .where(ImportRun.user_id == LOCAL_USER_ID, ImportRun.status.in_(["queued", "running"]))
+            .where(ImportRun.user_id == user_id, ImportRun.status.in_(["queued", "running"]))
         )
     except SQLAlchemyError:
         session.rollback()

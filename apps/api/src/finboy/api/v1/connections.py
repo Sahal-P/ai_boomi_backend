@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from finboy.api.deps import CurrentUser
 from finboy.core.clock import now_ist
 from finboy.core.config import LOCAL_USER_ID
 from finboy.db.models.mail import MailConnection
@@ -45,18 +46,23 @@ class ConnectionView(BaseModel):
     last_synced_at: datetime | None
 
 
-def connection_for(session: Session, connection_id: UUID) -> MailConnection:
+def connection_for(session: Session, user_id: UUID, connection_id: UUID) -> MailConnection:
     connection = session.scalar(
         select(MailConnection)
         .where(
             MailConnection.id == connection_id,
-            MailConnection.user_id == LOCAL_USER_ID,
+            MailConnection.user_id == user_id,
         )
         .with_for_update()
     )
     if connection is None:
         raise HTTPException(404)
     return connection
+
+
+def gmail_available(request: Request, user_id: UUID) -> bool:
+    """Google's Testing mode blocks everyone but listed test users, so new households wait."""
+    return user_id == LOCAL_USER_ID or request.app.state.settings.gmail_for_new_accounts
 
 
 def web_origin(request: Request) -> str:
@@ -87,30 +93,32 @@ def google_redirect(config: OAuthConfig, url: str, state: str) -> RedirectRespon
 
 
 @router.get("", response_model=list[ConnectionView])
-def list_connections(session: DB) -> list[MailConnection]:
+def list_connections(session: DB, user_id: CurrentUser) -> list[MailConnection]:
     return list(
         session.scalars(
             select(MailConnection)
-            .where(MailConnection.user_id == LOCAL_USER_ID)
+            .where(MailConnection.user_id == user_id)
             .order_by(MailConnection.connected_at.desc())
         )
     )
 
 
 @router.get("/gmail/authorize", response_model=None)
-def gmail_authorize(request: Request, session: DB) -> RedirectResponse:
+def gmail_authorize(request: Request, session: DB, user_id: CurrentUser) -> RedirectResponse:
     try:
+        if not gmail_available(request, user_id):
+            raise MailError("gmail_not_configured")
         config = OAuthConfig.from_settings(request.app.state.settings)
         callback = urlsplit(config.redirect_uri)
         if callback.hostname != urlsplit(web_origin(request)).hostname:
-            ticket = create_authorization_handoff(session, config)
+            ticket = create_authorization_handoff(session, config, user_id)
             # Set the host-only state cookie directly on the callback host, after
             # the household-authenticated frontend has issued a one-use handoff.
             return oauth_redirect(
                 f"{callback.scheme}://{callback.netloc}/api/v1/connections/gmail/handoff?"
                 + urlencode({"ticket": ticket})
             )
-        url, state = authorize(session, config)
+        url, state = authorize(session, config, user_id)
         return google_redirect(config, url, state)
     except MailError as exc:
         session.rollback()
@@ -143,16 +151,18 @@ def gmail_callback(
         cookie = request.cookies.get(STATE_COOKIE, "")
         if not cookie or not state or not secrets.compare_digest(cookie, state):
             raise MailError("invalid_state")
-        verifier = consume_state(session, config, state)
+        verifier, user_id = consume_state(session, config, state)
         if error:
             raise MailError("consent_denied")
         if not code or len(code) > 4096:
             raise MailError("oauth_failed")
         google = config.google()
-        connection = finish_connection(session, config, google, code=code, verifier=verifier)
-        audit(session, "gmail.connected", "connection", connection.id)
-        audit(session, "gmail.sync_requested", "connection", connection.id)
-        run = create_run(session, mode="gmail", connection_id=connection.id)
+        connection = finish_connection(
+            session, config, google, code=code, verifier=verifier, user_id=user_id
+        )
+        audit(session, "gmail.connected", "connection", connection.id, user_id=user_id)
+        audit(session, "gmail.sync_requested", "connection", connection.id, user_id=user_id)
+        run = create_run(session, mode="gmail", connection_id=connection.id, user_id=user_id)
         background.add_task(
             run_import, request.app.state.engine, request.app.state.settings, run.id
         )
@@ -171,14 +181,18 @@ def gmail_callback(
 
 @router.post("/{connection_id}/sync", status_code=202, response_model=None)
 def sync(
-    connection_id: UUID, request: Request, background: BackgroundTasks, session: DB
+    connection_id: UUID,
+    request: Request,
+    background: BackgroundTasks,
+    session: DB,
+    user_id: CurrentUser,
 ) -> dict | JSONResponse:
     try:
-        connection = connection_for(session, connection_id)
+        connection = connection_for(session, user_id, connection_id)
         if connection.status != "active" or not connection.encrypted_refresh_token:
             raise MailError("connection_inactive")
-        audit(session, "gmail.sync_requested", "connection", connection.id)
-        run = create_run(session, mode="gmail", connection_id=connection.id)
+        audit(session, "gmail.sync_requested", "connection", connection.id, user_id=user_id)
+        run = create_run(session, mode="gmail", connection_id=connection.id, user_id=user_id)
         background.add_task(
             run_import, request.app.state.engine, request.app.state.settings, run.id
         )
@@ -189,10 +203,10 @@ def sync(
 
 
 def change_status(
-    connection_id: UUID, request: Request, session: Session, *, status: str
+    connection_id: UUID, request: Request, session: Session, *, user_id: UUID, status: str
 ) -> dict | JSONResponse:
     try:
-        connection = connection_for(session, connection_id)
+        connection = connection_for(session, user_id, connection_id)
         expected = "active" if status == "paused" else "paused"
         if connection.status != expected:
             raise MailError("connection_inactive")
@@ -202,6 +216,7 @@ def change_status(
             "gmail.paused" if status == "paused" else "gmail.resumed",
             "connection",
             connection.id,
+            user_id=user_id,
         )
         session.commit()
         return {"status": "ok"}
@@ -211,24 +226,32 @@ def change_status(
 
 
 @router.post("/{connection_id}/pause", response_model=None)
-def pause(connection_id: UUID, request: Request, session: DB) -> dict | JSONResponse:
-    return change_status(connection_id, request, session, status="paused")
+def pause(
+    connection_id: UUID, request: Request, session: DB, user_id: CurrentUser
+) -> dict | JSONResponse:
+    return change_status(connection_id, request, session, user_id=user_id, status="paused")
 
 
 @router.post("/{connection_id}/resume", response_model=None)
-def resume(connection_id: UUID, request: Request, session: DB) -> dict | JSONResponse:
-    return change_status(connection_id, request, session, status="active")
+def resume(
+    connection_id: UUID, request: Request, session: DB, user_id: CurrentUser
+) -> dict | JSONResponse:
+    return change_status(connection_id, request, session, user_id=user_id, status="active")
 
 
 @router.delete("/{connection_id}", response_model=None)
 def disconnect(
-    connection_id: UUID, request: Request, session: DB, delete_data: bool = False
+    connection_id: UUID,
+    request: Request,
+    session: DB,
+    user_id: CurrentUser,
+    delete_data: bool = False,
 ) -> dict | JSONResponse:
     google = None
     try:
         # Acquire before touching the grant; a failed deletion must not leave a partial disconnect.
-        with import_lock(request.app.state.engine):
-            connection = connection_for(session, connection_id)
+        with import_lock(request.app.state.engine, user_id):
+            connection = connection_for(session, user_id, connection_id)
             if connection.encrypted_refresh_token:
                 config = OAuthConfig.from_settings(request.app.state.settings)
                 google = config.google()
@@ -237,14 +260,21 @@ def disconnect(
             connection.encrypted_refresh_token = None
             connection.status = "revoked"
             connection.revoked_at = now_ist()
-            audit(session, "gmail.revoked", "connection", connection.id)
+            audit(session, "gmail.revoked", "connection", connection.id, user_id=user_id)
             if delete_data:
-                delete_imported_data(session, connection_id=connection_id)
+                delete_imported_data(session, user_id=user_id, connection_id=connection_id)
             session.commit()
         return {"status": "ok"}
     except MailError as exc:
         session.rollback()
-        audit(session, "gmail.revoke_failed", "connection", connection_id, result="failure")
+        audit(
+            session,
+            "gmail.revoke_failed",
+            "connection",
+            connection_id,
+            user_id=user_id,
+            result="failure",
+        )
         session.commit()
         return failure(request, exc)
     finally:

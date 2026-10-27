@@ -56,7 +56,8 @@ class ImportRun(Base):
     __tablename__ = "import_runs"
     __table_args__ = (
         CheckConstraint(
-            "mode IN ('gmail','eml_upload','demo_mailbox','whatsapp_image','whatsapp_voice')",
+            "mode IN ('gmail','eml_upload','demo_mailbox','whatsapp_image','whatsapp_voice',"
+            "'manual_entry')",
             name="mode",
         ),
         CheckConstraint("status IN ('queued','running','completed','failed')", name="status"),

@@ -26,6 +26,30 @@ class ProviderUnavailable(Exception):
         super().__init__(self.code)
 
 
+class AccessError(Exception):
+    """Fixed sign-in and household-access outcomes (docs/signup-round/contract.md)."""
+
+    MESSAGES = {
+        "authentication_required": (401, "Please sign in."),
+        "web_not_available": (403, "Your household uses FinBoy on WhatsApp."),
+        "signups_closed": (403, "FinBoy is full for now. Send JOIN on WhatsApp to join the list."),
+        "signup_unavailable": (403, "Sign-up isn't open yet."),
+        "sign_in_unavailable": (503, "This way of signing in isn't available right now."),
+        "invalid_sign_in": (401, "That sign-in didn't work. Please try again."),
+        "login_expired": (410, "That sign-in request has expired. Start again."),
+        "login_declined": (403, "The sign-in was declined on WhatsApp."),
+        "already_linked": (409, "That account already belongs to another FinBoy household."),
+        "usage_limit": (429, "You've reached today's limit. Try again tomorrow."),
+        "owner_household": (403, "The owner's household can't be deleted here."),
+        "try_later": (429, "Please try again in a minute."),
+    }
+
+    def __init__(self, code: str) -> None:
+        self.code = code if code in self.MESSAGES else "authentication_required"
+        self.status, self.message = self.MESSAGES[self.code]
+        super().__init__(self.code)
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str
@@ -48,6 +72,10 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(TaskError)
     async def handle_task_error(request: Request, exc: TaskError) -> JSONResponse:
+        return error_response(request, exc.status, exc.code, exc.message)
+
+    @app.exception_handler(AccessError)
+    async def handle_access_error(request: Request, exc: AccessError) -> JSONResponse:
         return error_response(request, exc.status, exc.code, exc.message)
 
     @app.exception_handler(ProviderUnavailable)

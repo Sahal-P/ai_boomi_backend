@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from finboy.core.config import LOCAL_USER_ID
+from finboy.api.deps import CurrentUser
 from finboy.db.models.ledger import Transaction
 from finboy.db.models.mail import AuditEvent
 from finboy.db.session import get_session
@@ -49,10 +49,10 @@ class AuditView(BaseModel):
 
 
 @router.delete("/imported-data", response_model=None)
-def delete_data(request: Request, session: DB) -> dict | JSONResponse:
+def delete_data(request: Request, session: DB, user_id: CurrentUser) -> dict | JSONResponse:
     try:
-        with import_lock(request.app.state.engine):
-            delete_imported_data(session)
+        with import_lock(request.app.state.engine, user_id):
+            delete_imported_data(session, user_id=user_id)
             session.commit()
         return {"status": "ok"}
     except MailError as exc:
@@ -63,13 +63,14 @@ def delete_data(request: Request, session: DB) -> dict | JSONResponse:
 @router.get("/audit-events", response_model=list[AuditView])
 def list_audit(
     session: DB,
+    user_id: CurrentUser,
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
     offset: Annotated[int, Query(ge=0, le=1000000)] = 0,
 ) -> list[AuditEvent]:
     return list(
         session.scalars(
             select(AuditEvent)
-            .where(AuditEvent.user_id == LOCAL_USER_ID)
+            .where(AuditEvent.user_id == user_id)
             .order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc())
             .limit(max(1, min(limit, 200)))
             .offset(max(0, offset))
@@ -78,20 +79,22 @@ def list_audit(
 
 
 @router.post("/deletion-preview", response_model=DeletionPreview)
-def preview_deletion(body: DeletionScope, session: DB) -> dict:
-    require_version(session, LOCAL_USER_ID, data_version(session, LOCAL_USER_ID))
-    return deletion_preview(session, user_id=LOCAL_USER_ID, connection_id=body.connection_id)
+def preview_deletion(body: DeletionScope, session: DB, user_id: CurrentUser) -> dict:
+    require_version(session, user_id, data_version(session, user_id))
+    return deletion_preview(session, user_id=user_id, connection_id=body.connection_id)
 
 
 @router.post("/delete", response_model=DeleteResult)
-def previewed_delete(body: DeleteRequest, request: Request, session: DB) -> dict:
+def previewed_delete(
+    body: DeleteRequest, request: Request, session: DB, user_id: CurrentUser
+) -> dict:
     try:
-        with import_lock(request.app.state.engine):
-            require_version(session, LOCAL_USER_ID, body.expected_version)
-            deletion_preview(session, user_id=LOCAL_USER_ID, connection_id=body.connection_id)
-            delete_imported_data(session, connection_id=body.connection_id)
+        with import_lock(request.app.state.engine, user_id):
+            require_version(session, user_id, body.expected_version)
+            deletion_preview(session, user_id=user_id, connection_id=body.connection_id)
+            delete_imported_data(session, user_id=user_id, connection_id=body.connection_id)
             session.flush()
-            version = data_version(session, LOCAL_USER_ID)
+            version = data_version(session, user_id)
             session.commit()
             return {"status": "ok", "data_version": version}
     except Exception:
@@ -100,10 +103,10 @@ def previewed_delete(body: DeleteRequest, request: Request, session: DB) -> dict
 
 
 @router.post("/export")
-def export(body: VersionRequest, session: DB) -> JSONResponse:
-    require_version(session, LOCAL_USER_ID, body.expected_version)
+def export(body: VersionRequest, session: DB, user_id: CurrentUser) -> JSONResponse:
+    require_version(session, user_id, body.expected_version)
     return JSONResponse(
-        content=export_records(session, user_id=LOCAL_USER_ID),
+        content=export_records(session, user_id=user_id),
         headers={
             "Content-Disposition": 'attachment; filename="finboy-records.json"',
             "Cache-Control": "no-store",
@@ -112,17 +115,17 @@ def export(body: VersionRequest, session: DB) -> JSONResponse:
 
 
 @router.get("/isolation", response_model=IsolationInventory)
-def isolation(session: DB) -> dict:
-    return isolation_inventory(session, user_id=LOCAL_USER_ID)
+def isolation(session: DB, user_id: CurrentUser) -> dict:
+    return isolation_inventory(session, user_id=user_id)
 
 
 @router.post("/task-outcomes", response_model=TaskResult)
-def task_outcome(body: TaskOutcome, session: DB) -> dict:
+def task_outcome(body: TaskOutcome, session: DB, user_id: CurrentUser) -> dict:
     if body.subject_id is not None:
         item = session.scalar(
             select(Transaction.id).where(
                 Transaction.id == body.subject_id,
-                Transaction.user_id == LOCAL_USER_ID,
+                Transaction.user_id == user_id,
                 Transaction.dataset == "household",
             )
         )
@@ -132,7 +135,8 @@ def task_outcome(body: TaskOutcome, session: DB) -> dict:
         session,
         "task." + body.task,
         "transaction" if body.subject_id else "user",
-        body.subject_id or LOCAL_USER_ID,
+        body.subject_id or user_id,
+        user_id=user_id,
     )
     session.commit()
     return {"status": "ok"}

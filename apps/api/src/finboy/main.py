@@ -9,13 +9,14 @@ from sqlalchemy.orm import Session
 
 from finboy import __version__
 from finboy.api.router import api_router
-from finboy.core.access import HouseholdAccessMiddleware, LoginThrottle
+from finboy.core.access import HouseholdAccessMiddleware, LoginThrottle, Throttle
 from finboy.core.clock import now_ist
 from finboy.core.config import Settings
 from finboy.core.errors import register_error_handlers
 from finboy.core.logging import configure_logging
 from finboy.core.middleware import RequestContextMiddleware
 from finboy.db.session import build_engine
+from finboy.services.accounts.google import GoogleCerts
 from finboy.services.whatsapp.receipts import interrupt_stale
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.settings = settings
     app.state.login_throttle = LoginThrottle()
+    # Sign-in starts are public; sized for an event crowd joining at once.
+    app.state.signin_throttle = Throttle(limit=120, seconds=60)
+    app.state.google_certs = GoogleCerts()
     register_error_handlers(app)
     app.add_middleware(HouseholdAccessMiddleware)
     app.add_middleware(RequestContextMiddleware)

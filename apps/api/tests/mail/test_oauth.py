@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, urlsplit
 import httpx
 import pytest
 from finboy.core.clock import now_ist
+from finboy.core.config import LOCAL_USER_ID
 from finboy.db.models.mail import AuditEvent, MailConnection, OAuthState
 from finboy.services.mail.google import READ_SCOPE, GoogleClient
 from finboy.services.mail.oauth import (
@@ -26,7 +27,7 @@ def test_pkce_encryption_and_one_use(mail_factory, mail_settings):
     )
     config = OAuthConfig.from_settings(mail_settings)
     with mail_factory() as session:
-        url, state = authorize(session, config)
+        url, state = authorize(session, config, LOCAL_USER_ID)
         params = parse_qs(urlsplit(url).query)
         row = session.scalar(select(OAuthState))
         assert row.state_sha256 == sha256(state)
@@ -37,7 +38,7 @@ def test_pkce_encryption_and_one_use(mail_factory, mail_settings):
         assert params["prompt"] == ["consent"]
         assert params["code_challenge_method"] == ["S256"]
         assert row.encrypted_code_verifier != verifier.encode()
-        assert consume_state(session, config, state) == verifier
+        assert consume_state(session, config, state) == (verifier, LOCAL_USER_ID)
         with pytest.raises(MailError, match="invalid_state"):
             consume_state(session, config, state)
 
@@ -45,14 +46,14 @@ def test_pkce_encryption_and_one_use(mail_factory, mail_settings):
 def test_expired_and_tampered_state(mail_factory, mail_settings):
     config = OAuthConfig.from_settings(mail_settings)
     with mail_factory() as session:
-        _, state = authorize(session, config)
+        _, state = authorize(session, config, LOCAL_USER_ID)
         row = session.scalar(select(OAuthState))
         row.expires_at = now_ist() - timedelta(seconds=1)
         session.commit()
         for invalid in (state, state + "tamper", "", "x" * 257):
             with pytest.raises(MailError, match="invalid_state"):
                 consume_state(session, config, invalid)
-        _, fresh = authorize(session, config)
+        _, fresh = authorize(session, config, LOCAL_USER_ID)
         with pytest.raises(MailError, match="invalid_state"):
             consume_state(session, config, fresh + "tampered")
         assert consume_state(session, config, fresh)
@@ -66,7 +67,7 @@ def test_authorization_handoff_is_expiring_single_use_and_distinct_from_oauth_st
     config = OAuthConfig.from_settings(mail_settings)
     cipher = Fernet(config.encryption_key)
     with mail_factory() as session:
-        ticket = create_authorization_handoff(session, config)
+        ticket = create_authorization_handoff(session, config, LOCAL_USER_ID)
         payload = cipher.decrypt(ticket.encode())
         expired = cipher.encrypt_at_time(payload, int(time()) - 120).decode()
         for invalid in (
@@ -126,6 +127,7 @@ def test_scope_rejected(mail_factory, mail_settings, scope):
             google,
             code="SENSITIVE_CODE",
             verifier="SENSITIVE_VERIFIER",
+            user_id=LOCAL_USER_ID,
         )
     google.close()
 

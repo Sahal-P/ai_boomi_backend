@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from datetime import timedelta
 from urllib.parse import urlencode
+from uuid import UUID
 
 from cryptography.fernet import InvalidToken
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from finboy.core.clock import now_ist
-from finboy.core.config import LOCAL_USER_ID, Settings
+from finboy.core.config import Settings
 from finboy.db.models.mail import MailConnection, OAuthState
 from finboy.services.mail.google import READ_SCOPE, GoogleClient
 from finboy.services.mail.security import (
@@ -53,11 +54,13 @@ class OAuthConfig:
         return GoogleClient(self.client_id, self.client_secret, self.redirect_uri)
 
 
-def create_state(session: Session, config: OAuthConfig, *, lifetime: timedelta) -> tuple[str, str]:
+def create_state(
+    session: Session, config: OAuthConfig, *, lifetime: timedelta, user_id: UUID
+) -> tuple[str, str]:
     state, verifier = random_secret(), random_secret()
     session.add(
         OAuthState(
-            user_id=LOCAL_USER_ID,
+            user_id=user_id,
             state_sha256=sha256(state),
             encrypted_code_verifier=encrypt(config.encryption_key, verifier),
             expires_at=now_ist() + lifetime,
@@ -67,8 +70,10 @@ def create_state(session: Session, config: OAuthConfig, *, lifetime: timedelta) 
     return state, verifier
 
 
-def create_authorization_handoff(session: Session, config: OAuthConfig) -> str:
-    state, _ = create_state(session, config, lifetime=timedelta(seconds=HANDOFF_SECONDS))
+def create_authorization_handoff(session: Session, config: OAuthConfig, user_id: UUID) -> str:
+    state, _ = create_state(
+        session, config, lifetime=timedelta(seconds=HANDOFF_SECONDS), user_id=user_id
+    )
     return encrypt(config.encryption_key, HANDOFF_PREFIX + state).decode()
 
 
@@ -85,13 +90,13 @@ def consume_authorization_handoff(
         raise MailError("invalid_state") from None
     if not payload.startswith(HANDOFF_PREFIX):
         raise MailError("invalid_state")
-    consume_state(session, config, payload.removeprefix(HANDOFF_PREFIX))
+    _, user_id = consume_state(session, config, payload.removeprefix(HANDOFF_PREFIX))
     # Use a fresh OAuth state: the cross-host handoff cannot replace the callback cookie.
-    return authorize(session, config)
+    return authorize(session, config, user_id)
 
 
-def authorize(session: Session, config: OAuthConfig) -> tuple[str, str]:
-    state, verifier = create_state(session, config, lifetime=timedelta(minutes=10))
+def authorize(session: Session, config: OAuthConfig, user_id: UUID) -> tuple[str, str]:
+    state, verifier = create_state(session, config, lifetime=timedelta(minutes=10), user_id=user_id)
     return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(
         {
             "client_id": config.client_id,
@@ -108,30 +113,36 @@ def authorize(session: Session, config: OAuthConfig) -> tuple[str, str]:
     ), state
 
 
-def consume_state(session: Session, config: OAuthConfig, state: str) -> str:
+def consume_state(session: Session, config: OAuthConfig, state: str) -> tuple[str, UUID]:
+    """The PKCE verifier and the household that started this authorization."""
     if not state or len(state) > 256:
         raise MailError("invalid_state")
     # Conditional UPDATE makes reuse fail even across simultaneous callbacks/workers.
-    encrypted = session.scalar(
+    row = session.execute(
         update(OAuthState)
         .where(
             OAuthState.state_sha256 == sha256(state),
-            OAuthState.user_id == LOCAL_USER_ID,
             OAuthState.used_at.is_(None),
             OAuthState.expires_at > now_ist(),
         )
         .values(used_at=now_ist())
         .execution_options(synchronize_session=False)
-        .returning(OAuthState.encrypted_code_verifier)
-    )
+        .returning(OAuthState.encrypted_code_verifier, OAuthState.user_id)
+    ).first()
     session.commit()
-    if encrypted is None:
+    if row is None:
         raise MailError("invalid_state")
-    return decrypt(config.encryption_key, encrypted)
+    return decrypt(config.encryption_key, row[0]), row[1]
 
 
 def finish_connection(
-    session: Session, config: OAuthConfig, google: GoogleClient, *, code: str, verifier: str
+    session: Session,
+    config: OAuthConfig,
+    google: GoogleClient,
+    *,
+    code: str,
+    verifier: str,
+    user_id: UUID,
 ) -> MailConnection:
     tokens = google.exchange(code, verifier)
     scopes = tokens.get("scope", "")
@@ -151,15 +162,13 @@ def finish_connection(
     connection = session.scalar(
         select(MailConnection)
         .where(
-            MailConnection.user_id == LOCAL_USER_ID,
+            MailConnection.user_id == user_id,
             MailConnection.account_email_sha256 == digest,
         )
         .with_for_update()
     )
     if connection is None:
-        connection = MailConnection(
-            user_id=LOCAL_USER_ID, provider="gmail", account_email_sha256=digest
-        )
+        connection = MailConnection(user_id=user_id, provider="gmail", account_email_sha256=digest)
         session.add(connection)
     connection.account_email_masked = mask_email(email)
     connection.encrypted_refresh_token = encrypt(config.encryption_key, refresh)

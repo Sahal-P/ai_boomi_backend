@@ -45,10 +45,11 @@ async def test_public_requests_cannot_reach_any_product_or_privacy_route(private
             ("GET", "/openapi.json"),
         ]:
             assert (await client.request(method, path)).status_code == 401
-        assert (await client.get("/api/v1/auth/session")).json() == {
-            "required": True,
-            "authenticated": False,
-        }
+        view = (await client.get("/api/v1/auth/session")).json()
+        assert view["required"] is True and view["authenticated"] is False
+        assert view["household"] is None
+        # Only public sign-in configuration; sign-up stays closed by default.
+        assert view["sign_in"]["signup_open"] is False and view["sign_in"]["password"] is True
 
 
 @pytest.mark.anyio

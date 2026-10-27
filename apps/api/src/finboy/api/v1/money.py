@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from finboy.core.config import LOCAL_USER_ID
+from finboy.api.deps import CurrentUser
 from finboy.db.models.ledger import Commitment
 from finboy.db.session import get_session
 from finboy.services.money.compat import simulation_response
@@ -33,20 +33,24 @@ DB = Annotated[Session, Depends(get_session)]
 
 
 @router.get("/summary")
-def summary(session: DB, query: Annotated[PeriodQuery, Query()]) -> MoneySummary:
-    return money_summary(session, user_id=LOCAL_USER_ID, period=query.to_period())
+def summary(
+    session: DB, user_id: CurrentUser, query: Annotated[PeriodQuery, Query()]
+) -> MoneySummary:
+    return money_summary(session, user_id=user_id, period=query.to_period())
 
 
 @router.get("/commitments")
-def commitments(session: DB, query: Annotated[PeriodQuery, Query()]) -> list[CommitmentView]:
-    return upcoming_commitments(session, user_id=LOCAL_USER_ID, period=query.to_period())
+def commitments(
+    session: DB, user_id: CurrentUser, query: Annotated[PeriodQuery, Query()]
+) -> list[CommitmentView]:
+    return upcoming_commitments(session, user_id=user_id, period=query.to_period())
 
 
 @router.post("/simulations")
-def simulate(session: DB, body: SimulationRequest) -> CashFlowSimulation:
+def simulate(session: DB, user_id: CurrentUser, body: SimulationRequest) -> CashFlowSimulation:
     result = simulate_monthly_commitment(
         session,
-        user_id=LOCAL_USER_ID,
+        user_id=user_id,
         monthly_amount_minor=body.monthly_amount_minor,
         label=body.label,
     )
@@ -55,17 +59,19 @@ def simulate(session: DB, body: SimulationRequest) -> CashFlowSimulation:
 
 @router.get("/obligations", response_model=ObligationList)
 def obligations(
-    session: DB, status: Literal["unresolved", "all", "paid", "dismissed"] = "unresolved"
+    session: DB,
+    user_id: CurrentUser,
+    status: Literal["unresolved", "all", "paid", "dismissed"] = "unresolved",
 ) -> dict:
     # A spoken pilot due waiting for the household's "हाँ" is never listed or counted.
     query = select(Commitment).where(
-        Commitment.user_id == LOCAL_USER_ID,
+        Commitment.user_id == user_id,
         Commitment.dataset == "household",
         Commitment.status != "pending",
     )
     if status != "all":
         query = query.where(Commitment.status == ("upcoming" if status == "unresolved" else status))
-    version = data_version(session, LOCAL_USER_ID)
+    version = data_version(session, user_id)
     return {
         "items": [
             commitment_view(row, version=version)
@@ -76,12 +82,12 @@ def obligations(
 
 
 @router.get("/obligations/{obligation_id}", response_model=ObligationDetail)
-def obligation(obligation_id: UUID, session: DB) -> dict:
-    return obligation_detail(session, user_id=LOCAL_USER_ID, obligation_id=obligation_id)
+def obligation(obligation_id: UUID, session: DB, user_id: CurrentUser) -> dict:
+    return obligation_detail(session, user_id=user_id, obligation_id=obligation_id)
 
 
 @router.patch("/obligations/{obligation_id}", response_model=ObligationDetail)
-def repair_obligation(obligation_id: UUID, body: ObligationCorrection, session: DB) -> dict:
-    return correct_obligation(
-        session, user_id=LOCAL_USER_ID, obligation_id=obligation_id, request=body
-    )
+def repair_obligation(
+    obligation_id: UUID, body: ObligationCorrection, session: DB, user_id: CurrentUser
+) -> dict:
+    return correct_obligation(session, user_id=user_id, obligation_id=obligation_id, request=body)

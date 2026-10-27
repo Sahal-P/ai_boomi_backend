@@ -9,6 +9,7 @@ from uuid import uuid4
 import httpx
 import pytest
 from cryptography.fernet import Fernet
+from finboy.api.deps import current_user_id
 from finboy.core.config import Settings
 from finboy.db.models import (
     AuditEvent,
@@ -42,6 +43,7 @@ def assembled_app(monkeypatch):
         "finboy_ux_ui",
         "finboy_capture",
         "finboy_pilot",
+        "finboy_signup",
         "finboy_test",
     }, "Use integration disposable DB"
     user = uuid4()
@@ -81,6 +83,7 @@ def assembled_app(monkeypatch):
     )
     app.state.engine.dispose()
     app.state.engine = engine
+    app.dependency_overrides[current_user_id] = lambda: user
     try:
         yield app, engine, user
     finally:

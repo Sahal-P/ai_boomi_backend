@@ -84,6 +84,20 @@ class Settings(BaseSettings):
     # means reminders are added to replies inside the 24-hour window instead.
     whatsapp_reminder_template: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,64}$")
 
+    # Sign-up round (docs/signup-round/contract.md). Off until the human enables it; none of
+    # these values is a secret, and the web app reads them from GET /api/v1/auth/session.
+    signup_enabled: bool = False
+    signup_limit: int = Field(default=100, ge=0, le=100_000)
+    session_days: int = Field(default=30, ge=1, le=90)
+    daily_ai_limit: int = Field(default=100, ge=1, le=10_000)
+    daily_voice_limit: int = Field(default=60, ge=1, le=10_000)
+    google_signin_client_id: str | None = Field(
+        default=None, pattern=r"^[0-9]{6,32}-[a-z0-9]{8,64}\.apps\.googleusercontent\.com$"
+    )
+    # The business number people message, digits only. It is printed on posters, not secret.
+    whatsapp_public_number: str | None = Field(default=None, pattern=r"^[0-9]{7,20}$")
+    gmail_for_new_accounts: bool = False
+
     @field_validator(
         "resemble_api_key",
         "resemble_project_uuid",
@@ -118,6 +132,8 @@ class Settings(BaseSettings):
         "demo_today",
         "household_password_hash",
         "web_session_key",
+        "google_signin_client_id",
+        "whatsapp_public_number",
         mode="before",
     )
     @classmethod

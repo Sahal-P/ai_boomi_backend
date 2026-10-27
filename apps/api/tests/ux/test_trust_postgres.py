@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from finboy.api.deps import current_user_id
 from finboy.core.clock import IST
 from finboy.core.config import Settings
 from finboy.db.models import (
@@ -41,6 +42,7 @@ def ux(monkeypatch):
         "finboy_ux_ui",
         "finboy_capture",
         "finboy_pilot",
+        "finboy_signup",
     }
     factory = sessionmaker(engine, expire_on_commit=False)
     uid = uuid4()
@@ -56,7 +58,8 @@ def ux(monkeypatch):
         "finboy.services.privacy.audit",
     ):
         module = importlib.import_module(name)
-        monkeypatch.setattr(module, "LOCAL_USER_ID", uid)
+        if hasattr(module, "LOCAL_USER_ID"):
+            monkeypatch.setattr(module, "LOCAL_USER_ID", uid)
     monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "rules")
     monkeypatch.setenv("DEMO_TODAY", "2026-10-24")
     with factory.begin() as session:
@@ -68,6 +71,7 @@ def ux(monkeypatch):
             yield session
 
     app.dependency_overrides[get_session] = dependency
+    app.dependency_overrides[current_user_id] = lambda: uid
     with TestClient(app) as client:
         yield client, factory, uid
     with factory.begin() as session:

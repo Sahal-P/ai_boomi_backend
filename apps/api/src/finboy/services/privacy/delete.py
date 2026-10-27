@@ -22,21 +22,24 @@ from finboy.services.privacy.audit import audit
 from finboy.services.privacy.scope import transaction_impact
 
 
-def delete_imported_data(session: Session, *, connection_id: UUID | None = None) -> None:
-    source_filter = [EmailSource.user_id == LOCAL_USER_ID]
+def delete_imported_data(
+    session: Session, *, user_id: UUID | None = None, connection_id: UUID | None = None
+) -> None:
+    user_id = user_id or LOCAL_USER_ID  # existing callers delete for the owner
+    source_filter = [EmailSource.user_id == user_id]
     if connection_id is not None:
         source_filter.append(EmailSource.mail_connection_id == connection_id)
     sources = select(EmailSource.id).where(*source_filter)
     events = select(SourceEvent.id).where(
-        SourceEvent.email_source_id.in_(sources), SourceEvent.user_id == LOCAL_USER_ID
+        SourceEvent.email_source_id.in_(sources), SourceEvent.user_id == user_id
     )
     source_ids = set(session.scalars(sources))
-    impact = transaction_impact(session, user_id=LOCAL_USER_ID, source_ids=source_ids)
+    impact = transaction_impact(session, user_id=user_id, source_ids=source_ids)
     affected_transactions = impact.affected
     # Private decision snapshots are derived financial data, not operational audit.
     session.execute(
         delete(ReviewDecision).where(
-            ReviewDecision.user_id == LOCAL_USER_ID, ReviewDecision.id.in_(impact.decisions)
+            ReviewDecision.user_id == user_id, ReviewDecision.id.in_(impact.decisions)
         )
     )
     # A canonical obligation may also be evidenced by a remaining import mode/account.
@@ -44,13 +47,13 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
     # erase a bill still supported by another imported notification.
     for commitment in session.scalars(
         select(Commitment).where(
-            Commitment.user_id == LOCAL_USER_ID, Commitment.source_event_id.in_(events)
+            Commitment.user_id == user_id, Commitment.source_event_id.in_(events)
         )
     ):
         replacement = session.scalar(
             select(SourceEvent.id)
             .where(
-                SourceEvent.user_id == LOCAL_USER_ID,
+                SourceEvent.user_id == user_id,
                 SourceEvent.email_source_id.not_in(sources),
                 SourceEvent.event_type == ("emi_due" if commitment.kind == "emi" else "bill_due"),
                 SourceEvent.amount_minor == commitment.amount_minor,
@@ -86,16 +89,14 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
         from finboy.services.ledger.persist import as_event, refresh_review_confidence
 
         for transaction in session.scalars(
-            select(Transaction).where(
-                Transaction.user_id == LOCAL_USER_ID, Transaction.id.in_(shared)
-            )
+            select(Transaction).where(Transaction.user_id == user_id, Transaction.id.in_(shared))
         ):
             pairs = list(
                 session.execute(
                     select(SourceEvent, EmailSource)
                     .join(EmailSource, EmailSource.id == SourceEvent.email_source_id)
                     .where(
-                        SourceEvent.user_id == LOCAL_USER_ID,
+                        SourceEvent.user_id == user_id,
                         SourceEvent.transaction_id == transaction.id,
                     )
                 )
@@ -121,7 +122,7 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
             elif transaction.dataset == "household":
                 refresh_review_confidence(
                     session,
-                    user_id=LOCAL_USER_ID,
+                    user_id=user_id,
                     transaction_id=transaction.id,
                     preserve_status=False,
                 )
@@ -153,7 +154,7 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
     if orphans:
         session.execute(
             update(Commitment)
-            .where(Commitment.user_id == LOCAL_USER_ID, Commitment.paid_transaction_id.in_(orphans))
+            .where(Commitment.user_id == user_id, Commitment.paid_transaction_id.in_(orphans))
             .values(paid_transaction_id=None, status="upcoming", user_resolved=False)
         )
         for column in (
@@ -167,7 +168,7 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
             session.execute(
                 update(Transaction)
                 .where(
-                    Transaction.user_id == LOCAL_USER_ID,
+                    Transaction.user_id == user_id,
                     column.in_(orphans),
                     Transaction.id.not_in(orphans),
                 )
@@ -177,16 +178,15 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
             delete(TransactionRevision).where(TransactionRevision.transaction_id.in_(orphans))
         )
         session.execute(
-            delete(Transaction).where(
-                Transaction.id.in_(orphans), Transaction.user_id == LOCAL_USER_ID
-            )
+            delete(Transaction).where(Transaction.id.in_(orphans), Transaction.user_id == user_id)
         )
     from finboy.services.ledger.persist import refresh_links
 
-    refresh_links(session, LOCAL_USER_ID)
-    # The cache has no source/user FK; this single-user app must clear it on privacy deletion.
+    refresh_links(session, user_id)
+    # The cache has no source/user FK, so privacy deletion clears it for every household;
+    # it is regenerable and keeps no household identity.
     session.execute(delete(ExtractionCache))
-    runs = [ImportRun.user_id == LOCAL_USER_ID, ImportRun.status.in_(["queued", "running"])]
+    runs = [ImportRun.user_id == user_id, ImportRun.status.in_(["queued", "running"])]
     if connection_id:
         runs.append(ImportRun.mail_connection_id == connection_id)
     session.execute(
@@ -198,5 +198,6 @@ def delete_imported_data(session: Session, *, connection_id: UUID | None = None)
         session,
         "data.deleted",
         "connection" if connection_id else "user",
-        connection_id or LOCAL_USER_ID,
+        connection_id or user_id,
+        user_id=user_id,
     )

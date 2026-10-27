@@ -43,7 +43,7 @@ def pg() -> Iterator[sessionmaker[Session]]:
     if (
         settings.environment == "production"
         or url.host not in {"127.0.0.1", "localhost"}
-        or url.database not in {"finboy_pilot", "finboy_test"}
+        or url.database not in {"finboy_pilot", "finboy_signup", "finboy_test"}
     ):
         pytest.fail("Pilot integration tests require the disposable local finboy_pilot database")
     engine = build_engine(settings)

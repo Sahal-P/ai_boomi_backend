@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from finboy.api.deps import current_user_id
 from finboy.core.config import Settings
 from finboy.db.models.core import User
 from finboy.db.models.ledger import (
@@ -36,7 +37,6 @@ class MailboxAPI:
 @pytest.fixture
 def mailbox_api(monkeypatch, tmp_path) -> Iterator[MailboxAPI]:
     """Every PostgreSQL finance test starts with the real rendered 42-message pipeline."""
-    from finboy.api.v1 import money, transactions
     from finboy.services.money import engine as money_engine
 
     settings = Settings()
@@ -55,12 +55,11 @@ def mailbox_api(monkeypatch, tmp_path) -> Iterator[MailboxAPI]:
         "finboy_ux_ui",
         "finboy_capture",
         "finboy_pilot",
+        "finboy_signup",
     }, "Use a named local disposable FinBoy database"
     factory = sessionmaker(engine, expire_on_commit=False)
     user_id, run_id = uuid4(), uuid4()
     monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "rules")
-    monkeypatch.setattr(money, "LOCAL_USER_ID", user_id)
-    monkeypatch.setattr(transactions, "LOCAL_USER_ID", user_id)
     monkeypatch.setattr(money_engine, "today_ist", lambda: date(2026, 10, 28))
     with factory.begin() as session:
         session.add(User(id=user_id, display_name="Synthetic money test"))
@@ -73,6 +72,7 @@ def mailbox_api(monkeypatch, tmp_path) -> Iterator[MailboxAPI]:
             yield session
 
     app.dependency_overrides[get_session] = session_dependency
+    app.dependency_overrides[current_user_id] = lambda: user_id
     try:
         directory = tmp_path / "rendered_mailbox"
         render(date(2026, 10, 28), directory)

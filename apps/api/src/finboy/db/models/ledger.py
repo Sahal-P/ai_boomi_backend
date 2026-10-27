@@ -57,7 +57,8 @@ class EmailSource(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "source", "provider_message_id"),
         CheckConstraint(
-            "source IN ('gmail','eml_upload','demo_mailbox','whatsapp_image','whatsapp_voice')",
+            "source IN ('gmail','eml_upload','demo_mailbox','whatsapp_image','whatsapp_voice',"
+            "'manual_entry')",
             name="source",
         ),
         CheckConstraint(

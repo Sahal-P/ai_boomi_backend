@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from finboy.core.config import LOCAL_USER_ID
+from finboy.api.deps import CurrentUser
 from finboy.db.models.mail import ImportRun
 from finboy.db.session import get_session
 from finboy.services.imports.runner import create_run, run_import
@@ -70,10 +70,11 @@ def start_eml(
     request: Request,
     background: BackgroundTasks,
     session: DB,
+    user_id: CurrentUser,
     messages: Annotated[list[InboundMessage], Depends(uploads)],
 ) -> dict | JSONResponse:
     try:
-        run = create_run(session, mode="eml_upload")
+        run = create_run(session, mode="eml_upload", user_id=user_id)
         background.add_task(
             run_import, request.app.state.engine, request.app.state.settings, run.id, messages
         )
@@ -87,11 +88,12 @@ def start_eml(
 def list_imports(
     request: Request,
     session: DB,
+    user_id: CurrentUser,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0, le=1000000)] = 0,
 ) -> dict:
-    recover_interrupted(session, request.app.state.engine, LOCAL_USER_ID)
-    condition = [ImportRun.user_id == LOCAL_USER_ID, ImportRun.mode != "demo_mailbox"]
+    recover_interrupted(session, request.app.state.engine, user_id)
+    condition = [ImportRun.user_id == user_id, ImportRun.mode != "demo_mailbox"]
     total = session.scalar(select(func.count()).select_from(ImportRun).where(*condition)) or 0
     rows = list(
         session.scalars(
@@ -110,29 +112,35 @@ def list_imports(
 
 
 @router.get("/{run_id}", response_model=ImportView)
-def get_import(run_id: UUID, request: Request, session: DB) -> ImportView:
-    recover_interrupted(session, request.app.state.engine, LOCAL_USER_ID)
-    return import_view(session, run_for(session, run_id, LOCAL_USER_ID))
+def get_import(run_id: UUID, request: Request, session: DB, user_id: CurrentUser) -> ImportView:
+    recover_interrupted(session, request.app.state.engine, user_id)
+    return import_view(session, run_for(session, run_id, user_id))
 
 
 @router.get("/{run_id}/issues", response_model=IssuePage)
 def list_issues(
     run_id: UUID,
     session: DB,
+    user_id: CurrentUser,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0, le=1000000)] = 0,
 ) -> dict:
-    return issues(session, user_id=LOCAL_USER_ID, run_id=run_id, limit=limit, offset=offset)
+    return issues(session, user_id=user_id, run_id=run_id, limit=limit, offset=offset)
 
 
 @router.post("/{run_id}/retry", status_code=202, response_model=ImportStarted)
 def retry(
-    run_id: UUID, body: RetryRequest, request: Request, background: BackgroundTasks, session: DB
+    run_id: UUID,
+    body: RetryRequest,
+    request: Request,
+    background: BackgroundTasks,
+    session: DB,
+    user_id: CurrentUser,
 ) -> dict:
-    original, source_ids = retry_sources(
-        session, user_id=LOCAL_USER_ID, run_id=run_id, request=body
+    original, source_ids = retry_sources(session, user_id=user_id, run_id=run_id, request=body)
+    run = create_run(
+        session, mode="gmail", connection_id=original.mail_connection_id, user_id=user_id
     )
-    run = create_run(session, mode="gmail", connection_id=original.mail_connection_id)
     run.retry_source_ids = [str(key) for key in source_ids]
     session.commit()
     background.add_task(run_import, request.app.state.engine, request.app.state.settings, run.id)
@@ -140,12 +148,12 @@ def retry(
 
 
 @router.post("/{run_id}/cancel", response_model=ImportView)
-def cancel(run_id: UUID, body: VersionRequest, session: DB) -> ImportView:
+def cancel(run_id: UUID, body: VersionRequest, session: DB, user_id: CurrentUser) -> ImportView:
     # Progress changes continuously; a monotonic cancellation flag cannot overwrite it.
     from finboy.services.ingestion.pipeline import _user_lock
 
-    _user_lock(session, LOCAL_USER_ID)
-    row = run_for(session, run_id, LOCAL_USER_ID)
+    _user_lock(session, user_id)
+    row = run_for(session, run_id, user_id)
     if row.status not in {"queued", "running"}:
         return import_view(session, row)
     row.cancel_requested = True
@@ -166,10 +174,15 @@ def cancel(run_id: UUID, body: VersionRequest, session: DB) -> ImportView:
 
 @router.post("/{run_id}/continue", status_code=202, response_model=ImportStarted)
 def continue_scan(
-    run_id: UUID, body: VersionRequest, request: Request, background: BackgroundTasks, session: DB
+    run_id: UUID,
+    body: VersionRequest,
+    request: Request,
+    background: BackgroundTasks,
+    session: DB,
+    user_id: CurrentUser,
 ) -> dict:
-    require_version(session, LOCAL_USER_ID, body.expected_version)
-    original = run_for(session, run_id, LOCAL_USER_ID)
+    require_version(session, user_id, body.expected_version)
+    original = run_for(session, run_id, user_id)
     if (
         original.mode != "gmail"
         or original.status != "completed"
@@ -183,7 +196,7 @@ def continue_scan(
         original.window_start,
         original.window_end,
     )
-    run = create_run(session, mode="gmail", connection_id=connection_id)
+    run = create_run(session, mode="gmail", connection_id=connection_id, user_id=user_id)
     run.resume_page_token_encrypted, run.window_start, run.window_end = token, start, end
     session.commit()
     background.add_task(run_import, request.app.state.engine, request.app.state.settings, run.id)

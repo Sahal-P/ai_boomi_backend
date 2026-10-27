@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    LargeBinary,
     Text,
     UniqueConstraint,
     func,
@@ -35,6 +36,8 @@ class WhatsAppBinding(Base):
     # Pilot households only: the consent card was accepted / reminders were opted into.
     consented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reminders_opt_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Self-serve households only: Fernet copy of the number for opted-in reminder templates.
+    encrypted_sender: Mapped[bytes | None] = mapped_column(LargeBinary)
 
 
 class WhatsAppReceipt(Base):
@@ -50,7 +53,8 @@ class WhatsAppReceipt(Base):
             "error_code IN ('provider_unavailable','invalid_audio','assistant_unavailable',"
             "'processing_failed','window_expired','interrupted','disabled','stale_message',"
             "'invalid_image','capture_unavailable','capture_busy','prompt_expired',"
-            "'record_changed','amount_unclear','statement_unavailable')",
+            "'record_changed','amount_unclear','statement_unavailable','signup_full',"
+            "'login_expired','usage_limit','web_not_available')",
             name="error_code",
         ),
         Index("ix_whatsapp_receipts_state_received_at", "state", "received_at"),
@@ -96,7 +100,7 @@ class WhatsAppPrompt(Base):
     __table_args__ = (
         CheckConstraint(
             "purpose IN ('consent','confirm','change_amount','undo','due_paid','due_repeat',"
-            "'reminder_opt_in')",
+            "'reminder_opt_in','web_login','link')",
             name="purpose",
         ),
         CheckConstraint("state IN ('open','answered','expired','superseded')", name="state"),
@@ -114,6 +118,9 @@ class WhatsAppPrompt(Base):
     )
     decision_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("review_decisions.id", ondelete="CASCADE"), index=True
+    )
+    login_request_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("login_requests.id", ondelete="CASCADE"), index=True
     )
     fingerprint: Mapped[str | None] = mapped_column(Text)
     state: Mapped[str] = mapped_column(Text, server_default="open")
