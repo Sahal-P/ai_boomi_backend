@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from finboy.core.config import Settings
-from finboy.core.errors import ProviderUnavailable
+from finboy.core.errors import AccessError, ProviderUnavailable
 from finboy.core.languages import Language
 from finboy.db.models.core import User
 from finboy.db.models.whatsapp import (
@@ -19,7 +19,7 @@ from finboy.db.models.whatsapp import (
     WhatsAppPrompt,
     WhatsAppReceipt,
 )
-from finboy.services.accounts import households, login
+from finboy.services.accounts import households, login, usage
 from finboy.services.assistant import service as assistant
 from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
@@ -226,6 +226,20 @@ def process_question(
             ):
                 receipts.finish(session, receipt_id, error=signup.join(conversation))
                 return
+            if self_serve and household.consented_at is not None and question.kind != "button":
+                try:
+                    usage.use(
+                        session,
+                        settings,
+                        binding.user_id,
+                        "voice" if question.kind == "audio" else "ai",
+                    )
+                except AccessError:
+                    sent = conversation.send(conversation.words.USAGE_LIMIT)
+                    receipts.finish(
+                        session, receipt_id, error=conversation.done(sent, "usage_limit")
+                    )
+                    return
             if is_pilot or self_serve:
                 receipts.finish(session, receipt_id, error=pilot.handle(conversation))
                 return

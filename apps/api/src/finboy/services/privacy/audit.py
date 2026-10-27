@@ -28,10 +28,18 @@ EVENTS = frozenset(
         "data.exported",
         "pilot.enrolled",
         "pilot.erased",
+        "account.deleted",
     }
 )
 METADATA = {
-    "mode": {"gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice"},
+    "mode": {
+        "gmail",
+        "eml_upload",
+        "demo_mailbox",
+        "whatsapp_image",
+        "whatsapp_voice",
+        "manual_entry",
+    },
     "result": {"success", "failure"},
 }
 

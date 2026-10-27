@@ -37,7 +37,9 @@ from finboy.services.ledger.persist import persist_event
 
 @dataclass(frozen=True)
 class InboundMessage:
-    source: Literal["gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice"]
+    source: Literal[
+        "gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice", "manual_entry"
+    ]
     provider_message_id: str
     raw_rfc822: bytes
     received_at: datetime | None = None
@@ -77,10 +79,11 @@ def _prepare(
         mode = os.environ.get("FINBOY_EXTRACTION_MODE", "live")
         model = settings.openai_extraction_model
         key = settings.openai_api_key
-        # FinBoy renders voice lines itself in the rules format: no model call, nothing cached.
+        # FinBoy renders voice and typed entries itself in the rules format: no model call,
+        # nothing cached.
         if (
             mode == "rules"
-            or inbound.source == "whatsapp_voice"
+            or inbound.source in {"whatsapp_voice", "manual_entry"}
             or not model
             or mode != "offline"
             and (key is None or not key.get_secret_value())

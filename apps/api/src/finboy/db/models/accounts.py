@@ -85,7 +85,9 @@ class UsageCounter(Base):
     __tablename__ = "usage_counters"
     __table_args__ = (CheckConstraint("kind IN ('ai','voice')", name="kind"),)
 
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     day: Mapped[date] = mapped_column(Date, primary_key=True)
     kind: Mapped[str] = mapped_column(Text, primary_key=True)
     count: Mapped[int] = mapped_column(Integer, server_default=text("0"))

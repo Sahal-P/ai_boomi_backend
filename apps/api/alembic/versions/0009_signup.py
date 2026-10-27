@@ -139,7 +139,10 @@ def upgrade() -> None:
         sa.Column("count", sa.Integer(), server_default=sa.text("0"), nullable=False),
         sa.CheckConstraint("kind IN ('ai','voice')", name=op.f("ck_usage_counters_kind")),
         sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"], name=op.f("fk_usage_counters_user_id_users")
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_usage_counters_user_id_users"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("user_id", "day", "kind", name=op.f("pk_usage_counters")),
     )

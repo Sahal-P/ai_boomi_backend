@@ -114,7 +114,9 @@ class SimulationRequest(BaseModel):
 class TransactionSource(BaseModel):
     id: UUID
     email_source_id: UUID
-    source: Literal["gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice"]
+    source: Literal[
+        "gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice", "manual_entry"
+    ]
     sender_domain: str
     received_at: datetime
     classification: str

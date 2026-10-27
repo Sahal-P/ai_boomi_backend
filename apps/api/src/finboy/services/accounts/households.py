@@ -3,7 +3,7 @@
 A household has no personal name. Sign-in identities are digests and masked labels only.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from sqlalchemy import delete, func, select, text, update
@@ -26,6 +26,7 @@ from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt
 
 # Households that started on WhatsApp but have not agreed yet; newer unknown numbers wait.
 PENDING_LIMIT = 200
+STALE_PENDING = timedelta(days=7)
 SIGNUP_LOCK = 0x46424F59534E55  # serializes "is there room?" with the agreement that fills it
 
 
@@ -165,3 +166,22 @@ def erase_household(session: Session, user_id: UUID) -> dict[str, int]:
     user.session_epoch += 1
     user.data_version += 1
     return counts
+
+
+def tidy(session: Session) -> int:
+    """Forget households that never agreed within a week, and finished sign-in attempts."""
+    now = datetime.now(UTC)
+    stale = session.scalars(
+        select(User.id)
+        .where(
+            User.joined_via.is_not(None),
+            User.consented_at.is_(None),
+            User.deleted_at.is_(None),
+            User.created_at < now - STALE_PENDING,
+        )
+        .limit(50)
+    ).all()
+    for user_id in stale:
+        discard_pending(session, user_id)
+    session.execute(delete(LoginRequest).where(LoginRequest.created_at < now - timedelta(days=1)))
+    return len(stale)

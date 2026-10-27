@@ -246,11 +246,13 @@ def payment_line(statement: Statement, received_at: datetime) -> str:
     return line + (f" {local:%H:%M}" if statement.day == local.date() else "")
 
 
-def as_message(line: str, received_at: datetime) -> bytes:
-    """Wrap the line so voice entries reuse masking, grounding and duplicate matching."""
+def as_message(
+    line: str, received_at: datetime, *, sender: str = SENDER, subject: str = "WhatsApp voice note"
+) -> bytes:
+    """Wrap the line so voice and typed entries reuse masking, grounding and duplicate matching."""
     message = EmailMessage()
-    message["From"] = SENDER
-    message["Subject"] = "WhatsApp voice note"
+    message["From"] = sender
+    message["Subject"] = subject
     message["Date"] = format_datetime(received_at)
     message.set_content(line)
     return message.as_bytes()

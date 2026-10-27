@@ -23,6 +23,7 @@ from finboy.services.whatsapp import statement
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable
 
+ENTRY_SENDER = "entry@finboy.invalid"
 Outcome = Literal["saved", "already_recorded", "no_payment", "busy", "invalid_image", "unavailable"]
 RECEIPT_ERRORS: dict[Outcome, str] = {
     "busy": "capture_busy",
@@ -92,12 +93,35 @@ def record_voice(
     )
 
 
+def record_entry(
+    engine: Engine,
+    settings: Settings,
+    *,
+    user_id: UUID,
+    entry_id: str,
+    line: str,
+    received_at: datetime,
+    category: Category | None,
+) -> Capture:
+    """Quick add on the website: one typed or spoken line through review, like a voice note."""
+    return _import_one(
+        engine,
+        settings,
+        user_id=user_id,
+        source="manual_entry",
+        message_id=entry_id,
+        raw=statement.as_message(line, received_at, sender=ENTRY_SENDER, subject="Added in FinBoy"),
+        received_at=received_at,
+        category_hint=category,
+    )
+
+
 def _import_one(
     engine: Engine,
     settings: Settings,
     *,
     user_id: UUID,
-    source: Literal["whatsapp_image", "whatsapp_voice"],
+    source: Literal["whatsapp_image", "whatsapp_voice", "manual_entry"],
     message_id: str,
     raw: bytes,
     received_at: datetime,

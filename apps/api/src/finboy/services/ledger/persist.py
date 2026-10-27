@@ -392,11 +392,11 @@ def persist_event(
     excluded = {
         i for i, item in enumerate(transactions) if "dedupe" in (item.user_locked_fields or [])
     }
-    # Each voice note is the household's own separate statement ("50 to the milkman" daily),
-    # so it never auto-merges; the household confirms every one by button.
+    # Each voice note or typed entry is the household's own separate statement ("50 to the
+    # milkman" daily), so it never auto-merges; the household confirms every one.
     match = (
         Match()
-        if source.source == "whatsapp_voice"
+        if source.source in {"whatsapp_voice", "manual_entry"}
         else choose_match(event, existing_events, excluded=excluded)
     )
     if match.index is not None:

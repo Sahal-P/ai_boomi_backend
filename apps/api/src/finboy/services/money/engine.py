@@ -109,7 +109,14 @@ class TransactionView(BaseModel):
     merged_into_id: UUID | None = None
     dataset: Literal["household", "demo", "quarantined"] = "household"
     source_modes: list[
-        Literal["gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice"]
+        Literal[
+            "gmail",
+            "eml_upload",
+            "demo_mailbox",
+            "whatsapp_image",
+            "whatsapp_voice",
+            "manual_entry",
+        ]
     ] = Field(default_factory=list)
     source_count: int = 0
     extraction_quality: Literal["complete", "partial"] = "partial"

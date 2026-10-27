@@ -16,7 +16,8 @@ from finboy.services.mail.security import MailError
 from finboy.services.ux.decisions import VersionRequest
 from finboy.services.ux.state import TaskError, data_version, require_version
 
-WHATSAPP_SOURCES = {"whatsapp_image", "whatsapp_voice"}
+# Nothing kept to retry from: WhatsApp messages and typed entries are never stored.
+WHATSAPP_SOURCES = {"whatsapp_image", "whatsapp_voice", "manual_entry"}
 
 
 class ImportView(BaseModel):

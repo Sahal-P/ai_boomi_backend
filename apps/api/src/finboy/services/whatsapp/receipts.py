@@ -72,6 +72,7 @@ def _self_serve(
         or households.pending_count(session) >= households.PENDING_LIMIT
     ):
         return None
+    households.tidy(session)  # bounded; keeps pending sign-ups from piling up
     user = households.new_household(session, joined_via="whatsapp", agreed=False)
     created = session.scalar(
         insert(WhatsAppBinding)
