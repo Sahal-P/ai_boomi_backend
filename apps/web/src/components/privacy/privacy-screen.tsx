@@ -6,6 +6,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { LoadingPanel } from "@/components/feedback/states";
+import { AccountSection } from "@/components/privacy/account-section";
 import { DeletionDialog } from "@/components/privacy/deletion-dialog";
 import { ExportButton } from "@/components/privacy/export-button";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export function PrivacyScreen() {
 
       <div className="grid items-start gap-5 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-5">
+          <AccountSection />
           <section aria-labelledby="access-title" className="surface rounded-3xl p-5 sm:p-6">
             <h2 id="access-title" className="text-lg font-semibold">Gmail access</h2>
             {connections.status === "loading" && <LoadingPanel className="mt-3 shadow-none" label="Loading connected accounts…" />}

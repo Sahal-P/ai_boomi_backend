@@ -14,7 +14,7 @@ test("a signed-out import link returns to that import after sign-in, via the sam
 
 test("sign-in explains a wrong password without leaving the page", async ({ page, api }) => {
   await page.goto("/review");
-  await expect(page.getByText("After signing in you'll go straight back to Review.")).toBeVisible();
+  await expect(page.getByText("Sign in or create your account — you'll go straight on to Review.")).toBeVisible();
   await page.getByLabel("Household password").fill("not-the-password");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "That password didn't work" })).toBeVisible();

@@ -178,6 +178,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
               <option value="eml_upload">Uploaded emails</option>
               <option value="whatsapp_image">WhatsApp screenshots</option>
               <option value="whatsapp_voice">WhatsApp voice notes</option>
+              <option value="manual_entry">Added by you</option>
             </select>
           </div>
         )}
@@ -233,6 +234,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
               <option value="eml_upload">Uploaded emails</option>
               <option value="whatsapp_image">WhatsApp screenshots</option>
               <option value="whatsapp_voice">WhatsApp voice notes</option>
+              <option value="manual_entry">Added by you</option>
             </select>
           </div>
         )}

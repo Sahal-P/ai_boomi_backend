@@ -25,9 +25,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useHealth } from "@/hooks/use-health";
+import type { Household } from "@/lib/api/auth";
 import { useSignOut } from "@/hooks/use-household";
 import { discardUnsavedWork, hasUnsavedWork } from "@/lib/unsaved-work";
 import { cn } from "@/lib/utils";
+
+/** How this household signs in, masked: "WhatsApp •••• 4821 · Google s***@***.com". */
+export function householdLine(household: Household | null): string {
+  if (!household) return "Private records";
+  const ways = [
+    household.whatsapp && household.whatsapp !== "linked" ? `WhatsApp ${household.whatsapp}` : null,
+    household.whatsapp === "linked" ? "WhatsApp" : null,
+    household.google ? `Google ${household.google}` : null,
+  ].filter(Boolean);
+  if (ways.length) return ways.join(" · ");
+  return household.owner ? "Owner · private records" : "Private records";
+}
 
 /** API reachability only. Data freshness is shown separately on Overview and Sources. */
 export function ServiceStatus({ className }: { className?: string }) {
@@ -100,13 +113,13 @@ function SignOutConfirm({ state }: { state: ReturnType<typeof useGuardedSignOut>
 
 /** Desktop sidebar footer: household identity, service status and account actions. */
 export function AccountPanel() {
-  const { required } = useHouseholdAccess();
+  const { required, household } = useHouseholdAccess();
   const signOut = useGuardedSignOut();
   return (
     <div className="mt-4 space-y-3 border-t border-white/70 px-2 pt-4">
       <div>
         <p className="text-sm font-semibold text-ink">Your household</p>
-        <p className="text-xs text-ink-soft">Private records · manual scans</p>
+        <p className="text-xs break-words text-ink-soft">{householdLine(household)}</p>
       </div>
       <ServiceStatus />
       <div className="flex flex-wrap gap-1">
@@ -137,7 +150,7 @@ export function AccountPanel() {
 
 /** Phone header account menu; keeps sign-out out of the content area. */
 export function AccountMenu() {
-  const { required } = useHouseholdAccess();
+  const { required, household } = useHouseholdAccess();
   const signOut = useGuardedSignOut();
   return (
     <>
@@ -155,6 +168,9 @@ export function AccountMenu() {
         <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2">
           <DropdownMenuLabel className="px-2 py-1.5">
             <span className="block text-sm font-semibold text-ink">Your household</span>
+            <span className="block text-xs font-normal break-words text-ink-soft">
+              {householdLine(household)}
+            </span>
             <ServiceStatus className="mt-1 font-normal" />
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

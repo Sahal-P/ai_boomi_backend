@@ -27,7 +27,9 @@ export function HouseholdGate({ children }: { children: ReactNode }) {
     );
   }
   return (
-    <HouseholdContext value={{ required: session.required }}>
+    <HouseholdContext
+      value={{ required: session.required, household: session.household, signIn: session.signIn }}
+    >
       {children}
       <SessionExpiredDialog />
     </HouseholdContext>

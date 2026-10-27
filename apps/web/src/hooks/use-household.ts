@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getSession, signIn, signOut } from "@/lib/api/auth";
+import { getSession, type SessionView, signIn, signOut } from "@/lib/api/auth";
 import { isAbort } from "@/lib/api/http";
 import { describeProblem, type Problem } from "@/lib/messages";
 import { emitSessionEvent } from "@/lib/session-events";
@@ -14,6 +14,7 @@ export function useHouseholdSession() {
   const router = useRouter();
   const [state, setState] = useState<HouseholdState>("checking");
   const [required, setRequired] = useState(false);
+  const [view, setView] = useState<SessionView | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -27,6 +28,7 @@ export function useHouseholdSession() {
           return;
         }
         setRequired(session.required);
+        setView(session);
         setState("ready");
       },
       (error: unknown) => {
@@ -40,6 +42,8 @@ export function useHouseholdSession() {
   return {
     state,
     required,
+    household: view?.household ?? null,
+    signIn: view?.sign_in ?? null,
     problem,
     retry: () => {
       setState("checking");

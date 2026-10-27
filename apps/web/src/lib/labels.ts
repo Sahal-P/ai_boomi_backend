@@ -68,11 +68,13 @@ export const sourceLabels: Record<SourceMode, string> = {
   demo_mailbox: "Sample mailbox",
   whatsapp_image: "WhatsApp screenshot",
   whatsapp_voice: "WhatsApp voice note",
+  manual_entry: "Added by you",
 };
 
 const ownMessages: Partial<Record<SourceMode, string>> = {
   whatsapp_image: "Your WhatsApp screenshot",
   whatsapp_voice: "Your WhatsApp voice note",
+  manual_entry: "Added by you in FinBoy",
 };
 
 /** WhatsApp sources carry a placeholder sender domain; name the household's own message instead. */
@@ -148,9 +150,12 @@ export function screenshotOnly(row: { source_modes?: readonly SourceMode[] }): b
   return onlyFrom(row, "whatsapp_image");
 }
 
-/** Records the household told FinBoy about in a WhatsApp voice note or message. */
+/** Records the household told FinBoy about itself: a WhatsApp voice note or a quick add. */
 export function voiceOnly(row: { source_modes?: readonly SourceMode[] }): boolean {
-  return onlyFrom(row, "whatsapp_voice");
+  return (
+    Boolean(row.source_modes?.length) &&
+    Boolean(row.source_modes?.every((item) => item === "whatsapp_voice" || item === "manual_entry"))
+  );
 }
 
 export function extractionLabel(row: Pick<Transaction, "extraction_quality" | "source_modes">): string {

@@ -4,6 +4,7 @@ import { ArrowRight, Eye, History, Mail, Pause, Play, RefreshCw } from "lucide-r
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { LoadingPanel } from "@/components/feedback/states";
@@ -32,6 +33,7 @@ const connectionState: Record<
 
 export function SourcesScreen({ errorCode, intent }: { errorCode: string | null; intent: string | null }) {
   const router = useRouter();
+  const { signIn } = useHouseholdAccess();
   const connections = useResource("connections", (signal) => getConnections(signal));
   const summary = useResource("summary:current", (signal) => getSummary(null, signal));
   const action = useAction();
@@ -99,7 +101,17 @@ export function SourcesScreen({ errorCode, intent }: { errorCode: string | null;
                 onRetry={connections.reload}
               />
             )}
-            {connections.data && !live.length && (
+            {connections.data && !live.length && signIn?.gmail === false && (
+              <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+                Gmail import is invite-only while Google reviews FinBoy. Until then, add money in a
+                tap from{" "}
+                <Link href="/dashboard" className="font-semibold text-ink underline underline-offset-4">
+                  Overview
+                </Link>{" "}
+                or by voice on WhatsApp.
+              </p>
+            )}
+            {connections.data && !live.length && signIn?.gmail !== false && (
               <div className="mt-3">
                 <p className="text-sm leading-relaxed text-ink-soft">
                   Connect read-only Gmail access to scan the last 30 days for bank alerts, receipts

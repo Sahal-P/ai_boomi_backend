@@ -7,6 +7,7 @@ import {
   CircleAlert,
   Inbox,
   ListChecks,
+  Plus,
   RefreshCw,
   ShieldAlert,
   Sparkles,
@@ -14,11 +15,13 @@ import {
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { EmptyState, LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
 import { EmptyMonthArt, NoRecordsArt } from "@/components/illustrations/scenes";
 import { ObligationDialog } from "@/components/money/obligation-dialog";
+import { QuickAdd } from "@/components/money/quick-add";
 import { SimulationPanel } from "@/components/money/simulation-panel";
 import { coverageHeadline } from "@/components/sources/coverage-summary";
 import { Button } from "@/components/ui/button";
@@ -357,6 +360,8 @@ export function OverviewScreen() {
   const summary = useResource(`summary:${period ? `${period.year}-${period.month}` : "current"}`, (signal) => getSummary(period, signal));
   const [obligation, setObligation] = useState<string | null>(null);
   const [changes, setChanges] = useState(0);
+  const [adding, setAdding] = useState(false);
+  const { signIn } = useHouseholdAccess();
   const data = summary.stale ? null : summary.data;
   const [year = 2026, month = 1] = istDate(new Date()).split("-").map(Number);
   const months = Array.from({ length: 18 }, (_, index) => {
@@ -377,6 +382,9 @@ export function OverviewScreen() {
         actions={
           // One row even at 320 px: the period select shrinks on phones instead of wrapping.
           <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+            <Button className="shrink-0" onClick={() => setAdding(true)}>
+              <Plus aria-hidden="true" /> Add
+            </Button>
             <label className="sr-only" htmlFor="overview-period">Period</label>
             <select
               id="overview-period"
@@ -421,19 +429,26 @@ export function OverviewScreen() {
       {empty && !period && (
         <EmptyState
           illustration={<NoRecordsArt />}
-          title="No household records yet"
+          title="Add what you spent today"
           actions={
             <>
-              <Button asChild>
-                <Link href="/sources">Add a source</Link>
+              <Button onClick={() => setAdding(true)}>
+                <Plus aria-hidden="true" /> Add an entry
               </Button>
+              {signIn?.gmail !== false && (
+                <Button asChild variant="outline">
+                  <Link href="/sources">Add a source</Link>
+                </Button>
+              )}
               <Button asChild variant="ghost">
                 <Link href="/demo">Explore sample data</Link>
               </Button>
             </>
           }
         >
-          Connect Gmail or upload emails to build your tracked records. The sample is read-only and never changes your records.
+          Say or type it, like &ldquo;Paid the milkman 500&rdquo; — FinBoy keeps the amount, date and
+          category, and you check it before it&apos;s saved. The sample is read-only and never changes
+          your records.
         </EmptyState>
       )}
       {data && (
@@ -448,6 +463,14 @@ export function OverviewScreen() {
         </>
       )}
       <SimulationPanel current={summary.data && !summary.stale && !period ? summary.data : null} />
+      <QuickAdd
+        open={adding}
+        onOpenChange={setAdding}
+        onSaved={() => {
+          setChanges((value) => value + 1);
+          summary.reload();
+        }}
+      />
       <ObligationDialog
         id={obligation}
         onClose={() => setObligation(null)}

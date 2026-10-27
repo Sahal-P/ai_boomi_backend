@@ -32,7 +32,7 @@ type Tx = {
   linked_transaction_id: string | null;
   merged_into_id: string | null;
   dataset: "household" | "quarantined";
-  source_modes: ("gmail" | "eml_upload" | "whatsapp_image")[];
+  source_modes: ("gmail" | "eml_upload" | "whatsapp_image" | "whatsapp_voice" | "manual_entry")[];
   source_count: number;
   extraction_quality: "complete" | "partial";
   payment_verification: "verified" | "unverified" | "failed";
@@ -120,7 +120,14 @@ export type Scenario = {
   bulk?: number;
   connection?: "active" | "paused" | "error" | "none";
   emptyLedger?: boolean;
+  /** Sign-up round: "Continue with WhatsApp" is offered (Google's script is never loaded in tests). */
+  whatsapp?: boolean;
+  signupOpen?: boolean;
+  /** The signed-in household joined by itself (so it can delete its account). */
+  selfServe?: boolean;
 };
+
+export const LOGIN_CODE = "K7Q2-9FXM";
 
 export class FakeFinBoyApi {
   version = 100;
@@ -135,12 +142,19 @@ export class FakeFinBoyApi {
   delays: { pattern: RegExp; ms: number }[] = [];
   outcomes: string[] = [];
   requests: { method: string; path: string; body: unknown }[] = [];
+  whatsapp: boolean;
+  signupOpen: boolean;
+  selfServe: boolean;
+  login: { state: "pending" | "confirmed" | "declined" | "used"; purpose: string } | null = null;
   private polls = 0;
   private counter = 900;
 
   constructor(scenario: Scenario = {}) {
     this.authRequired = scenario.authRequired ?? true;
     this.signedIn = scenario.signedIn ?? true;
+    this.whatsapp = scenario.whatsapp ?? false;
+    this.signupOpen = scenario.signupOpen ?? true;
+    this.selfServe = scenario.selfServe ?? false;
     const status = scenario.connection ?? "active";
     this.connection =
       status === "none"
@@ -208,6 +222,10 @@ export class FakeFinBoyApi {
   }
 
   // ── Test controls ──────────────────────────────────────────────────────────
+  /** What tapping ✅ or ❌ on the WhatsApp card does to a pending sign-in. */
+  answerWhatsApp(choice: "yes" | "no") {
+    if (this.login?.state === "pending") this.login.state = choice === "yes" ? "confirmed" : "declined";
+  }
   failNext(pattern: RegExp, status: number, code: string, times = 1, method: string | null = null) {
     this.failures.push({ pattern, method, response: envelope(status, code), times });
   }
@@ -232,7 +250,15 @@ export class FakeFinBoyApi {
       failure.times -= 1;
       return failure.response;
     }
-    const open = ["/api/v1/health", "/api/v1/auth/session", "/api/v1/auth/login", "/api/v1/demo"].includes(path);
+    const open = [
+      "/api/v1/health",
+      "/api/v1/auth/session",
+      "/api/v1/auth/login",
+      "/api/v1/auth/whatsapp/start",
+      "/api/v1/auth/whatsapp/status",
+      "/api/v1/auth/whatsapp/complete",
+      "/api/v1/demo",
+    ].includes(path);
     if (this.authRequired && !open && !this.signedIn) return envelope(401, "authentication_required");
     if (["POST", "PATCH", "DELETE"].includes(method) && request.origin !== appOrigin) return envelope(403, "origin_not_allowed");
     return this.route(method, path, query, (body ?? {}) as Json);
@@ -242,7 +268,56 @@ export class FakeFinBoyApi {
     const ok = (value: unknown, status = 200): FakeResponse => ({ status, body: value });
     let match: RegExpMatchArray | null;
     if (path === "/api/v1/health") return ok({ service: "finboy-api", version: "0.1.0", status: "ok", database: "connected" });
-    if (path === "/api/v1/auth/session") return ok({ authenticated: !this.authRequired || this.signedIn, required: this.authRequired });
+    if (path === "/api/v1/auth/session") {
+      const authenticated = !this.authRequired || this.signedIn;
+      return ok({
+        authenticated,
+        required: this.authRequired,
+        household: authenticated
+          ? this.selfServe
+            ? { owner: false, joined_via: "whatsapp", whatsapp: "•••• 0071", google: null }
+            : { owner: true, joined_via: null, whatsapp: null, google: null }
+          : null,
+        sign_in: {
+          whatsapp: this.whatsapp,
+          whatsapp_number: this.whatsapp ? "919000000099" : null,
+          google_client_id: null,
+          password: this.authRequired,
+          signup_open: this.signupOpen,
+          gmail: !this.selfServe,
+        },
+      });
+    }
+    if (path === "/api/v1/auth/whatsapp/start" && method === "POST" && this.whatsapp) {
+      this.login = { state: "pending", purpose: String(body.purpose ?? "sign_in") };
+      return ok({
+        code: LOGIN_CODE,
+        link: `https://wa.me/919000000099?text=FinBoy%20login%20code%20${LOGIN_CODE}`,
+        expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+      });
+    }
+    if (path === "/api/v1/auth/whatsapp/status") {
+      return ok({ state: this.login?.state ?? "expired", signup_open: this.signupOpen });
+    }
+    if (path === "/api/v1/auth/whatsapp/complete" && method === "POST") {
+      if (this.login?.state !== "confirmed") return envelope(410, "login_expired");
+      this.login.state = "used";
+      this.signedIn = true;
+      return ok({ authenticated: true });
+    }
+    if (path === "/api/v1/auth/logout-everywhere" && method === "POST") {
+      this.signedIn = false;
+      return ok({ authenticated: false });
+    }
+    if (path === "/api/v1/account/delete" && method === "POST") {
+      if (!this.selfServe) return envelope(403, "owner_household");
+      this.signedIn = false;
+      this.transactions = [];
+      this.obligations = [];
+      return ok({ deleted: true });
+    }
+    if (path === "/api/v1/entries/preview" && method === "POST") return ok(this.readEntry(String(body.text ?? "")));
+    if (path === "/api/v1/entries" && method === "POST") return ok(this.saveEntry(body));
     if (path === "/api/v1/auth/login" && method === "POST") {
       if (body.password !== PASSWORD) return envelope(401, "invalid_credentials");
       this.signedIn = true;
@@ -569,6 +644,74 @@ export class FakeFinBoyApi {
     decision.undone_at = NOW;
     const version = this.bump();
     return { status: 200, body: { detail: this.detail(decision.before), decision_id: decision.id, data_version: version } };
+  }
+
+  // ── Quick add ──────────────────────────────────────────────────────────────
+  /** A small stand-in for the statement reader: one amount, a verb, nothing stored. */
+  private readEntry(text: string) {
+    const amount = text.match(/\d[\d,]*/)?.[0]?.replaceAll(",", "");
+    const kind = /\?|^how|^what/i.test(text)
+      ? "question"
+      : /due|fees/i.test(text)
+        ? "due"
+        : /got|received|salary/i.test(text)
+          ? "received"
+          : /paid|spent|gave|bought|दिए/i.test(text)
+            ? "spent"
+            : "unclear";
+    const money = kind === "spent" || kind === "received" || kind === "due";
+    return {
+      kind,
+      amount_minor: money && amount ? Number(amount) * 100 : null,
+      counterparty: /milkman/i.test(text) ? "milkman" : null,
+      category: /milk/i.test(text) ? "groceries" : kind === "due" ? "education" : "other",
+      day: money && kind !== "due" ? TODAY : null,
+      due_date: kind === "due" ? "2026-11-10" : null,
+      label: kind === "due" ? "School fees" : null,
+    };
+  }
+
+  private saveEntry(body: Json) {
+    const version = this.bump();
+    if (body.kind === "due") {
+      const id = uuid("70000000", this.counter++);
+      this.obligations.push({
+        ...this.obligations[0],
+        id,
+        kind: "bill",
+        label: String(body.label ?? "Payment"),
+        amount_minor: Number(body.amount_minor),
+        due_date: String(body.due_date),
+        status: "upcoming",
+        liability_state: "upcoming",
+        uncertain: false,
+        version,
+      } as Obligation);
+      return { kind: "due", transaction_id: null, decision_id: null, obligation_id: id, data_version: version };
+    }
+    const row = tx(this.counter++, {
+      direction: body.kind === "received" ? "in" : "out",
+      kind: body.kind === "received" ? "income_other" : "purchase",
+      amount_minor: Number(body.amount_minor),
+      merchant: String(body.counterparty ?? (body.kind === "received" ? "Money in" : "Money out")),
+      category: String(body.category ?? "other"),
+      occurred_at: `${String(body.day ?? TODAY)}T12:00:00+05:30`,
+      status: "confirmed",
+      source_modes: ["manual_entry"],
+    });
+    this.transactions.unshift(row);
+    const decision: Decision = {
+      id: uuid("90000000", this.counter++),
+      action: "confirm",
+      created_at: NOW,
+      undone_at: null,
+      can_undo: true,
+      before: { ...row, status: "needs_review", review_reason: "unverified_payment" },
+      after: version,
+      others: [],
+    };
+    this.decisions.set(row.id, [decision]);
+    return { kind: "record", transaction_id: row.id, decision_id: decision.id, obligation_id: null, data_version: version };
   }
 
   // ── Imports ────────────────────────────────────────────────────────────────

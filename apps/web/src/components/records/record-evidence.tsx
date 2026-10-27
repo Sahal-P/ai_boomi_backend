@@ -1,4 +1,4 @@
-import { ImageIcon, Mail, Mic } from "lucide-react";
+import { ImageIcon, Mail, Mic, PencilLine } from "lucide-react";
 import { formatMoney, type TransactionSource } from "@/lib/api/money";
 import type { TransactionDetail } from "@/lib/api/transactions";
 import { formatDay, formatDayTime } from "@/lib/dates";
@@ -8,7 +8,8 @@ function SourceCard({ source }: { source: TransactionSource }) {
   const entries = Object.entries(source.evidence);
   const screenshot = source.source === "whatsapp_image";
   const voice = source.source === "whatsapp_voice";
-  const Icon = screenshot ? ImageIcon : voice ? Mic : Mail;
+  const typed = source.source === "manual_entry";
+  const Icon = screenshot ? ImageIcon : voice ? Mic : typed ? PencilLine : Mail;
   return (
     <li className="rounded-2xl border p-4">
       <p className="flex items-center gap-2 text-sm font-semibold">
@@ -20,7 +21,13 @@ function SourceCard({ source }: { source: TransactionSource }) {
         {source.extraction_method === "llm" ? " · read with AI assistance" : " · read by a fixed rule"}
       </p>
       <p className="mt-2 text-xs text-ink-soft">
-        {screenshot ? "This screenshot shows" : voice ? "Your voice note says" : "This email says"}{" "}
+        {screenshot
+          ? "This screenshot shows"
+          : voice
+            ? "Your voice note says"
+            : typed
+              ? "You added"
+              : "This email says"}{" "}
         {formatMoney(source.amount_minor)}
         {source.merchant ? ` at ${source.merchant}` : ""}
         {source.occurred_at ? ` on ${formatDay(source.occurred_at)}` : ""}
@@ -47,9 +54,18 @@ export function RecordEvidence({ detail }: { detail: TransactionDetail }) {
     detail.sources.length > 0 && detail.sources.every((source) => source.source === mode);
   const screenshots = only("whatsapp_image");
   const voices = only("whatsapp_voice");
+  const typed = only("manual_entry");
   const whatsapp = detail.sources.some((source) => source.source.startsWith("whatsapp_"));
   const mixed = whatsapp && !screenshots && !voices;
-  const noun = screenshots ? "screenshot" : voices ? "voice note" : mixed ? "notification" : "email";
+  const noun = screenshots
+    ? "screenshot"
+    : voices
+      ? "voice note"
+      : typed
+        ? "entry"
+        : mixed
+          ? "notification"
+          : "email";
   return (
     <section aria-label="Evidence">
       <h3 className="font-semibold">Evidence</h3>

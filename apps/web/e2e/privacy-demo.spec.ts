@@ -54,8 +54,10 @@ test("the sample is read-only, clearly labelled and never touches household endp
   expect(touched.every((item) => item === "GET /api/v1/demo" || item === "GET /api/v1/health")).toBe(true);
 });
 
-test("landing CTAs keep the visitor's intent: sample vs. connecting Gmail", async ({ page }) => {
+test("landing CTAs keep the visitor's intent: sample vs. one-tap sign-up", async ({ page }) => {
   await page.goto("/?graphics=off");
   await expect(page.getByRole("link", { name: "Explore sample data" }).first()).toHaveAttribute("href", "/demo");
-  await expect(page.getByRole("link", { name: /Connect Gmail/ }).first()).toHaveAttribute("href", "/sources?intent=gmail");
+  await expect(page.getByRole("link", { name: "Get started free" }).first()).toHaveAttribute("href", "/login");
+  await expect(page.getByRole("link", { name: "Get started", exact: true })).toHaveAttribute("href", "/login");
+  await expect(page.getByRole("link", { name: /Connect Gmail/ })).toHaveCount(0);
 });

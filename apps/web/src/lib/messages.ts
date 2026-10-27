@@ -36,6 +36,20 @@ const byCode: Record<string, string> = {
   try_later: "Too many sign-in attempts. Wait a minute, then try again.",
   origin_not_allowed: "This page isn't allowed to make that change. Reload FinBoy and try again.",
   origin_denied: "This page isn't allowed to make that change. Reload FinBoy and try again.",
+  // Sign-up round (docs/signup-round/contract.md).
+  invalid_sign_in: "That sign-in didn't work. Nothing changed. Please try again.",
+  sign_in_unavailable: "This way of signing in isn't available right now. Try the other option.",
+  signup_unavailable: "New accounts aren't open yet. You can look around the sample in the meantime.",
+  signups_closed:
+    "FinBoy is full for now. Send JOIN to FinBoy on WhatsApp and we'll message you when there's a place.",
+  login_expired: "That sign-in request expired. Start again — it only takes a moment.",
+  login_declined: "You tapped No on WhatsApp, so nobody was signed in.",
+  already_linked: "That account already belongs to another FinBoy household, so it wasn't linked.",
+  usage_limit: "You've used FinBoy a lot today. Nothing changed. Please try again tomorrow.",
+  owner_household: "The owner's household can't be deleted here.",
+  web_not_available: "Your household uses FinBoy on WhatsApp.",
+  entry_busy: "FinBoy is still saving your last entry. Nothing was added twice. Try again in a moment.",
+  entry_unavailable: "That entry couldn't be saved. Nothing was added. Try again.",
 };
 
 const byKind: Record<Problem["kind"], string> = {

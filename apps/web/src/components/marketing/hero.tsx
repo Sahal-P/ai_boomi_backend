@@ -45,14 +45,14 @@ export function Hero() {
           </p>
           <div className="rise-in mt-9 flex flex-wrap items-center gap-3" style={delay(0.7)}>
             <Link
-              href="/sources?intent=gmail"
+              href="/login"
               className="group inline-flex h-14 items-center gap-3 rounded-full bg-ink p-1 pr-7 text-sm font-semibold text-white shadow-lift transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
             >
               {/* The reference's chevron capsule, as decoration on an ordinary link. */}
               <span className="grid h-12 w-16 place-items-center rounded-full bg-white text-ink transition-transform duration-300 ease-out-expo group-hover:translate-x-0.5">
                 <ChevronsRight className="size-5" aria-hidden="true" />
               </span>
-              Connect Gmail
+              Get started free
             </Link>
             <Link
               href="/demo"
