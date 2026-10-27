@@ -62,6 +62,8 @@ def test_quick_add_previews_then_saves_with_one_tap(world) -> None:
                 select(EmailSource).where(EmailSource.user_id == phone.household())
             ).one()
             assert source.source == "manual_entry"
+        # A typed entry is not an import, so the Sources history stays empty.
+        assert browser.get("/api/v1/imports").json()["total"] == 0
 
         # Save is a decision like any other, so it can be undone.
         undone = browser.post(

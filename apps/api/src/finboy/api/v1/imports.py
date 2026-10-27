@@ -93,7 +93,11 @@ def list_imports(
     offset: Annotated[int, Query(ge=0, le=1000000)] = 0,
 ) -> dict:
     recover_interrupted(session, request.app.state.engine, user_id)
-    condition = [ImportRun.user_id == user_id, ImportRun.mode != "demo_mailbox"]
+    # Quick adds are single typed entries, not imports worth listing.
+    condition = [
+        ImportRun.user_id == user_id,
+        ImportRun.mode.not_in(["demo_mailbox", "manual_entry"]),
+    ]
     total = session.scalar(select(func.count()).select_from(ImportRun).where(*condition)) or 0
     rows = list(
         session.scalars(
