@@ -92,6 +92,13 @@ CHANGE_ASK = "✏️ सही रकम बोलिए या लिखिए�
 CHANGE_ASK_SPEECH = "सही रकम बोलिए, जैसे चार सौ।"
 AMOUNT_UNCLEAR = "रकम समझ नहीं आई। सिर्फ़ रकम बोलिए या लिखिए, जैसे: 400"
 UNAVAILABLE = "अभी यह नहीं हो पाया। थोड़ी देर बाद फिर भेजिए।"
+VOICE_UNCLEAR = "आवाज़ साफ़ नहीं आई। फिर से बोलिए या लिखिए।"
+ADDED_SPEECH, NOT_ADDED_SPEECH = "जोड़ दिया।", "नहीं जोड़ा।"
+REMEMBERED_SPEECH = "याद रख लिया।"
+PAID_REPEAT_SPEECH = "जोड़ दिया। अगले महीने भी यही देना है?"
+DUE_LABEL = "किस्त"
+STOP_REPLY = 'FinBoy के जवाब बंद कर दिए। फिर से शुरू करने के लिए "शुरू" लिखिए।'
+START_REPLY = 'FinBoy फिर से शुरू हो गया। बोलकर बताइए, जैसे: "दूधवाले को 500 दिए"।'
 
 
 def day_label(day: date, today: date) -> str:
@@ -223,3 +230,41 @@ def week(
     if dues:
         speech += f" आगे {spoken_money(sum(a for a, _, _ in dues), 'hi')} देने हैं।"
     return "\n".join(lines), speech
+
+
+# Sign-up and sign-in (docs/signup-round/contract.md).
+SIGN_IN_YES, CREATE_YES, LINK_YES = "✅ हाँ, मैं ही हूँ", "✅ हाँ, बनाइए", "✅ हाँ, जोड़िए"
+SELF_CONSENT = (
+    "नमस्ते! मैं FinBoy हूँ। 🙏\n"
+    "बोलकर पैसों का हिसाब रखिए।\n\n"
+    "मैं सिर्फ़ यह लिखता हूँ: रकम, तारीख, किसे दिया या किससे मिला, और किस काम के लिए।\n"
+    "आपकी आवाज़, फ़ोटो और संदेश नहीं रखता।\n"
+    "आपका हिसाब सिर्फ़ आप देख सकते हैं। सब मिटाना हो तो FinBoy वेबसाइट पर "
+    "Privacy → Delete my account दबाइए।\n"
+    'बंद करना हो तो "बंद" लिखिए।\n\n'
+    "क्या आप सहमत हैं?"
+)
+FULL = "अभी FinBoy में जगह भर गई है 🙏\nJOIN लिखकर भेजिए, जगह खुलते ही हम बताएँगे।"
+JOINED = "✅ आपका नाम सूची में है। जगह खुलते ही यहीं बताएँगे।"
+SIGNED_IN = "✅ हो गया। अब ब्राउज़र में FinBoy पर वापस जाइए।"
+LINKED = "✅ जुड़ गया। अब ब्राउज़र में FinBoy पर वापस जाइए।"
+LOGIN_DECLINED = "ठीक है। किसी को साइन इन नहीं किया गया।"
+LOGIN_EXPIRED = "यह कोड पुराना हो गया। FinBoy वेबसाइट पर फिर से शुरू कीजिए।"
+WEB_NOT_PILOT = "FinBoy वेबसाइट पायलट का हिस्सा नहीं है। FinBoy यहीं WhatsApp पर इस्तेमाल करते रहिए।"
+ALREADY_LINKED = "यह WhatsApp पहले से किसी दूसरे FinBoy खाते से जुड़ा है, इसलिए नहीं जुड़ सकता।"
+USAGE_LIMIT = "आज आपने FinBoy बहुत इस्तेमाल किया 🙏 कल फिर कोशिश कीजिए।"
+SAFETY = (
+    "हाँ तभी दबाइए जब आपने अभी-अभी खुद FinBoy वेबसाइट पर यह शुरू किया हो। किसी और का दिया कोड कभी न भेजिए।"
+)
+
+
+def sign_in_card(device: str) -> str:
+    return f"🔐 {device} पर FinBoy में साइन इन करें?\n\n{SAFETY}"
+
+
+def signup_card(device: str) -> str:
+    return f"{SELF_CONSENT}\n\n🔐 खाता बनाकर {device} पर साइन इन करें?\n{SAFETY}"
+
+
+def link_card(device: str) -> str:
+    return f"🔗 यह WhatsApp {device} वाले FinBoy खाते से जोड़ें?\n\n{SAFETY}"

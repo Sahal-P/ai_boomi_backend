@@ -21,6 +21,9 @@ LIFETIME = {
     "due_paid": timedelta(days=7),
     "due_repeat": timedelta(days=7),
     "reminder_opt_in": timedelta(days=7),
+    # Sign-in cards live as long as the login code behind them (docs/signup-round/contract.md).
+    "web_login": timedelta(minutes=10),
+    "link": timedelta(minutes=10),
 }
 
 
@@ -65,6 +68,7 @@ def open_prompt(
     commitment_id: UUID | None = None,
     decision_id: UUID | None = None,
     fingerprint: str | None = None,
+    login_request_id: UUID | None = None,
 ) -> WhatsAppPrompt:
     """Open a choice; an older open card for the same purpose and record stops working."""
     now = datetime.now(UTC)
@@ -88,6 +92,7 @@ def open_prompt(
         transaction_id=transaction_id,
         commitment_id=commitment_id,
         decision_id=decision_id,
+        login_request_id=login_request_id,
         fingerprint=fingerprint,
         state="open",
         created_at=now,

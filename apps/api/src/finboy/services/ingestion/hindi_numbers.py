@@ -1,9 +1,10 @@
-"""Deterministic rupee amounts from digits and Hindi/Hinglish number words. Never guesses.
+"""Deterministic rupee amounts from digits and Hindi, Hinglish or English number words.
 
 Spoken Hindi amounts mix forms: "500", "पाँच सौ", "बारह सौ" (1,200), "डेढ़ सौ" (150), "ढाई हज़ार"
 (2,500), "सवा लाख" (1,25,000), "साढ़े तीन सौ" (350), "पौने दो सौ" (175), "paanch sau". Anything
 ambiguous (two amounts, a bare fraction, an unknown word inside a number) yields None so the
-caller asks "कितने रुपये?" instead of recording a guess.
+caller asks "कितने रुपये?" instead of recording a guess. English households say "five hundred",
+"two thousand five hundred", "twenty-five" or "2.5k" (docs/signup-round/contract.md).
 """
 
 import re
@@ -45,6 +46,42 @@ for _entry in re.split(r"[|\n]", _HINDI):
     *_names, _value = _entry.split() or [""]
     for _name in _names:
         WORDS[_norm(_name)] = Fraction(int(_value))
+_ENGLISH_UNITS = [
+    "zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "eleven",
+    "twelve",
+    "thirteen",
+    "fourteen",
+    "fifteen",
+    "sixteen",
+    "seventeen",
+    "eighteen",
+    "nineteen",
+]
+_ENGLISH_TENS = {
+    "twenty": 20,
+    "thirty": 30,
+    "forty": 40,
+    "fifty": 50,
+    "sixty": 60,
+    "seventy": 70,
+    "eighty": 80,
+    "ninety": 90,
+}
+for _value, _name in enumerate(_ENGLISH_UNITS):
+    WORDS.setdefault(_name, Fraction(_value))
+for _name, _value in _ENGLISH_TENS.items():
+    WORDS[_name] = Fraction(_value)
 # Fractions said on their own before a multiplier: डेढ़ सौ = 150, ढाई हज़ार = 2,500.
 for _name, _value in {
     "डेढ़": "3/2",
@@ -58,10 +95,10 @@ for _name, _value in {
 MULTIPLIERS = {
     _norm(name): value
     for names, value in (
-        ("सौ sau", 100),
-        ("हज़ार हजार hazar hazaar hajar", 1000),
-        ("लाख lakh lac", 100_000),
-        ("करोड़ करोड crore karod", 10_000_000),
+        ("सौ sau hundred", 100),
+        ("हज़ार हजार hazar hazaar hajar thousand k", 1000),
+        ("लाख lakh lakhs lac", 100_000),
+        ("करोड़ करोड crore crores karod", 10_000_000),
     )
     for name in names.split()
 }
@@ -100,7 +137,23 @@ def _tokens(text: str) -> list[str]:
     text = unicodedata.normalize("NFC", text).translate(_DIGITS)
     text = re.sub(r"(?<=\d),(?=\d)", "", text)  # 1,200 and 1,25,000
     text = re.sub(r"(?<=\d)(?=[^\d\s.,])|(?<=[^\d\s.,])(?=\d)", " ", text)  # ₹500, 500रुपये
-    return [token for token in (_norm(item) for item in _SEPARATORS.split(text)) if token]
+    tokens = [token for token in (_norm(item) for item in _SEPARATORS.split(text)) if token]
+    merged: list[str] = []
+    for index, token in enumerate(tokens):
+        previous = merged[-1] if merged else ""
+        if token == "k" and not _NUMBER.fullmatch(previous):
+            token = "k?"  # "2.5k" is an amount; a stray letter is not
+        elif (
+            token == "and"
+            and (previous in WORDS or previous in MULTIPLIERS)
+            and index + 1 < len(tokens)
+        ):
+            continue  # "two thousand and five hundred" is one amount
+        elif previous in _ENGLISH_TENS and token in _ENGLISH_UNITS[1:10]:
+            merged[-1] = str(_ENGLISH_TENS[previous] + _ENGLISH_UNITS.index(token))
+            continue  # "twenty five" / "twenty-five"
+        merged.append(token)
+    return merged
 
 
 def _is_amount_token(token: str) -> bool:

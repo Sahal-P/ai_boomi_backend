@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -17,6 +18,16 @@ from finboy.services.whatsapp.meta import DownloadedMedia, InvalidMedia
 from sqlalchemy.orm import Session
 
 
+def household(*, pilot: bool = False, joined_via: str | None = None, agreed: bool = True):
+    """The users row the processor reads for a binding's household."""
+    return SimpleNamespace(
+        pilot=pilot,
+        joined_via=joined_via,
+        consented_at=datetime.now(UTC) if agreed else None,
+        deleted_at=None,
+    )
+
+
 def harness(monkeypatch: pytest.MonkeyPatch, *, preferred: str | None = None):
     receipt = WhatsAppReceipt(id=uuid4(), binding_id=uuid4(), state="processing")
     binding = WhatsAppBinding(
@@ -24,6 +35,7 @@ def harness(monkeypatch: pytest.MonkeyPatch, *, preferred: str | None = None):
     )
     session = MagicMock(spec=Session)
     session.get.return_value = binding
+    session.execute.return_value.one_or_none.return_value = household()
     factory = MagicMock()
     factory.return_value.__enter__.return_value = session
     monkeypatch.setattr(processor.receipts, "claim", lambda *_: receipt)

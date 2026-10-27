@@ -13,11 +13,17 @@ from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
 from finboy.db.models.core import User
-from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppDelivery, WhatsAppReceipt
+from finboy.db.models.whatsapp import (
+    WhatsAppBinding,
+    WhatsAppDelivery,
+    WhatsAppPrompt,
+    WhatsAppReceipt,
+)
+from finboy.services.accounts import households, login
 from finboy.services.assistant import service as assistant
 from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
-from finboy.services.whatsapp import capture, pilot, receipts
+from finboy.services.whatsapp import capture, pilot, prompts, receipts, signup
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable, SendUnknown
@@ -34,12 +40,6 @@ def phone_text(text: str) -> str:
         text,
         flags=re.IGNORECASE,
     )
-
-
-PILOT_COMMANDS = {
-    "stop": 'FinBoy के जवाब बंद कर दिए। फिर से शुरू करने के लिए "शुरू" लिखिए।',
-    "start": 'FinBoy फिर से शुरू हो गया। बोलकर बताइए, जैसे: "दूधवाले को 500 दिए"।',
-}
 
 
 def language(value: str | None) -> Language | None:
@@ -66,10 +66,12 @@ def send_reply(
     if binding is None or (not binding.enabled and not allow_disabled):
         session.rollback()
         return False
-    if (
-        question.sender not in config.allowlist
-        or binding.user_id != config.allowlist[question.sender]
-        or binding.sender_hash != config.digest("sender", question.sender)
+    expected = config.allowlist.get(question.sender)
+    if binding.sender_hash != config.digest("sender", question.sender) or (
+        binding.user_id != expected
+        if expected is not None
+        # Outside the private allowlist only households that joined by themselves get replies.
+        else not households.is_self_serve(session, binding.user_id)
     ):
         session.rollback()
         return False
@@ -139,8 +141,30 @@ def process_question(
                 receipts.finish(session, receipt_id, error="window_expired")
                 return
             preferred = language(binding.language)
-            # Only an explicit database true enables the village pilot flows (contract).
-            is_pilot = session.scalar(select(User.pilot).where(User.id == binding.user_id)) is True
+            household = session.execute(
+                select(User.pilot, User.joined_via, User.consented_at, User.deleted_at).where(
+                    User.id == binding.user_id
+                )
+            ).one_or_none()
+            if household is None or household.deleted_at is not None:
+                receipts.finish(session, receipt_id, error="disabled")
+                return
+            # Only an explicit database true enables the village pilot flows (contract);
+            # households that joined by themselves get the same diary (signup contract).
+            is_pilot = household.pilot is True
+            self_serve = household.joined_via is not None
+            conversation = pilot.Conversation(
+                session,
+                settings,
+                config,
+                client,
+                receipt,
+                question,
+                binding,
+                send_reply,
+                self_serve=self_serve,
+                fallback="hi" if is_pilot or self_serve else "en",
+            )
             if question.command:
                 response = {
                     "stop": (
@@ -153,7 +177,14 @@ def process_question(
                     "en": "English replies selected. Ask a question about your FinBoy ledger.",
                     "hi": "हिन्दी चुनी गई है। FinBoy के रिकॉर्ड के बारे में सवाल पूछें।",
                     "ml": "മലയാളം തിരഞ്ഞെടുത്തു. FinBoy രേഖകളെക്കുറിച്ച് ചോദിക്കാം.",
-                    **(PILOT_COMMANDS if is_pilot else {}),
+                    **(
+                        {
+                            "stop": conversation.words.STOP_REPLY,
+                            "start": conversation.words.START_REPLY,
+                        }
+                        if is_pilot or self_serve
+                        else {}
+                    ),
                 }[question.command]
                 ok = send_reply(
                     session,
@@ -166,13 +197,37 @@ def process_question(
                 )
                 receipts.finish(session, receipt_id, error=None if ok else "provider_unavailable")
                 return
-            if is_pilot:
-                error = pilot.handle(
-                    pilot.Conversation(
-                        session, settings, config, client, receipt, question, binding, send_reply
+            # Signing in to the website: a login code, or a tap on its card (any household).
+            code = login.read_code(question.text) if question.kind == "text" else None
+            if code is not None:
+                receipts.finish(session, receipt_id, error=signup.handle_code(conversation, code))
+                return
+            tapped = prompts.parse(question.button_id or "") if question.kind == "button" else None
+            if tapped is not None and session.scalar(
+                select(WhatsAppPrompt.purpose).where(
+                    WhatsAppPrompt.id == tapped[0], WhatsAppPrompt.binding_id == binding.id
+                )
+            ) in {"web_login", "link"}:
+                prompt = prompts.claim(session, binding, tapped[0])
+                error = (
+                    signup.tap(conversation, prompt, tapped[1])
+                    if prompt is not None
+                    else conversation.done(
+                        conversation.send(conversation.words.EXPIRED), "prompt_expired"
                     )
                 )
                 receipts.finish(session, receipt_id, error=error)
+                return
+            if (
+                self_serve
+                and household.consented_at is None
+                and signup.JOIN.match(question.text or "")
+                and not households.signup_open(session, settings)
+            ):
+                receipts.finish(session, receipt_id, error=signup.join(conversation))
+                return
+            if is_pilot or self_serve:
+                receipts.finish(session, receipt_id, error=pilot.handle(conversation))
                 return
             if question.kind == "button":
                 # Only pilot households are ever sent buttons; acknowledge without acting.

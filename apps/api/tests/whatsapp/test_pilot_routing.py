@@ -3,11 +3,11 @@ from unittest.mock import MagicMock
 
 import pytest
 from finboy.core.config import Settings
-from finboy.services.whatsapp import processor
+from finboy.services.whatsapp import hindi, processor
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 
-from .test_processor import harness
+from .test_processor import harness, household
 
 
 def question(text: str = "", kind: str = "text", button_id: str | None = None) -> InboundQuestion:
@@ -23,7 +23,7 @@ def test_pilot_households_use_the_pilot_flow_and_owners_do_not(
     session = factory.return_value.__enter__.return_value
     handle = MagicMock(return_value=None)
     monkeypatch.setattr(processor.pilot, "handle", handle)
-    session.scalar.return_value = True  # users.pilot for this binding's household
+    session.execute.return_value.one_or_none.return_value = household(pilot=True)
     processor.process_question(factory, wa_settings, config, receipt.id, question("500 दिए"))
     assert handle.call_count == 1 and ask.call_count == 0
     assert handle.call_args.args[0].binding is binding
@@ -35,9 +35,10 @@ def test_pilot_stop_and_start_are_answered_in_hindi(
     monkeypatch: pytest.MonkeyPatch, config: ChannelConfig, wa_settings: Settings
 ) -> None:
     factory, receipt, _, _, send, _, _, _, _ = harness(monkeypatch)
-    factory.return_value.__enter__.return_value.scalar.return_value = True
+    session = factory.return_value.__enter__.return_value
+    session.execute.return_value.one_or_none.return_value = household(pilot=True)
     processor.process_question(factory, wa_settings, config, receipt.id, question("बंद"))
-    assert send.call_args.kwargs["text"] == processor.PILOT_COMMANDS["stop"]
+    assert send.call_args.kwargs["text"] == hindi.STOP_REPLY
     assert send.call_args.kwargs["allow_disabled"] is True
 
 

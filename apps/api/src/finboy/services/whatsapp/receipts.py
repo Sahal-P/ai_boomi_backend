@@ -1,5 +1,6 @@
 """PostgreSQL transaction boundaries and atomic admission/claims."""
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
@@ -8,7 +9,7 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from finboy.core.config import LOCAL_USER_ID
+from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.db.models.core import User
 from finboy.db.models.whatsapp import (
     WhatsAppBinding,
@@ -16,8 +17,12 @@ from finboy.db.models.whatsapp import (
     WhatsAppReceipt,
     WhatsAppReminder,
 )
+from finboy.services.accounts import households
+from finboy.services.mail.security import encrypt
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion, Status
+
+DEVANAGARI = re.compile(r"[\u0900-\u097F]")
 
 
 @dataclass(frozen=True)
@@ -45,38 +50,95 @@ def interrupt_stale(session: Session, *, before: datetime) -> None:
     session.commit()
 
 
+def _self_serve(
+    session: Session,
+    settings: Settings | None,
+    config: ChannelConfig,
+    question: InboundQuestion,
+    sender_hash: str,
+) -> UUID | None:
+    """A number outside the private allowlist: its self-serve household, or a new one."""
+    known = session.scalar(
+        select(WhatsAppBinding.user_id).where(WhatsAppBinding.sender_hash == sender_hash)
+    )
+    if known is not None:
+        # Only households that joined by themselves; never an owner or pilot binding whose
+        # number has left the allowlist.
+        return known if households.is_self_serve(session, known) else None
+    if (
+        settings is None
+        or not settings.signup_enabled
+        or settings.token_encryption_key is None
+        or households.pending_count(session) >= households.PENDING_LIMIT
+    ):
+        return None
+    user = households.new_household(session, joined_via="whatsapp", agreed=False)
+    created = session.scalar(
+        insert(WhatsAppBinding)
+        .values(
+            id=uuid4(),
+            user_id=user.id,
+            sender_hash=sender_hash,
+            enabled=True,
+            # Replies follow the first message's script; "hi"/"en" switch it later.
+            language="hi"
+            if question.kind != "text" or DEVANAGARI.search(question.text or "")
+            else "en",
+            last_inbound_at=question.provider_at,
+            encrypted_sender=encrypt(
+                settings.token_encryption_key.get_secret_value(), question.sender
+            ),
+        )
+        .on_conflict_do_nothing(index_elements=[WhatsAppBinding.sender_hash])
+        .returning(WhatsAppBinding.id)
+    )
+    if created is None:
+        session.delete(user)  # a simultaneous delivery created this number's household first
+        session.flush()
+        return session.scalar(
+            select(WhatsAppBinding.user_id).where(WhatsAppBinding.sender_hash == sender_hash)
+        )
+    return user.id
+
+
 def admit(
     session: Session,
     config: ChannelConfig,
     questions: list[InboundQuestion],
     statuses: list[Status],
+    *,
+    settings: Settings | None = None,
 ) -> list[Admission]:
     now = datetime.now(UTC)
     interrupt_stale(session, before=now - timedelta(minutes=10))
     admitted: list[Admission] = []
     for question in questions:
+        sender_hash = config.digest("sender", question.sender)
         user = config.allowlist.get(question.sender)
         if user is None:
-            continue
-        # Fail closed: a household must exist, and any household other than the owner's must
-        # be an enrolled pilot (docs/pilot/contract.md).
-        pilot = session.scalar(select(User.pilot).where(User.id == user))
-        if pilot is None or (user != LOCAL_USER_ID and pilot is not True):
-            continue
-        sender_hash = config.digest("sender", question.sender)
-        session.execute(
-            insert(WhatsAppBinding)
-            .values(
-                id=uuid4(),
-                user_id=user,
-                sender_hash=sender_hash,
-                enabled=True,
-                # Village pilot households speak Hindi; the owner keeps automatic detection.
-                language="hi" if user != LOCAL_USER_ID else None,
-                last_inbound_at=question.provider_at,
+            # Self-serve sign-up (docs/signup-round/contract.md); off unless SIGNUP_ENABLED.
+            user = _self_serve(session, settings, config, question, sender_hash)
+            if user is None:
+                continue
+        else:
+            # Fail closed: a household must exist, and any household other than the owner's
+            # must be an enrolled pilot (docs/pilot/contract.md).
+            pilot = session.scalar(select(User.pilot).where(User.id == user))
+            if pilot is None or (user != LOCAL_USER_ID and pilot is not True):
+                continue
+            session.execute(
+                insert(WhatsAppBinding)
+                .values(
+                    id=uuid4(),
+                    user_id=user,
+                    sender_hash=sender_hash,
+                    enabled=True,
+                    # Village pilot households speak Hindi; the owner keeps automatic detection.
+                    language="hi" if user != LOCAL_USER_ID else None,
+                    last_inbound_at=question.provider_at,
+                )
+                .on_conflict_do_nothing(index_elements=[WhatsAppBinding.sender_hash])
             )
-            .on_conflict_do_nothing(index_elements=[WhatsAppBinding.sender_hash])
-        )
         binding = session.scalar(
             select(WhatsAppBinding)
             .where(WhatsAppBinding.sender_hash == sender_hash, WhatsAppBinding.user_id == user)

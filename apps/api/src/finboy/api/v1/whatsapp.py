@@ -75,7 +75,7 @@ async def receive_webhook(request: Request, tasks: BackgroundTasks) -> dict[str,
 
     def persist() -> list[Admission]:
         with factory() as session:
-            return admit(session, config, questions, statuses)
+            return admit(session, config, questions, statuses, settings=request.app.state.settings)
 
     try:
         admitted = await run_in_threadpool(persist)
