@@ -127,3 +127,17 @@ supersedes earlier WhatsApp non-goals and the "no new recipient or unsolicited s
 only as documented there. One agent on feat/finboy-village-pilot, loopback 8051/3051,
 disposable finboy_pilot. The owner's web app and WhatsApp question flow stay unchanged
 unless the owner's pilot flag is set. Never store messages, audio, images or transcripts.
+
+## Sign-up round — 27 October 2026
+
+From main e06ba9b the human approved public self-serve sign-up: WhatsApp first (a login code
+sent from the person's own WhatsApp and confirmed by a button tap, or sign-up inside WhatsApp
+from a link or QR code), Google sign-in as the backup, at most `SIGNUP_LIMIT` (100) self-serve
+households and then a WhatsApp waitlist. Each household gets its own private web app, quick
+add by text or voice, and the WhatsApp voice diary in Hindi and English.
+`docs/signup-round/contract.md` supersedes the "no public multi-user signup" and
+single-household statements above only as documented there. Sign-up stays off
+(`SIGNUP_ENABLED=false`) until the human enables it in production. One agent on
+feat/finboy-signup, loopback 8061/3061, disposable finboy_signup. Pilot households stay
+WhatsApp-only; WhatsApp never merges or deletes records; messages, audio, images, transcripts,
+login codes and Google tokens are never stored.
