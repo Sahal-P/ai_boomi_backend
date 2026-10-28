@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getHealth, type HealthResponse } from "@/lib/api/health";
+import { checkHealth } from "@/lib/health-check";
 
 type ConnectionState =
   | { state: "checking" }
@@ -14,28 +15,27 @@ export function useHealth() {
   });
   const [requestVersion, setRequestVersion] = useState(0);
 
+  // A routine re-check keeps showing the last result until the new one arrives.
   const refresh = useCallback(() => {
-    setConnection({ state: "checking" });
     setRequestVersion((version) => version + 1);
   }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    void getHealth(controller.signal).then(
+    void checkHealth(getHealth, controller.signal).then(
       (health) => {
-        if (!controller.signal.aborted) {
-          setConnection({
-            state: health.status === "ok" ? "connected" : "degraded",
-            health,
-            checkedAt: new Date(),
-          });
-        }
+        if (controller.signal.aborted) return;
+        setConnection(
+          health
+            ? {
+                state: health.status === "ok" ? "connected" : "degraded",
+                health,
+                checkedAt: new Date(),
+              }
+            : { state: "offline", checkedAt: new Date() },
+        );
       },
-      () => {
-        if (!controller.signal.aborted) {
-          setConnection({ state: "offline", checkedAt: new Date() });
-        }
-      },
+      () => undefined, // superseded or unmounted
     );
     return () => controller.abort();
   }, [requestVersion]);
