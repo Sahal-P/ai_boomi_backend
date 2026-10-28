@@ -246,6 +246,7 @@ class Household:
         self.decided: list = []
         self.undo_error: TaskError | None = None
         self.obligation_error: TaskError | None = None
+        self.self_serve = False  # True: a household that joined by itself
         self.client = MagicMock()
         self.client.upload_audio.return_value = "4321"
         monkeypatch.setattr(
@@ -335,6 +336,7 @@ class Household:
             question,
             binding or self.binding,
             self.reply,
+            self_serve=self.self_serve,
         )
         return pilot.handle(conversation)
 

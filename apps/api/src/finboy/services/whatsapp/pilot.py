@@ -638,8 +638,9 @@ def _decide_due(conversation: Conversation, prompt: WhatsAppPrompt, choice: str)
     text = conversation.words.due_saved(row.amount_minor, row.label, row.due_date)
     if choice != "yes":
         text = conversation.words.REJECTED
-    elif binding.reminders_opt_in_at is None:
-        # Asked once, after the household's first due; reminders are strictly opt-in.
+    elif binding.reminders_opt_in_at is None and not conversation.self_serve:
+        # Asked once, after the household's first due; reminders are strictly opt-in. They reach
+        # pilot households only so far, so a self-serve household is never promised one.
         opt_in = prompts.open_prompt(session, binding, "reminder_opt_in")
         buttons.insert(0, (prompts.button(opt_in, "remind"), conversation.words.REMIND))
         text += "\n\n" + conversation.words.REMIND_ASK

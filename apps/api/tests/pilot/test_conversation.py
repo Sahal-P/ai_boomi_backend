@@ -255,6 +255,17 @@ def test_a_spoken_due_waits_as_pending_then_asks_once_about_reminders(
     assert hindi.REMIND_ASK not in household.texts()[-1], "reminders are only asked once"
 
 
+def test_self_serve_households_are_never_promised_reminders(household, monkeypatch) -> None:
+    # Reminders reach pilot households only so far (docs/signup-round/contract.md).
+    household.self_serve = True
+    spoken_due(monkeypatch)
+    household.say("समूह की किस्त 1200, हर महीने 10 तारीख")
+    household.tap("yes")
+    assert hindi.REMIND_ASK not in household.texts()[-1]
+    assert [title for _, title in household.buttons()] == [hindi.UNDO]
+    assert household.binding.reminders_opt_in_at is None
+
+
 def test_a_due_can_be_rejected_undone_and_its_amount_changed(household, monkeypatch) -> None:
     from finboy.db.models.ledger import Commitment
 
