@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { chatLink, safeReturnPath, sessionSchema, startWhatsApp } from "./auth.ts";
+import { chatLink, safeReturnPath, sessionSchema, startGoogle, startWhatsApp } from "./auth.ts";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => {
@@ -78,4 +78,38 @@ test("the WhatsApp-only link opens FinBoy's chat with a greeting typed in", () =
     chatLink("919000000099", "नमस्ते FinBoy"),
     "https://wa.me/919000000099?text=%E0%A4%A8%E0%A4%AE%E0%A4%B8%E0%A5%8D%E0%A4%A4%E0%A5%87%20FinBoy",
   );
+});
+
+test("Google and WhatsApp starting together keep the same browser nonce", async () => {
+  let cookie: string | undefined;
+  let releaseFirst!: () => void;
+  const firstResponse = new Promise<void>((resolve) => { releaseFirst = resolve; });
+  globalThis.fetch = async (input) => {
+    const path = String(input);
+    const nonce = cookie ?? (path.endsWith("/google/start") ? "b" : "a").repeat(64);
+    if (path.endsWith("/whatsapp/start")) await firstResponse;
+    // Model Set-Cookie delivery: each fresh request initially has no login cookie.
+    cookie = nonce;
+    return new Response(JSON.stringify(path.endsWith("/google/start") ? { nonce } : {
+      code: "K7Q2-9FXM",
+      link: "https://wa.me/919000000099?text=FinBoy%20login%20code%20K7Q2-9FXM",
+      expires_at: "2026-10-28T10:00:00Z",
+    }));
+  };
+  const whatsapp = startWhatsApp();
+  const google = startGoogle();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  releaseFirst();
+  await whatsapp;
+  assert.equal((await google).nonce, cookie);
+});
+
+test("a failed provider start does not block the other sign-in option", async () => {
+  globalThis.fetch = async (input) => String(input).endsWith("/whatsapp/start")
+    ? new Response("", { status: 503 })
+    : new Response(JSON.stringify({ nonce: "c".repeat(64) }));
+  const whatsapp = assert.rejects(startWhatsApp(), { status: 503 });
+  const google = startGoogle();
+  await whatsapp;
+  assert.equal((await google).nonce, "c".repeat(64));
 });

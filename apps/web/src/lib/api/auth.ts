@@ -62,13 +62,23 @@ export type WhatsAppStart = z.infer<typeof startedSchema>;
 export const loginStateSchema = z.enum(["pending", "confirmed", "declined", "used", "expired"]);
 export type LoginState = z.infer<typeof loginStateSchema>;
 
+// Both providers set the same HttpOnly login cookie. On a fresh page, parallel starts
+// could each create a nonce, leaving Google's signed nonce paired with WhatsApp's cookie.
+// Wait for each response to install its cookie before starting the other provider.
+let signInStart: Promise<void> = Promise.resolve();
+function startWithLoginCookie<T>(start: () => Promise<T>): Promise<T> {
+  const result = signInStart.then(start);
+  signInStart = result.then(() => undefined, () => undefined);
+  return result;
+}
+
 /** A one-time code to send from the person's own WhatsApp; bound to this browser by a cookie. */
 export const startWhatsApp = (purpose: "sign_in" | "link" = "sign_in", signal?: AbortSignal) =>
-  requestJson("/api/v1/auth/whatsapp/start", startedSchema, {
+  startWithLoginCookie(() => requestJson("/api/v1/auth/whatsapp/start", startedSchema, {
     method: "POST",
     signal,
     ...jsonBody({ purpose }),
-  });
+  }));
 export const whatsAppStatus = (signal?: AbortSignal) =>
   requestJson(
     "/api/v1/auth/whatsapp/status",
@@ -84,11 +94,11 @@ export const completeWhatsApp = () =>
 
 /** The nonce Google signs into the ID token, bound to this browser's sign-in cookie. */
 export const startGoogle = (signal?: AbortSignal) =>
-  requestJson(
+  startWithLoginCookie(() => requestJson(
     "/api/v1/auth/google/start",
     z.object({ nonce: z.string().regex(/^[a-f0-9]{64}$/) }),
     { method: "POST", signal },
-  );
+  ));
 /** The ID token goes once to the backend, which verifies it; the browser keeps nothing. */
 export const signInWithGoogle = (credential: string, link = false) =>
   requestJson(

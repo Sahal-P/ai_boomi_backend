@@ -184,6 +184,12 @@ Tests mock Meta, Google and providers, and no test suite runs against production
 
 ## Verification — 27–28 October 2026
 
+Both sign-in options reuse the same browser nonce cookie. Their frontend startup requests must
+run sequentially: on a fresh browser, parallel WhatsApp and Google starts can issue different
+cookies and invalidate Google's signed nonce. Regression tests cover simultaneous starts and
+allow the second provider to proceed when the first provider fails. This does not relax token
+verification or enable account creation while `SIGNUP_ENABLED=false`.
+
 - **Automated:** 908 API unit tests; 74 integration tests on `finboy_signup` at head
   `0009_signup` with no drift; 46 web unit tests, lint, typecheck and `pnpm build`; Playwright
   229 passed (119 skipped by design) at 1440×1000, 390×844 and 320×740 against the contract
