@@ -1,5 +1,12 @@
 # FinBoy
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/finboy-logo-dark.svg">
+  <img src="apps/web/public/brand/finboy-logo.svg" alt="FinBoy" width="220">
+</picture>
+
+[Brand assets and usage](docs/branding.md)
+
 ## Live site and demo
 
 - [Open FinBoy](https://finboy.antlegs.in)

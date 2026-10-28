@@ -66,7 +66,7 @@ export function ShadedDisc({ x, y, r, dots, fill = "#fff" }: { x: number; y: num
   );
 }
 
-/** The ₹ coin: BrandMark's rupee on a sunflower face. */
+/** A currency illustration, separate from the companion logo. */
 export function RupeeCoin({ x, y, r, dots }: { x: number; y: number; r: number; dots: string }) {
   const scale = (r * 0.9) / 18; // the rupee path is 18 units tall, centred on (12, 12)
   return (

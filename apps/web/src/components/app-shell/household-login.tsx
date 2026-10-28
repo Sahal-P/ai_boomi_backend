@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SignInOptions } from "@/components/app-shell/sign-in-options";
-import { BrandMark } from "@/components/brand";
+import { Brand } from "@/components/brand";
 import { MoneyScene } from "@/components/illustrations/scenes";
 import { destinationTitle } from "@/lib/routes";
 
@@ -17,9 +17,7 @@ export function HouseholdLogin({ next }: { next: string }) {
           Wider screens: intro and options beside the scene. */}
       <div className="mx-auto grid min-h-dvh max-w-6xl content-center gap-x-14 gap-y-7 px-5 py-10 sm:px-8 lg:grid-cols-2 lg:py-16">
         <div className="lg:col-start-1">
-          <Link href="/" className="inline-flex items-center gap-2 text-[1.45rem] font-bold tracking-[-0.05em] text-ink">
-            <BrandMark className="size-8" /> finboy
-          </Link>
+          <Brand />
           <h1 id="login-title" className="mt-8 max-w-[13ch] text-[2.5rem] leading-[1.02] font-extrabold tracking-[-0.045em] sm:text-5xl">
             Your money, in your words
           </h1>

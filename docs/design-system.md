@@ -47,9 +47,13 @@ Shadcn variables map onto these: `--primary` is ink (black pills), `--card` is g
 (form-control boundaries) is ink at 50% (≥ 3:1), `--ring` is ink. Radii follow the reference:
 `lg` 12 px (rows, fields), `2xl` 20 px, `3xl` 24 px (panels), pills for actions.
 
-**Brand:** the logo is an ink gem with a sunflower ₹ (`components/brand.tsx`, `app/icon.svg`,
-whose faint white rim keeps it visible on dark tab strips) and the wordmark is ink — on glass,
-on white and on yellow alike. The lavender `canvas`, the violet family (`violet`, `lilac`,
+**Brand:** the approved 28 October 2026 identity is the sunflower companion tile: an ink
+lowercase **b** with a speech-bubble counter, paired with the outlined **FinBoy** wordmark.
+`components/brand.tsx` uses the standalone SVGs in `public/brand/`; the same tile appears in
+`app/icon.svg`, the ICO favicon, Apple touch icon and manifest icons. Use the ink wordmark on
+glass, white and yellow; use the white wordmark on dark backgrounds. Flat fills only, with no
+gradients or shadows in the logo. See [brand assets and usage](branding.md) for variants,
+clear space and exports. The lavender `canvas`, the violet family (`violet`, `lilac`,
 `magenta`, …) and the old landing palette are gone; `field` is deliberately not a Tailwind
 colour, so the `bg-field` material never also paints a flat background.
 
@@ -139,7 +143,8 @@ orbs pause offscreen and in hidden tabs.
 `kit.tsx` draws on 240-unit artboards: 2.5-unit strokes in `currentColor` (forced colours
 adapt), round caps and joins, white fills, sunflower as the only colour fill, halftone shading
 from a 4.5-unit dot grid (the orbs' dot language), four-point sparkles and "pop" lines, and
-the ₹ coin built from `BrandMark`'s rupee path. Patterns and clip paths use per-instance
+the ₹ coin as a currency illustration (separate from the companion logo). Patterns and clip
+paths use per-instance
 `useSvgId()`: a shared id breaks when a copy sits in a hidden subtree. Scenes (`scenes.tsx`,
 each well under 6 KB, decorative): `MoneyScene` (sign-in, landing hero), `NoRecordsArt`,
 `NoMatchArt`, `AllReviewedArt`, `EmptyMonthArt`. Brand assets supplied later replace these

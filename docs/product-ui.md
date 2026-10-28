@@ -26,6 +26,9 @@ Phase-1 integration history (design snapshot, package provenance) stays in
 - Daily screens carry no WebGL (orbs are 2D canvases). The 3D brand scenes stay in the landing
   page's lower sections, honour reduced motion, and fall back to DOM with `?graphics=off` or a
   failed context probe.
+- Branding uses the approved sunflower companion tile (a **b** with a speech-bubble counter)
+  and outlined **FinBoy** wordmark. Navigation, sign-in, footer, favicon and app icons share
+  this identity; [brand assets and usage](branding.md) lists the standalone SVG variants.
 
 ## Data and state
 
