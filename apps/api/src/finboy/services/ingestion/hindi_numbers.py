@@ -5,6 +5,10 @@ Spoken Hindi amounts mix forms: "500", "पाँच सौ", "बारह स�
 ambiguous (two amounts, a bare fraction, an unknown word inside a number) yields None so the
 caller asks "कितने रुपये?" instead of recording a guess. English households say "five hundred",
 "two thousand five hundred", "twenty-five" or "2.5k" (docs/signup-round/contract.md).
+
+Malayalam amounts arrive as digits, because Sarvam writes spoken amounts as "₹500". Malayalam
+number words are not read, so a typed "അഞ്ഞൂറ്" gets "how many rupees?"
+(docs/malayalam-round/contract.md).
 """
 
 import re
@@ -13,7 +17,7 @@ from fractions import Fraction
 
 MAX_RUPEES = 10**7  # one crore; larger spoken amounts are treated as misheard
 
-_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
+_DIGITS = str.maketrans("०१२३४५६७८९൦൧൨൩൪൫൬൭൮൯", "01234567890123456789")
 _NUMBER = re.compile(r"\d+(?:\.\d{1,2})?")
 _SEPARATORS = re.compile(r"[\s,;:!?।|/()\[\]\"'“”‘’\-–—]+")
 
@@ -129,6 +133,11 @@ CURRENCY = {
         "rupaye",
         "rupaiye",
         "rupay",
+        "രൂപ",
+        "രൂപയ്ക്ക്",
+        "രൂപയുടെ",
+        "രൂപയും",
+        "roopa",
     ]
 }
 

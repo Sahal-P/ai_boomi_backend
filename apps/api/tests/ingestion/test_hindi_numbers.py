@@ -37,6 +37,12 @@ from finboy.services.ingestion.hindi_numbers import find_amounts, parse_amount
         ("sawa lakh", 125000),
         ("दूधवाले को पाँच सौ दिए", 500),
         ("PM किसान के 2000 आए", 2000),
+        # Malayalam arrives as digits: Sarvam writes "₹500", people type 500 or ൫൦൦.
+        ("പാൽക്കാരന് ₹500 കൊടുത്തു.", 500),
+        ("ശമ്പളം ₹25000 കിട്ടി", 25000),
+        ("൫൦൦ രൂപ", 500),
+        ("1,200 രൂപയ്ക്ക്", 1200),
+        ("നമസ്കാരം ₹7860.", 7860),
     ],
 )
 def test_spoken_amounts(spoken: str, rupees: float) -> None:
@@ -56,6 +62,7 @@ def test_spoken_amounts(spoken: str, rupees: float) -> None:
         "दो करोड़ करोड़",
         "बीस करोड़",  # above the one-crore ceiling: treated as misheard
         "0",
+        "പാൽക്കാരന് അഞ്ഞൂറ് രൂപ കൊടുത്തു",  # Malayalam number words are not read this round
     ],
 )
 def test_ambiguous_or_absent_amounts_are_never_guessed(spoken: str) -> None:
