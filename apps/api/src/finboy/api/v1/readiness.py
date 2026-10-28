@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from finboy.api.deps import CurrentUser
-from finboy.core.config import API_ROOT
+from finboy.core.config import API_ROOT, Settings
 from finboy.db.models.mail import ImportRun
 from finboy.db.session import get_session
 from finboy.services.whatsapp.config import ChannelUnavailable, channel_config
@@ -33,6 +33,25 @@ class Readiness(BaseModel):
     import_worker: Literal["in_process_not_durable"] = "in_process_not_durable"
     recorded_active_imports: int | None
     live_provider_acceptance: Literal["not_checked_by_readiness"] = "not_checked_by_readiness"
+
+
+def _transcription(settings: Settings) -> bool:
+    """Settings for every language the chosen provider routing can reach."""
+    if settings.speech_transcribe_provider == "sarvam":
+        return bool(settings.sarvam_api_key and settings.sarvam_stt_model)
+    # Groq covers English/Hindi only; Malayalam and misdetections still go to OpenAI.
+    openai = bool(settings.openai_api_key and settings.openai_transcribe_model)
+    if settings.speech_transcribe_provider == "groq":
+        return openai and bool(settings.groq_api_key and settings.groq_transcribe_model)
+    return openai
+
+
+def _malayalam_tts(settings: Settings) -> bool:
+    if settings.malayalam_tts_provider == "sarvam":
+        return bool(
+            settings.sarvam_api_key and settings.sarvam_tts_model and settings.sarvam_tts_speaker_ml
+        )
+    return bool(settings.gemini_api_key and settings.gemini_tts_model and settings.gemini_tts_voice)
 
 
 @router.get("/readiness", response_model=Readiness)
@@ -76,18 +95,14 @@ def readiness(
         and settings.token_encryption_key
         and settings.google_oauth_redirect_uri
         else "missing",
-        transcription_configuration="configured"
-        if settings.openai_api_key and settings.openai_transcribe_model
-        else "missing",
+        transcription_configuration="configured" if _transcription(settings) else "missing",
         english_hindi_tts_configuration="configured"
         if settings.resemble_api_key
         and settings.resemble_tts_model
         and settings.resemble_voice_uuid_en
         and settings.resemble_voice_uuid_hi
         else "missing",
-        malayalam_tts_configuration="configured"
-        if settings.gemini_api_key and settings.gemini_tts_model and settings.gemini_tts_voice
-        else "missing",
+        malayalam_tts_configuration="configured" if _malayalam_tts(settings) else "missing",
         whatsapp_configuration=whatsapp,
         recorded_active_imports=active,
     )

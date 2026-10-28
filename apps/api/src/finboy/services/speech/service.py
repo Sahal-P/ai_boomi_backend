@@ -13,21 +13,25 @@ from finboy.services.speech import providers
 from finboy.services.speech.media import InvalidAudio, decode_audio, pcm_to_wav, to_mp3
 from finboy.services.speech.models import SynthesizedAudio, Transcript
 
-SttProvider = Literal["groq", "openai"]
-WHISPER_LANGUAGES: dict[str, Language] = {
+SttProvider = Literal["groq", "openai", "sarvam"]
+# Whisper reports names or ISO codes; Sarvam reports BCP-47 codes.
+REPORTED_LANGUAGES: dict[str, Language] = {
     "en": "en",
     "english": "en",
+    "en-in": "en",
     "hi": "hi",
     "hindi": "hi",
+    "hi-in": "hi",
     "ml": "ml",
     "malayalam": "ml",
+    "ml-in": "ml",
 }
 NATIVE_SCRIPTS = {"hi": (0x0900, 0x097F), "ml": (0x0D00, 0x0D7F)}
 
 
 def script_language(reported: str | None, text: str) -> Language | Literal["unknown"]:
     """A model-reported language counts only when the transcript is written in its script."""
-    language = WHISPER_LANGUAGES.get((reported or "").strip().lower())
+    language = REPORTED_LANGUAGES.get((reported or "").strip().lower())
     letters = [character for character in text if character.isalpha()]
     native = [character for character in letters if not character.isascii()]
     if language == "en":
@@ -61,6 +65,18 @@ def transcribe_routed(
         max_seconds=settings.speech_max_duration_seconds,
     )
     wav = pcm_to_wav(pcm)
+    if settings.speech_transcribe_provider == "sarvam":
+        try:
+            heard = providers.sarvam_transcribe(wav, language_hint, settings)
+        except providers.PROVIDER_ERRORS:
+            # A Sarvam outage is reported, never silently retried with another provider.
+            raise ProviderUnavailable("speech_unavailable") from None
+        text = heard.transcript.strip()
+        if not text or not heard.language_code:
+            # Nothing heard: WhatsApp has no one reviewing the transcript, so never guess.
+            return Transcript(transcript="", detected_language="unknown"), "sarvam"
+        detected = script_language(heard.language_code, text)
+        return Transcript(transcript=text, detected_language=detected), "sarvam"
     if settings.speech_transcribe_provider == "groq" and language_hint != "ml":
         try:
             result = providers.groq_transcribe(wav, language_hint, settings)
@@ -138,7 +154,10 @@ def synthesize_speech(*, text: str, language: Language, settings: Settings) -> S
         raise InvalidAudio()
     try:
         if language == "ml":
-            audio, mime = providers.gemini_synthesize(text, settings)
+            if settings.malayalam_tts_provider == "sarvam":
+                audio, mime = providers.sarvam_synthesize(text, settings)
+            else:
+                audio, mime = providers.gemini_synthesize(text, settings)
             mp3 = to_mp3(audio, mime, settings)
         else:
             audio, mime = providers.resemble_synthesize(text, language, settings)
