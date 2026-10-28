@@ -46,12 +46,16 @@ function useSignInOptions() {
   };
 }
 
+/** Shown size in CSS pixels: big enough for a phone camera held at arm's length. */
+const QR_SIZE = 256;
+
 /** The scannable twin of the WhatsApp link, for people signing in on a computer. */
 function LinkCode({ link }: { link: string }) {
   const [image, setImage] = useState<string | null>(null);
   useEffect(() => {
     let current = true;
-    QRCode.toDataURL(link, { margin: 1, width: 176, errorCorrectionLevel: "M" }).then(
+    // Drawn at twice the shown size so the modules stay sharp on high-density screens.
+    QRCode.toDataURL(link, { margin: 1, width: QR_SIZE * 2, errorCorrectionLevel: "M" }).then(
       (url) => {
         if (current) setImage(url);
       },
@@ -61,16 +65,16 @@ function LinkCode({ link }: { link: string }) {
       current = false;
     };
   }, [link]);
-  if (!image) return <div className="size-[176px] rounded-2xl bg-white/60" aria-hidden="true" />;
+  if (!image) return <div className="size-64 rounded-2xl bg-white/60" aria-hidden="true" />;
   // Drawn locally as a data URL: nothing to optimise and nothing fetched.
   return (
     <Image
       src={image}
       unoptimized
-      width={176}
-      height={176}
+      width={QR_SIZE}
+      height={QR_SIZE}
       alt="QR code that opens FinBoy's WhatsApp chat"
-      className="rounded-2xl bg-white p-2"
+      className="rounded-2xl bg-white p-3"
     />
   );
 }
@@ -139,9 +143,9 @@ function WhatsAppSignIn({ phase, onOpened, onRestart, purpose }: {
           <summary className="flex cursor-pointer items-center gap-2 font-semibold">
             <QrCode className="size-4" aria-hidden="true" /> On a computer? Scan with your phone
           </summary>
-          <div className="mt-3 flex flex-wrap items-center gap-4">
+          <div className="mt-4 flex flex-col items-center gap-3 pb-1 text-center">
             <LinkCode link={start.link} />
-            <p className="max-w-[16rem] leading-relaxed text-ink-soft">
+            <p className="max-w-[18rem] leading-relaxed text-ink-soft">
               Point your phone&apos;s camera here. WhatsApp opens with your code{" "}
               <span className="font-mono font-semibold text-ink">{start.code}</span> typed in.
             </p>
