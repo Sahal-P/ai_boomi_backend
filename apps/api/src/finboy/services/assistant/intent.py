@@ -207,7 +207,8 @@ def amounts_in_question(text: str) -> set[int]:
     question = re.sub(r"\b20\d{2}-(?:0[1-9]|1[0-2])\b", " ", normalized(text))
     if re.search(r"[-−]\s+(?:₹\s*)?\d", question):
         return values
-    for token in re.findall(r"(?<![\w.])[-−]?\d[\d,]*(?:\.\d{1,2})?(?![\w.])", question):
+    # A full stop that ends the sentence ("…₹7860.", as Sarvam transcribes) still ends the number.
+    for token in re.findall(r"(?<![\w.])[-−]?\d[\d,]*(?:\.\d{1,2})?(?!\w|\.\d)", question):
         if "," in token and not re.fullmatch(r"\d{1,3}(?:,\d{2})*,\d{3}(?:\.\d{1,2})?", token):
             continue
         try:
