@@ -94,10 +94,14 @@ exist from `GET /api/v1/auth/session` (`sign_in`), never from build-time variabl
 
 ## Production configuration
 
-The deployed web app uses `NEXT_PUBLIC_API_URL=/`; Next rewrites `/api/v1/*` to the HTTPS
-`FINBOY_API_ORIGIN`, so the browser sends same-origin requests with the host-only household
-cookie (`credentials: "same-origin"`; cross-origin development uses `omit`). The origin must be
-HTTPS; local proxy checks use a temporary private certificate trusted only through
+Since 29 October 2026 the deployed web app calls the API's own HTTPS origin directly
+(`NEXT_PUBLIC_API_URL=https://finboy-api.antlegs.in`). `apiCredentials` in `http.ts` sends the
+household cookie (`credentials: "include"`) only to that origin, and the .eml upload's
+`withCredentials` follows it. `NEXT_PUBLIC_API_URL=/` still works: Next rewrites `/api/v1/*` to the
+HTTPS `FINBOY_API_ORIGIN` and requests are same-origin. Plain-HTTP development uses `omit`
+([production](production.md#access-and-network)). The sidebar's service dot checks every 30 s and
+shows "Service unreachable" only after two failed checks in a row (`lib/health-check.ts`). The
+origin must be HTTPS; local proxy checks use a temporary private certificate trusted only through
 `NODE_EXTRA_CA_CERTS`. No provider key, token or secret is ever in a `NEXT_PUBLIC_*` variable,
 client component or browser request. Product outcome events (`evidence_opened`,
 `overview_understood`, `review_completed`) go only to the backend's allowlisted audit endpoint.

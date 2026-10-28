@@ -34,6 +34,21 @@ no serverless API body parser in this path. API/provider keys stay only on voxpa
 Preview builds receive no production environment; do not add production credentials
 or production-origin proxy settings to preview environments.
 
+**Direct API calls (29 October 2026).** Vercel's proxy could not reach the API about 4 times in 10
+(`502 ROUTER_EXTERNAL_TARGET_CONNECTION_ERROR`; the attempts never arrived at the host), while
+direct requests always worked. So the browser now calls `https://finboy-api.antlegs.in` itself:
+- Vercel's Production `NEXT_PUBLIC_API_URL` is that origin. It is not a secret.
+- The web client sends `credentials: "include"` to that origin only, and the .eml upload does
+  the same.
+- The API allows credentials for the exact web origins only. State-changing requests still need
+  that Origin.
+
+The household cookies stay `__Host-`, host-only on the API host, Secure, HttpOnly and
+SameSite=Lax. `finboy.antlegs.in` and `finboy-api.antlegs.in` are the same site, so browsers send
+them. Everyone signs in once more after the switch. `FINBOY_API_ORIGIN` and its rewrite stay, so open
+tabs keep working and `/` remains a rollback. Rate limits now see each visitor's own address
+instead of Vercel's.
+
 The Connect page uses the shared API URL helper, including the `/` proxy setting.
 When the Gmail callback host differs from the frontend host, authenticated
 authorization issues an encrypted 60-second, single-use handoff to the API host.
@@ -458,3 +473,27 @@ healthy for real users until it is fixed.
 
 **Still human acceptance:** phone voice notes in Malayalam, Hindi and English, playback of a
 Malayalam reply, and a native read of the Malayalam copy (`malayalam.py`).
+
+## Reply language and direct API release procedure
+
+`feat/finboy-language-and-access`
+([reply language](whatsapp.md#reply-language-29-october-2026), [direct API calls](#access-and-network)):
+
+1. **Backend first,** following the steps above:
+   - validated private backup and active-import check;
+   - additive migration `0010_whatsapp_last_language`, which adds `last_language` and clears the
+     stored reply languages;
+   - drift check, then restart `finboy.service` only.
+
+   Browsers see no change yet: CORS also allows credentials for the exact web origins.
+2. **Web:** push main and Vercel builds. Then set Vercel's Production
+   `NEXT_PUBLIC_API_URL=https://finboy-api.antlegs.in` and redeploy (`NEXT_PUBLIC_*` values are
+   fixed at build time).
+3. **Check:**
+   - the sign-in page and Overview load every time, and the sidebar stays "Service available";
+   - signing in with WhatsApp and Google works;
+   - Review, Ask, quick add, an .eml upload and Gmail connect work;
+   - a login code from a number with no history gets an English card.
+
+**Rollback:** set `NEXT_PUBLIC_API_URL=/` and redeploy; the proxy path still works. Migration
+`0010` is not rolled back (cleared languages are not restored).

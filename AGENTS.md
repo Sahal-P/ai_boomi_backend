@@ -154,3 +154,22 @@ feat/finboy-malayalam-voice, loopback 8061/3061, disposable finboy_signup. Code 
 openai/gemini, so production is unchanged until the human releases it. Before any real
 household's audio reaches Sarvam, the human turns off training and sets "No retention" in
 Sarvam's dashboard. Audio, transcripts and Sarvam request IDs are never stored.
+
+## Reply language and direct API round — 29 October 2026
+
+From main 2fb2eb7 the human made two choices.
+- **WhatsApp replies** start in English for everyone, village pilot households included. They then
+  follow each person's own language, or the one they choose: `en`/`english`, `hindi`/`हिंदी`, or
+  `ml`/`malayalam`/`മലയാളം`. A bare `hi` is a greeting.
+- **The browser calls the API** at its own HTTPS origin with credentials, instead of through
+  Vercel's proxy, which could not reach the server about 4 times in 10.
+
+These supersede, only as documented in `docs/whatsapp.md` ("Reply language") and
+`docs/production.md` ("Access and network"):
+- the Phase 1 `credentials: "omit"` client rule;
+- the same-origin proxy statements;
+- the earlier first-message and Hindi-default language rules.
+
+One agent on feat/finboy-language-and-access, loopback 8061/3061, disposable finboy_signup. CORS
+stays exact-origin. Origin checks, `__Host-` host-only cookies and every no-storage rule are
+unchanged.

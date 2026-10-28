@@ -41,9 +41,10 @@ production and access rule stays binding.
 - **Sign-up inside WhatsApp:** a link or QR opens WhatsApp with "Hi FinBoy" typed. The website
   shows "Prefer WhatsApp? Say hi to FinBoy" on the landing page and `/login` while sign-ups are
   open; a printed QR can carry "नमस्ते" instead. When `SIGNUP_ENABLED` is on, a message from an
-  unknown number creates a household that has not yet agreed, plus its binding. The reply
-  language comes from the first message: Devanagari means Hindi, anything else English;
-  "hi"/"en" switch it later. The existing consent card follows, in that language. Nothing else
+  unknown number creates a household that has not yet agreed, plus its binding. Replies start
+  in English and follow each message (since 29 October 2026,
+  [Reply language](../whatsapp.md#reply-language-29-october-2026)). The existing consent card
+  follows, in that language. Nothing else
   works until "Yes", and "No" erases the new household and keeps nothing.
 - **Limits:** at most 200 households that haven't agreed exist at once; a newer unknown number is
   ignored. Households that never agree are removed after 7 days: each new admission tidies a

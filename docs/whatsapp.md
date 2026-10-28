@@ -153,7 +153,7 @@ Restart the API because settings are loaded at startup. Using official APIs:
 5. After Agent 1/3 integration and real ledger import, test text plus a short voice
    question in each language. English: “How much did I spend on food this month?”
    Hindi: “इस महीने खाने पर कितना खर्च हुआ?” Malayalam: “ഈ മാസം ഭക്ഷണത്തിന് എത്ര
-   ചെലവായി?” Also try Hinglish/Manglish and explicit `en`, `hi`, `ml` commands.
+   ചെലവായി?” Also try Hinglish/Manglish and explicit `en`, `hindi`, `ml` commands.
 6. Inspect **actual received replies on the human's phone**, text and playable MP3.
    Record language, text/audio result, receipt state, and delivered/read status only.
    Do not retain question text, audio, full phone IDs, or financial screenshots.
@@ -324,8 +324,8 @@ is binding and supersedes this document only as written there. Everything below 
 to households with `users.pilot = true`. The owner's household keeps the question flow above
 unless the owner switches the dogfood flag on (`pilot.cli owner on`).
 
-- A consent card in Hindi (text and voice) gates every pilot household; बंद/शुरू work like
-  STOP/START.
+- A consent card (text and voice) gates every pilot household, in English unless the first
+  message shows Hindi or Malayalam ("Reply language" below); बंद/शुरू work like STOP/START.
 - Voice or text statements ("दूधवाले को 500 दिए") become one `whatsapp_voice` line through the
   import pipeline, always into review. FinBoy replies with a confirm card and reply buttons
   (हाँ, रकम बदलें, नहीं) plus a Hindi voice readback. Taps go through the versioned review
@@ -349,8 +349,7 @@ that joined while it was.
   most 200 such households exist at once (newer numbers are ignored), and any that never agree
   are removed after 7 days. When `SIGNUP_LIMIT` households have agreed, FinBoy says it is full;
   JOIN keeps a place in `signup_waitlist` (encrypted number) and removes the new household.
-- **Language:** the first message picks it: Devanagari means Hindi, anything else English.
-  "hi"/"en" switch later. `english.py` mirrors `hindi.py` name for name, and English amounts
+- **Language:** replies follow each message ("Reply language" below). `english.py` mirrors `hindi.py` name for name, and English amounts
   ("five hundred", "2.5k", "1,250") are read like Hindi ones. STOP/START and बंद/शुरू both work.
 - **Consent:** the self-serve consent card gates everything; No erases the new household.
 - **Login codes:** "FinBoy login code XXXX-XXXX" from a self-serve, owner or new number gets a
@@ -370,19 +369,46 @@ that joined while it was.
 [The Malayalam voice contract](malayalam-round/contract.md) applies.
 
 - **Language:**
-  - a first text in Malayalam script starts a self-serve household in Malayalam;
-  - a voice note or photo still starts in Hindi;
-  - `ml`, `hi` or `en` switches at any time. Before agreeing, it brings the consent card in
-    that language; afterwards, a short "chosen" note.
+  - a text in Malayalam script, or in Manglish, is answered in Malayalam ("Reply language"
+    below);
+  - `ml`, `malayalam` or `മലയാളം` chooses it at any time. Before agreeing, a choice brings the
+    consent card in that language; afterwards, a short "chosen" note.
   - The owner's question flow keeps its own language replies.
 - **Copy:** `malayalam.py` mirrors `english.py` and `hindi.py` name for name (a test checks
   this). It covers consent, cards, buttons of at most 20 characters, dues, the "കണക്ക്" week
   summary, and the sign-in, sign-up and link cards. നിർത്തുക/നിർത്തൂ and തുടങ്ങുക/തുടങ്ങൂ work
   like STOP/START.
 - **Voice:**
-  - voice notes are transcribed with the household's language as the hint (Sarvam when
-    `SPEECH_TRANSCRIBE_PROVIDER=sarvam`);
+  - voice notes get a language hint only after a choice; otherwise speech-to-text detects
+    the language (Sarvam when `SPEECH_TRANSCRIBE_PROVIDER=sarvam`);
   - spoken replies use Bulbul when `MALAYALAM_TTS_PROVIDER=sarvam`;
   - amounts arrive as digits; a Malayalam number typed as words gets "എത്ര രൂപ?".
 - **Unchanged:** buttons, undo, daily limits, the pilot's Hindi reminder template and the
   no-storage rules. WhatsApp never merges or deletes.
+
+## Reply language (29 October 2026)
+
+The human asked for English by default, replies in each person's own language, and a way to choose.
+This supersedes the language rules in the sections above (`services/whatsapp/language.py`).
+
+- **Someone new gets English.** Nothing is assumed from a voice note or photo: the consent card goes
+  out before anything is transcribed. Village pilot households start in English too (the human's
+  choice).
+- **Each message decides:**
+  - typed text, by its script or its Hinglish/Manglish words. This is the web assistant's "Match my
+    question" detector, which now also knows everyday money words such as diye, kharcha, koduthu and
+    kitti;
+  - a voice note, by what speech-to-text heard.
+- **No language in the message:** a greeting ("Hi", "Hi FinBoy"), a single word like "ok", digits,
+  emoji, a button tap, a photo, STOP/START or FinBoy's prefilled login line. These get the language
+  FinBoy last used with that person (`whatsapp_bindings.last_language`).
+- **A choice sticks** until the person picks another:
+  - `en` or `english`;
+  - `hindi`, `हिंदी` or `हिन्दी`;
+  - `ml`, `malayalam` or `മലയാളം`.
+
+  A bare `hi` is a greeting, not Hindi. Voice notes get a language hint only after a choice. The
+  consent cards name the words ("हिंदी: hindi · മലയാളം: ml").
+- **Questions** in the diary are answered in the question's own language unless one was chosen.
+- **Migration `0010_whatsapp_last_language`** cleared the languages stored earlier. They came from
+  code defaults (Hindi for diary households) or from "hi" greetings, not from choices.

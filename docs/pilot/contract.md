@@ -40,8 +40,11 @@ flag is switched on for the dogfood week.
 
 ## Consent
 
-Until a pilot binding has `consented_at`, every message except STOP/बंद gets the Hindi consent
-card (text, voice readback, [✅ हाँ, मंज़ूर] [❌ नहीं]) and nothing is recorded or answered. The
+Until a pilot binding has `consented_at`, every message except STOP/बंद gets the consent card
+(text, voice readback, [✅ हाँ, मंज़ूर] [❌ नहीं] in Hindi) and nothing is recorded or answered.
+Since 29 October 2026 the card is in English unless the message shows Hindi or Malayalam, and
+`hindi` chooses Hindi (the human's choice,
+[Reply language](../whatsapp.md#reply-language-29-october-2026)). The
 card says what is kept, that voice, photos and messages are not kept, that only this number sees
 the records, how to stop, and that the helper or operator deletes everything on request. Tapping
 "नहीं" keeps nothing and leaves the gate closed. STOP/बंद and START/शुरू work as before.

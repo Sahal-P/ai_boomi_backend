@@ -70,8 +70,9 @@ amounts ([voice](../voice.md)).
 - A failure is reported, never retried with another provider.
 - Nothing heard means an empty transcript, and FinBoy never guesses.
 
-**WhatsApp:** a first text in Malayalam script picks Malayalam (`receipts.first_language`), and
-`ml` switches to it at any time. Before agreeing, a language command brings the consent card in
+**WhatsApp:** a text in Malayalam script is answered in Malayalam, and `ml` chooses it at any time
+(since 29 October 2026, [Reply language](../whatsapp.md#reply-language-29-october-2026)). Before
+agreeing, a language command brings the consent card in
 that language; afterwards it brings one short note. The Malayalam diary has, name for name with
 `english.py`/`hindi.py` (`malayalam.py`):
 - consent, welcome, record and due cards and their buttons (each at most 20 characters);
@@ -79,8 +80,7 @@ that language; afterwards it brings one short note. The Malayalam diary has, nam
 - spoken twins for every card;
 - നിർത്തുക or നിർത്തൂ to stop, and തുടങ്ങുക or തുടങ്ങൂ to start.
 
-The English and Hindi sign-up consent cards each name the other two languages. The pilot's
-Hindi consent is unchanged.
+The consent cards each name the other two languages.
 
 **Reading money (`statement.py`):**
 - the prompt covers Malayalam and Manglish;
