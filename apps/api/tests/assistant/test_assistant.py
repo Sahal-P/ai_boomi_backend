@@ -139,6 +139,9 @@ def test_advice_declines_without_loading_money(
 
 def test_cashflow_amount_is_grounded_and_period_is_not_assumed(settings: Settings) -> None:
     assert amounts_in_question("₹5,000.25 / ५०००.२५ / ൫൦൦൦.൨൫") == {500025}
+    assert amounts_in_question("നമസ്കാരം ₹7860.") == {786000}
+    assert amounts_in_question("Can I spend ₹5,000. Every month?") == {500000}
+    assert amounts_in_question("version 1.2.3 or 5.123") == set()
     assert rule_intent("Would a monthly SIP fit?").amount_minor is None
     assert rule_intent("food spending last month").intent == "spending_query"
     assert rule_intent("food spending last week").clarification_reason == "period"

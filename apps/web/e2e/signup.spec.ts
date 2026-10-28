@@ -117,6 +117,20 @@ test.describe("quick add for a new household", () => {
     await expect(sheet.getByRole("link", { name: "Ask FinBoy instead" })).toBeVisible();
   });
 
+  test("a Malayalam example fills the box and reads like any other", async ({ page }) => {
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: "Add money in or out" });
+    const example = sheet.getByRole("button", { name: "പാൽക്കാരന് 500 കൊടുത്തു" });
+    await expect(example).toHaveAttribute("lang", "ml");
+    await example.click();
+    await expect(sheet.getByLabel("What happened?")).toHaveValue("പാൽക്കാരന് 500 കൊടുത്തു");
+    await sheet.getByRole("button", { name: "Next" }).click();
+    await expect(sheet.getByLabel("Amount (₹)")).toHaveValue("500");
+    await expect(sheet.getByRole("radio", { name: "Money out" })).toBeChecked();
+    await expect(sheet.getByLabel("Category")).toHaveValue("groceries");
+  });
+
   test("Gmail waits for Google's review; delete my account leaves FinBoy", async ({ page, api }) => {
     await page.goto("/sources");
     await expect(page.getByText("Gmail import is invite-only while Google reviews FinBoy.")).toBeVisible();

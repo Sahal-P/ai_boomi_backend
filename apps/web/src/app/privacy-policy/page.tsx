@@ -47,9 +47,10 @@ export default function PrivacyPolicyPage() {
       <p>
         To understand what you say or send, FinBoy uses these services, only for that request and
         without letting them keep or train on your data where they offer that choice: OpenAI
-        (reading text, screenshots and speech), Groq (speech in English and Hindi), Resemble and
-        Google Gemini (spoken replies), Meta (delivering WhatsApp messages) and Google (sign-in and,
-        if you connect it, Gmail). FinBoy never sells your data and never shows ads.
+        (reading text, screenshots and speech), Sarvam AI (speech in English, Hindi and Malayalam,
+        and spoken Malayalam replies), Groq (speech in English and Hindi), Resemble and Google
+        Gemini (spoken replies), Meta (delivering WhatsApp messages) and Google (sign-in and, if
+        you connect it, Gmail). FinBoy never sells your data and never shows ads.
       </p>
 
       <h2>How long we keep it</h2>

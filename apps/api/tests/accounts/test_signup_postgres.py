@@ -23,7 +23,7 @@ def test_whatsapp_sign_up_from_the_website_end_to_end(world) -> None:
     with TestClient(create_app(settings)) as browser:
         card, done = sign_in_with_whatsapp(browser, phone)
         # A new number gets the English consent in the card, then the account is created.
-        assert card["text"].startswith(english.CONSENT) and "Chrome" not in card["text"]
+        assert card["text"].startswith(english.SELF_CONSENT) and "Chrome" not in card["text"]
         assert done["text"] == english.SIGNED_IN
         assert browser.get("/api/v1/auth/whatsapp/status").json()["state"] == "confirmed"
         assert browser.post("/api/v1/auth/whatsapp/complete").status_code == 200

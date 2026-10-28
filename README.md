@@ -26,7 +26,9 @@ records. WhatsApp supports approved-sender ledger questions and screenshot captu
 hand-enrolled village pilot households also record money and dues by Hindi voice and
 confirm them by button ([pilot contract](docs/pilot/contract.md)). Once sign-up is switched on,
 new households join in one tap with WhatsApp (Google as the backup), each with its own private
-records, and add money by typing or speaking ([sign-up contract](docs/signup-round/contract.md)).
+records, and add money by typing or speaking ([sign-up contract](docs/signup-round/contract.md))
+in English, Hindi or Malayalam, on the web and in the WhatsApp diary
+([Malayalam voice contract](docs/malayalam-round/contract.md)).
 
 The assembled product is merged into **main** and published to both requested repositories.
 The authorized private production site is **https://finboy.antlegs.in**, with its
@@ -50,7 +52,10 @@ acceptance gaps; provider configuration alone never means completion.
 - Backend-only OpenAI extraction, assistant understanding/wording and STT. Configured
   assistant requests use real AI; financial figures remain engine-calculated.
   `SPEECH_TRANSCRIBE_PROVIDER=groq` sends
-  English/Hindi to Groq `whisper-large-v3-turbo`; Malayalam always stays on OpenAI.
+  English/Hindi to Groq `whisper-large-v3-turbo` (Malayalam stays on OpenAI);
+  `SPEECH_TRANSCRIBE_PROVIDER=sarvam` sends all three languages to Sarvam `saaras:v3`, and
+  `MALAYALAM_TTS_PROVIDER=sarvam` speaks Malayalam with Bulbul v3
+  ([Malayalam voice contract](docs/malayalam-round/contract.md)).
   OpenAI vision reads WhatsApp payment screenshots into the review queue. Resemble Ultra
   English/Hindi (human's final provider choice), verified Gemini Malayalam TTS. System
   ffmpeg/ffprobe validate/transcode real media. No cloning or training.

@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, ValidationError
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
-from finboy.services.speech.media import MAX_PROVIDER_AUDIO_BYTES, pcm_to_wav
+from finboy.services.speech.media import MAX_PROVIDER_AUDIO_BYTES, SAMPLE_RATE, pcm_to_wav
 
 MAX_JSON_BYTES = 18 * 1024 * 1024
 
@@ -200,6 +200,74 @@ def groq_transcribe(wav: bytes, language: Language | None, settings: Settings) -
             files={"file": ("question.wav", wav, "audio/wav")},
         )
     return GroqTranscription.model_validate_json(raw)
+
+
+class SarvamTranscription(BaseModel):
+    transcript: str = Field(max_length=2000, repr=False)
+    # BCP-47 such as "ml-IN"; null when no speech was detected.
+    language_code: str | None = Field(default=None, max_length=16)
+
+
+class SarvamSpeech(BaseModel):
+    audios: list[str] = Field(min_length=1, max_length=1, repr=False)
+
+
+# Live check on 28 October 2026: saaras:v3 in codemix mode wrote spoken amounts as digits in all
+# three languages ("₹500") and kept brand names in Latin ("Swiggy पे ₹500"); saaras:v4 left
+# Malayalam amounts as words, which the amount parser does not read.
+SARVAM_STT_MODELS = {"saaras:v3"}
+SARVAM_TTS_MODELS = {"bulbul:v3"}  # Bulbul v4 Flash has no Malayalam voice
+SARVAM_LANGUAGES: dict[Language, str] = {"en": "en-IN", "hi": "hi-IN", "ml": "ml-IN"}
+MAX_SARVAM_JSON_BYTES = 256 * 1024
+
+
+def sarvam_transcribe(
+    wav: bytes, language: Language | None, settings: Settings
+) -> SarvamTranscription:
+    """Saaras speech-to-text for English, Hindi and Malayalam; no hint means auto-detect."""
+    if not settings.sarvam_api_key or settings.sarvam_stt_model not in SARVAM_STT_MODELS:
+        raise ProviderUnavailable("configuration_missing")
+    with provider_client(settings) as client:
+        raw = bounded_request(
+            client,
+            "POST",
+            str(settings.sarvam_base_url).rstrip("/") + "/speech-to-text",
+            limit=MAX_SARVAM_JSON_BYTES,
+            headers={"api-subscription-key": settings.sarvam_api_key.get_secret_value()},
+            data={
+                "model": settings.sarvam_stt_model,
+                "mode": "codemix",
+                "language_code": SARVAM_LANGUAGES[language] if language else "unknown",
+            },
+            files={"file": ("question.wav", wav, "audio/wav")},
+        )
+    return SarvamTranscription.model_validate_json(raw)
+
+
+def sarvam_synthesize(text: str, settings: Settings) -> tuple[bytes, str]:
+    """Bulbul Malayalam speech; the speaker was chosen by listening, never defaulted."""
+    if (
+        not settings.sarvam_api_key
+        or settings.sarvam_tts_model not in SARVAM_TTS_MODELS
+        or not settings.sarvam_tts_speaker_ml
+    ):
+        raise ProviderUnavailable("configuration_missing")
+    with provider_client(settings) as client:
+        raw = bounded_request(
+            client,
+            "POST",
+            str(settings.sarvam_base_url).rstrip("/") + "/text-to-speech",
+            headers={"api-subscription-key": settings.sarvam_api_key.get_secret_value()},
+            json={
+                "text": text,
+                "language_code": SARVAM_LANGUAGES["ml"],
+                "model": settings.sarvam_tts_model,
+                "speaker": settings.sarvam_tts_speaker_ml,
+                "speech_sample_rate": SAMPLE_RATE,
+                "output_audio_codec": "wav",
+            },
+        )
+    return decode_base64(SarvamSpeech.model_validate_json(raw).audios[0]), "audio/wav"
 
 
 PROVIDER_ERRORS = (httpx.HTTPError, ValidationError, ValueError, KeyError, TypeError)

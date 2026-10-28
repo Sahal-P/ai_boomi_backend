@@ -141,3 +141,16 @@ single-household statements above only as documented there. Sign-up stays off
 feat/finboy-signup, loopback 8061/3061, disposable finboy_signup. Pilot households stay
 WhatsApp-only; WhatsApp never merges or deletes records; messages, audio, images, transcripts,
 login codes and Google tokens are never stored.
+
+## Malayalam voice round — 28 October 2026
+
+From feat/finboy-signup 4f0a56f the human chose Sarvam AI: Saaras speech-to-text for English,
+Hindi and Malayalam (`SPEECH_TRANSCRIBE_PROVIDER=sarvam`, only the live-verified `saaras:v3`),
+Bulbul v3 for Malayalam spoken replies (`MALAYALAM_TTS_PROVIDER=sarvam`; English and Hindi stay
+on Resemble), and Malayalam in quick add and the WhatsApp money diary.
+`docs/malayalam-round/contract.md` supersedes the Hindi/English-only diary and the
+Malayalam-always-OpenAI statements only as documented there. One agent on
+feat/finboy-malayalam-voice, loopback 8061/3061, disposable finboy_signup. Code defaults stay
+openai/gemini, so production is unchanged until the human releases it. Before any real
+household's audio reaches Sarvam, the human turns off training and sets "No retention" in
+Sarvam's dashboard. Audio, transcripts and Sarvam request IDs are never stored.

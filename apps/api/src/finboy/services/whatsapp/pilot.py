@@ -36,7 +36,15 @@ from finboy.services.speech.media import InvalidAudio
 from finboy.services.ux import decisions
 from finboy.services.ux.obligations import ObligationCorrection, correct_obligation
 from finboy.services.ux.state import TaskError, data_version
-from finboy.services.whatsapp import capture, english, hindi, prompts, reminders, statement
+from finboy.services.whatsapp import (
+    capture,
+    english,
+    hindi,
+    malayalam,
+    prompts,
+    reminders,
+    statement,
+)
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable
@@ -45,10 +53,12 @@ IST = ZoneInfo("Asia/Kolkata")
 logger = logging.getLogger(__name__)
 Reply = Callable[..., bool]
 WEEK = re.compile(
-    r"\s*(?:मेरा\s+|my\s+|weekly\s+)?(?:हिसाब|हिसाब-किताब|hisaab|hisab|summary)"
-    r"(?:\s+(?:बताओ|बताइए|बताइये|दिखाओ|दिखाइए|दो|दीजिए|batao|dikhao))?\s*[।.!?]*\s*",
+    r"\s*(?:मेरा\s+|my\s+|weekly\s+|എന്റെ\s+)?(?:हिसाब|हिसाब-किताब|hisaab|hisab|summary|കണക്ക്)"
+    r"(?:\s+(?:बताओ|बताइए|बताइये|दिखाओ|दिखाइए|दो|दीजिए|batao|dikhao|പറയൂ|കാണിക്കൂ|തരൂ))?"
+    r"\s*[।.!?]*\s*",
     re.IGNORECASE,
 )
+WORDS = {"en": english, "hi": hindi, "ml": malayalam}
 
 
 @dataclass
@@ -67,12 +77,12 @@ class Conversation:
     @property
     def language(self) -> Language:
         chosen = self.binding.language
-        return chosen if chosen in {"en", "hi"} else self.fallback  # type: ignore[return-value]
+        return chosen if chosen in WORDS else self.fallback  # type: ignore[return-value]
 
     @property
     def words(self) -> ModuleType:
-        """The `hindi` or `english` copy module; both define the same names."""
-        return english if self.language == "en" else hindi
+        """The `english`, `hindi` or `malayalam` copy module; all define the same names."""
+        return WORDS[self.language]
 
     def send(self, text: str, buttons: list[tuple[str, str]] | None = None) -> bool:
         return self.reply(
@@ -122,7 +132,7 @@ def _handle(conversation: Conversation) -> str | None:
     if question.kind == "button":
         return _tap(conversation)
     if binding.consented_at is None:
-        return _ask_consent(conversation)
+        return ask_consent(conversation)
     if question.kind == "image":
         return _screenshot(conversation)
     try:
@@ -184,7 +194,7 @@ def _heard(conversation: Conversation) -> str:
     return text
 
 
-def _ask_consent(conversation: Conversation) -> str | None:
+def ask_consent(conversation: Conversation) -> str | None:
     words = conversation.words
     if conversation.self_serve and not households.signup_open(
         conversation.session, conversation.settings
@@ -216,7 +226,7 @@ def _tap(conversation: Conversation) -> str | None:
         return conversation.done(conversation.send(conversation.words.EXPIRED), "prompt_expired")
     if prompt.purpose != "consent" and binding.consented_at is None:
         session.rollback()
-        return _ask_consent(conversation)
+        return ask_consent(conversation)
     return handler(conversation, prompt, parsed[1])
 
 

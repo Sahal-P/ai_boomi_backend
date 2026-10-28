@@ -102,6 +102,72 @@ def test_rules_fallback_without_a_model(text: str, kind: str) -> None:
     assert statement.read_statement(text, settings, TODAY).kind == kind
 
 
+@pytest.mark.parametrize(
+    ("text", "kind", "amount", "day", "due"),
+    [
+        ("ഈ ആഴ്ച എത്ര ചെലവായി", "question", None, None, None),
+        ("എത്ര രൂപ ബാക്കിയുണ്ട്", "question", None, None, None),
+        ("എന്താണ് എന്റെ ചെലവ്?", "question", None, None, None),
+        ("പാൽക്കാരന് 500 കൊടുത്തു", "spent", 50000, TODAY, None),
+        ("ഇന്നലെ കറന്റ് ബില്ല് ൮൦൦ അടച്ചു", "spent", 80000, date(2026, 10, 25), None),
+        ("ശമ്പളം ₹25,000 കിട്ടി.", "received", 2500000, TODAY, None),
+        ("10-ാം തീയതി 1200 തവണ അടയ്ക്കണം", "due", 120000, None, date(2026, 11, 10)),
+        ("10 तारीख को 1200 की किस्त देना है", "due", 120000, None, date(2026, 11, 10)),
+        ("പാൽക്കാരന് അഞ്ഞൂറ് രൂപ കൊടുത്തു", "spent", None, TODAY, None),  # words: asked again
+        ("നമസ്കാരം", "unclear", None, None, None),
+    ],
+)
+def test_malayalam_rules_fallback_without_a_model(text, kind, amount, day, due) -> None:
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql+psycopg://test:test@127.0.0.1:1/finboy_test",
+        cors_origins=["http://localhost:3000"],
+        environment="test",
+    )
+    result = statement.read_statement(text, settings, TODAY)
+    assert (result.kind, result.amount_minor, result.day, result.due_date) == (
+        kind,
+        amount,
+        day,
+        due,
+    )
+
+
+@pytest.mark.parametrize(
+    ("phrase", "expected"),
+    [
+        ("ഇന്ന്", TODAY),
+        ("ഇന്നലെ", date(2026, 10, 25)),
+        ("മിനിഞ്ഞാന്ന്", date(2026, 10, 24)),
+        ("10-ാം തീയതി", date(2026, 10, 10)),
+        ("28 തീയതി", date(2026, 9, 28)),  # never in the future: last month
+    ],
+)
+def test_when_money_moved_in_malayalam(phrase: str, expected: date) -> None:
+    text = f"പാൽക്കാരന് ₹500 കാശായി കൊടുത്തു, {phrase}"
+    model = reading(amount_phrase="₹500", counterparty="പാൽക്കാരന്", day_phrase=phrase)
+    grounded = statement._ground(model, text, TODAY)
+    assert grounded == Statement("spent", 50000, "പാൽക്കാരന്", "cash", expected, "groceries")
+
+
+def test_malayalam_names_and_dues_are_grounded() -> None:
+    named = reading(amount_phrase="500", counterparty="500 രൂപ")
+    assert statement._ground(named, "പാൽക്കാരന് 500 രൂപ കൊടുത്തു", TODAY).counterparty is None
+    due = reading(
+        type="due",
+        amount_phrase="1200",
+        counterparty=None,
+        category="loan_emi",
+        due_day=10,
+        due_label="ലോൺ തവണ",
+    )
+    said = statement._ground(due, "ലോൺ തവണ 1200, എല്ലാ മാസവും പത്താം തീയതി", TODAY)
+    assert (said.amount_minor, said.due_date, said.label) == (120000, date(2026, 11, 10), "ലോൺ തവണ")
+    unsaid = statement._ground(due, "ലോൺ തവണ 1200 അടയ്ക്കണം", TODAY)
+    assert unsaid.due_date is None, "a model-supplied day that was never said is dropped"
+    assert "Malayalam" in statement.PROMPT and "കൊടുത്തു" in statement.PROMPT
+
+
 def test_production_without_a_model_fails_closed() -> None:
     settings = Settings(
         _env_file=None,

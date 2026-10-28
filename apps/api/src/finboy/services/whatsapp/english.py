@@ -101,6 +101,7 @@ PAID_REPEAT_SPEECH = "Added. Is the same due next month too?"
 DUE_LABEL = "Instalment"
 STOP_REPLY = 'FinBoy replies are off. Send "START" to turn them back on.'
 START_REPLY = 'FinBoy is back on. Just tell me, like: "Paid the milkman 500".'
+LANGUAGE_CHOSEN = 'English it is. Just tell me, like: "Paid the milkman 500".'
 
 
 def day_label(day: date, today: date) -> str:
@@ -258,7 +259,17 @@ SAFETY = (
     "Only tap yes if you started this yourself on the FinBoy website just now. "
     "Never send a code that someone else gave you."
 )
-SELF_CONSENT = CONSENT  # every English household joined by itself
+SELF_CONSENT = (
+    "Hi! I'm FinBoy. 🙏\n"
+    "Keep track of your money just by talking.\n\n"
+    "I only write down: the amount, the date, who you paid or who paid you, and what it was for.\n"
+    "I don't keep your voice notes, photos or messages.\n"
+    "Only you can see your records. You can delete everything on the FinBoy website "
+    "(Privacy → Delete my account).\n"
+    'Send "STOP" any time to stop.\n'
+    "हिंदी: hi · മലയാളം: ml\n\n"
+    "Do you agree?"
+)
 
 
 def sign_in_card(device: str) -> str:
@@ -266,7 +277,7 @@ def sign_in_card(device: str) -> str:
 
 
 def signup_card(device: str) -> str:
-    return f"{CONSENT}\n\n🔐 Create your account and sign in on {device}?\n{SAFETY}"
+    return f"{SELF_CONSENT}\n\n🔐 Create your account and sign in on {device}?\n{SAFETY}"
 
 
 def link_card(device: str) -> str:

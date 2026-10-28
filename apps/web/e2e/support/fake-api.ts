@@ -654,17 +654,17 @@ export class FakeFinBoyApi {
       ? "question"
       : /due|fees/i.test(text)
         ? "due"
-        : /got|received|salary/i.test(text)
+        : /got|received|salary|കിട്ടി/i.test(text)
           ? "received"
-          : /paid|spent|gave|bought|दिए/i.test(text)
+          : /paid|spent|gave|bought|दिए|കൊടുത്തു/i.test(text)
             ? "spent"
             : "unclear";
     const money = kind === "spent" || kind === "received" || kind === "due";
     return {
       kind,
       amount_minor: money && amount ? Number(amount) * 100 : null,
-      counterparty: /milkman/i.test(text) ? "milkman" : null,
-      category: /milk/i.test(text) ? "groceries" : kind === "due" ? "education" : "other",
+      counterparty: /milkman/i.test(text) ? "milkman" : /പാൽക്കാരന്/.test(text) ? "പാൽക്കാരന്" : null,
+      category: /milk|പാൽ/i.test(text) ? "groceries" : kind === "due" ? "education" : "other",
       day: money && kind !== "due" ? TODAY : null,
       due_date: kind === "due" ? "2026-11-10" : null,
       label: kind === "due" ? "School fees" : null,

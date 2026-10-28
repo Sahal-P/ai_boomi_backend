@@ -291,3 +291,68 @@ describes the default `SPEECH_TRANSCRIBE_PROVIDER=openai` mode, which is unchang
 Not yet run: no Groq key exists in the private secrets file, so no live Groq call,
 capability check or Groq benchmark has been made. Keep `SPEECH_TRANSCRIBE_PROVIDER=openai`
 until both live benchmark modes pass for all six fixtures.
+
+## Sarvam AI (Malayalam voice round, 28 October 2026)
+
+The human chose Sarvam for speech-to-text in all three languages, and for Malayalam spoken
+replies ([contract](malayalam-round/contract.md)). The code defaults are unchanged: `openai`
+transcription and `gemini` Malayalam speech.
+
+**Settings** (backend only):
+- `SPEECH_TRANSCRIBE_PROVIDER=sarvam`, `SARVAM_API_KEY`, `SARVAM_STT_MODEL=saaras:v3`;
+- `MALAYALAM_TTS_PROVIDER=sarvam`, `SARVAM_TTS_MODEL=bulbul:v3`, `SARVAM_TTS_SPEAKER_ML`;
+- `SARVAM_BASE_URL`: default `https://api.sarvam.ai`, HTTPS without credentials or query.
+
+Any other model, or a missing key or voice, gives `configuration_missing`.
+
+**Transcription:**
+- The validated WAV goes to `POST /speech-to-text` as multipart with the
+  `api-subscription-key` header.
+- Fields: `model`, `mode=codemix`, and `language_code` (`en-IN`/`hi-IN`/`ml-IN` from the hint,
+  otherwise `unknown`).
+- The JSON response is capped at 256 KB, and `transcript` at 2,000 characters.
+- The BCP-47 code counts only when the transcript is in that language's script
+  (`script_language`).
+- Empty text or a null language gives an empty `unknown` transcript, so WhatsApp never acts on
+  a guess.
+- Any failure is `speech_unavailable` and is never retried on another provider.
+
+**Malayalam speech:**
+- JSON `POST /text-to-speech` with `language_code=ml-IN`, `speech_sample_rate=24000` and
+  `output_audio_codec=wav`;
+- `audios` must hold exactly one base64 WAV;
+- the WAV is decoded and re-encoded to MP3 by the existing ffmpeg path.
+
+Bulbul v4 Flash has no Malayalam, and v2 is legacy.
+
+**Why `saaras:v3` in `codemix` mode.** The live check wrote spoken amounts as digits in all
+three languages ("₹500"), with brand names in Latin script. `saaras:v4` left Malayalam amounts
+as words ("അഞ്ഞൂറ് രൂപ"), which FinBoy's amount reader does not parse. The full table is in the
+contract.
+
+**Live benchmark** (`pnpm voice:benchmark --live`, six recorded fixtures, 28 October 2026):
+
+| Mode | Language | Intent | Amount | Exact text | Latency |
+| --- | --- | --- | --- | --- | --- |
+| With hints | 6/6 | 3/3 | 3/3 | 5/6 | 0.42–0.90 s (first call 2.33 s) |
+| `--no-hint` | 6/6 | 3/3 | 3/3 | 5/6 | 0.50–0.78 s |
+
+- The Malayalam number clip came back as "₹7860." in digits, against the fixture's words. The
+  amount checker had treated the sentence-final full stop as a decimal point, and
+  `amounts_in_question` was fixed so voice questions ending in an amount keep it.
+- The OpenAI comparison was not rerun: the key in the private secrets file returned
+  `401 token_invalidated`.
+- The 24 October OpenAI figures in the table at the top of this page are the baseline.
+
+**Privacy:** Sarvam may train on customer content unless the account opts out, and it keeps
+workspace data until a retention period is set. Turn off training and set Model APIs to "No
+retention" in Sarvam's dashboard before real households' audio is sent. FinBoy sends no IDs or
+names beyond the audio or reply text itself, and stores nothing.
+
+**Pricing** (pay-as-you-go, 28 October 2026):
+- speech-to-text ₹0.49 a minute, billed per second;
+- Bulbul v3 ₹3 per 1,000 characters;
+- 60 requests a minute for each.
+
+**Not verified:** real microphone or WhatsApp voice notes from people, and phone playback of
+Bulbul audio.

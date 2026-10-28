@@ -32,11 +32,20 @@ class Settings(BaseSettings):
     openai_assistant_model: str | None = None
     openai_transcribe_model: str | None = None
     openai_vision_model: str | None = None
-    # "groq" sends English/Hindi to Groq Whisper; Malayalam always stays on OpenAI.
-    speech_transcribe_provider: Literal["openai", "groq"] = "openai"
+    # "groq" sends English/Hindi to Groq Whisper (Malayalam stays on OpenAI); "sarvam" sends all
+    # three languages to Sarvam Saaras (docs/malayalam-round/contract.md).
+    speech_transcribe_provider: Literal["openai", "groq", "sarvam"] = "openai"
     groq_api_key: SecretStr | None = None
     groq_transcribe_model: str | None = None
     groq_base_url: AnyHttpUrl = "https://api.groq.com/openai/v1"
+    sarvam_api_key: SecretStr | None = None
+    sarvam_stt_model: str | None = None
+    sarvam_tts_model: str | None = None
+    # A Bulbul speaker name, chosen by listening; Malayalam replies only.
+    sarvam_tts_speaker_ml: str | None = Field(default=None, pattern=r"^[a-z]{2,24}$")
+    sarvam_base_url: AnyHttpUrl = "https://api.sarvam.ai"
+    # Malayalam spoken replies; English and Hindi stay on Resemble.
+    malayalam_tts_provider: Literal["gemini", "sarvam"] = "gemini"
     google_oauth_client_id: str | None = None
     google_oauth_client_secret: SecretStr | None = None
     google_oauth_redirect_uri: AnyHttpUrl | None = None
@@ -123,6 +132,10 @@ class Settings(BaseSettings):
         "openai_vision_model",
         "groq_api_key",
         "groq_transcribe_model",
+        "sarvam_api_key",
+        "sarvam_stt_model",
+        "sarvam_tts_model",
+        "sarvam_tts_speaker_ml",
         "google_oauth_client_id",
         "google_oauth_client_secret",
         "google_oauth_redirect_uri",
@@ -140,7 +153,9 @@ class Settings(BaseSettings):
     def empty_optional_value(cls, value: object) -> object:
         return None if value == "" else value
 
-    @field_validator("resemble_tts_base_url", "gemini_tts_base_url", "groq_base_url")
+    @field_validator(
+        "resemble_tts_base_url", "gemini_tts_base_url", "groq_base_url", "sarvam_base_url"
+    )
     @classmethod
     def require_provider_url(cls, value: AnyHttpUrl) -> AnyHttpUrl:
         if (

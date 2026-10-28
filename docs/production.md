@@ -375,3 +375,35 @@ A follow-up changes the pilot unit-test fixture to noon UTC on the configured bu
 fixing six existing CI failures caused by SQLite timezone loss and demo-date drift. It changes
 tests only. UTC checks (908 API unit tests, 48 web tests, lint/types) and the production build
 pass. See [branding release evidence](handoffs/finboy-branding.md) and [asset usage](branding.md).
+
+## Sarvam speech release procedure
+
+`feat/finboy-malayalam-voice` adds Sarvam speech and Malayalam
+([contract](malayalam-round/contract.md)). It has no migration. With the new settings unset,
+production behaves as before: OpenAI transcription and Gemini Malayalam speech.
+
+**Before release:**
+- In Sarvam's dashboard, turn off training on your content and set Data retention → Model APIs
+  → "No retention". The privacy policy promises this.
+- Pick the Malayalam voice by listening.
+
+**Release.** With approval, add the settings to `/etc/finboy/production.env`, then restart
+`finboy.service` only:
+
+```
+SARVAM_API_KEY=<from the private secrets file>
+SPEECH_TRANSCRIBE_PROVIDER=sarvam
+SARVAM_STT_MODEL=saaras:v3
+MALAYALAM_TTS_PROVIDER=sarvam
+SARVAM_TTS_MODEL=bulbul:v3
+SARVAM_TTS_SPEAKER_ML=<chosen voice>
+```
+
+**Check:** `/api/v1/readiness` should report `transcription_configuration` and
+`malayalam_tts_configuration` as `configured`.
+
+**Rollback:** set `SPEECH_TRANSCRIBE_PROVIDER=openai` and `MALAYALAM_TTS_PROVIDER=gemini`, then
+restart.
+
+**Acceptance:** record real phone voice notes in Malayalam, Hindi and English, and playback of a
+Malayalam reply, as human acceptance, separately from these checks.

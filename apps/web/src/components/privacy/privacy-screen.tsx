@@ -186,9 +186,9 @@ export function PrivacyScreen() {
           <h3 className="mt-5 font-semibold">Not training data</h3>
           <p className="mt-1 text-ink-soft">
             Financial emails are never used to train models. Relevant content may be processed by the
-            backend&apos;s extraction provider to create structured records. Voice questions are
-            transcribed by the configured speech provider (Groq or OpenAI; Malayalam always uses
-            OpenAI). Questions are sent to OpenAI to understand and word the reply; household
+            backend&apos;s extraction provider to create structured records. Voice is transcribed by
+            the configured speech provider (Sarvam AI, Groq or OpenAI) and never stored. Questions
+            are sent to OpenAI to understand and word the reply; household
             record amounts are calculated by FinBoy and are not sent for answer wording.
             Where WhatsApp is enabled, payment screenshots are read by OpenAI and never stored.
           </p>
