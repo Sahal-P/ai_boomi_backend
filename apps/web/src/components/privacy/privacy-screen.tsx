@@ -3,6 +3,7 @@
 import { Mail, ShieldCheck, Trash2, Unplug } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { LoadingPanel } from "@/components/feedback/states";
@@ -29,6 +30,7 @@ export function PrivacyScreen() {
   const connections = useResource("connections", (signal) => getConnections(signal));
   const isolation = useResource("isolation", (signal) => getIsolation(signal));
   const events = useResource("audit", (signal) => getAuditEvents(signal));
+  const { signIn } = useHouseholdAccess();
   const [target, setTarget] = useState<Target>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const live = (connections.data ?? []).filter((item) => item.status !== "revoked");
@@ -57,7 +59,13 @@ export function PrivacyScreen() {
             {connections.data && !live.length && (
               <p className="mt-2 text-sm text-ink-soft">
                 No Gmail account is connected.{" "}
-                <Link href="/sources" className="font-semibold text-ink underline underline-offset-4">Go to Sources</Link> to add one.
+                {signIn?.gmail === false ? (
+                  "Gmail import is invite-only while Google reviews FinBoy."
+                ) : (
+                  <>
+                    <Link href="/sources" className="font-semibold text-ink underline underline-offset-4">Go to Sources</Link> to add one.
+                  </>
+                )}
               </p>
             )}
             {live.length > 0 && (

@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 
 import { MoneyScene } from "@/components/illustrations/scenes";
+import { WhatsAppStart } from "@/components/marketing/whatsapp-start";
 
 const lines = ["Your inbox", "already knows", "your money."] as const;
 const assurances = ["Read-only Gmail access", "Raw emails never stored", "Disconnect anytime"] as const;
@@ -62,6 +63,8 @@ export function Hero() {
               Explore sample data
             </Link>
           </div>
+          {/* Appears once the sign-in options load, so its delay counts from then. */}
+          <WhatsAppStart className="rise-in mt-5 text-sm leading-relaxed text-sunflower-ink" style={delay(0.4)} />
           <ul
             className="rise-in mt-10 flex flex-wrap gap-x-6 gap-y-2 text-[13px] font-semibold text-sunflower-ink"
             style={delay(0.85)}

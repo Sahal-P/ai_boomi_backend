@@ -45,6 +45,15 @@ test.describe("one-tap sign-in with WhatsApp", () => {
     expect(api.signedIn).toBe(false);
   });
 
+  test("the landing page opens FinBoy's WhatsApp chat in one tap", async ({ page }) => {
+    await page.goto("/?graphics=off");
+    const chat = page.getByRole("link", { name: "Say hi to FinBoy" });
+    await expect(chat).toBeVisible();
+    await expect(chat).toHaveAttribute("href", "https://wa.me/919000000099?text=Hi%20FinBoy");
+    await expect(chat).toHaveAttribute("target", "_blank");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
   test("legal links and the sample are one tap away", async ({ page }) => {
     await page.goto("/login");
     await page.getByRole("link", { name: "Privacy Policy" }).click();
@@ -62,6 +71,13 @@ test.describe("when FinBoy is full", () => {
     await page.goto("/login");
     await expect(page.getByText("New accounts are full for now. Already have one? Sign in as usual.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Continue with WhatsApp" })).toBeVisible();
+  });
+
+  test("the landing page keeps only Get started", async ({ page, api }) => {
+    await page.goto("/?graphics=off");
+    await expect.poll(() => api.requests.some((item) => item.path === "/api/v1/auth/session")).toBe(true);
+    await expect(page.getByRole("link", { name: "Get started free" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Say hi to FinBoy" })).toHaveCount(0);
   });
 });
 
@@ -84,7 +100,8 @@ test.describe("quick add for a new household", () => {
     expect(api.transactions[0]?.source_modes).toEqual(["manual_entry"]);
     await sheet.getByRole("button", { name: "Undo" }).click();
     await expect(sheet.getByText("Undone: ₹500 · milkman")).toBeVisible();
-    expect(api.transactions[0]?.status).toBe("needs_review");
+    // Undo takes the entry back for good: it stops counting and never waits in Review.
+    expect(api.transactions[0]?.status).toBe("rejected");
     await sheet.getByRole("button", { name: "Done" }).click();
     await expect(sheet).toBeHidden();
   });
@@ -93,8 +110,10 @@ test.describe("quick add for a new household", () => {
     await page.goto("/dashboard");
     await page.getByRole("button", { name: "Add", exact: true }).click();
     const sheet = page.getByRole("dialog", { name: "Add money in or out" });
-    await sheet.getByLabel("What happened?").fill("How much did I spend this week?");
-    await sheet.getByRole("button", { name: "Next" }).click();
+    const sentence = sheet.getByLabel("What happened?");
+    await sentence.fill("How much did I spend this week?");
+    await sentence.press("Enter"); // works like Next
+    await expect(sentence).toHaveValue("How much did I spend this week?");
     await expect(sheet.getByRole("link", { name: "Ask FinBoy instead" })).toBeVisible();
   });
 
@@ -103,6 +122,8 @@ test.describe("quick add for a new household", () => {
     await expect(page.getByText("Gmail import is invite-only while Google reviews FinBoy.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Connect Gmail" })).toHaveCount(0);
     await page.goto("/privacy");
+    await expect(page.getByText("Gmail import is invite-only while Google reviews FinBoy.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Go to Sources" })).toHaveCount(0);
     await page.getByRole("button", { name: "Delete my account" }).click();
     await page.getByRole("button", { name: "Delete everything" }).click();
     await expect(page).toHaveURL(/\/$/);

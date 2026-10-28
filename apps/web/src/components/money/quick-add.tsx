@@ -26,7 +26,7 @@ import {
   saveEntry,
 } from "@/lib/api/entries";
 import { categories, formatMoney, inputPaise, updateObligation } from "@/lib/api/money";
-import { undoDecision } from "@/lib/api/transactions";
+import { decide } from "@/lib/api/transactions";
 import { istDate } from "@/lib/dates";
 import { categoryLabels } from "@/lib/labels";
 
@@ -63,8 +63,9 @@ const kindNames: Record<Draft["kind"], string> = {
 };
 
 /**
- * Quick add: say or type one sentence, check the card, Save. Save is the confirmation; it can
- * be undone right here. The sentence itself is never stored.
+ * Quick add: say or type one sentence, check the card, Save. Save is the confirmation; Undo right
+ * here rejects the entry (a due is dismissed) so it stops counting without waiting in Review. The
+ * sentence itself is never stored.
  */
 export function QuickAdd({
   open,
@@ -136,8 +137,9 @@ export function QuickAdd({
     if (!saved) return;
     const { result } = saved;
     const ok = await action.run("undo", "This entry couldn't be undone", async () => {
-      if (result.kind === "record" && result.transaction_id && result.decision_id) {
-        await undoDecision(result.transaction_id, result.decision_id, result.data_version);
+      if (result.kind === "record" && result.transaction_id) {
+        // Undoing the Save itself would only send the entry back to Review.
+        await decide(result.transaction_id, { action: "reject", expected_version: result.data_version });
       } else if (result.obligation_id) {
         await updateObligation(result.obligation_id, {
           expected_version: result.data_version,
@@ -317,10 +319,19 @@ export function QuickAdd({
               rows={3}
               maxLength={500}
               placeholder="Paid the milkman 500"
+              enterKeyHint="next"
               value={text}
               onChange={(event) => {
                 setText(event.target.value);
                 setHint(null);
+              }}
+              onKeyDown={(event) => {
+                // One sentence, so Enter works like Next. Shift+Enter still breaks the line, and
+                // Enter that picks a word in a Hindi input method (229 in Safari) is left alone.
+                if (event.key !== "Enter" || event.shiftKey) return;
+                if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+                event.preventDefault();
+                if (text.trim() && action.busy === null && !listening) void read();
               }}
               className="rounded-2xl text-base"
             />

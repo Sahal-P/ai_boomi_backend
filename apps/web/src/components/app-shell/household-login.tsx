@@ -13,7 +13,8 @@ export function HouseholdLogin({ next }: { next: string }) {
   const destination = destinationTitle(next);
   return (
     <main className="moment moment-page min-h-dvh">
-      {/* Phones: intro, scene, options. Wider screens: intro and options beside the scene. */}
+      {/* Phones: intro, options, then the scene, so the one button never falls below the fold.
+          Wider screens: intro and options beside the scene. */}
       <div className="mx-auto grid min-h-dvh max-w-6xl content-center gap-x-14 gap-y-7 px-5 py-10 sm:px-8 lg:grid-cols-2 lg:py-16">
         <div className="lg:col-start-1">
           <Link href="/" className="inline-flex items-center gap-2 text-[1.45rem] font-bold tracking-[-0.05em] text-ink">
@@ -28,7 +29,7 @@ export function HouseholdLogin({ next }: { next: string }) {
               : "Sign in or create your account in one tap. Your records stay private to your household."}
           </p>
         </div>
-        <MoneyScene className="mx-auto w-full max-w-[16rem] self-center sm:max-w-sm lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:max-w-none" />
+        <MoneyScene className="mx-auto w-full max-w-[16rem] self-center max-lg:order-last sm:max-w-sm lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:max-w-none" />
         <section aria-labelledby="login-title" className="w-full max-w-md lg:col-start-1">
           <SignInOptions
             onSignedIn={() => {

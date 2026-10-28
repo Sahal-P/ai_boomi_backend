@@ -380,7 +380,8 @@ export function OverviewScreen() {
             : "Your household's tracked money"
         }
         actions={
-          // One row even at 320 px: the period select shrinks on phones instead of wrapping.
+          // One row even at 320 px: on phones Refresh is just its icon and the period select
+          // takes the rest of the row instead of wrapping.
           <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
             <Button className="shrink-0" onClick={() => setAdding(true)}>
               <Plus aria-hidden="true" /> Add
@@ -404,11 +405,11 @@ export function OverviewScreen() {
             </select>
             <Button
               variant="outline"
-              className="shrink-0"
+              className="shrink-0 max-sm:w-11 max-sm:px-0"
               onClick={summary.reload}
               disabled={summary.status === "loading" || summary.status === "refreshing"}
             >
-              <RefreshCw aria-hidden="true" /> Refresh
+              <RefreshCw aria-hidden="true" /> <span className="max-sm:sr-only">Refresh</span>
             </Button>
           </div>
         }
