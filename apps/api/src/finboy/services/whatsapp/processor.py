@@ -153,6 +153,7 @@ def process_question(
             # households that joined by themselves get the same diary (signup contract).
             is_pilot = household.pilot is True
             self_serve = household.joined_via is not None
+            diary = is_pilot or self_serve
             conversation = pilot.Conversation(
                 session,
                 settings,
@@ -163,9 +164,13 @@ def process_question(
                 binding,
                 send_reply,
                 self_serve=self_serve,
-                fallback="hi" if is_pilot or self_serve else "en",
+                fallback="hi" if diary else "en",
             )
             if question.command:
+                if diary and question.command in {"en", "hi", "ml"} and not binding.consented_at:
+                    # Choosing a language before agreeing shows the consent card in it.
+                    receipts.finish(session, receipt_id, error=pilot.ask_consent(conversation))
+                    return
                 response = {
                     "stop": (
                         "FinBoy WhatsApp replies are disabled. Send START to enable them again."
@@ -181,8 +186,11 @@ def process_question(
                         {
                             "stop": conversation.words.STOP_REPLY,
                             "start": conversation.words.START_REPLY,
+                            "en": conversation.words.LANGUAGE_CHOSEN,
+                            "hi": conversation.words.LANGUAGE_CHOSEN,
+                            "ml": conversation.words.LANGUAGE_CHOSEN,
                         }
-                        if is_pilot or self_serve
+                        if diary
                         else {}
                     ),
                 }[question.command]
@@ -240,7 +248,7 @@ def process_question(
                         session, receipt_id, error=conversation.done(sent, "usage_limit")
                     )
                     return
-            if is_pilot or self_serve:
+            if diary:
                 receipts.finish(session, receipt_id, error=pilot.handle(conversation))
                 return
             if question.kind == "button":

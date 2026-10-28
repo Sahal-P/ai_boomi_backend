@@ -16,7 +16,8 @@ class InvalidWebhook(Exception):
     pass
 
 
-# Hindi बंद/शुरू work like STOP/START for households who don't type English.
+# Hindi बंद/शुरू and Malayalam നിർത്തുക/തുടങ്ങുക work like STOP/START for households who don't
+# type English.
 COMMANDS = {
     "stop": "stop",
     "start": "start",
@@ -25,6 +26,10 @@ COMMANDS = {
     "ml": "ml",
     "बंद": "stop",
     "शुरू": "start",
+    "നിർത്തുക": "stop",
+    "നിർത്തൂ": "stop",
+    "തുടങ്ങുക": "start",
+    "തുടങ്ങൂ": "start",
 }
 
 
