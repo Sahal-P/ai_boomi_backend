@@ -62,8 +62,9 @@ exist from `GET /api/v1/auth/session` (`sign_in`), never from build-time variabl
 - **WhatsApp only:** "Prefer WhatsApp? Say hi to FinBoy" on the landing hero and `/login`, shown
   only while sign-ups are open, opens the chat with "Hi FinBoy" typed.
 - **Quick add** (`quick-add.tsx`): Overview's **Add** button and the empty state "Add what you
-  spent today" open a sheet (right on desktop, bottom on phones). Type or **Say it**, with
-  English and Hindi examples; Enter works like Next. The editable card (money out, money in or
+  spent today" open a sheet (right on desktop, bottom on phones). Type or **Say it** in
+  English, Hindi or Malayalam, with an example in each (the Malayalam one marked `lang="ml"`);
+  Enter works like Next. The editable card (money out, money in or
   to pay later; amount; date; to or for; category) saves with one tap. **Undo** rejects the
   entry (a due is dismissed) so it stops counting without waiting in Review, then **Add
   another** or **Done**. A question offers **Ask FinBoy instead**. The sentence is never
@@ -109,8 +110,8 @@ client component or browser request. Product outcome events (`evidence_opened`,
   placeholder and form-control boundary, the three-blurred-layer budget, accessibility-setting
   fallbacks and the orbs' behaviour. `capture.spec.ts` (`E2E_CAPTURE_DIR`) and `perf.spec.ts`
   (`E2E_PERF=1`) are opt-in review tools. `signup.spec.ts` covers WhatsApp sign-in (waiting,
-  signed in, declined, full), the landing link, legal pages, quick add with undo, Gmail's
-  invite-only state and account deletion.
+  signed in, declined, full), the landing link, legal pages, quick add with undo, the
+  Malayalam example, Gmail's invite-only state and account deletion.
 - `apps/web/e2e/live.spec.ts` (`E2E_LIVE_API=1`): the core journeys through the same-origin
   proxy against a real API on a disposable database, with synthetic `.eml` files only.
 - Human-only acceptance (real Google consent, microphones, phone playback, screen readers,

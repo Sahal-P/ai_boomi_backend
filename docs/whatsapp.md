@@ -364,3 +364,25 @@ that joined while it was.
 - New receipt error codes: `signup_full`, `login_expired`, `usage_limit`,
   `web_not_available`. Nothing new is stored about messages: no text, audio, image, transcript
   or login code.
+
+## Malayalam households (28 October 2026)
+
+[The Malayalam voice contract](malayalam-round/contract.md) applies.
+
+- **Language:**
+  - a first text in Malayalam script starts a self-serve household in Malayalam;
+  - a voice note or photo still starts in Hindi;
+  - `ml`, `hi` or `en` switches at any time. Before agreeing, it brings the consent card in
+    that language; afterwards, a short "chosen" note.
+  - The owner's question flow keeps its own language replies.
+- **Copy:** `malayalam.py` mirrors `english.py` and `hindi.py` name for name (a test checks
+  this). It covers consent, cards, buttons of at most 20 characters, dues, the "കണക്ക്" week
+  summary, and the sign-in, sign-up and link cards. നിർത്തുക/നിർത്തൂ and തുടങ്ങുക/തുടങ്ങൂ work
+  like STOP/START.
+- **Voice:**
+  - voice notes are transcribed with the household's language as the hint (Sarvam when
+    `SPEECH_TRANSCRIBE_PROVIDER=sarvam`);
+  - spoken replies use Bulbul when `MALAYALAM_TTS_PROVIDER=sarvam`;
+  - amounts arrive as digits; a Malayalam number typed as words gets "എത്ര രൂപ?".
+- **Unchanged:** buttons, undo, daily limits, the pilot's Hindi reminder template and the
+  no-storage rules. WhatsApp never merges or deletes.
