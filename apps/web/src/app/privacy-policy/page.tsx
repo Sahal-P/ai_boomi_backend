@@ -21,8 +21,8 @@ export default function PrivacyPolicyPage() {
           category, and any dues you add. Nothing counts until you confirm it.
         </li>
         <li>
-          How you sign in: an encrypted copy of your WhatsApp number (so we can reply and send the
-          reminders you ask for), or a one-way code that identifies your Google account plus a
+          How you sign in: an encrypted copy of your WhatsApp number (shown to you masked, and used
+          only for messages you ask for, like a place opening up or a reminder), or a one-way code that identifies your Google account plus a
           masked email like &ldquo;s***@***.com&rdquo;. We don&apos;t keep your name or photo.
         </li>
         <li>

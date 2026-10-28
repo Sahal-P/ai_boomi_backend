@@ -1,17 +1,32 @@
 # FinBoy architecture
 
-FinBoy is one private household FastAPI service in `apps/api`, one Next.js App Router
+FinBoy is one FastAPI service for private households in `apps/api`, one Next.js App Router
 application in `apps/web`, and PostgreSQL. HTTP routes validate contracts; synchronous
 services own blocking work and write transactions; `db` owns SQLAlchemy metadata and
 sessions; `core` owns settings, access, errors, clocks and redacted logging. There is
-no startup `create_all`, queue service, signup, payment execution or external analytics.
+no startup `create_all`, queue service, payment execution or external analytics.
+Self-serve sign-up exists behind `SIGNUP_ENABLED`, off by default.
 
 The deployed boundary is Vercel's same-origin `/api/v1` rewrite to the loopback
-voxpay API behind HTTPS nginx. Twelve-hour host-only household cookies, exact-Origin
-write checks, independent single-use Gmail state/PKCE and the cross-host handoff
-remain in place. Only health, the fixed read-only demo, household authentication and
-the existing signed/capability-validated provider exceptions are public. Provider
+voxpay API behind HTTPS nginx. Host-only session cookies, exact-Origin write checks,
+independent single-use Gmail state/PKCE and the cross-host handoff remain in place.
+Only health, the fixed read-only demo, sign-in (password, WhatsApp code and Google)
+and the existing signed/capability-validated provider exceptions are public. Provider
 credentials remain exclusively backend-side. See [production](production.md).
+
+## Households and sign-in
+
+Every household route takes `CurrentUser` (`api/deps.py`), which resolves the household
+from the session cookie: the owner's twelve-hour password session (`finboy:household:v1`)
+or a WhatsApp/Google session (`finboy:user:v2:<household>:<epoch>`, `SESSION_DAYS`). It
+refuses deleted households and stale epochs, and answers pilot households
+`web_not_available`. Services take the household as a parameter, so another household's
+IDs look missing (404). Outside production a request without a session is the owner.
+`services/accounts` owns households (capacity under an advisory lock, consent, erasure),
+WhatsApp login codes (HMAC only, bound to a browser nonce), Google ID-token checks, daily
+usage counters and the counts-only CLI. Quick add (`/api/v1/entries`) reuses the WhatsApp
+statement reader and turns one sentence into a `manual_entry` import line plus the
+ordinary versioned confirm decision. See the [sign-up contract](signup-round/contract.md).
 
 ## Sources, ledger and scope
 

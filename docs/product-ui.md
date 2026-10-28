@@ -9,8 +9,9 @@ Phase-1 integration history (design snapshot, package provenance) stays in
 ## Shape
 
 - Routes: `/dashboard` (Overview), `/transactions`, `/review`, `/assistant`, `/sources`,
-  `/import/<id>`, `/privacy` inside the authenticated `(app)` shell; public `/`, `/demo` and
-  `/login`. `/connect` only forwards the registered OAuth callback to Sources.
+  `/import/<id>`, `/privacy` inside the authenticated `(app)` shell; public `/`, `/demo`,
+  `/login`, `/privacy-policy` and `/terms`. `/connect` only forwards the registered OAuth
+  callback to Sources.
 - Desktop has a glass sidebar with household identity, service status, Shortcuts and Sign out.
   Phones have a compact header with an **Account and settings** menu and the reference's
   floating five-tab bar (black active capsule, every tab labelled) that steps aside while a
@@ -46,6 +47,33 @@ Phase-1 integration history (design snapshot, package provenance) stays in
 - URL state carries filters, period, paging and the selected record (in the list and the
   review queue), so evidence links (`/transactions?selected=<id>`) and Back work exactly.
 
+## Sign-in and quick add (sign-up round)
+
+Specified in the [sign-up contract](signup-round/contract.md). The web app learns which ways in
+exist from `GET /api/v1/auth/session` (`sign_in`), never from build-time variables.
+
+- **`/login`** (`sign-in-options.tsx`), in order of ease: **Continue with WhatsApp**, Google's
+  button, then the owner's household password, collapsed unless it is the only way. The
+  WhatsApp link opens a new tab with the login code typed in; wider screens also show it as a
+  QR code. The page says it is waiting, checks every 2 seconds and again when the person comes
+  back, and replaces an expired code quietly. No on the phone, a full FinBoy and failures each
+  have their own state with a way to start again. On phones the options come before the
+  illustration. The session-ended prompt reuses the same options.
+- **WhatsApp only:** "Prefer WhatsApp? Say hi to FinBoy" on the landing hero and `/login`, shown
+  only while sign-ups are open, opens the chat with "Hi FinBoy" typed.
+- **Quick add** (`quick-add.tsx`): Overview's **Add** button and the empty state "Add what you
+  spent today" open a sheet (right on desktop, bottom on phones). Type or **Say it**, with
+  English and Hindi examples; Enter works like Next. The editable card (money out, money in or
+  to pay later; amount; date; to or for; category) saves with one tap. **Undo** rejects the
+  entry (a due is dismissed) so it stops counting without waiting in Review, then **Add
+  another** or **Done**. A question offers **Ask FinBoy instead**. The sentence is never
+  stored; records show "Added by you".
+- **Privacy → Your sign-in:** the masked WhatsApp number and Google email, Link WhatsApp or
+  Google, **Sign out on every device** and **Delete my account** (one confirmation, then back to
+  the landing page). Households that can't connect Gmail yet see "Gmail import is invite-only
+  while Google reviews FinBoy" on Privacy and Sources instead of a Connect button.
+- Overview's toolbar keeps one row at 320 px: Add, the period, and Refresh as an icon on phones.
+
 ## Session, drafts and storage
 
 - A 401 opens **Sign in to continue** in place; unsaved corrections stay in memory and the
@@ -80,7 +108,9 @@ client component or browser request. Product outcome events (`evidence_opened`,
   `theme.spec.ts` checks the theme on rendered pages: WCAG contrast for every text,
   placeholder and form-control boundary, the three-blurred-layer budget, accessibility-setting
   fallbacks and the orbs' behaviour. `capture.spec.ts` (`E2E_CAPTURE_DIR`) and `perf.spec.ts`
-  (`E2E_PERF=1`) are opt-in review tools.
+  (`E2E_PERF=1`) are opt-in review tools. `signup.spec.ts` covers WhatsApp sign-in (waiting,
+  signed in, declined, full), the landing link, legal pages, quick add with undo, Gmail's
+  invite-only state and account deletion.
 - `apps/web/e2e/live.spec.ts` (`E2E_LIVE_API=1`): the core journeys through the same-origin
   proxy against a real API on a disposable database, with synthetic `.eml` files only.
 - Human-only acceptance (real Google consent, microphones, phone playback, screen readers,

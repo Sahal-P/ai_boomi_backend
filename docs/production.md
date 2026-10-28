@@ -3,7 +3,8 @@
 The human authorized GitHub publication, main integration, Vercel frontend and
 voxpay backend on 24 October 2026, then chose private single-household access and
 an antlegs.in subdomain. This supersedes the old prohibition on production for
-this deployment only. Public multi-user signup is not implemented.
+this deployment only. Self-serve sign-up came later and stays off until `SIGNUP_ENABLED` is set
+(see the [sign-up release procedure](#sign-up-release-procedure)).
 
 Both requested repositories preserve the complete monorepo and all named branches,
 including the immutable ready base. Vercel builds apps/web; voxpay runs apps/api.
@@ -321,3 +322,36 @@ Then, in order and only as the human approves each step:
 
 Never run tests against production; real Hindi voice, phone taps, low-end Android playback and
 reminder delivery are recorded as human acceptance, separately from automated checks.
+
+## Sign-up release procedure
+
+`feat/finboy-signup` adds self-serve households ([contract](signup-round/contract.md)). Release
+follows the steps above: validated private backup, active-import check, additive migration
+`0009_signup`, drift check, restart of `finboy.service` only. With the new settings unset,
+production behaves as before: the owner signs in with the household password, the login page
+shows no WhatsApp or Google button, and WhatsApp answers only the allowlist. Keep
+`WEB_SESSION_KEY` stable: it also keys the login-code and nonce HMACs, so rotating it signs
+everyone out and voids codes in flight. Vercel needs no change; the web app reads the public
+sign-in settings from `GET /api/v1/auth/session`.
+
+Then, in order and only as the human approves each step (settings go in
+`/etc/finboy/production.env`, followed by a restart of `finboy.service` only):
+
+1. **WhatsApp number:** move the Meta app to the real business number and a permanent System
+   User token, then set `WHATSAPP_PUBLIC_NUMBER` (digits only). The test number replies only to
+   its registered test recipients, so public sign-up must wait for this step.
+2. **Google:** create the sign-in-only client, set `GOOGLE_SIGNIN_CLIENT_ID`, and complete brand
+   verification with the reviewed `/privacy-policy` and `/terms`. Keep
+   `GMAIL_FOR_NEW_ACCOUNTS=false` until Google verifies the Gmail scopes.
+3. **Open sign-up:** set `SIGNUP_ENABLED=true` and `SIGNUP_LIMIT=100`. `SESSION_DAYS` (30),
+   `DAILY_AI_LIMIT` (100) and `DAILY_VOICE_LIMIT` (60) have defaults.
+4. **Daily:** `python -m finboy.services.accounts.cli counts` prints counts only (agreed,
+   pending, limit, waitlist). `tidy` removes sign-ups that never agreed within 7 days; new
+   sign-ups also tidy a bounded batch as they arrive.
+5. **Closing:** `SIGNUP_ENABLED=false` stops new households only. Existing households keep
+   signing in with WhatsApp or Google, and new numbers are ignored as before.
+
+People delete their own household from Privacy → "Delete my account"; the owner household cannot
+be deleted from the web. Reminders stay pilot-only until self-serve template sends exist. Real
+phone sign-ups, Google sign-in and voice quick add are recorded as human acceptance, separately
+from automated checks.

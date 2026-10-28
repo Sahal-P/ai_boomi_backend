@@ -17,7 +17,9 @@ confirmed net spending, commitments and cash-flow simulations. Review/correction
 privacy controls, and an English/Hindi/Malayalam text/voice assistant share the same
 records. WhatsApp supports approved-sender ledger questions and screenshot capture;
 hand-enrolled village pilot households also record money and dues by Hindi voice and
-confirm them by button ([pilot contract](docs/pilot/contract.md)).
+confirm them by button ([pilot contract](docs/pilot/contract.md)). Once sign-up is switched on,
+new households join in one tap with WhatsApp (Google as the backup), each with its own private
+records, and add money by typing or speaking ([sign-up contract](docs/signup-round/contract.md)).
 
 The assembled product is merged into **main** and published to both requested repositories.
 The authorized private production site is **https://finboy.antlegs.in**, with its
@@ -50,10 +52,12 @@ acceptance gaps; provider configuration alone never means completion.
   Local product APIs remain loopback-only. Authorized production uses a household
   session gate and an HTTPS proxy; finance/privacy routes reject unauthenticated users.
 
-Money stays integer paise in INR and dates use IST. Production supports private
-household login only. No public signup, bank API, WhatsApp merges/deletions, automatic
-confirmation (only pilot households confirm, reject or correct the amount of their own
-records by an explicit button tap, with undo), stock/fund recommendations, or training.
+Money stays integer paise in INR and dates use IST. Production supports the owner's
+household login and, once `SIGNUP_ENABLED` is on, at most `SIGNUP_LIMIT` self-serve
+households that each see only their own records. No bank API, WhatsApp merges/deletions,
+automatic confirmation (pilot and self-serve WhatsApp households confirm, reject or correct
+the amount of their own records by an explicit button tap, with undo; quick add's Save is an
+explicit confirmation), stock/fund recommendations, or training.
 “Estimated unallocated amount” comes from email-derived and confirmed records;
 actual bank balances may differ. Simulations are not investment recommendations.
 
@@ -143,6 +147,13 @@ phone. No arbitrary send endpoint, broad public API tunnel, or production publis
 hand-enrolled households (4 plus the owner on the Meta test number), consent card, voice
 records through review, dues, opt-in reminders, "हिसाब" summaries and the counts-only
 `pilot.cli report`. Enrollment, templates and erasure are operator steps.
+
+[Sign-up](docs/signup-round/contract.md): one-tap WhatsApp sign-in (a login code confirmed by a
+button tap), sign-up inside WhatsApp, Google as the backup, quick add, daily limits and
+"Delete my account". Off until `SIGNUP_ENABLED` is set. The human moves WhatsApp to a real
+business number with a permanent token, creates the Google sign-in client and passes brand
+verification, and has the draft `/privacy-policy` and `/terms` reviewed; see the
+[sign-up release procedure](docs/production.md#sign-up-release-procedure).
 
 Human performs login/2FA/CAPTCHA/consent/billing. Identify browser profiles by account
 and stable identity, not numeric IDs after restart. Never send tests to unapproved

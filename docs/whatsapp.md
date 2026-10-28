@@ -176,7 +176,8 @@ phone context; the app secret proves app context. Unsupported message kinds/fiel
 are acknowledged safely. Image messages go only to the screenshot capture flow below;
 captions and webhook-supplied URLs are ignored.
 
-Only allowlisted senders create bindings. PostgreSQL retains user UUID, keyed sender/
+Only allowlisted senders create bindings, except unknown numbers while self-serve sign-up is on
+(see [self-serve households](#self-serve-households-27-october-2026)). PostgreSQL retains user UUID, keyed sender/
 content hashes, inbound/outbound provider IDs, language preference, enabled flag,
 fixed processing/delivery states and timestamps. It never retains raw sender/phone,
 webhook JSON, question, transcript, audio, or financial answer. No file/queue/cache
@@ -336,3 +337,30 @@ unless the owner switches the dogfood flag on (`pilot.cli owner on`).
   reminder statuses update `whatsapp_reminders` only for the matching household's number.
 - Prompts keep only IDs, a keyed fingerprint, state and expiry. No message text, transcript,
   audio or image is stored, as before.
+
+## Self-serve households (27 October 2026)
+
+[The sign-up contract](signup-round/contract.md) is binding and supersedes this document only as
+written there. Everything below applies only while `SIGNUP_ENABLED` is on, plus to households
+that joined while it was.
+
+- **Admission:** a message from an unknown number creates a household that has not agreed yet
+  and its binding: the sender HMAC as before, plus a Fernet-encrypted copy of the number. At
+  most 200 such households exist at once (newer numbers are ignored), and any that never agree
+  are removed after 7 days. When `SIGNUP_LIMIT` households have agreed, FinBoy says it is full;
+  JOIN keeps a place in `signup_waitlist` (encrypted number) and removes the new household.
+- **Language:** the first message picks it: Devanagari means Hindi, anything else English.
+  "hi"/"en" switch later. `english.py` mirrors `hindi.py` name for name, and English amounts
+  ("five hundred", "2.5k", "1,250") are read like Hindi ones. STOP/START and बंद/शुरू both work.
+- **Consent:** the self-serve consent card gates everything; No erases the new household.
+- **Login codes:** "FinBoy login code XXXX-XXXX" from a self-serve, owner or new number gets a
+  card naming the browser that asked; ✅ confirms the waiting web login, ❌ declines it. Pilot
+  households are told the web isn't part of the pilot. Codes are stored only as HMACs.
+- **Diary:** the pilot flows above (records, confirm cards with undo, dues, हिसाब/summary).
+  Reminders stay pilot-only, so self-serve households are not offered them.
+- **Daily limits:** each text or voice message from an agreed self-serve household counts
+  toward `DAILY_AI_LIMIT` or `DAILY_VOICE_LIMIT`; over the limit FinBoy replies "try again
+  tomorrow". Button taps never count.
+- New receipt error codes: `signup_full`, `login_expired`, `usage_limit`,
+  `web_not_available`. Nothing new is stored about messages: no text, audio, image, transcript
+  or login code.

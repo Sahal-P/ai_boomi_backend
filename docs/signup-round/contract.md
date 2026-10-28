@@ -38,47 +38,62 @@ production and access rule stays binding.
 
 ## WhatsApp
 
-- **Sign-up inside WhatsApp:** a link or QR opens WhatsApp with "Hi FinBoy" (or "नमस्ते FinBoy")
-  typed. When `SIGNUP_ENABLED` is on, a message from an unknown number creates a household that
-  has not yet agreed, plus its binding. The reply language comes from the first message:
-  Devanagari means Hindi, anything else English; "hi"/"en" switch it later. The existing
-  consent card follows, in that language. Nothing else works until "Yes", and "No" erases the
-  new household and keeps nothing.
+- **Sign-up inside WhatsApp:** a link or QR opens WhatsApp with "Hi FinBoy" typed. The website
+  shows "Prefer WhatsApp? Say hi to FinBoy" on the landing page and `/login` while sign-ups are
+  open; a printed QR can carry "नमस्ते" instead. When `SIGNUP_ENABLED` is on, a message from an
+  unknown number creates a household that has not yet agreed, plus its binding. The reply
+  language comes from the first message: Devanagari means Hindi, anything else English;
+  "hi"/"en" switch it later. The existing consent card follows, in that language. Nothing else
+  works until "Yes", and "No" erases the new household and keeps nothing.
 - **Limits:** at most 200 households that haven't agreed exist at once; a newer unknown number is
-  ignored. Households that never agree are removed after 7 days by
-  `python -m finboy.services.signup.cli tidy` (run by the reminder timer). When `SIGNUP_LIMIT`
+  ignored. Households that never agree are removed after 7 days: each new admission tidies a
+  bounded batch, and `python -m finboy.services.accounts.cli tidy` does the same on demand
+  (`counts` prints only the agreed, pending, limit and waitlist counts). When `SIGNUP_LIMIT`
   households have agreed, a new number gets the "full" reply instead of the consent card. JOIN
   adds it to `signup_waitlist` and then removes the household.
 - **Web sign-in with WhatsApp:**
   1. "Continue with WhatsApp" creates a login request bound to that browser by a random nonce
      cookie (`__Host-finboy_login`, 10 minutes). It returns a wa.me link with
-     "FinBoy login code XXXX-XXXX" typed in. The code is 8 characters from a 31-character
-     alphabet, stored only as an HMAC, valid for 10 minutes and used once.
+     "FinBoy login code XXXX-XXXX" typed in. The code is 8 characters from a 32-character
+     alphabet (no 0/O or 1/I), stored only as an HMAC, valid for 10 minutes and used once. On a
+     computer the page also shows the link as a QR code; the page polls every 2 seconds and
+     checks again as soon as the person comes back to it, and an expired code is quietly
+     replaced.
   2. The person sends it from their WhatsApp. FinBoy answers with a card naming the browser
      ("Chrome · Android"): a known household gets [✅ Yes, it's me] [❌ No]; a new number gets the
-     consent text with [✅ Yes, create my account] [❌ No].
+     consent text with [✅ Yes, create it] [❌ No] (Hindi cards for Hindi households).
   3. Yes confirms the request. The waiting browser then completes it with its nonce and receives
      the session. A wrong browser, an expired or reused code, or No all fail closed.
   4. A pilot household's code is refused with "web isn't part of the pilot".
 - **Linking:** "Link WhatsApp" uses the same code with purpose `link`. Its card asks
-  "Link this WhatsApp to your FinBoy account?". A number already bound to another household that
-  has records cannot be moved.
+  "Link this WhatsApp to your FinBoy account?" [✅ Yes, link it]. Only a number whose household
+  never agreed (a pending sign-up) moves to the signed-in household; a number that belongs to
+  any other household stays there, and FinBoy answers that it is already linked. Two households
+  are never merged.
 - **Diary:** self-serve WhatsApp households get the voice diary that pilot households have:
-  voice or text records through review, ✅/✏️/❌ with undo, dues, opt-in reminders and हिसाब
-  ("summary" in English). Pilot caps, enrollment, consent visits and `pilot.cli report` stay
-  pilot-only.
+  voice or text records through review, ✅/✏️/❌ with undo, dues and हिसाब ("summary" in
+  English). Pilot caps, enrollment, consent visits and `pilot.cli report` stay pilot-only.
+- **Reminders stay pilot-only for now.** The reminder job sends templates only to allowlisted
+  pilot numbers, and reply-time reminders select pilot households too, so self-serve households
+  are never offered "🔔 Yes, remind me". Reaching them needs the real business number, an
+  English template, and template sends to the encrypted number.
 - **Replies:** FinBoy replies to the env allowlist (as before) or to an enabled database binding
   whose HMAC matches the sender. Self-serve bindings keep a Fernet-encrypted copy of the number,
-  used only for opted-in reminder templates. Raw numbers never enter logs or reports.
+  used only to show it masked ("WhatsApp •••• 0071") and for messages the household asks for (the
+  JOIN waitlist, and reminders once they reach self-serve households). Raw numbers never enter
+  logs or reports.
 
 ## Google
 
 `POST /api/v1/auth/google` accepts the ID token from Google Identity Services. FinBoy verifies
 it against Google's public certificates (fetched with httpx and cached by max-age): audience
 `GOOGLE_SIGNIN_CLIENT_ID`, issuer `accounts.google.com`, expiry, `email_verified`, and a nonce
-equal to the browser's login cookie. FinBoy keeps only `sha256("google:" + sub)` and a masked
-email. The Google script loads only on `/login`. Google's basic sign-in scopes need brand
-verification, not the restricted-scope security assessment that Gmail needs.
+that must be the HMAC of the browser's login cookie (`POST /api/v1/auth/google/start` hands the
+page that HMAC, never the cookie). FinBoy keeps only `sha256("google:" + sub)` and a masked
+email. Google's script loads only where a Google button is shown (sign-in, the session-ended
+prompt and Privacy's "Link Google") and only when `GOOGLE_SIGNIN_CLIENT_ID` is set. Google's
+basic sign-in scopes need brand verification, not the restricted-scope security assessment that
+Gmail needs.
 
 ## Quick add
 
@@ -88,15 +103,26 @@ verification, not the restricted-scope security assessment that Gmail needs.
   as on WhatsApp.
 - `POST /api/v1/entries` saves the fields the person saw and may have edited. Money in or out
   becomes one `manual_entry` line through the import pipeline and is confirmed with the existing
-  versioned decision (Save is the explicit confirmation, and it can be undone). A due becomes an
-  `upcoming` `loan` obligation.
+  versioned decision: Save is the explicit confirmation. A due becomes an `upcoming` `loan`
+  obligation. Quick adds are labelled "Added by you" and never appear in the imports list.
+- **Undo** in the sheet rejects the entry (a due is dismissed), so it stops counting and never
+  waits in Review; it stays listed as Rejected and can be reopened from the record. Undoing the
+  Save decision itself would only send the entry back to Review.
+- Enter in the sentence box works like Next (Shift+Enter and input-method composition still
+  type). Without a model (development), the reader takes only the verb and the amount; the
+  person fills in the name and category. Production reads them with the OpenAI model, as on
+  WhatsApp.
 
 ## Open-beta safety
 
-- **Daily limits:** `usage_counters` caps AI use (questions, previews, WhatsApp statements) and
-  voice use (transcription, speech) per household per IST day, at `DAILY_AI_LIMIT` (100) and
-  `DAILY_VOICE_LIMIT` (60). Hitting a limit gives a friendly message and a fixed code.
-- **Throttles:** sign-in starts are throttled per process, sized for an event crowd.
+- **Daily limits:** `usage_counters` caps AI use (questions, quick-add previews, WhatsApp text
+  messages) and voice use (transcription, speech, WhatsApp voice notes) per self-serve household
+  per IST day, at `DAILY_AI_LIMIT` (100) and `DAILY_VOICE_LIMIT` (60). The owner and pilot
+  households are exempt. Hitting a limit gives a friendly message and the fixed code
+  `usage_limit` (429). Counters are deleted with their household.
+- **Throttles:** WhatsApp and Google sign-in starts share one per-process limit of 120 a minute
+  (production runs a single worker). It is global, not per visitor, so a flood can delay
+  sign-ins for everyone; a per-address limit at the proxy is the next step.
 - **Delete my account** (website Privacy page): erases the household's records, sources, dues,
   decisions, prompts, reminders, receipts, deliveries, bindings, identities and login requests.
   It revokes Gmail, bumps the epoch and keeps only the numbered user row (marked deleted) and
@@ -120,9 +146,10 @@ verification, not the restricted-scope security assessment that Gmail needs.
 - `login_requests`: `code_digest` (unique), `nonce_digest`, `purpose` (`sign_in`/`link`),
   `state` (`pending`/`confirmed`/`declined`/`used`), household, binding, `device`, timestamps,
   expiry.
-- `whatsapp_bindings.encrypted_sender`; `signup_waitlist`; `usage_counters`.
-- Widened CHECKs: source and import mode `manual_entry`; prompt purposes `signup`,
-  `web_login`, `link`; receipt error codes `signup_full`, `login_expired`, `usage_limit`.
+- `whatsapp_bindings.encrypted_sender`; `signup_waitlist`; `usage_counters` (deleted with their
+  household).
+- Widened CHECKs: source and import mode `manual_entry`; prompt purposes `web_login` and `link`;
+  receipt error codes `signup_full`, `login_expired`, `usage_limit`, `web_not_available`.
 
 ## Settings
 
@@ -136,13 +163,17 @@ variable: the web app reads them from `GET /api/v1/auth/session`.
 
 1. **Meta:**
    - add a real WhatsApp Business number (a SIM not on WhatsApp) and have the display name
-     approved;
+     approved. The test number only replies to its registered test recipients (at most 5), so
+     strangers cannot sign up until this is done;
    - replace the user token that expires on 23 December 2026 with a permanent System User
      token;
-   - add an English version of the reminder template.
+   - add an English version of the reminder template (needed before reminders reach self-serve
+     households).
 2. **Google:** create a sign-in-only OAuth client (separate from Gmail) with JavaScript origin
    `https://finboy.antlegs.in`. Complete brand verification: domain in Search Console, plus
-   links to `/privacy-policy` and `/terms`.
+   links to `/privacy-policy` and `/terms`. Both pages are plain-language drafts with bracketed
+   placeholders (grievance officer, contact address); a lawyer should review them and fill the
+   placeholders before launch.
 3. **Release:** approve the production release. Then set the settings above and turn
    `SIGNUP_ENABLED` on.
 
@@ -150,3 +181,25 @@ variable: the web app reads them from `GET /api/v1/auth/session`.
 
 Branch `feat/finboy-signup`, loopback API 8061 / web 3061, disposable database `finboy_signup`.
 Tests mock Meta, Google and providers, and no test suite runs against production.
+
+## Verification — 27–28 October 2026
+
+- **Automated:** 908 API unit tests; 74 integration tests on `finboy_signup` at head
+  `0009_signup` with no drift; 46 web unit tests, lint, typecheck and `pnpm build`; Playwright
+  229 passed (119 skipped by design) at 1440×1000, 390×844 and 320×740 against the contract
+  double.
+- **Live, loopback:** the real API over HTTPS on 8061 behind the web app's same-origin proxy on
+  3061, on `finboy_signup`. The phone was a local stand-in that ran the real WhatsApp processor
+  for the synthetic number 919000000071 with Meta faked, so nothing was sent. `/login` showed
+  the code and QR, and quietly replaced a code the API no longer knew. The English consent card
+  named the browser ("Chrome · Mac"). After Yes, the page signed in by itself and opened the new
+  household's empty Overview. Quick add in English and Hindi saved and undid entries, labelled
+  "Added by you". Privacy showed "WhatsApp •••• 0071". Layouts were checked at 1024×768,
+  375×812 and 320×740, and the synthetic household was removed afterwards.
+- **Fixed after the live check:** Undo now rejects instead of returning entries to Review;
+  Enter works like Next; the WhatsApp button comes before the illustration on phones; the
+  Overview toolbar keeps one row at 320 px; Privacy shows the invite-only Gmail line; the
+  landing page has "Say hi to FinBoy"; self-serve households are no longer offered reminders.
+- **Not verified:** real Meta delivery and taps on a real phone, Google Identity Services with
+  a real client, voice quick add with a real microphone and provider, and "Delete my account"
+  in a live browser (covered by the integration test and the e2e double). Nothing was deployed.
