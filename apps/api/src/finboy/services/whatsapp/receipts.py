@@ -1,6 +1,5 @@
 """PostgreSQL transaction boundaries and atomic admission/claims."""
 
-import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
@@ -21,18 +20,6 @@ from finboy.services.accounts import households
 from finboy.services.mail.security import encrypt
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion, Status
-
-DEVANAGARI = re.compile(r"[\u0900-\u097F]")
-MALAYALAM = re.compile(r"[\u0D00-\u0D7F]")
-
-
-def first_language(question: InboundQuestion) -> str:
-    """A new household's reply language from its first message: Malayalam or Devanagari script,
-    otherwise English; a voice note or photo starts in Hindi, the pilot's language."""
-    text = question.text or ""
-    if question.kind == "text" and MALAYALAM.search(text):
-        return "ml"
-    return "hi" if question.kind != "text" or DEVANAGARI.search(text) else "en"
 
 
 @dataclass(frozen=True)
@@ -91,8 +78,7 @@ def _self_serve(
             user_id=user.id,
             sender_hash=sender_hash,
             enabled=True,
-            # Replies follow the first message's script; "en"/"hi"/"ml" switch it later.
-            language=first_language(question),
+            # No language: replies follow each message until the person chooses one.
             last_inbound_at=question.provider_at,
             encrypted_sender=encrypt(
                 settings.token_encryption_key.get_secret_value(), question.sender
@@ -142,8 +128,7 @@ def admit(
                     user_id=user,
                     sender_hash=sender_hash,
                     enabled=True,
-                    # Village pilot households speak Hindi; the owner keeps automatic detection.
-                    language="hi" if user != LOCAL_USER_ID else None,
+                    # Everyone starts in English and is followed in their own language.
                     last_inbound_at=question.provider_at,
                 )
                 .on_conflict_do_nothing(index_elements=[WhatsAppBinding.sender_hash])

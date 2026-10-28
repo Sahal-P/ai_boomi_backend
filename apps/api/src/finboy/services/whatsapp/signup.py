@@ -143,7 +143,7 @@ def join(conversation: Conversation) -> str | None:
             id=uuid4(),
             sender_hash=binding.sender_hash,
             encrypted_sender=sealed,
-            language=binding.language,
+            language=conversation.language,
         )
         .on_conflict_do_nothing(index_elements=[SignupWaitlist.sender_hash])
     )

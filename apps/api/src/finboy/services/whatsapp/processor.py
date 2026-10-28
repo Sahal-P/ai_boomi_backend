@@ -26,6 +26,7 @@ from finboy.services.speech.media import InvalidAudio
 from finboy.services.whatsapp import capture, pilot, prompts, receipts, signup
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
+from finboy.services.whatsapp.language import written_language
 from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable, SendUnknown
 
 logger = logging.getLogger(__name__)
@@ -164,7 +165,7 @@ def process_question(
                 binding,
                 send_reply,
                 self_serve=self_serve,
-                fallback="hi" if diary else "en",
+                heard=written_language(question),
             )
             if question.command:
                 if diary and question.command in {"en", "hi", "ml"} and not binding.consented_at:
@@ -176,7 +177,7 @@ def process_question(
                         "FinBoy WhatsApp replies are disabled. Send START to enable them again."
                     ),
                     "start": (
-                        "FinBoy ledger questions are enabled. Send en, hi or ml "
+                        "FinBoy ledger questions are enabled. Send en, hindi or ml "
                         "to choose a language. Send STOP to disable replies."
                     ),
                     "en": "English replies selected. Ask a question about your FinBoy ledger.",
@@ -267,7 +268,7 @@ def process_question(
                     client,
                     receipt,
                     question,
-                    text=phone_text(capture.capture_reply(result, preferred)),
+                    text=phone_text(capture.capture_reply(result, conversation.language)),
                 )
                 receipts.finish(
                     session,
@@ -313,11 +314,12 @@ def process_question(
                         "ഈ ചോദ്യം ഇപ്പോൾ കൈകാര്യം ചെയ്യാനായില്ല. ചെറിയ ടെക്സ്റ്റ് ചോദ്യം അയയ്ക്കുക, "
                         "അല്ലെങ്കിൽ ഡെമോ കമ്പ്യൂട്ടറിൽ FinBoy തുറക്കുക."
                     ),
-                }[preferred or "en"]
+                }[conversation.language]
                 session.rollback()
                 send_reply(session, config, client, receipt, question, text=response)
                 receipts.finish(session, receipt_id, error=code)
                 return
+            binding.last_language = answer.speech_language  # committed with the reply below
             response = phone_text(answer.display_text)
             if len(response) > 4096:
                 response = (

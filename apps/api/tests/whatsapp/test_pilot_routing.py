@@ -46,8 +46,11 @@ def test_pilot_stop_and_start_are_answered_in_hindi(
     ("words", "language", "reply"),
     [
         ("ml", "ml", malayalam.LANGUAGE_CHOSEN),
-        ("hi", "hi", hindi.LANGUAGE_CHOSEN),
+        ("malayalam", "ml", malayalam.LANGUAGE_CHOSEN),
+        ("hindi", "hi", hindi.LANGUAGE_CHOSEN),
+        ("हिंदी", "hi", hindi.LANGUAGE_CHOSEN),
         ("en", "en", english.LANGUAGE_CHOSEN),
+        ("english", "en", english.LANGUAGE_CHOSEN),
         ("നിർത്തുക", "ml", malayalam.STOP_REPLY),
         ("തുടങ്ങുക", "ml", malayalam.START_REPLY),
     ],

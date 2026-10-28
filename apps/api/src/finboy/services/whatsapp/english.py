@@ -65,7 +65,8 @@ CONSENT = (
     "I don't keep your voice notes, photos or messages.\n"
     "Only you can see your records. You can delete everything on the FinBoy website "
     "(Privacy → Delete my account).\n"
-    'Send "STOP" any time to stop.\n\n'
+    'Send "STOP" any time to stop.\n'
+    "हिंदी: hindi · മലയാളം: ml\n\n"
     "Do you agree?"
 )
 CONSENT_SPEECH = (
@@ -267,7 +268,7 @@ SELF_CONSENT = (
     "Only you can see your records. You can delete everything on the FinBoy website "
     "(Privacy → Delete my account).\n"
     'Send "STOP" any time to stop.\n'
-    "हिंदी: hi · മലയാളം: ml\n\n"
+    "हिंदी: hindi · മലയാളം: ml\n\n"
     "Do you agree?"
 )
 

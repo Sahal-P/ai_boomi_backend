@@ -138,7 +138,10 @@ def test_provider_failure_keeps_correct_text_when_available(
         assert finish.call_args.kwargs["error"] is not None
 
 
-@pytest.mark.parametrize("command", ["stop", "start", "en", "hi", "ml"])
+@pytest.mark.parametrize(
+    "command",
+    ["stop", "start", "en", "english", "hindi", "हिंदी", "हिन्दी", "ml", "malayalam", "മലയാളം"],
+)
 def test_commands_never_call_assistant(
     monkeypatch: pytest.MonkeyPatch, config: ChannelConfig, wa_settings: Settings, command: str
 ) -> None:

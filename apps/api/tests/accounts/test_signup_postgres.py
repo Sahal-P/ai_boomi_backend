@@ -57,7 +57,9 @@ def test_whatsapp_sign_up_from_the_website_end_to_end(world) -> None:
         binding = session.scalars(
             select(WhatsAppBinding).where(WhatsAppBinding.user_id == user.id)
         ).one()
-        assert binding.consented_at is not None and binding.language == "en"
+        # No language was chosen; FinBoy remembers the English it replied in.
+        assert binding.consented_at is not None and binding.language is None
+        assert binding.last_language == "en"
         assert (
             binding.encrypted_sender is not None and FIRST.encode() not in binding.encrypted_sender
         )

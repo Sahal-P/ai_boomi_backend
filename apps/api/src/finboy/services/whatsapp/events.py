@@ -17,13 +17,18 @@ class InvalidWebhook(Exception):
 
 
 # Hindi बंद/शुरू and Malayalam നിർത്തുക/തുടങ്ങുക work like STOP/START for households who don't
-# type English.
+# type English. Language words choose a reply language that sticks; a bare "hi" is a greeting.
 COMMANDS = {
     "stop": "stop",
     "start": "start",
     "en": "en",
-    "hi": "hi",
+    "english": "en",
+    "hindi": "hi",
+    "हिंदी": "hi",
+    "हिन्दी": "hi",
     "ml": "ml",
+    "malayalam": "ml",
+    "മലയാളം": "ml",
     "बंद": "stop",
     "शुरू": "start",
     "നിർത്തുക": "stop",

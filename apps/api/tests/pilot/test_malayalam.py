@@ -8,9 +8,10 @@ import pytest
 from finboy.core.clock import today_ist
 from finboy.db.models.ledger import Transaction
 from finboy.services.speech.models import SynthesizedAudio, Transcript
-from finboy.services.whatsapp import english, hindi, malayalam, pilot, receipts
+from finboy.services.whatsapp import english, hindi, malayalam, pilot
 from finboy.services.whatsapp.capture import Capture
 from finboy.services.whatsapp.events import InboundQuestion
+from finboy.services.whatsapp.language import written_language
 from finboy.services.whatsapp.statement import Statement
 
 from .conftest import Household
@@ -66,18 +67,11 @@ def ask(text: str, kind: str = "text") -> InboundQuestion:
 
 
 @pytest.mark.parametrize(
-    ("text", "kind", "language"),
-    [
-        ("നമസ്കാരം", "text", "ml"),
-        ("Hi FinBoy നമസ്കാരം", "text", "ml"),
-        ("नमस्ते", "text", "hi"),
-        ("Hi FinBoy", "text", "en"),
-        ("", "audio", "hi"),
-        ("", "image", "hi"),
-    ],
+    "text",
+    ["നമസ്കാരം", "Hi FinBoy നമസ്കാരം", "നിർത്തുക", "paalkaaranu 500 koduthu", "ethra chelavayi?"],
 )
-def test_a_new_household_answers_in_the_script_of_its_first_message(text, kind, language) -> None:
-    assert receipts.first_language(ask(text, kind)) == language
+def test_malayalam_script_and_manglish_are_answered_in_malayalam(text: str) -> None:
+    assert written_language(ask(text)) == "ml"
 
 
 @pytest.mark.parametrize(

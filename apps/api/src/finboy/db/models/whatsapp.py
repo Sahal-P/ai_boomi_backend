@@ -22,14 +22,19 @@ from finboy.db.base import Base
 
 class WhatsAppBinding(Base):
     __tablename__ = "whatsapp_bindings"
-    __table_args__ = (CheckConstraint("language IN ('en','hi','ml')", name="language"),)
+    __table_args__ = (
+        CheckConstraint("language IN ('en','hi','ml')", name="language"),
+        CheckConstraint("last_language IN ('en','hi','ml')", name="last_language"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
     sender_hash: Mapped[str] = mapped_column(Text, unique=True)
     enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
-    # NULL means automatic language detection; explicit en/hi/ml commands override it.
+    # A language the person chose with a command; NULL means replies follow each message.
     language: Mapped[str | None] = mapped_column(Text)
+    # The language FinBoy last replied in, for a message that shows none (a tap, a login code).
+    last_language: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_inbound_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

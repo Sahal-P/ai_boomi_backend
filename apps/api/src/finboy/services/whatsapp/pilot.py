@@ -1,7 +1,8 @@
-"""The WhatsApp money diary: consent, one-tap decisions with undo, and Hindi or English voice.
+"""The WhatsApp money diary: consent, one-tap decisions with undo, and voice in three languages.
 
 Runs for pilot households (`users.pilot`, docs/pilot/contract.md) and for self-serve households
-(docs/signup-round/contract.md), in the binding's language. Each inbound message gets
+(docs/signup-round/contract.md), in the person's language (services/whatsapp/language.py). Each
+inbound message gets
 at most one text-or-buttons reply plus one spoken reply. Nothing a household says is stored:
 records go through the existing review decisions, and prompts keep only IDs and fingerprints.
 """
@@ -72,12 +73,16 @@ class Conversation:
     binding: WhatsAppBinding
     reply: Reply  # processor.send_reply: consent lock, allowlist, 24-hour window, idempotency
     self_serve: bool = False  # joined by itself (docs/signup-round/contract.md)
-    fallback: Language = "hi"  # when the binding has no language: pilots speak Hindi
+    # The language this message showed, if any: its text, or what speech-to-text heard.
+    heard: Language | None = None
 
     @property
     def language(self) -> Language:
-        chosen = self.binding.language
-        return chosen if chosen in WORDS else self.fallback  # type: ignore[return-value]
+        """A chosen language, else this message's, else the one FinBoy last used, else English."""
+        for candidate in (self.binding.language, self.heard, self.binding.last_language):
+            if candidate in WORDS:
+                return candidate  # type: ignore[return-value]
+        return "en"
 
     @property
     def words(self) -> ModuleType:
@@ -85,6 +90,8 @@ class Conversation:
         return WORDS[self.language]
 
     def send(self, text: str, buttons: list[tuple[str, str]] | None = None) -> bool:
+        # Kept for the next message that shows no language; committed with the delivery.
+        self.binding.last_language = self.language
         return self.reply(
             self.session,
             self.config,
@@ -183,12 +190,16 @@ def _heard(conversation: Conversation) -> str:
         audio = conversation.client.download_audio(
             question.media_id or "", question.mime_type or ""
         )
-        text = speech.transcribe_audio(
+        heard = speech.transcribe_audio(
             audio=audio.data,
             content_type=audio.content_type,
             settings=conversation.settings,
-            language_hint=conversation.language,
-        ).transcript
+            # Only a chosen language is a hint; otherwise speech-to-text detects it.
+            language_hint=conversation.binding.language,
+        )
+        text = heard.transcript
+        if heard.detected_language in WORDS:
+            conversation.heard = heard.detected_language
     if not 1 <= len(text.strip()) <= 2000:
         raise ProviderUnavailable("invalid_audio")
     return text
@@ -465,7 +476,7 @@ def _screenshot(conversation: Conversation) -> str | None:
 
 
 def _answer(conversation: Conversation, text: str) -> str | None:
-    """Questions use the shared assistant: engine figures, Hindi wording, spoken reply."""
+    """Questions use the shared assistant: engine figures, wording in the person's language."""
     from finboy.services.whatsapp.processor import phone_text
 
     session, binding = conversation.session, conversation.binding
@@ -474,7 +485,8 @@ def _answer(conversation: Conversation, text: str) -> str | None:
             session,
             user_id=binding.user_id,
             text=text,
-            display_style=binding.language or "hi",
+            # A chosen language, else the question's own, like the web's "Match my question".
+            display_style=binding.language or "auto",
             settings=conversation.settings,
         )
     except ProviderUnavailable:
@@ -482,6 +494,7 @@ def _answer(conversation: Conversation, text: str) -> str | None:
         return conversation.done(
             conversation.send(conversation.words.UNAVAILABLE), "assistant_unavailable"
         )
+    conversation.heard = answer.speech_language
     response = phone_text(answer.display_text)
     sent = conversation.send(response if len(response) <= 4096 else conversation.words.UNAVAILABLE)
     if sent and 1 <= len(answer.speech_text) <= 600:

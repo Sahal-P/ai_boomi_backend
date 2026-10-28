@@ -83,7 +83,7 @@ def test_unknown_sender_and_disabled_binding(
             )
             == "ignored"
         )
-        admit(session, config, [question("START"), question("hi")], [])
+        admit(session, config, [question("START"), question("hindi")], [])
         session.refresh(binding)
         assert binding.enabled and binding.language == "hi"
 

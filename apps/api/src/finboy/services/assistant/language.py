@@ -21,9 +21,20 @@ def resolve_style(text: str, requested: DisplayStyle) -> tuple[str, Language]:
     if re.search(r"[\u0900-\u097f]", text):
         return "hi", "hi"
     q = normalized(text)
-    if re.search(r"\b(ee masam|ethra|poyi|pattumo|enthanu|varumanam|chelavu|ente)\b", q):
+    # Question words, then everyday money words. Never English words or common names (no "mile",
+    # no "Rupa"): "Paid Roopa 500" stays English.
+    if re.search(
+        r"\b(ee masam|ethra|poyi|pattumo|enthanu|varumanam|chelavu|ente|koduthu|kodutthu|kitti"
+        r"|chelavayi|chilavayi|innale|vangi|vaangi|adachu|sambalam)\b",
+        q,
+    ):
         return "manglish", "ml"
-    if re.search(r"\b(mahine|khane|kharch|kitna|kya|kaunsa|mera|bacha|paise)\b", q):
+    if re.search(
+        r"\b(mahine|khane|kharch|kharcha|kitna|kya|kaunsa|mera|meri|bacha|paise|diye|diya|liye"
+        r"|liya|mila|rupaye|rupay|hazaar|hazar|udhaar|udhar|kiraya|doodh|sabzi|aaj|kal|bheje"
+        r"|bheja|kiya|hua|gaya|wale|wala)\b",
+        q,
+    ):
         return "hinglish", "hi"
     return "en", "en"
 
