@@ -30,11 +30,12 @@ import { decide } from "@/lib/api/transactions";
 import { istDate } from "@/lib/dates";
 import { categoryLabels } from "@/lib/labels";
 
-const EXAMPLES = [
-  "Paid the milkman 500",
-  "Got salary 25,000",
-  "School fees 2,000 due on the 10th",
-  "दूधवाले को 500 दिए",
+const EXAMPLES: { text: string; lang?: string }[] = [
+  { text: "Paid the milkman 500" },
+  { text: "Got salary 25,000" },
+  { text: "School fees 2,000 due on the 10th" },
+  { text: "दूधवाले को 500 दिए", lang: "hi" },
+  { text: "പാൽക്കാരന് 500 കൊടുത്തു", lang: "ml" },
 ];
 
 type Draft = {
@@ -338,15 +339,16 @@ export function QuickAdd({
             <div className="flex flex-wrap gap-2">
               {EXAMPLES.map((example) => (
                 <button
-                  key={example}
+                  key={example.text}
                   type="button"
+                  lang={example.lang}
                   className="rounded-full bg-well px-3 py-1.5 text-xs font-medium ring-1 ring-ink/5 hover:bg-white"
                   onClick={() => {
-                    setText(example);
+                    setText(example.text);
                     setHint(null);
                   }}
                 >
-                  {example}
+                  {example.text}
                 </button>
               ))}
             </div>
@@ -361,8 +363,9 @@ export function QuickAdd({
             )}
             {hint === "unclear" && (
               <p role="status" className="rounded-2xl bg-white/70 p-3 text-sm leading-relaxed">
-                Say it with an amount, like <strong>&ldquo;Spent 500 on milk&rdquo;</strong> or{" "}
-                <strong>&ldquo;Got 2,000 from PM Kisan&rdquo;</strong>.
+                Say it with an amount, like <strong>&ldquo;Spent 500 on milk&rdquo;</strong>,{" "}
+                <strong>&ldquo;Got 2,000 from PM Kisan&rdquo;</strong> or{" "}
+                <strong lang="ml">&ldquo;പാൽക്കാരന് 500 കൊടുത്തു&rdquo;</strong>.
               </p>
             )}
             {voice.state.step === "error" && <ProblemNotice problem={voice.state.problem} />}
