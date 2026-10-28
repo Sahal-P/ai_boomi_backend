@@ -399,11 +399,62 @@ SARVAM_TTS_MODEL=bulbul:v3
 SARVAM_TTS_SPEAKER_ML=<chosen voice>
 ```
 
-**Check:** `/api/v1/readiness` should report `transcription_configuration` and
-`malayalam_tts_configuration` as `configured`.
+**Check:** signed in as the household (readiness needs a session, even on loopback),
+`/api/v1/readiness` should report `transcription_configuration` and `malayalam_tts_configuration`
+as `configured`.
 
 **Rollback:** set `SPEECH_TRANSCRIBE_PROVIDER=openai` and `MALAYALAM_TTS_PROVIDER=gemini`, then
 restart.
 
 **Acceptance:** record real phone voice notes in Malayalam, Hindi and English, and playback of a
 Malayalam reply, as human acceptance, separately from these checks.
+
+## Malayalam voice release — 29 October 2026
+
+The human asked to merge, push and deploy `feat/finboy-malayalam-voice`, which sits on the sign-up
+round. Merge commit `21138dc` (main was `bcc9ca4`) and the branches `feat/finboy-malayalam-voice`
+and `feat/finboy-signup` were pushed to both named repositories without force. GitHub Actions
+passed in both.
+
+**Before release:** Ruff clean; 1,011 API and 48 web unit tests; strict types; `pnpm build` and
+the Vercel-shaped build (`NEXT_PUBLIC_API_URL=/`); `pnpm db:check` (no drift); 74 PostgreSQL
+integration tests; 232 Playwright tests (119 skipped by design). The published commits hold none of
+the local provider keys.
+
+**Backend.** Release `/opt/finboy/releases/21138dc` (archive checksum verified, `uv sync --locked
+--no-dev`); `574b4ca` stays for rollback. A fresh private backup (`20261028T190355Z.dump`) passed
+`pg_restore --list`. Under the production env file, before the switch: head `0009_signup`, no
+drift, settings unchanged (OpenAI speech, Gemini Malayalam speech), the app builds, zero active
+imports and zero in-flight WhatsApp messages. `current` switched atomically and only
+`finboy.service` restarted (19:06 UTC). Loopback and public health returned 200, finance and
+privacy returned 401, docs 404, and the webhook refused a wrong token with 403. nginx, PostgreSQL
+and both Finind services stayed active, and no error-level line was logged afterwards. There was
+no migration; transactions (69) and WhatsApp receipts (25) were unchanged. One household joined
+through Google after the release (the first self-serve sign-up).
+
+**Sarvam is not active in production.** The release adds no Sarvam setting, so speech stays on
+OpenAI and Gemini until the human completes the dashboard steps and picks the voice (above).
+
+**Frontend.** Vercel deployment `C8wHYhKMN3Cg6v15SjQAuA7cyvQ3` is Ready for main `21138dc` on
+`finboy.antlegs.in`. The served privacy policy names Sarvam AI, and the live sign-in page at 1440 px
+shows the large, centred QR code.
+
+**Open issue: intermittent connection failures from Vercel's proxy.** Found while verifying; not
+caused by this release, onset unknown. Through the proxy, 22 of 56 timed requests (39%, seven
+runs) failed after about 31 s with Vercel's `502 ROUTER_EXTERNAL_TARGET_CONNECTION_ERROR`; 32 of 32
+direct requests to the API from the same machine succeeded in about 0.1 s. On the host:
+- the failed attempts never arrive. A header-only capture on port 443 showed no packets for them,
+  not even SYN retries, while every connection that did arrive was answered;
+- the successful proxied connections came from only two Vercel addresses (43.205.236.141 and
+  65.2.125.144);
+- the kernel reported no listen drops or overflows, there is no firewall or fail2ban, and the load
+  was 0.09;
+- DNS is a single A record (no AAAA); `nginx` listens on IPv4 only for 443.
+
+The live effect is the sign-in page, and any app call, showing "FinBoy took too long to respond"
+about four times in ten. It needs the VPS provider to check inbound filtering from AWS
+`ap-south-1` addresses, or a different path between Vercel and the API. Do not call the site
+healthy for real users until it is fixed.
+
+**Still human acceptance:** phone voice notes in Malayalam, Hindi and English, playback of a
+Malayalam reply, and a native read of the Malayalam copy (`malayalam.py`).
