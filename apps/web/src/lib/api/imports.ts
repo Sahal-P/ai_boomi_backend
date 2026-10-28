@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { emitSessionEvent } from "../session-events.ts";
-import { ApiError, apiBaseUrl, jsonBody, query, requestJson } from "./http.ts";
+import { ApiError, apiBaseUrl, apiCredentials, jsonBody, query, requestJson } from "./http.ts";
 import { dayOrTime, opaque, sourceModeSchema } from "./money.ts";
 
 const counter = z.number().int().nonnegative();
@@ -134,7 +134,7 @@ export function uploadEml(
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open("POST", `${base}/api/v1/imports/eml`);
-    request.withCredentials = false;
+    request.withCredentials = apiCredentials(base) === "include";
     request.timeout = 120_000;
     request.setRequestHeader("Accept", "application/json");
     request.responseType = "text";

@@ -95,8 +95,20 @@ async def test_cors_allows_only_configured_origin(client: AsyncClient) -> None:
     assert "access-control-allow-origin" not in blocked.headers
 
 
+async def test_cors_lets_only_the_web_origin_send_its_cookie(client: AsyncClient) -> None:
+    # The web app calls the API directly with credentials (docs/production.md). Starlette sends the
+    # credentials header to everyone; without a matching Allow-Origin, browsers refuse the response.
+    allowed = await client.get("/api/v1/health", headers={"Origin": "http://localhost:3000"})
+    blocked = await client.get("/api/v1/health", headers={"Origin": "https://untrusted.example"})
+    assert allowed.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert allowed.headers["access-control-allow-credentials"] == "true"
+    assert "access-control-allow-origin" not in blocked.headers
+
+
 @pytest.mark.parametrize("method", ["GET", "POST", "PATCH", "DELETE", "OPTIONS"])
-async def test_cors_phase1_methods_without_credentials(client: AsyncClient, method: str) -> None:
+async def test_cors_methods_allow_the_web_origins_credentials(
+    client: AsyncClient, method: str
+) -> None:
     response = await client.options(
         "/api/v1/transactions",
         headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": method},
@@ -109,7 +121,7 @@ async def test_cors_phase1_methods_without_credentials(client: AsyncClient, meth
         "DELETE",
         "OPTIONS",
     }
-    assert "access-control-allow-credentials" not in response.headers
+    assert response.headers["access-control-allow-credentials"] == "true"
 
 
 async def test_cors_rejects_unapproved_method(client: AsyncClient) -> None:

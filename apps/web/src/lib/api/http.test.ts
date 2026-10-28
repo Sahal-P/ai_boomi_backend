@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { z } from "zod";
-import { ApiError, requestJson } from "./http.ts";
+import { ApiError, apiCredentials, requestJson } from "./http.ts";
 
 const schema = z.object({ count: z.number().int() });
 
-test("requestJson validates responses and always omits credentials and caching", async (t) => {
+test("requestJson validates responses; a plain-HTTP API gets no credentials or caching", async (t) => {
   t.mock.method(globalThis, "fetch", async (input: string, init: RequestInit) => {
     assert.equal(input, "http://127.0.0.1:8000/api/v1/example");
     assert.equal(init.method, "POST");
@@ -66,4 +66,26 @@ test("same-origin production proxy sends only first-party cookies", async (t) =>
     return Response.json({ count: 3 });
   });
   assert.deepEqual(await requestJson("/api/v1/example", schema), { count: 3 });
+});
+
+test("the deployed HTTPS API is called directly with the household cookie", async (t) => {
+  const previous = process.env.NEXT_PUBLIC_API_URL;
+  process.env.NEXT_PUBLIC_API_URL = "https://finboy-api.antlegs.in";
+  t.after(() => {
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_API_URL;
+    else process.env.NEXT_PUBLIC_API_URL = previous;
+  });
+  t.mock.method(globalThis, "fetch", async (input: string, init: RequestInit) => {
+    assert.equal(input, "https://finboy-api.antlegs.in/api/v1/example");
+    assert.equal(init.credentials, "include");
+    assert.equal(init.cache, "no-store");
+    return Response.json({ count: 3 });
+  });
+  assert.deepEqual(await requestJson("/api/v1/example", schema), { count: 3 });
+});
+
+test("credentials: same-origin for the proxy, include for HTTPS, none for plain HTTP", () => {
+  assert.equal(apiCredentials(""), "same-origin");
+  assert.equal(apiCredentials("https://finboy-api.antlegs.in"), "include");
+  assert.equal(apiCredentials("http://127.0.0.1:8000"), "omit");
 });

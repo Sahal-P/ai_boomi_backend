@@ -61,10 +61,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     register_error_handlers(app)
     app.add_middleware(HouseholdAccessMiddleware)
     app.add_middleware(RequestContextMiddleware)
+    # The web app calls the API directly with its household cookie (docs/production.md); only the
+    # exact web origins may, and state-changing requests still need that Origin.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
-        allow_credentials=False,
+        allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Accept", "Content-Type"],
         expose_headers=["X-Request-ID"],

@@ -83,6 +83,16 @@ export function apiBaseUrl(): string {
   }
 }
 
+/**
+ * The household cookie goes with same-origin calls and with calls to the deployed API's own HTTPS
+ * origin, which the browser calls directly (docs/production.md). A plain-HTTP development API gets
+ * none.
+ */
+export function apiCredentials(base: string): RequestCredentials {
+  if (base === "") return "same-origin";
+  return base.startsWith("https://") ? "include" : "omit";
+}
+
 type RequestInitWithTimeout = Omit<RequestInit, "signal"> & {
   signal?: AbortSignal | null | undefined;
   timeoutMs?: number;
@@ -93,7 +103,7 @@ type JsonRequestInit<T> = RequestInitWithTimeout & {
   statusSchemas?: Readonly<Record<number, z.ZodType<T>>>;
 };
 
-/** Fetches an API path with first-party credentials only, a bounded timeout and classified failures. */
+/** Fetches an API path with FinBoy's own credentials only, a bounded timeout and classified failures. */
 export async function apiFetch(
   path: string,
   init: RequestInitWithTimeout = {},
@@ -113,7 +123,7 @@ export async function apiFetch(
       ...requestInit,
       headers,
       cache: "no-store",
-      credentials: base === "" ? "same-origin" : "omit",
+      credentials: apiCredentials(base),
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
   } catch (reason) {
