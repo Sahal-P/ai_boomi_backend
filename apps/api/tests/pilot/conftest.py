@@ -1,13 +1,13 @@
 import json
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 import pytest
-from finboy.core.clock import now_ist
+from finboy.core.clock import now_ist, today_ist
 from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.db.base import Base
 from finboy.db.models import User
@@ -304,6 +304,9 @@ class Household:
         session.commit()
 
     def record(self, *, amount: int = 50000, out: bool = True) -> UUID:
+        # SQLite drops timezone information; noon UTC stays on the fixture's business day
+        # under both the UTC CI runner and the IST development host, including demo dates.
+        occurred_at = datetime.combine(today_ist(), time(12), UTC)
         row = Transaction(
             id=uuid4(),
             user_id=self.user_id,
@@ -313,7 +316,7 @@ class Household:
             currency="INR",
             merchant="दूधवाला",
             category="groceries" if out else "govt_benefit",
-            occurred_at=now_ist(),
+            occurred_at=occurred_at,
             confidence=Decimal("0.700"),
             confidence_factors={},
             status="needs_review",

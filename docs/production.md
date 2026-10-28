@@ -355,3 +355,23 @@ People delete their own household from Privacy → "Delete my account"; the owne
 be deleted from the web. Reminders stay pilot-only until self-serve template sends exist. Real
 phone sign-ups, Google sign-in and voice quick add are recorded as human acceptance, separately
 from automated checks.
+
+## Companion branding release — 28 October 2026
+
+The human selected the yellow companion logo, then authorized merge, push and deployment.
+Commit `65b05b6` adds the outlined FinBoy wordmark, twelve SVG variants, PNG/ICO/Apple/app
+icons and the manifest; navigation, sign-in, legal pages, footer and README share the mark.
+Main and the branding branch were pushed to both named repositories. Vercel production
+`FDd7Y8VjAxvJARiUR9LhsDLQ9S4N` reached Ready, with `finboy.antlegs.in` assigned; fetched logo,
+mark and 512 px icon match the committed bytes. Live public rendering passed at
+1440/390/320 px. Health remains 200 and unauthenticated finance remains 401.
+
+Only frontend identity changed. No backend code, database, provider, access or DNS setting
+needed deployment or modification. Production test suites, fixture imports and financial
+mutations were not used. Local resolver failures were worked around only in the verification
+client using the actual public DNS address and normal HTTPS certificate validation.
+
+A follow-up changes the pilot unit-test fixture to noon UTC on the configured business day,
+fixing six existing CI failures caused by SQLite timezone loss and demo-date drift. It changes
+tests only. UTC checks (908 API unit tests, 48 web tests, lint/types) and the production build
+pass. See [branding release evidence](handoffs/finboy-branding.md) and [asset usage](branding.md).

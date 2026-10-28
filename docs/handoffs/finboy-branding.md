@@ -57,4 +57,36 @@ resolved the inspection ambiguity; no application change was needed.
 
 No live backend or human phone-install acceptance is claimed. Desktop/mobile checks used
 Chrome emulation rather than physical iOS/Android devices. The existing local servers on
-3061/8061 were left running. No commit, push, merge or deployment was performed.
+3061/8061 were left running. At the initial handoff no commit, push, merge or deployment
+had been performed; the human subsequently authorized all three on 28 October.
+
+## Authorized publication and live verification
+
+The human requested merge, push and deployment. Branding commit `65b05b6` was fast-forwarded
+into main and pushed, with `feat/finboy-branding`, to both named GitHub repositories.
+Vercel production deployment `FDd7Y8VjAxvJARiUR9LhsDLQ9S4N` reached Ready in 48 seconds and
+aliased `finboy.antlegs.in`. The logo, mark and 512 px icon fetched from that domain match
+the committed bytes. Manifest, favicon and Apple icon return 200; proxied health returns
+200 and unauthenticated money summary returns 401. Direct backend health remains 200.
+
+The live public landing page was checked in a fresh Chrome context at 1440, 390 and 320 px:
+new logo loaded, manifest linked and no horizontal overflow. Production reads were limited
+to public assets, the landing page, health and an unauthenticated access check; no financial
+records, login codes, production tests or record mutations were used.
+
+The local system resolver intermittently returned ENOTFOUND for the frontend domain.
+Public DNS returned the configured Vercel CNAME and addresses; verification used that
+resolved address with the original HTTPS hostname and normal certificate validation
+(`curl --resolve` and a per-browser host resolver rule). No DNS or host configuration changed.
+
+The GitHub workflow exposed six pre-existing pilot unit-test failures, also present on
+baseline `574b4ca`. SQLite discards timestamp zones, while the helper used the real clock
+instead of the business date. The helper now creates synthetic records at noon UTC on
+`today_ist()`, so UTC CI, IST development and overridden demo dates agree. This changes
+tests only, with no backend runtime or schema change. The six failing cases were reproduced
+with `TZ=UTC DEMO_TODAY=2026-10-24` before the fix and all six passed afterward.
+`TZ=UTC pnpm check` and `NEXT_PUBLIC_API_URL=/ pnpm build` both passed after the fix.
+
+No backend restart, migration, production settings change or unrelated service operation
+was needed. Public assets and read-only health/access checks establish this frontend release;
+phone installation and earlier voice acceptance gaps remain as previously documented.
