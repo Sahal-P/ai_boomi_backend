@@ -145,3 +145,40 @@ chosen.
 - A Malayalam reminder template.
 - Other Indian languages.
 - Production deploy.
+
+## Verification (28 October 2026)
+
+**Automated checks:**
+
+| Check | Outcome |
+| --- | --- |
+| `pnpm check` | Ruff, ESLint, strict types, 1,011 API unit tests and 46 web unit tests passed |
+| `pnpm build` | Production Next.js build passed |
+| `pnpm test:integration` (`finboy_signup`) | 74 passed |
+| `pnpm db:check` | No new operations (no migration in this round) |
+| Playwright `signup.spec.ts` and `session.spec.ts` | 45 passed at 1440, 390 and 320 px, including the Malayalam example |
+
+**Live, with synthetic audio and Sarvam:**
+- **Benchmark:** the results under "Live checks" above.
+- **WhatsApp, through the signed-message path with a stand-in phone (nothing sent to Meta):**
+  - "നമസ്കാരം" brought the Malayalam consent card, also spoken (Bulbul MP3);
+  - ✅ സമ്മതം brought the Malayalam welcome;
+  - a Bulbul-made voice note became the card "💸 ₹500 കൊടുത്തു";
+  - ✅ ശരിയാണ് added it, with ↩️ തിരിച്ചെടുക്കുക offered;
+  - "കണക്ക്" showed the week;
+  - `en` and `ml` switched the language;
+  - the synthetic household was removed afterwards.
+- **App round trip:** Bulbul spoke "ഇന്നലെ പാൽക്കാരന് അഞ്ഞൂറ് രൂപ കൊടുത്തു." through
+  `/assistant/speak`, and Saaras heard it as "ഇന്നലെ പാൽക്കാന് ₹500 കൊടുത്തു." (Malayalam, with
+  and without a hint). `/entries/preview` read it as ₹500 money out, yesterday.
+- **Browser (local web 3061 and API 8061):**
+  - quick add's Malayalam example became a ₹500 money-out card, was saved, and was undone;
+  - Ask in Malayalam answered in Malayalam, and **Listen** played Sarvam audio (`readyState`
+    4, at 4.97 s of 16.44 s, no media error);
+  - at 375 px the sheet does not overflow.
+
+**Not verified:**
+- real people's microphone or WhatsApp voice notes, and playback on a phone;
+- a native speaker's review of the Malayalam copy;
+- reading Malayalam with the OpenAI model, because the local key is invalidated. The rules
+  reader was used, so payee names were not filled in.
