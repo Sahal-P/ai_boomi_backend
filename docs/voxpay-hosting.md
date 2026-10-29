@@ -1,9 +1,23 @@
 # Voxpay frontend hosting — migration and operations
 
-The migration is in progress on `feat/finboy-voxpay-hosting`, based on remote main
-`1c724a4`. The first Linux artifact `ac1e939` is running on voxpay's blue slot, with
-finboy.io already served over HTTPS. The old Vercel frontend stays available during
-acceptance; it has not yet been retired.
+The frontend is served from voxpay at finboy.io. The former Vercel custom domain has
+been retired; the API remains on its existing host and callback domain.
+
+**Latest release:** main `b4c331c736c06b33e703d4fab3a08452e16b0ed9` passed
+GitHub Actions run `40806816672`, including full backend and six browser jobs, and the
+automatic release switched to the green slot. The public `/healthz` reports that exact
+revision. Run duration was 4m50s. The green service is enabled for reboot; API, nginx,
+and PostgreSQL are active. Vercel automatic Git deployments are already disabled.
+
+The first main deployment `10d3c18` hit an nginx reload race in its revision check;
+automatic rollback kept the previous slot active. `b4c331c` adds a bounded wait for
+the new nginx worker and its subsequent full pipeline and production deployment passed.
+Google and WhatsApp sign-in and AI speech were confirmed by the human; Gmail Connect
+was not tried. The certificate renewal dry run passed. GoDaddy confirmed removal of
+the old `finboy` CNAME on 29 October at approximately 02:46 UTC; both authoritative
+nameservers subsequently returned NXDOMAIN. After the earlier one-hour DNS TTL elapsed,
+the Vercel domain assignment was removed and the API was restricted to the new origin
+following a drained, validated restart. Production health and CORS checks passed.
 
 ## Implemented and verified
 
@@ -37,34 +51,25 @@ acceptance; it has not yet been retired.
 - Nginx sends `/api/v1/` to the existing loopback API, and frontend routes to the active
   web slot. Public landing at 1440/390/320 px, logo, manifest, API health (200), protected
   finance (401), and www redirect (308) were verified. The new web origin is allowed and
-  `WEB_APP_URL` points to finboy.io; previous origins remain temporarily allowed.
+  `WEB_APP_URL` points to finboy.io, the only remaining allowed web origin.
 - The human confirmed Google sign-in, WhatsApp sign-in and AI speech on finboy.io.
   Gmail Connect was not tried; no Gmail acceptance is claimed.
 
-## Remaining cutover work
+## Remaining acceptance
 
-- Run the updated feature-branch pipeline and verify its six browser jobs, actual duration
-  and exact Linux artifact. Update the installed root-owned helper to the reviewed version.
 - Gmail callback return remains unverified. Never record login codes, real messages or
   financial screenshots.
-- Merge and push reviewed changes to both repositories. The frontend repository's main-only
-  release job deploys only after all required checks pass, with a non-cancellable serialized
-  activation. It pushes the same revision to the backend mirror before activation; the backend
-  repository does not run duplicate CI.
-- Verify that the final deployment revision matches both main branches and the public
-  `/healthz`. Only after acceptance, remove the `finboy` CNAME in GoDaddy, wait its one-hour
-  TTL, then detach the old Vercel custom domain and disable its automatic deployment.
-- Remove the temporary old frontend origins from the API through a drained, validated
-  configuration restart. Keep `finboy-api.antlegs.in` for Gmail and Meta callbacks, all
-  provider credentials and encryption/session keys, and the existing Vercel project as
-  rollback evidence. Users sign in once on the new host.
+- Keep `finboy-api.antlegs.in` for Gmail and Meta callbacks, all provider credentials
+  and encryption/session keys, and the existing Vercel project as rollback evidence.
+  Users sign in once on the new host. Main-only frontend releases deploy after all
+  required checks, with serialized activation and a push to the backend mirror.
 
 The user signed into GoDaddy in the `sahlcyprus@gmail.com` Chrome profile. Preserve the
 `finboy-api` A record and all unrelated domain records. Never stop shared services, run
 production test suites, or import fixtures into the production database.
 The old `finboy` CNAME's TTL was reduced from one hour to ten minutes at 02:09:55 UTC;
-both authoritative nameservers confirmed the new TTL by 02:12:52 UTC. Keep its Vercel
-assignment reserved until the later of 03:12:52 UTC and ten minutes after DNS deletion.
+both authoritative nameservers confirmed the new TTL by 02:12:52 UTC. The Vercel
+assignment was removed after 03:12:52 UTC, more than ten minutes after DNS deletion.
 
 Manual rollback uses `sudo /usr/local/sbin/finboy-web-control rollback <full-revision>`
 with one of the retained revisions in `/var/lib/finboy-web/state.json`. The helper refuses
