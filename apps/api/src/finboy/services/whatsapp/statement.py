@@ -1,10 +1,12 @@
-"""Read one Hindi, English or Malayalam voice or text message as a money statement or a question.
+"""Read one Hindi, English or Malayalam voice or text message as money statements or a question.
 
 Untrusted input.
 
 The model only classifies the message and copies phrases from it. Code checks that each phrase
 is really in the message, turns the amount into paise deterministically and resolves dates.
-Nothing is stored; every resulting record waits for the household's "हाँ".
+Account, card and reference numbers are masked before the model sees a pasted bank SMS. Nothing
+is stored; what the household said is saved through the review pipeline (docs/pilot/contract.md,
+docs/money-manager-round/contract.md).
 """
 
 import re
@@ -21,12 +23,38 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
+from finboy.services.ingestion.amounts import AMOUNT_PATTERN
+from finboy.services.ingestion.amounts import parse_amount as rupees
 from finboy.services.ingestion.hindi_numbers import parse_amount
 from finboy.services.ingestion.types import Category
+from finboy.services.money.budgets import INCOME as NOT_BUDGETED
+from finboy.services.whatsapp import categories
 
 IST = ZoneInfo("Asia/Kolkata")
 SENDER = "voice@whatsapp.invalid"
-Kind = Literal["spent", "received", "due", "question", "unclear"]
+Kind = Literal["spent", "received", "due", "budget", "goal", "question", "unclear"]
+MAX_ITEMS = 10
+# A pasted bank SMS: long digit runs (accounts, UPI references, phone numbers) and masked account
+# or card numbers never reach the model, a prompt or a log.
+LONG_NUMBER = re.compile(r"(?<![\d,])\d{9,}(?!\d)")
+SMS_AMOUNT = re.compile(AMOUNT_PATTERN, re.IGNORECASE)
+MASKED_ACCOUNT = re.compile(r"(?i)(?:[x*]{2,}|\bending\s+(?:with\s+)?)\d{2,8}\b")
+NUMERIC_DATE = re.compile(r"\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2}|\d{4})\b")
+MONTH_DATE = re.compile(
+    r"\b(\d{1,2})[- ]?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*"
+    r"[- ,]*(\d{2}|\d{4})?\b",
+    re.IGNORECASE,
+)
+MONTH_NAMES = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+BANK_SMS = re.compile(
+    r"\b(?:debited|credited|a/c|acct|avl\.? bal|available balance|upi ref|ref no|vpa|neft|imps)\b",
+    re.IGNORECASE,
+)
+BUDGET_WORD = re.compile(r"budget|बजट|ബജറ്റ്", re.IGNORECASE)
+GOAL_WORD = re.compile(
+    r"\bsave\b|\bsaving|बचाना|बचत|बचाऊँ|बचाउं|bachana|bachat|സമ്പാദിക്കണം|സമ്പാദ്യം|മിച്ചം",
+    re.IGNORECASE,
+)
 
 # A trailing vowel sign is not a regex word character, so `\b` can't end Devanagari or Malayalam
 # words. Malayalam puts the question word mid-sentence ("ഈ ആഴ്ച എത്ര ചെലവായി"), so എത്ര counts
@@ -48,27 +76,53 @@ type:
   aaye, കിട്ടി, വന്നു, ലഭിച്ചു, kitti).
 - due: a payment they must make later on a date: instalment, loan, bill, fee, rent (किस्त, बकाया,
   देना है, भरना है, due, EMI, "have to pay", തവണ, കുടിശ്ശിക, അടയ്ക്കണം, കൊടുക്കണം).
+- budget: they set a monthly spending limit ("food budget 5000", "खाने का बजट 5000",
+  "ഭക്ഷണം ബജറ്റ് 5000"): amount_phrase is the limit, category what it is for, or null for all
+  spending.
+- goal: they set how much they want to save each month ("save 5000 a month", "हर महीने 5000
+  बचाना है", "മാസം 5000 സമ്പാദിക്കണം"): amount_phrase is that amount.
 - question: they ask about their money (कितना, क्या, बताओ, how much, what, എത്ര, എന്ത്, "?").
 - unclear: anything else, including greetings.
+
+A message may list several payments, like "chai 20, auto 50, lunch 120" or one per line: put
+the first in the main fields and each further one in more (at most 9), each with its own
+amount_phrase; otherwise more is null. A pasted bank or UPI SMS is spent when money was
+debited, sent or paid and received when it was credited; its amount is the debited or credited
+amount, never the available balance. [number] and [account] hide numbers: never copy them.
 
 Copy these EXACTLY as they appear in the message, without translating or correcting them, or
 use null when absent: amount_phrase (the rupee amount in words or digits, like "पाँच सौ",
 "500", "five hundred" or "₹500"), counterparty (who was paid or who paid, like "दूधवाले",
-"milkman" or "പാൽക്കാരന്"), day_phrase (when, like "कल", "आज", "10 तारीख", "yesterday",
-"on the 10th", "ഇന്നലെ", "10-ാം തീയതി"), due_label (for due only: what it is for, like
-"समूह की किस्त", "school fees" or "ലോൺ തവണ").
+"milkman", "Swiggy" or "പാൽക്കാരന്"), day_phrase (when, like "कल", "आज", "10 तारीख",
+"yesterday", "on the 10th", "28-10-26", "ഇന്നലെ", "10-ാം തീയതി"), due_label (for due only: what
+it is for, like "समूह की किस्त", "school fees" or "ലോൺ തവണ").
 Never invent an amount, a name or a date. mode: cash for नकद/कैश/cash/കാശ്/പണമായി, upi for UPI,
 फोनपे, गूगल पे, पेटीएम, PhonePe, GPay, Paytm; otherwise unknown. due_day: the day of the month for a due
 (1-31) only when it is said. category: the closest from the closed list: groceries (ration,
-kirana, milk, vegetables), food_dining (tea, eating out), farming (seeds, fertiliser, pesticide,
-diesel for pump or tractor, tractor hire, farm labour), livestock (fodder, animal medicine,
-animals), health (medicine, doctor, hospital), education (school, books, fees for school),
-phone_recharge, transport (bus, auto, fuel), utilities (electricity, water, gas cylinder),
-family_events (wedding, festival, gifts, ceremonies), remittance (money sent to or received from
-family), wages (pay for their own work, mazdoori), farm_sales (selling crops, milk, vegetables),
-govt_benefit (PM-KISAN, pension, MGNREGA, ration or gas subsidy), loan_emi (loan, SHG or
-instalment repayment), rent, shopping, other.
+kirana, milk, vegetables, supermarket), food_dining (tea, snacks, eating out, Swiggy, Zomato),
+transport (bus, auto, taxi, Uber, Ola, metro, petrol, fuel), shopping (clothes, electronics,
+Amazon, Flipkart), utilities (electricity, water, gas cylinder, internet), phone_recharge,
+subscriptions (Netflix, OTT, apps), rent, health (medicine, doctor, hospital), education
+(school, college, books, tuition), travel (train, flight, hotel), investments (SIP, mutual fund,
+FD, RD, gold, money put into savings), loan_emi (loan, EMI, SHG or instalment repayment), fees
+(bank charges), family_events (wedding, festival, gifts, ceremonies), remittance (money sent to
+or received from family), farming (seeds, fertiliser, pesticide, diesel for pump or tractor,
+tractor hire, farm labour), livestock (fodder, animal medicine, animals), salary (their salary),
+wages (pay for their own work, mazdoori), farm_sales (selling crops, milk, vegetables),
+govt_benefit (PM-KISAN, pension, MGNREGA, ration or gas subsidy), other_income, transfer (to
+their own account), other.
 """
+
+
+class MoreItem(BaseModel):
+    """A further payment in a message that lists several."""
+
+    model_config = ConfigDict(extra="forbid")
+    type: Literal["spent", "received"]
+    amount_phrase: str | None = Field(max_length=60)
+    counterparty: str | None = Field(max_length=80)
+    day_phrase: str | None = Field(max_length=40)
+    category: Category | None
 
 
 class StatementReading(BaseModel):
@@ -81,6 +135,7 @@ class StatementReading(BaseModel):
     category: Category | None
     due_day: int | None = Field(ge=1, le=31)
     due_label: str | None = Field(max_length=60)
+    more: list[MoreItem] | None = Field(default=None, max_length=MAX_ITEMS - 1)
 
 
 @dataclass(frozen=True)
@@ -93,6 +148,26 @@ class Statement:
     category: Category = "other"
     due_date: date | None = None
     label: str | None = None
+    overall: bool = False  # a budget for all spending rather than one category
+
+
+def mask(text: str) -> str:
+    """Hide account, card, reference and phone numbers before anything reads the message."""
+    return LONG_NUMBER.sub("[number]", MASKED_ACCOUNT.sub("[account]", text))
+
+
+def _whole_amount(text: str) -> int | None:
+    """The message's one amount; in a bank SMS, its first rupee amount that is not a balance."""
+    if not BANK_SMS.search(text):
+        return parse_amount(text)
+    for found in SMS_AMOUNT.finditer(text):
+        if "bal" in text[max(0, found.start() - 24) : found.start()].casefold():
+            continue
+        try:
+            return rupees(found["amount"])
+        except ValueError:
+            return None
+    return None
 
 
 def _plain(value: str) -> str:
@@ -123,6 +198,9 @@ def _past_day(phrase: str | None, text: str, today: date) -> date:
         return today - timedelta(days=2)
     if re.search(r"कल|kal\b|yesterday|ഇന്നലെ|innale", spoken):
         return today - timedelta(days=1)
+    written = _calendar_day(spoken, today)
+    if written is not None:
+        return written
     found = re.search(
         rf"(\d{{1,2}})(?:\s*-?\s*ാം)?\s*{DATE_WORD}|\bon\s+(?:the\s+)?(\d{{1,2}})(?:st|nd|rd|th)?\b",
         spoken,
@@ -141,6 +219,28 @@ def _past_day(phrase: str | None, text: str, today: date) -> date:
                 return today
         return day
     return today
+
+
+def _calendar_day(spoken: str, today: date) -> date | None:
+    """A written date, day first as in Indian bank SMS (28-10-26, 28/10/2026, 28 Oct), within
+    the last year and never in the future."""
+    numeric = NUMERIC_DATE.search(spoken)
+    named = None if numeric else MONTH_DATE.search(spoken)
+    try:
+        if numeric:
+            year = int(numeric[3])
+            day = date(year + 2000 if year < 100 else year, int(numeric[2]), int(numeric[1]))
+        elif named:
+            year = int(named[3]) if named[3] else today.year
+            month = MONTH_NAMES.index(named[2].lower()[:3]) + 1
+            day = date(year + 2000 if year < 100 else year, month, int(named[1]))
+            if not named[3] and day > today:
+                day = day.replace(year=day.year - 1)
+        else:
+            return None
+    except ValueError:
+        return None
+    return day if today - timedelta(days=366) <= day <= today else None
 
 
 def _due_date(due_day: int | None, today: date) -> date | None:
@@ -163,7 +263,17 @@ def _ground(reading: StatementReading, text: str, today: date) -> Statement:
     if reading.type in {"question", "unclear"}:
         return Statement(reading.type)
     phrase = _literal(reading.amount_phrase, text)
-    amount = (parse_amount(phrase) if phrase else None) or parse_amount(text)
+    amount = (parse_amount(phrase) if phrase else None) or _whole_amount(text)
+    if reading.type == "budget":
+        spending = reading.category is not None and reading.category not in NOT_BUDGETED
+        return Statement(
+            "budget",
+            amount,
+            category=reading.category if spending else "other",  # type: ignore[arg-type]
+            overall=not spending,
+        )
+    if reading.type == "goal":
+        return Statement("goal", amount)
     if reading.type == "due":
         due_day = reading.due_day
         if due_day is not None and not re.search(
@@ -187,10 +297,44 @@ def _ground(reading: StatementReading, text: str, today: date) -> Statement:
     )
 
 
+def _ground_all(reading: StatementReading, text: str, today: date) -> list[Statement]:
+    """Every payment in the message. With several, each amount must be said for that item:
+    there is no whole-message fallback, and an item without its own amount is left out."""
+    if not reading.more or reading.type not in {"spent", "received"}:
+        return [_ground(reading, text, today)]
+    items: list[Statement] = []
+    for item in [reading, *reading.more][:MAX_ITEMS]:
+        phrase = _literal(item.amount_phrase, text)
+        amount = parse_amount(phrase) if phrase else None
+        if amount is None:
+            continue
+        items.append(
+            Statement(
+                item.type,
+                amount,
+                counterparty=_name(item.counterparty, text),
+                mode=reading.mode,
+                day=_past_day(item.day_phrase or reading.day_phrase, text, today),
+                category=item.category or "other",
+            )
+        )
+    return items or [Statement(reading.type)]
+
+
 def _rules(text: str, today: date) -> Statement:
     """Development fallback without a model: verbs and one amount only, no names."""
     lowered = text.casefold()
-    amount = parse_amount(text)
+    amount = _whole_amount(text)
+    if BUDGET_WORD.search(text):
+        named = categories.named(text)
+        spending = named is not None and named not in NOT_BUDGETED
+        return Statement(
+            "budget", amount, category=named if spending else "other", overall=not spending
+        )
+    if GOAL_WORD.search(text):
+        return Statement("goal", amount)
+    if re.search(r"\bdebited\b", lowered):
+        return Statement("spent", amount, day=_past_day(text, text, today))
     if re.search(
         r"किस्त|बकाया|देना है|भरना है|kist|\bdue\b|\bemi\b|instalment"
         r"|തവണ|കുടിശ്ശിക|കുടിശിക|അടയ്ക്കണം|അടക്കണം|കൊടുക്കണം",
@@ -221,12 +365,20 @@ def _rules(text: str, today: date) -> Statement:
 
 
 def read_statement(text: str, settings: Settings, today: date) -> Statement:
-    if QUESTION.search(text):
-        return Statement("question")
+    """The first statement of a message (quick add on the website reads one at a time)."""
+    return read_statements(text, settings, today)[0]
+
+
+def read_statements(text: str, settings: Settings, today: date) -> list[Statement]:
+    """One statement, or up to 10 payments when the message lists several."""
+    # A bank SMS often ends "Not you? Call ...": that question mark is not the household's.
+    if QUESTION.search(text) and not BANK_SMS.search(text):
+        return [Statement("question")]
+    text = mask(text)
     if not settings.openai_api_key or not settings.openai_assistant_model:
         if settings.environment == "production":
             raise ProviderUnavailable("configuration_missing")
-        return _rules(text, today)
+        return [_rules(text, today)]
     try:
         with OpenAI(
             api_key=settings.openai_api_key.get_secret_value(),
@@ -236,7 +388,7 @@ def read_statement(text: str, settings: Settings, today: date) -> Statement:
             response = client.responses.parse(
                 model=settings.openai_assistant_model,
                 store=False,
-                max_output_tokens=600,
+                max_output_tokens=1500,
                 text_format=StatementReading,
                 input=[
                     {"role": "system", "content": PROMPT},
@@ -248,7 +400,7 @@ def read_statement(text: str, settings: Settings, today: date) -> Statement:
         raise ProviderUnavailable("statement_unavailable") from None
     if not isinstance(reading, StatementReading):
         raise ProviderUnavailable("statement_unavailable")
-    return _ground(reading, text, today)
+    return _ground_all(reading, text, today)
 
 
 def payment_line(statement: Statement, received_at: datetime) -> str:

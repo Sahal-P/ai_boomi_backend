@@ -21,6 +21,7 @@ from finboy.services.ledger.reconcile import (
     revision,
     set_review_status,
 )
+from finboy.services.money import merchants
 from finboy.services.money.detail import transaction_detail
 from finboy.services.money.engine import MoneySummary, PeriodSpec, money_summary
 from finboy.services.money.models import Correction, TransactionDetail
@@ -188,6 +189,10 @@ def decide(
         require_version(session, user_id, request.expected_version)
         before = _snapshot(session, user_id)
         _apply(session, user_id, transaction_id, request)
+        if request.correction is not None and request.correction.category is not None:
+            # A chosen category is remembered for the payee's next entries (merchant memory).
+            chosen = _get(session, user_id, transaction_id)
+            merchants.learn(session, user_id, chosen.merchant, request.correction.category)
         after = _snapshot(session, user_id)
         # Store only changed entities; preserve all history rather than inverse SQL guesses.
         changed = {

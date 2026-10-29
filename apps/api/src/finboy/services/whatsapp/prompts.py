@@ -1,6 +1,7 @@
 """Pending button choices: opaque IDs, a keyed record fingerprint and an expiry. Never text."""
 
 from datetime import UTC, datetime, timedelta
+from typing import get_args
 from uuid import UUID, uuid4
 
 from sqlalchemy import select, update
@@ -8,10 +9,14 @@ from sqlalchemy.orm import Session
 
 from finboy.db.models.ledger import Commitment, Transaction
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt
+from finboy.services.ingestion.types import Category
 from finboy.services.whatsapp.config import ChannelConfig
 
 CHOICES = frozenset(
     {"yes", "no", "change", "undo", "agree", "decline", "paid", "later", "again", "remind", "skip"}
+    # Saved entries (docs/money-manager-round/contract.md); a category list row is its category.
+    | {"amount", "category", "putback", "undoall", "fixone", "fix", "checkin", "nocheckin"}
+    | set(get_args(Category))
 )
 LIFETIME = {
     "consent": timedelta(days=7),
@@ -24,7 +29,13 @@ LIFETIME = {
     # Sign-in cards live as long as the login code behind them (docs/signup-round/contract.md).
     "web_login": timedelta(minutes=10),
     "link": timedelta(minutes=10),
+    "saved": timedelta(days=2),
+    "pick_item": timedelta(days=2),
+    "pick_category": timedelta(hours=1),
+    "checkin_opt_in": timedelta(days=30),
 }
+# Several messages of saved items may be open at once; each keeps its own Undo all / Fix one.
+KEEP_OLDER = {"pick_item"}
 
 
 def _aware(value: datetime) -> datetime:
@@ -69,6 +80,7 @@ def open_prompt(
     decision_id: UUID | None = None,
     fingerprint: str | None = None,
     login_request_id: UUID | None = None,
+    group_id: UUID | None = None,
 ) -> WhatsAppPrompt:
     """Open a choice; an older open card for the same purpose and record stops working."""
     now = datetime.now(UTC)
@@ -83,7 +95,8 @@ def open_prompt(
             WhatsAppPrompt.transaction_id.is_not_distinct_from(transaction_id),
             WhatsAppPrompt.commitment_id.is_not_distinct_from(commitment_id),
         )
-    session.execute(stale.values(state="superseded"))
+    if purpose not in KEEP_OLDER:
+        session.execute(stale.values(state="superseded"))
     prompt = WhatsAppPrompt(
         id=uuid4(),
         binding_id=binding.id,
@@ -93,6 +106,7 @@ def open_prompt(
         commitment_id=commitment_id,
         decision_id=decision_id,
         login_request_id=login_request_id,
+        group_id=group_id,
         fingerprint=fingerprint,
         state="open",
         created_at=now,
@@ -125,11 +139,16 @@ def claim(session: Session, binding: WhatsAppBinding, prompt_id: UUID) -> WhatsA
 
 def pending_change(session: Session, binding: WhatsAppBinding) -> WhatsAppPrompt | None:
     """The newest unexpired "say the right amount" question, if the household is answering it."""
+    return pending(session, binding, "change_amount")
+
+
+def pending(session: Session, binding: WhatsAppBinding, purpose: str) -> WhatsAppPrompt | None:
+    """The newest unexpired open prompt of one purpose: a typed answer may belong to it."""
     prompt = session.scalar(
         select(WhatsAppPrompt)
         .where(
             WhatsAppPrompt.binding_id == binding.id,
-            WhatsAppPrompt.purpose == "change_amount",
+            WhatsAppPrompt.purpose == purpose,
             WhatsAppPrompt.state == "open",
         )
         .order_by(WhatsAppPrompt.created_at.desc())
@@ -139,6 +158,23 @@ def pending_change(session: Session, binding: WhatsAppBinding) -> WhatsAppPrompt
     if prompt is None or _aware(prompt.expires_at) <= datetime.now(UTC):
         return None
     return prompt
+
+
+def group(session: Session, binding: WhatsAppBinding, group_id: UUID) -> list[WhatsAppPrompt]:
+    """The open per-item prompts of one message of several saved items, oldest first."""
+    return list(
+        session.scalars(
+            select(WhatsAppPrompt)
+            .where(
+                WhatsAppPrompt.binding_id == binding.id,
+                WhatsAppPrompt.group_id == group_id,
+                WhatsAppPrompt.state == "open",
+                WhatsAppPrompt.expires_at > datetime.now(UTC),
+            )
+            .order_by(WhatsAppPrompt.created_at, WhatsAppPrompt.id)
+            .with_for_update()
+        )
+    )
 
 
 def answer(prompt: WhatsAppPrompt) -> None:

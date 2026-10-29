@@ -4,6 +4,7 @@ uv run --package finboy-api python -m finboy.services.pilot.cli enroll
 uv run --package finboy-api python -m finboy.services.pilot.cli owner on|off
 uv run --package finboy-api python -m finboy.services.pilot.cli erase <household-uuid> --confirm
 uv run --package finboy-api python -m finboy.services.pilot.cli remind
+uv run --package finboy-api python -m finboy.services.pilot.cli checkin
 uv run --package finboy-api python -m finboy.services.pilot.cli report [--weeks 4]
 """
 
@@ -21,7 +22,7 @@ from finboy.db.session import build_engine
 from finboy.services.imports.locking import import_lock
 from finboy.services.mail.security import MailError
 from finboy.services.pilot import households, report
-from finboy.services.whatsapp import reminders
+from finboy.services.whatsapp import checkin, reminders
 from finboy.services.whatsapp.config import ChannelUnavailable, channel_config
 from finboy.services.whatsapp.meta import MetaClient
 
@@ -40,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
     erase.add_argument("household", type=UUID)
     erase.add_argument("--confirm", action="store_true", help="required: erasure is permanent")
     commands.add_parser("remind", help="send due reminder templates (timer; 08:00-20:00 IST)")
+    commands.add_parser(
+        "checkin", help="send opted-in monthly check-ins (timer; 1st-3rd, 08:00-20:00 IST)"
+    )
     weekly = commands.add_parser("report", help="weekly counts per pilot household (no content)")
     weekly.add_argument("--weeks", type=int, choices=range(1, 13), default=4, metavar="1-12")
     args = parser.parse_args(argv)
@@ -62,6 +66,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Owner pilot flows: {args.state}")
         elif args.command == "remind":
             return _remind(settings, factory)
+        elif args.command == "checkin":
+            return _remind(settings, factory, monthly=True)
         elif args.command == "report":
             with factory() as session:
                 rows = report.weekly(session, today=today_ist(), weeks=args.weeks)
@@ -85,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def _remind(settings: Settings, factory: sessionmaker) -> int:
+def _remind(settings: Settings, factory: sessionmaker, *, monthly: bool = False) -> int:
     try:
         config = channel_config(settings)
     except ChannelUnavailable:
@@ -93,10 +99,12 @@ def _remind(settings: Settings, factory: sessionmaker) -> int:
         return 2
     client = MetaClient(config)
     try:
-        counts = reminders.send_reminders(factory, settings, config, client, datetime.now(UTC))
+        send = checkin.send_checkins if monthly else reminders.send_reminders
+        counts = send(factory, settings, config, client, datetime.now(UTC))
     finally:
         client.close()
-    print("Reminders:", ", ".join(f"{name} {count}" for name, count in counts.items()))
+    label = "Check-ins" if monthly else "Reminders"
+    print(f"{label}:", ", ".join(f"{name} {count}" for name, count in counts.items()))
     return 0
 
 

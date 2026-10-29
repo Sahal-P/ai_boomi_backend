@@ -52,7 +52,7 @@ def due(home: Household, days: int, amount: int = 120000) -> Commitment:
 
 @pytest.mark.parametrize("words", ["हिसाब", "हिसाब बताओ।", "Hisaab batao", "मेरा हिसाब"])
 def test_hisaab_shows_this_weeks_money_in_text_and_voice(household, monkeypatch, words) -> None:
-    monkeypatch.setattr(pilot.statement, "read_statement", MagicMock(side_effect=AssertionError))
+    monkeypatch.setattr(pilot.statement, "read_statements", MagicMock(side_effect=AssertionError))
     confirm(household)
     farm = confirm(household, amount=30000)
     farm.category = "farming"

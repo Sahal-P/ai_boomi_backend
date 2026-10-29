@@ -38,8 +38,13 @@ def test_yes_confirms_through_the_versioned_decision_and_offers_undo(household) 
     assert household.tap("yes") is None
     assert [request.action for request in household.decided] == ["confirm"]
     assert household.session.get(Transaction, record).status == "confirmed"
+    # Checked and saved: the same card as an entry saved at once.
     assert household.texts()[-1].startswith("✅ जोड़ दिया: ₹500 दिए")
-    assert [title for _, title in household.buttons()] == [hindi.UNDO]
+    assert [title for _, title in household.buttons()] == [
+        hindi.UNDO,
+        hindi.AMOUNT,
+        hindi.CATEGORY_BUTTON,
+    ]
 
 
 def test_no_rejects_and_undo_brings_the_card_back(household) -> None:
@@ -54,10 +59,21 @@ def test_no_rejects_and_undo_brings_the_card_back(household) -> None:
 
 def test_undo_after_something_else_changed_is_refused(household) -> None:
     household.card(household.record())
-    household.tap("yes")
+    household.tap("no")
     household.undo_error = TaskError("decision_conflict")
     assert household.tap("undo") == "record_changed"
     assert household.texts()[-1] == hindi.UNDO_REFUSED
+
+
+def test_a_saved_entry_that_changed_since_its_card_is_left_alone(household) -> None:
+    record = household.record()
+    household.card(record)
+    household.tap("yes")
+    household.session.get(Transaction, record).amount_minor = 90000
+    household.session.commit()
+    assert household.tap("undo") == "record_changed"
+    assert household.texts()[-1] == hindi.CHANGED
+    assert household.session.get(Transaction, record).status == "confirmed"
 
 
 def test_a_tap_never_acts_on_a_record_that_changed_since_the_card(household) -> None:
@@ -115,14 +131,15 @@ def test_change_reads_only_an_amount_then_shows_the_card_again(household) -> Non
     assert household.session.get(Transaction, record).status == "needs_review"
 
 
-def test_a_saved_screenshot_gets_a_card_and_other_outcomes_get_plain_hindi(
+def test_a_screenshot_is_saved_at_once_and_other_outcomes_get_plain_hindi(
     household, monkeypatch
 ) -> None:
     record = household.record()
     result = Capture("saved", 50000, "दूधवाला", record)
     monkeypatch.setattr(pilot.capture, "capture_screenshot", lambda *_args: result)
     assert household.say("", kind="image") is None
-    assert "सही है?" in household.texts()[-1]
+    assert household.session.get(Transaction, record).status == "confirmed"
+    assert household.texts()[-1].startswith("✅ जोड़ दिया: ₹500 दिए")
     monkeypatch.setattr(pilot.capture, "capture_screenshot", lambda *_args: Capture("no_payment"))
     assert household.say("", kind="image") is None
     assert household.texts()[-1].startswith("इस तस्वीर में")
@@ -164,12 +181,14 @@ def test_prompt_ids_round_trip_and_fingerprints_follow_the_record(household, cha
     assert prompts.parse("fb1:" + uuid4().hex + ":delete") is None
 
 
-def test_spoken_money_goes_through_review_and_comes_back_as_a_card(household, monkeypatch) -> None:
+def test_spoken_money_goes_through_the_pipeline_and_is_saved_at_once(
+    household, monkeypatch
+) -> None:
     from finboy.core.clock import today_ist
     from finboy.services.whatsapp.statement import Statement
 
     spoken = Statement("spent", 50000, "दूधवाले", "cash", today_ist(), "groceries")
-    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: spoken)
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [spoken])
     recorded: dict = {}
 
     def record_voice(_engine, _settings, **kwargs):
@@ -180,7 +199,31 @@ def test_spoken_money_goes_through_review_and_comes_back_as_a_card(household, mo
     assert household.say("दूधवाले को पाँच सौ नकद दिए") is None
     assert recorded["user_id"] == household.user_id and recorded["category"] == "groceries"
     assert recorded["line"].startswith("Rs. 500.00 paid to दूधवाले via cash on ")
-    assert "सही है?" in household.texts()[-1]
+    assert [request.action for request in household.decided] == ["confirm"]
+    assert household.texts()[-1].startswith("✅ जोड़ दिया: ₹500 दिए")
+    assert [title for _, title in household.buttons()] == [
+        hindi.UNDO,
+        hindi.AMOUNT,
+        hindi.CATEGORY_BUTTON,
+    ]
+
+
+def test_a_big_amount_is_checked_before_it_counts(household, monkeypatch) -> None:
+    from finboy.core.clock import today_ist
+    from finboy.services.whatsapp.statement import Statement
+
+    spoken = Statement("spent", 6_000_000, "सुनार", "cash", today_ist(), "shopping")
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [spoken])
+    record = household.record(amount=6_000_000)
+    monkeypatch.setattr(
+        pilot.capture,
+        "record_voice",
+        lambda *_args, **_kwargs: Capture("saved", 6_000_000, "सुनार", record),
+    )
+    assert household.say("सुनार को साठ हज़ार दिए") is None
+    assert household.decided == []
+    assert household.session.get(Transaction, record).status == "needs_review"
+    assert household.texts()[-1].startswith(hindi.ASK_BIG) and "सही है?" in household.texts()[-1]
     assert [title for _, title in household.buttons()] == [hindi.YES, hindi.CHANGE, hindi.NO]
 
 
@@ -190,9 +233,9 @@ def test_unclear_messages_and_missing_amounts_are_explained_not_guessed(
     from finboy.services.whatsapp.statement import Statement
 
     monkeypatch.setattr(pilot.capture, "record_voice", MagicMock(side_effect=AssertionError))
-    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: Statement("unclear"))
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [Statement("unclear")])
     assert household.say("नमस्ते") is None and household.texts()[-1] == hindi.UNCLEAR
-    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: Statement("spent"))
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [Statement("spent")])
     assert household.say("दूधवाले को पैसे दिए") == "amount_unclear"
     assert household.texts()[-1] == hindi.AMOUNT_MISSING
 
@@ -205,7 +248,7 @@ def test_an_already_confirmed_payment_is_not_offered_again(household, monkeypatc
     household.session.get(Transaction, record).status = "confirmed"
     household.session.commit()
     spoken = Statement("spent", 50000, "दूधवाले", "unknown", today_ist(), "groceries")
-    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: spoken)
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [spoken])
     monkeypatch.setattr(
         pilot.capture,
         "record_voice",
@@ -227,7 +270,7 @@ def spoken_due(monkeypatch, due_date=None):
         due_date=due_date or today_ist() + timedelta(days=15),
         label="समूह की किस्त",
     )
-    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: due)
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [due])
     return due
 
 
@@ -289,8 +332,8 @@ def test_a_due_without_a_day_asks_for_it(household, monkeypatch) -> None:
 
     monkeypatch.setattr(
         pilot.statement,
-        "read_statement",
-        lambda *_args: Statement("due", 120000, category="loan_emi", label="किस्त"),
+        "read_statements",
+        lambda *_args: [Statement("due", 120000, category="loan_emi", label="किस्त")],
     )
     assert household.say("किस्त 1200 देनी है") is None
     assert household.texts()[-1] == hindi.DUE_DAY_MISSING

@@ -12,6 +12,7 @@ from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.db.models.core import User
 from finboy.db.models.whatsapp import (
     WhatsAppBinding,
+    WhatsAppCheckin,
     WhatsAppDelivery,
     WhatsAppReceipt,
     WhatsAppReminder,
@@ -197,6 +198,14 @@ def admit(
                 .join(WhatsAppBinding, WhatsAppBinding.id == WhatsAppReminder.binding_id)
                 .where(WhatsAppReminder.outbound_message_id == status.id)
                 .with_for_update(of=WhatsAppReminder)
+            ).first()
+        if row is None:
+            # An opted-in monthly check-in template, also sent outside any reply.
+            row = session.execute(
+                select(WhatsAppCheckin, WhatsAppBinding.sender_hash)
+                .join(WhatsAppBinding, WhatsAppBinding.id == WhatsAppCheckin.binding_id)
+                .where(WhatsAppCheckin.outbound_message_id == status.id)
+                .with_for_update(of=WhatsAppCheckin)
             ).first()
         if row is None or row[1] != config.digest("sender", status.recipient_id):
             continue

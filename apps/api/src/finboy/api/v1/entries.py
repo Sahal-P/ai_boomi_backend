@@ -22,6 +22,7 @@ from finboy.db.models.core import User
 from finboy.db.models.ledger import Commitment, Transaction
 from finboy.services.accounts import usage
 from finboy.services.ingestion.types import Category
+from finboy.services.money import merchants
 from finboy.services.money.models import Correction
 from finboy.services.ux.decisions import DecisionRequest, decide
 from finboy.services.ux.state import data_version
@@ -84,11 +85,16 @@ def preview(body: EntryText, request: Request, session: DB, user_id: CurrentUser
     settings = request.app.state.settings
     usage.use(session, settings, user_id, "ai")
     reading = statement.read_statement(body.text, settings, today_ist())
+    if reading.kind in {"budget", "goal"}:
+        # Budgets and the savings goal are set on the Overview, not through quick add.
+        reading = statement.Statement("unclear")
+    # The category this household last chose for the payee comes first (merchant memory).
+    remembered = merchants.remembered(session, user_id, reading.counterparty)
     return EntryPreview(
-        kind=reading.kind,
+        kind=reading.kind,  # type: ignore[arg-type]
         amount_minor=reading.amount_minor,
         counterparty=reading.counterparty,
-        category=reading.category,
+        category=remembered if remembered and reading.kind != "due" else reading.category,
         day=reading.day,
         due_date=reading.due_date,
         label=reading.label,

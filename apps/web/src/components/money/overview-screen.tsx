@@ -7,6 +7,7 @@ import {
   CircleAlert,
   Inbox,
   ListChecks,
+  MessageCircle,
   Plus,
   RefreshCw,
   ShieldAlert,
@@ -20,6 +21,7 @@ import { PageHeader } from "@/components/app-shell/page-header";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { EmptyState, LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
 import { EmptyMonthArt, NoRecordsArt } from "@/components/illustrations/scenes";
+import { BudgetsCard } from "@/components/money/budgets-card";
 import { ObligationDialog } from "@/components/money/obligation-dialog";
 import { QuickAdd } from "@/components/money/quick-add";
 import { SimulationPanel } from "@/components/money/simulation-panel";
@@ -27,6 +29,7 @@ import { coverageHeadline } from "@/components/sources/coverage-summary";
 import { Button } from "@/components/ui/button";
 import { useQueryUpdate } from "@/hooks/use-query-update";
 import { useResource } from "@/hooks/use-resource";
+import { chatLink } from "@/lib/api/auth";
 import { formatMoney, getObligations, getSummary, recordsNote, type MoneySummary, type Period } from "@/lib/api/money";
 import { recordOutcome } from "@/lib/api/privacy";
 import { formatDay, formatDayTime, formatRange, istDate, monthLabel } from "@/lib/dates";
@@ -436,6 +439,13 @@ export function OverviewScreen() {
               <Button onClick={() => setAdding(true)}>
                 <Plus aria-hidden="true" /> Add an entry
               </Button>
+              {signIn?.whatsapp_number && (
+                <Button asChild variant="outline">
+                  <a href={chatLink(signIn.whatsapp_number)} target="_blank" rel="noopener noreferrer">
+                    <MessageCircle aria-hidden="true" /> Send it on WhatsApp
+                  </a>
+                </Button>
+              )}
               {signIn?.gmail !== false && (
                 <Button asChild variant="outline">
                   <Link href="/sources">Add a source</Link>
@@ -447,9 +457,9 @@ export function OverviewScreen() {
             </>
           }
         >
-          Say or type it, like &ldquo;Paid the milkman 500&rdquo; — FinBoy keeps the amount, date and
-          category, and you check it before it&apos;s saved. The sample is read-only and never changes
-          your records.
+          Say or type it, like &ldquo;Paid the milkman 500&rdquo;, or send it on WhatsApp — a voice
+          note, &ldquo;chai 20, auto 50&rdquo; or a photo of the bill. FinBoy keeps the amount, date
+          and category. The sample is read-only and never changes your records.
         </EmptyState>
       )}
       {data && (
@@ -458,7 +468,10 @@ export function OverviewScreen() {
           <ActionTiles summary={data} />
           <Exceptions summary={data} period={period} />
           <div className="grid items-start gap-5 xl:grid-cols-2">
-            <Categories summary={data} period={period} />
+            <div className="space-y-5">
+              <Categories summary={data} period={period} />
+              <BudgetsCard period={period} version={changes} />
+            </div>
             <Obligations onOpen={setObligation} version={changes} />
           </div>
         </>

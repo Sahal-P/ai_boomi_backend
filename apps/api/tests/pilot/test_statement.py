@@ -223,3 +223,121 @@ def test_payment_lines_are_read_by_the_existing_rules_extractor() -> None:
     assert line == "Rs. 2000.00 credited from PM किसान via UPI on 25-10-26"
     event = extract_rules(normalize(statement.as_message(line, received), received)).events[0]
     assert (event.event_type, event.amount_minor, event.merchant) == ("credit", 200000, "PM किसान")
+
+
+def rules_settings() -> Settings:
+    return Settings(
+        _env_file=None,
+        database_url="postgresql+psycopg://test:test@127.0.0.1:1/finboy_test",
+        cors_origins=["http://localhost:3000"],
+        environment="test",
+    )
+
+
+def item(**overrides) -> dict:
+    return {
+        "type": "spent",
+        "amount_phrase": None,
+        "counterparty": None,
+        "day_phrase": None,
+        "category": None,
+        **overrides,
+    }
+
+
+def test_several_payments_in_one_message_each_need_their_own_amount() -> None:
+    text = "chai 20, auto 50, lunch 120, samosa"
+    several = reading(
+        amount_phrase="20",
+        counterparty="chai",
+        mode="unknown",
+        category="food_dining",
+        more=[
+            item(amount_phrase="50", counterparty="auto", category="transport"),
+            item(amount_phrase="120", counterparty="lunch", category="food_dining"),
+            item(amount_phrase="30", counterparty="samosa"),  # never said: left out
+        ],
+    )
+    result = statement._ground_all(several, text, TODAY)
+    assert [(s.kind, s.amount_minor, s.counterparty, s.category) for s in result] == [
+        ("spent", 2000, "chai", "food_dining"),
+        ("spent", 5000, "auto", "transport"),
+        ("spent", 12000, "lunch", "food_dining"),
+    ]
+    # With several items there is no whole-message fallback for an unsaid amount.
+    nothing = reading(amount_phrase="99", more=[item(amount_phrase="88")])
+    assert statement._ground_all(nothing, text, TODAY) == [Statement("spent")]
+    # One payment still falls back to the one amount the message holds.
+    (one,) = statement._ground_all(reading(amount_phrase="सात सौ"), "दूध 500", TODAY)
+    assert one.amount_minor == 50000
+
+
+def test_a_further_item_keeps_the_messages_day_unless_it_says_its_own() -> None:
+    text = "कल चाय 20, परसों ऑटो 50"
+    several = reading(
+        amount_phrase="20",
+        counterparty="चाय",
+        day_phrase="कल",
+        more=[
+            item(amount_phrase="50", counterparty="ऑटो", day_phrase="परसों"),
+            item(amount_phrase="20"),
+        ],
+    )
+    days = [s.day for s in statement._ground_all(several, text, TODAY)]
+    assert days == [date(2026, 10, 25), date(2026, 10, 24), date(2026, 10, 25)]
+
+
+def test_bank_sms_numbers_are_masked_before_the_model_and_dates_are_read() -> None:
+    sms = (
+        "Rs.500.00 debited from A/c XX1234 on 25-10-26 to VPA 9876543210@ybl "
+        "UPI Ref 412345678901. Not you? Call 18002586161"
+    )
+    masked = statement.mask(sms)
+    for secret in ("1234", "9876543210", "412345678901", "18002586161"):
+        assert secret not in masked
+    assert "Rs.500.00" in masked and "25-10-26" in masked
+    assert statement._past_day("25-10-26", masked, TODAY) == date(2026, 10, 25)
+    assert statement._past_day("on 3 Oct", "paid on 3 Oct", TODAY) == date(2026, 10, 3)
+    assert statement._past_day("28-10-26", "28-10-26", TODAY) == TODAY, "never in the future"
+
+
+def test_a_bank_sms_question_mark_is_not_a_question() -> None:
+    sms = "Rs.500.00 debited from A/c XX1234 on 25-10-26. Not you? Call 18002586161"
+    (result,) = statement.read_statements(sms, rules_settings(), TODAY)
+    assert (result.kind, result.amount_minor, result.day) == ("spent", 50000, date(2026, 10, 25))
+    question = statement.read_statements("कितना खर्च हुआ?", rules_settings(), TODAY)
+    assert question == [Statement("question")]
+
+
+@pytest.mark.parametrize(
+    ("text", "kind", "amount", "category", "overall"),
+    [
+        ("food budget 5000", "budget", 500000, "food_dining", False),
+        ("खाने का बजट 5000", "budget", 500000, "food_dining", False),
+        ("ഭക്ഷണം ബജറ്റ് 5000", "budget", 500000, "food_dining", False),
+        ("monthly budget 20000", "budget", 2000000, "other", True),
+        ("salary budget 9000", "budget", 900000, "other", True),  # income has no budget
+        ("save 5000 a month", "goal", 500000, "other", False),
+        ("हर महीने 5000 बचाना है", "goal", 500000, "other", False),
+        ("മാസം 5000 സമ്പാദിക്കണം", "goal", 500000, "other", False),
+    ],
+)
+def test_budgets_and_the_savings_goal_without_a_model(text, kind, amount, category, overall):
+    (result,) = statement.read_statements(text, rules_settings(), TODAY)
+    assert (result.kind, result.amount_minor, result.category, result.overall) == (
+        kind,
+        amount,
+        category,
+        overall,
+    )
+
+
+def test_a_model_budget_is_grounded_like_any_amount() -> None:
+    budget = reading(type="budget", amount_phrase="5000", category="food_dining")
+    assert statement._ground(budget, "food budget 5000", TODAY) == Statement(
+        "budget", 500000, category="food_dining"
+    )
+    overall = reading(type="budget", amount_phrase="20000", category=None)
+    assert statement._ground(overall, "budget 20000", TODAY).overall is True
+    goal = reading(type="goal", amount_phrase="9000", category=None)
+    assert statement._ground(goal, "save 5000 a month", TODAY).amount_minor == 500000

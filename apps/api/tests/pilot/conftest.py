@@ -268,8 +268,11 @@ class Household:
         row = session.get(Transaction, transaction_id)
         if request.action in {"confirm", "reject"}:
             row.status = "confirmed" if request.action == "confirm" else "rejected"
+        if request.action == "reopen":
+            row.status = "needs_review"
         if request.correction is not None:
-            row.amount_minor = request.correction.amount_minor
+            for field, value in request.correction.model_dump(exclude_none=True).items():
+                setattr(row, field, value)
         decision = ReviewDecision(
             id=uuid4(),
             user_id=user_id,

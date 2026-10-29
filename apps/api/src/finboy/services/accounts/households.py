@@ -22,6 +22,7 @@ from finboy.db.models.ledger import (
     TransactionRevision,
 )
 from finboy.db.models.mail import ImportRun, MailConnection, OAuthState
+from finboy.db.models.money import Budget, MerchantCategory
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt
 
 # Households that started on WhatsApp but have not agreed yet; newer unknown numbers wait.
@@ -111,8 +112,13 @@ def remove_household_data(session: Session, user_id: UUID) -> dict[str, int]:
     def remove(name: str, statement) -> None:
         counts[name] = session.execute(statement).rowcount or 0
 
-    # Bindings cascade to prompts, reminders, receipts and deliveries.
+    # Bindings cascade to prompts, reminders, check-ins, receipts and deliveries.
     remove("whatsapp_bindings", delete(WhatsAppBinding).where(WhatsAppBinding.user_id == user_id))
+    remove("budgets", delete(Budget).where(Budget.user_id == user_id))
+    remove(
+        "merchant_categories", delete(MerchantCategory).where(MerchantCategory.user_id == user_id)
+    )
+    session.execute(update(User).where(User.id == user_id).values(monthly_savings_goal_minor=None))
     remove("review_decisions", delete(ReviewDecision).where(ReviewDecision.user_id == user_id))
     remove("commitments", delete(Commitment).where(Commitment.user_id == user_id))
     remove(

@@ -11,6 +11,7 @@ from finboy.db.models.whatsapp import WhatsAppBinding
 from finboy.services.whatsapp import processor
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
+from finboy.services.whatsapp.meta import MetaUnavailable
 from finboy.services.whatsapp.receipts import admit
 from sqlalchemy import select
 from sqlalchemy.engine import make_url
@@ -20,19 +21,34 @@ FIRST, SECOND, THIRD = "919000000071", "919000000072", "919000000073"  # synthet
 
 
 class Meta:
-    """Records what would reach WhatsApp; never sends."""
+    """Records what would reach WhatsApp; never sends. Like the real client, it refuses a number
+    outside the private allowlist unless the caller vouched for it (a self-serve household)."""
 
     log: list[dict] = []
 
-    def __init__(self, *_args, **_kwargs) -> None:
-        pass
+    def __init__(self, config: ChannelConfig, *_args, **_kwargs) -> None:
+        self.allowlist, self.vouched = config.allowlist, set()
+
+    def allow(self, recipient: str) -> None:
+        self.vouched.add(recipient)
+
+    def _check(self, recipient: str) -> None:
+        if recipient not in self.allowlist and recipient not in self.vouched:
+            raise MetaUnavailable
 
     def send(self, recipient: str, *, text=None, media_id=None) -> str:
+        self._check(recipient)
         self.log.append({"to": recipient, "text": text, "media_id": media_id})
         return "wamid.out." + uuid4().hex
 
     def send_buttons(self, recipient: str, *, text: str, buttons) -> str:
+        self._check(recipient)
         self.log.append({"to": recipient, "text": text, "buttons": list(buttons)})
+        return "wamid.out." + uuid4().hex
+
+    def send_list(self, recipient: str, *, text: str, button: str, section: str, rows) -> str:
+        self._check(recipient)
+        self.log.append({"to": recipient, "text": text, "rows": list(rows)})
         return "wamid.out." + uuid4().hex
 
     def close(self) -> None:

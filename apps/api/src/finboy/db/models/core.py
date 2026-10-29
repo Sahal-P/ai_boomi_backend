@@ -9,7 +9,13 @@ from finboy.db.base import Base
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (CheckConstraint("joined_via IN ('whatsapp','google')", name="joined_via"),)
+    __table_args__ = (
+        CheckConstraint("joined_via IN ('whatsapp','google')", name="joined_via"),
+        CheckConstraint(
+            "monthly_savings_goal_minor > 0 AND monthly_savings_goal_minor <= 1000000000",
+            name="savings_goal",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     data_version: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
@@ -23,3 +29,5 @@ class User(Base):
     # Every session carries this number; bumping it signs the household out everywhere.
     session_epoch: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # How much the household wants to keep each month (docs/money-manager-round/contract.md).
+    monthly_savings_goal_minor: Mapped[int | None] = mapped_column(BigInteger)

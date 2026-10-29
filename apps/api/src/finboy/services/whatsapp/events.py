@@ -68,7 +68,8 @@ class ImageBody(AudioBody):
     """Only the Graph media ID and MIME are read; caption and webhook URL are ignored."""
 
 
-BUTTON_ID = r"^fb1:[0-9a-f]{32}:[a-z]{2,8}$"
+# Choices are short words, list-row categories ("food_dining") or item numbers ("i3").
+BUTTON_ID = r"^fb1:[0-9a-f]{32}:[a-z0-9_]{2,16}$"
 
 
 class ButtonReply(BaseModel):
@@ -80,6 +81,7 @@ class ButtonReply(BaseModel):
 class InteractiveBody(BaseModel):
     type: str = Field(max_length=32)
     button_reply: ButtonReply | None = None
+    list_reply: ButtonReply | None = None  # a row of FinBoy's own list message
 
 
 class TemplateButton(BaseModel):
@@ -154,9 +156,9 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                     interactive = item.get("interactive")
                     if item.get("type") == "interactive" and (
                         not isinstance(interactive, dict)
-                        or interactive.get("type") != "button_reply"
+                        or interactive.get("type") not in {"button_reply", "list_reply"}
                     ):
-                        # List/flow replies are not used by FinBoy; acknowledge without acting.
+                        # Flow and other replies are not used by FinBoy; acknowledge only.
                         continue
                     msg = Message.model_validate(item)
                     when = datetime.fromtimestamp(int(msg.timestamp), UTC)
@@ -189,16 +191,11 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                     elif (
                         msg.type == "interactive"
                         and msg.interactive is not None
-                        and msg.interactive.button_reply is not None
+                        and (reply := msg.interactive.button_reply or msg.interactive.list_reply)
                     ):
+                        # A list row works exactly like a button: FinBoy's own opaque ID only.
                         questions.append(
-                            InboundQuestion(
-                                msg.id,
-                                msg.from_,
-                                when,
-                                "button",
-                                button_id=msg.interactive.button_reply.id,
-                            )
+                            InboundQuestion(msg.id, msg.from_, when, "button", button_id=reply.id)
                         )
                     elif msg.type == "button" and msg.button is not None:
                         questions.append(

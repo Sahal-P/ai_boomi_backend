@@ -49,6 +49,15 @@ class DownloadedMedia:
     content_type: str
 
 
+@dataclass(frozen=True)
+class Listing:
+    """A list message's menu: the button that opens it, one section title and its rows."""
+
+    button: str
+    section: str
+    rows: list[tuple[str, str]]  # (our opaque ID, title)
+
+
 def safe_media_url(url: str) -> bool:
     try:
         parsed = urlsplit(url)
@@ -80,6 +89,13 @@ class MetaClient:
             transport=transport,
             trust_env=False,
         )
+        # Self-serve numbers the caller matched to their own binding for this message.
+        self.vouched: set[str] = set()
+
+    def allow(self, recipient: str) -> None:
+        """A self-serve household's own number, only after its binding was checked."""
+        if re.fullmatch(r"[0-9]{7,20}", recipient):
+            self.vouched.add(recipient)
 
     def close(self) -> None:
         self.client.close()
@@ -188,6 +204,48 @@ class MetaClient:
             },
         )
 
+    def send_list(
+        self,
+        recipient: str,
+        *,
+        text: str,
+        button: str,
+        section: str,
+        rows: list[tuple[str, str]],
+    ) -> str:
+        """A list message: at most 10 rows with titles of 24 characters or fewer and our IDs."""
+        if (
+            not 1 <= len(text) <= 1024
+            or not 1 <= len(button) <= 20
+            or not 1 <= len(section) <= 24
+            or not 1 <= len(rows) <= 10
+            or len({key for key, _ in rows}) != len(rows)
+            or any(
+                not BUTTON_PATTERN.fullmatch(key) or not 1 <= len(title) <= 24
+                for key, title in rows
+            )
+        ):
+            raise MetaUnavailable
+        return self._send(
+            recipient,
+            {
+                "type": "interactive",
+                "interactive": {
+                    "type": "list",
+                    "body": {"text": text},
+                    "action": {
+                        "button": button,
+                        "sections": [
+                            {
+                                "title": section,
+                                "rows": [{"id": key, "title": title} for key, title in rows],
+                            }
+                        ],
+                    },
+                },
+            },
+        )
+
     def send_template(
         self,
         recipient: str,
@@ -197,10 +255,10 @@ class MetaClient:
         parameters: list[str],
         quick_replies: list[str],
     ) -> str:
-        """An approved template (reminders): text parameters plus quick replies with our IDs."""
+        """An approved template (reminders, check-ins): text parameters plus our quick replies."""
         if (
             not TEMPLATE_NAME.fullmatch(name)
-            or language not in {"hi", "en"}
+            or language not in {"hi", "en", "ml"}
             or len(parameters) > 10
             or len(quick_replies) > 3
             or any(not 1 <= len(item) <= 1024 or re.search(r"[\n\t]", item) for item in parameters)
@@ -234,7 +292,7 @@ class MetaClient:
         )
 
     def _send(self, recipient: str, message: dict[str, object]) -> str:
-        if recipient not in self.config.allowlist:
+        if recipient not in self.config.allowlist and recipient not in self.vouched:
             raise MetaUnavailable
         payload: dict[str, object] = {
             "messaging_product": "whatsapp",

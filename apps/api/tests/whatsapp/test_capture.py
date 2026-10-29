@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from finboy.core.config import Settings
-from finboy.services.ingestion.screenshot import CaptureUnavailable, InvalidImage
+from finboy.services.ingestion.screenshot import CaptureUnavailable, ImageReading, InvalidImage
 from finboy.services.mail.security import MailError
 from finboy.services.whatsapp import capture
 from finboy.services.whatsapp.capture import Capture, capture_reply, capture_screenshot
@@ -24,8 +24,8 @@ QUESTION = InboundQuestion(
 def harness(monkeypatch: pytest.MonkeyPatch):
     client = MagicMock()
     client.download_image.return_value = DownloadedMedia(b"synthetic image", "image/png")
-    read = MagicMock(return_value="Rs. 500.00 paid to Ravi Kumar via UPI")
-    monkeypatch.setattr(capture.screenshot, "read_payment", read)
+    read = MagicMock(return_value=ImageReading("Rs. 500.00 paid to Ravi Kumar via UPI"))
+    monkeypatch.setattr(capture.screenshot, "read_image", read)
     create_run = MagicMock(side_effect=MailError("import_busy"))
     run_import = MagicMock()
     monkeypatch.setattr(capture, "create_run", create_run)

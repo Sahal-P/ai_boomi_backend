@@ -24,6 +24,7 @@ from finboy.db.session import build_engine
 from finboy.services.imports.locking import IMPORT_LOCK
 from finboy.services.imports.runner import create_run, run_import
 from finboy.services.ingestion.pipeline import InboundMessage
+from finboy.services.ingestion.screenshot import ImageReading
 from finboy.services.privacy.delete import delete_imported_data
 from finboy.services.whatsapp import capture
 from finboy.services.whatsapp.capture import Capture, capture_screenshot
@@ -84,7 +85,7 @@ def household(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Engine, UUID]]:
 def meta(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     client = MagicMock()
     client.download_image.return_value = DownloadedMedia(b"synthetic image", "image/png")
-    monkeypatch.setattr(capture.screenshot, "read_payment", lambda *_args: LINE)
+    monkeypatch.setattr(capture.screenshot, "read_image", lambda *_args: ImageReading(LINE))
     return client
 
 
@@ -241,13 +242,13 @@ async def test_signed_image_webhook_captures_once(
                 calls["send"] += 1
                 return "wamid.outbound." + str(calls["send"])
 
-    def read(*_args) -> str:
+    def read(*_args) -> ImageReading:
         with lock:
             calls["read"] += 1
-        return LINE
+        return ImageReading(LINE)
 
     monkeypatch.setattr(processor, "MetaClient", Client)
-    monkeypatch.setattr(capture.screenshot, "read_payment", read)
+    monkeypatch.setattr(capture.screenshot, "read_image", read)
     settings = wa_settings.model_copy(
         update={
             "database_url": Settings().database_url,

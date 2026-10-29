@@ -49,14 +49,14 @@ def capture_screenshot(
 ) -> Capture:
     try:
         image = client.download_image(question.media_id or "", question.mime_type or "")
-        line = screenshot.read_payment(
+        reading = screenshot.read_image(
             image.data, image.content_type, settings, question.provider_at
         )
     except InvalidMedia, screenshot.InvalidImage:
         return Capture("invalid_image")
     except MetaUnavailable, screenshot.CaptureUnavailable:
         return Capture("unavailable")
-    if line is None:
+    if reading is None:
         return Capture("no_payment")
     return _import_one(
         engine,
@@ -64,8 +64,9 @@ def capture_screenshot(
         user_id=user_id or LOCAL_USER_ID,
         source="whatsapp_image",
         message_id=question.message_id,
-        raw=screenshot.as_message(line, question.provider_at),
+        raw=screenshot.as_message(reading.line, question.provider_at),
         received_at=question.provider_at,
+        category_hint=reading.category,  # a bill's kind of shop; payment screens have none
     )
 
 
@@ -193,8 +194,8 @@ def capture_reply(capture: Capture, language: Language | None) -> str:
             "confirm it in FinBoy.",
             "already_recorded": f"This payment ({phrase}) is already in FinBoy. The screenshot "
             "was added as extra evidence.",
-            "no_payment": "I couldn't find a completed payment amount in that image. Send a "
-            "screenshot of the payment confirmation screen.",
+            "no_payment": "I couldn't find a completed payment or a bill total in that image. "
+            "Send a screenshot of the payment screen, or a clear photo of the bill.",
             "busy": "FinBoy is importing other records right now. Please send the screenshot "
             "again in a minute.",
             "invalid_image": "I couldn't read that image. Send a PNG or JPEG screenshot of the "
@@ -206,8 +207,8 @@ def capture_reply(capture: Capture, language: Language | None) -> str:
             "आपके कुल में गिना जाएगा।",
             "already_recorded": f"यह भुगतान ({phrase}) पहले से FinBoy में है। स्क्रीनशॉट को "
             "अतिरिक्त प्रमाण के रूप में जोड़ा गया।",
-            "no_payment": "इस तस्वीर में पूरा हुआ भुगतान नहीं मिला। भुगतान की पुष्टि वाली स्क्रीन का "
-            "स्क्रीनशॉट भेजें।",
+            "no_payment": "इस तस्वीर में पूरा हुआ भुगतान या बिल की कुल रकम नहीं मिली। भुगतान "
+            "स्क्रीन का स्क्रीनशॉट या बिल की साफ़ फ़ोटो भेजें।",
             "busy": "FinBoy अभी दूसरे रिकॉर्ड इम्पोर्ट कर रहा है। एक मिनट बाद स्क्रीनशॉट फिर से भेजें।",
             "invalid_image": "यह तस्वीर पढ़ी नहीं जा सकी। भुगतान स्क्रीन का PNG या JPEG स्क्रीनशॉट भेजें।",
             "unavailable": "स्क्रीनशॉट से रिकॉर्ड बनाना अभी उपलब्ध नहीं है। बाद में फिर कोशिश करें।",
@@ -217,8 +218,8 @@ def capture_reply(capture: Capture, language: Language | None) -> str:
             "മാത്രമേ ഇത് നിങ്ങളുടെ ആകെ തുകയിൽ ഉൾപ്പെടുകയുള്ളൂ.",
             "already_recorded": f"ഈ പേയ്മെന്റ് ({phrase}) ഇതിനകം FinBoy-ൽ ഉണ്ട്. സ്ക്രീൻഷോട്ട് "
             "അധിക തെളിവായി ചേർത്തു.",
-            "no_payment": "ഈ ചിത്രത്തിൽ പൂർത്തിയായ പേയ്മെന്റ് കണ്ടെത്താനായില്ല. പേയ്മെന്റ് "
-            "സ്ഥിരീകരണ സ്ക്രീനിന്റെ സ്ക്രീൻഷോട്ട് അയയ്ക്കുക.",
+            "no_payment": "ഈ ചിത്രത്തിൽ പൂർത്തിയായ പേയ്മെന്റോ ബില്ലിന്റെ ആകെ തുകയോ കണ്ടെത്താനായില്ല. "
+            "പേയ്മെന്റ് സ്ക്രീനിന്റെ സ്ക്രീൻഷോട്ട് അല്ലെങ്കിൽ ബില്ലിന്റെ വ്യക്തമായ ഫോട്ടോ അയയ്ക്കുക.",
             "busy": "FinBoy ഇപ്പോൾ മറ്റ് രേഖകൾ ഇംപോർട്ട് ചെയ്യുകയാണ്. ഒരു മിനിറ്റിന് ശേഷം "
             "സ്ക്രീൻഷോട്ട് വീണ്ടും അയയ്ക്കുക.",
             "invalid_image": "ഈ ചിത്രം വായിക്കാനായില്ല. പേയ്മെന്റ് സ്ക്രീനിന്റെ PNG അല്ലെങ്കിൽ "
