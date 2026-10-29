@@ -412,3 +412,22 @@ This supersedes the language rules in the sections above (`services/whatsapp/lan
 - **Questions** in the diary are answered in the question's own language unless one was chosen.
 - **Migration `0010_whatsapp_last_language`** cleared the languages stored earlier. They came from
   code defaults (Hindi for diary households) or from "hi" greetings, not from choices.
+
+## Money manager (29 October 2026)
+
+Diary households' money is saved at once, and FinBoy asks first only when it is unsure (₹50,000 or
+more, a possible duplicate, or a typed entry matching a screenshot, bill, SMS or email record). The
+[money manager contract](money-manager-round/contract.md) has the full behaviour. In short:
+- several items per message, photos of bills and pasted bank SMS (numbers masked before the model);
+- saved cards with Undo (then Put it back), Amount and Category; Category is a WhatsApp list
+  message (`interactive.list_reply`, the same `fb1:<prompt>:<choice>` IDs) and typing a category
+  works too;
+- the category chosen for a payee is remembered for its next entries;
+- "today", "this week" and "this month" are calculated replies, with budgets ("food budget 5000")
+  and a savings goal ("save 5000 a month");
+- an opt-in monthly check-in template (`WHATSAPP_CHECKIN_TEMPLATE`), sent by
+  `finboy.services.pilot.cli checkin` from `deploy/finboy-checkin.timer`.
+
+**Self-serve replies.** Until this round the Meta client refused every number outside the private
+allowlist, so self-serve households got no reply. `send_reply` now vouches for a number only after
+matching it to its own self-serve binding, and only for that message's client.

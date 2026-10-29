@@ -123,3 +123,17 @@ client component or browser request. Product outcome events (`evidence_opened`,
   proxy against a real API on a disposable database, with synthetic `.eml` files only.
 - Human-only acceptance (real Google consent, microphones, phone playback, screen readers,
   device performance, observed comprehension) is recorded separately in the handoffs.
+
+## Budgets and savings (money manager round)
+
+Specified in the [money manager contract](money-manager-round/contract.md), in the existing design:
+- **Budgets card** (`budgets-card.tsx`) under "Where it went" on Overview, in the same `surface`
+  card. One row per budget, most urgent first after "All spending": spent of limit, a bar (green
+  under 80%, amber from 80%, red once over) and "₹800 left" or "₹250 over" in text, never colour
+  alone. A pencil opens an inline form to change or remove it; **Add a budget** offers the
+  categories without one. Limits apply to every month; another period shows that month's spending.
+- **Savings goal** in the same card: "₹11,550 kept of ₹5,000" with a sunflower bar, or **Set a
+  monthly savings goal**. Without income it asks for income instead of showing a misleading figure.
+- **Empty Overview:** **Send it on WhatsApp** opens the chat with the existing link.
+- Data comes from `lib/api/budgets.ts` (`GET /api/v1/money/budgets`, `PATCH .../budgets`, `PATCH
+  .../goal`), validated with zod like every other response.

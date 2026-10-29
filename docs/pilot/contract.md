@@ -165,3 +165,10 @@ helper-observed sessions are recorded separately from automated tests.
 
 Branch `feat/finboy-village-pilot`, loopback API 8051 / web 3051, disposable database
 `finboy_pilot`. Mocked Meta and provider calls in tests; no production test suites.
+
+## Amendment — money manager round (29 October 2026)
+
+For diary households, money is saved at once and FinBoy asks first only when unsure; households
+can undo, change the amount or the category by button, set budgets and a savings goal, and opt in
+to a monthly check-in. See [the money manager contract](../money-manager-round/contract.md), which
+supersedes "nothing counts until a tap" here only as documented there.
