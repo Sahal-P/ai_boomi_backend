@@ -1,5 +1,11 @@
 # Authorized private production deployment
 
+**Current migration, 29 October 2026:** finboy.io is served by a standalone Next.js
+frontend on voxpay behind nginx, using a same-origin loopback API route. The previous
+Vercel frontend is temporarily retained during cutover. Current progress, verification,
+release automation and rollback are tracked in [voxpay frontend hosting](voxpay-hosting.md).
+The older deployment descriptions below are historical unless that document says otherwise.
+
 The human authorized GitHub publication, main integration, Vercel frontend and
 voxpay backend on 24 October 2026, then chose private single-household access and
 an antlegs.in subdomain. This supersedes the old prohibition on production for

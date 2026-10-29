@@ -28,19 +28,21 @@ acceptance; it has not yet been retired.
   revision-matched `/healthz` passed on the server.
 - Hostinger apex A now points to 147.93.108.162 with TTL 60 (the UI rejected the previous
   TTL 50); the existing www CNAME is unchanged. Let’s Encrypt issued a certificate for
-  both names. The existing Google Sign-in client now includes `https://finboy.io`.
+  both names. Renewal dry run passed. The existing Google Sign-in client now includes
+  `https://finboy.io`.
 - Nginx sends `/api/v1/` to the existing loopback API, and frontend routes to the active
   web slot. Public landing at 1440/390/320 px, logo, manifest, API health (200), protected
   finance (401), and www redirect (308) were verified. The new web origin is allowed and
   `WEB_APP_URL` points to finboy.io; previous origins remain temporarily allowed.
+- The human confirmed Google sign-in, WhatsApp sign-in and AI speech on finboy.io.
+  Gmail Connect was not tried; no Gmail acceptance is claimed.
 
 ## Remaining cutover work
 
 - Run the updated feature-branch pipeline and verify its six browser jobs, actual duration
   and exact Linux artifact. Update the installed root-owned helper to the reviewed version.
-- Verify certificate renewal with a dry run and record the outcome.
-- Obtain human confirmation of existing-owner Google and WhatsApp sign-in and, if used,
-  Gmail callback return. Never record login codes, real messages or financial screenshots.
+- Gmail callback return remains unverified. Never record login codes, real messages or
+  financial screenshots.
 - Merge and push reviewed changes to both repositories. The frontend repository's main-only
   release job deploys only after all required checks pass, with a non-cancellable serialized
   activation. The backend repository is a mirror and does not run duplicate CI.

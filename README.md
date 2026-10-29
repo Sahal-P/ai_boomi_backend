@@ -9,7 +9,7 @@
 
 ## Live site and demo
 
-- [Open FinBoy](https://finboy.antlegs.in)
+- [Open FinBoy](https://finboy.io)
 - [Watch the product demo (MP4, 68 seconds)](https://github.com/Sahal-P/ai_boomi_frontend/releases/download/demo-2026-10-24/finboy-demo.mp4)
 
 [![Watch the FinBoy product demo](docs/media/finboy-demo-preview.jpg)](https://github.com/Sahal-P/ai_boomi_frontend/releases/download/demo-2026-10-24/finboy-demo.mp4)
@@ -31,8 +31,10 @@ in English, Hindi or Malayalam, on the web and in the WhatsApp diary
 ([Malayalam voice contract](docs/malayalam-round/contract.md)).
 
 The assembled product is merged into **main** and published to both requested repositories.
-The authorized private production site is **https://finboy.antlegs.in**, with its
-backend on voxpay at **https://finboy-api.antlegs.in**. See [production operations](docs/production.md).
+The production frontend is **https://finboy.io**, hosted on voxpay with its API and
+PostgreSQL. The existing API hostname remains **https://finboy-api.antlegs.in** for
+provider callbacks. See [production operations](docs/production.md) and
+[frontend migration and release status](docs/voxpay-hosting.md).
 Development integration history remains on **feat/finboy-integration**. Its frozen
 baseline **feat/finboy-ready-base** is
 `fd618aef74336279e587748b216374d20cc892ad`. See

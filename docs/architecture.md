@@ -7,8 +7,9 @@ sessions; `core` owns settings, access, errors, clocks and redacted logging. The
 no startup `create_all`, queue service, payment execution or external analytics.
 Self-serve sign-up exists behind `SIGNUP_ENABLED`, off by default.
 
-The deployed boundary is Vercel's same-origin `/api/v1` rewrite to the loopback
-voxpay API behind HTTPS nginx. Host-only session cookies, exact-Origin write checks,
+The finboy.io frontend and API run on voxpay behind HTTPS nginx; `/api/v1` routes directly
+to the loopback API and other paths reach the standalone Next.js server. The old Vercel
+frontend remains temporarily available during cutover. Host-only session cookies, exact-Origin write checks,
 independent single-use Gmail state/PKCE and the cross-host handoff remain in place.
 Only health, the fixed read-only demo, sign-in (password, WhatsApp code and Google)
 and the existing signed/capability-validated provider exceptions are public. Provider
