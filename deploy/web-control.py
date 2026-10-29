@@ -80,6 +80,7 @@ def stage(revision, checksum):
         raise ValueError("insufficient_disk")
     incoming = Path("/var/lib/finboy-deploy/incoming") / f"{revision}.tar.gz"
     destination = ROOT / "releases" / revision
+    created = False
     # Copy to a root-only directory before validating; upload users cannot change validated bytes.
     with tempfile.TemporaryDirectory(dir=ROOT) as temporary:
         private = Path(temporary) / "release.tar.gz"
@@ -92,6 +93,12 @@ def stage(revision, checksum):
             raise ValueError("archive_too_large")
         if hashlib.sha256(private.read_bytes()).hexdigest() != checksum:
             raise ValueError("checksum_mismatch")
+        current = state()
+        if current.get("revision") == revision:
+            metadata(revision)
+            healthy(PORTS[current["active_slot"]], revision)
+            incoming.unlink(missing_ok=True)
+            return {"staged": revision, "slot": current["active_slot"], "already_active": True}
         unpacked = Path(temporary) / "unpacked"
         unpacked.mkdir()
         with tarfile.open(private) as bundle:
@@ -105,12 +112,18 @@ def stage(revision, checksum):
                 raise ValueError("environment_in_archive")
             bundle.extractall(unpacked, filter="data")
         if destination.exists():
-            raise ValueError("release_already_exists")
-        shutil.move(unpacked, destination)
+            recorded = destination / ".archive.sha256"
+            if not recorded.is_file() or recorded.read_text().strip() != checksum:
+                raise ValueError("release_already_exists")
+        else:
+            (unpacked / ".archive.sha256").write_text(checksum + "\n")
+            shutil.move(unpacked, destination)
+            created = True
     try:
         metadata(revision)
     except Exception:
-        shutil.rmtree(destination)
+        if created:
+            shutil.rmtree(destination)
         raise
     # Uploaded archive permissions cannot grant the web process permission to edit executable code.
     for directory, _dirs, files in os.walk(destination):
@@ -138,13 +151,24 @@ def stage(revision, checksum):
         Path("/etc/finboy-web") / f"{slot}.env",
         f"PORT={PORTS[slot]}\nFINBOY_RELEASE_SHA={revision}\n",
     )
-    run("systemctl", "start", f"finboy-web@{slot}")
-    healthy(PORTS[slot], revision)
+    (DATA / "candidate.json").unlink(missing_ok=True)
+    try:
+        run("systemctl", "start", f"finboy-web@{slot}")
+        healthy(PORTS[slot], revision)
+    except Exception:
+        run("systemctl", "stop", f"finboy-web@{slot}")
+        raise
     atomic(DATA / "candidate.json", json.dumps({"slot": slot, "revision": revision}))
+    incoming.unlink(missing_ok=True)
     return {"staged": revision, "slot": slot, "port": PORTS[slot]}
 
 
 def activate(revision):
+    current = state()
+    if current.get("revision") == revision:
+        metadata(revision)
+        healthy(PORTS[current["active_slot"]], revision)
+        return {"active": revision, "slot": current["active_slot"], "already_active": True}
     candidate = json.loads((DATA / "candidate.json").read_text())
     if candidate["revision"] != revision:
         raise ValueError("candidate_mismatch")
@@ -167,7 +191,6 @@ def activate(revision):
             shutil.copyfile(source, target)
             os.chmod(target, 0o644)
     old = UPSTREAM.read_text() if UPSTREAM.exists() else None
-    current = state()
     try:
         atomic(UPSTREAM, f"server 127.0.0.1:{PORTS[slot]};\n")
         run("nginx", "-t")

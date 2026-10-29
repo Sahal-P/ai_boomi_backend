@@ -85,12 +85,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     concurrency:
-      group: web-browser-${{ matrix.project }}-${{ github.ref }}
+      group: web-browser-${{ matrix.kind }}-${{ matrix.project }}-${{ github.ref }}
       cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
         project: [desktop, phone-390, phone-320]
+        kind: [contract, live]
     services:
       postgres:
         image: postgres:18
@@ -150,8 +151,10 @@ jobs:
           done
           exit 1
       - name: Full contract browser coverage
+        if: matrix.kind == 'contract'
         run: pnpm --filter @finboy/web exec playwright test --project=${{ matrix.project }}
       - name: Disposable API and schema
+        if: matrix.kind == 'live'
         run: |
           pnpm db:migrate
           pnpm db:check
@@ -162,6 +165,7 @@ jobs:
           done
           exit 1
       - name: Full real API browser coverage
+        if: matrix.kind == 'live'
         env:
           E2E_LIVE_API: '1'
         run: pnpm --filter @finboy/web exec playwright test e2e/live.spec.ts --project=${{ matrix.project }} --workers=1

@@ -1,53 +1,61 @@
-# Voxpay frontend migration — implementation status
+# Voxpay frontend hosting — migration and operations
 
-Branch: `feat/finboy-voxpay-hosting`, based on remote main `1c724a4`.
-This migration is incomplete and is not approved for promotion by this document.
+The migration is in progress on `feat/finboy-voxpay-hosting`, based on remote main
+`1c724a4`. The first Linux artifact `ac1e939` is running on voxpay's blue slot, with
+finboy.io already served over HTTPS. The old Vercel frontend stays available during
+acceptance; it has not yet been retired.
 
-## Implemented locally
+## Implemented and verified
 
-- Next.js standalone output with monorepo file tracing.
-- Dynamic `/healthz`: returns status/revision and no-store; fails with 503 when the
-  process has no valid full `FINBOY_RELEASE_SHA`.
-- `scripts/web-release.py`: packages the standalone runtime, public files and static
-  assets, with a revision, backend compatibility digest and archive checksum. Environment
-  files and escaping symlinks are rejected. No API credentials are packaged.
-- Hardened two-slot systemd template and finboy.io Nginx template. These are not installed.
-- Draft restricted SSH and root activation helpers with checksum, API compatibility,
-  slot health, nginx reload/rollback and static asset retention checks.
-- Draft CI workflow with a single build artifact, parallel backend and browser checks,
-  isolated databases and a main-only frontend deployment gate.
+- Node 24 was installed only under `/opt/finboy-web/node`, with the official distribution
+  checksum verified. The `finboy-web` and `finboy-deploy` accounts are separate from the
+  API account. The deploy SSH key is forced-command-only, host-key pinned and restricted
+  to the frontend repository's `production` GitHub environment on `main`.
+- Standalone builds are packaged on Ubuntu CI, with no environment files, an API runtime
+  digest and an archive checksum. A staging helper validates the archive, disk capacity,
+  API compatibility and candidate revision; activation switches the nginx upstream,
+  verifies public health, auth rejection and assets, and restores the old upstream if
+  verification fails. Services use loopback ports 3100/3101 and separate web permissions.
+- Hashed static assets are shared across retained releases. The helper retains the current
+  and two prior web releases and drains the old slot before stopping it. It never touches
+  API releases, other applications, database migrations or production backups.
+- The first feature-branch run, `40802736199`, passed backend, full contract browser and
+  real API browser checks at all three widths, using disposable CI databases. It finished
+  in 5m58s versus the earlier 8m16s web workflow. The next run splits contract and real
+  browser jobs to improve the critical path without removing coverage.
+- `pnpm check`, `NEXT_PUBLIC_API_URL=/ FINBOY_API_ORIGIN= pnpm build`, `actionlint` and
+  14 isolated deployment-safety tests passed locally. The Linux artifact staged and its
+  revision-matched `/healthz` passed on the server.
+- Hostinger apex A now points to 147.93.108.162 with TTL 60 (the UI rejected the previous
+  TTL 50); the existing www CNAME is unchanged. Let’s Encrypt issued a certificate for
+  both names. The existing Google Sign-in client now includes `https://finboy.io`.
+- Nginx sends `/api/v1/` to the existing loopback API, and frontend routes to the active
+  web slot. Public landing at 1440/390/320 px, logo, manifest, API health (200), protected
+  finance (401), and www redirect (308) were verified. The new web origin is allowed and
+  `WEB_APP_URL` points to finboy.io; previous origins remain temporarily allowed.
 
-## Verification so far
+## Remaining cutover work
 
-- `pnpm check`: passed lint, types, 1,066 API unit tests and 54 web tests.
-- `NEXT_PUBLIC_API_URL=/ pnpm build`: passed, including standalone output and `/healthz`.
-- Python compile and `git diff --check`: passed.
-- Packaging a local macOS verification build succeeded (13.7 MB). It is a local check
-  artifact only, not a Linux production release, and must not be installed on voxpay.
-- Fourteen isolated deployment safety tests and `actionlint` passed. The new CI
-  workflow and deployment helpers still require end-to-end verification.
+- Run the updated feature-branch pipeline and verify its six browser jobs, actual duration
+  and exact Linux artifact. Update the installed root-owned helper to the reviewed version.
+- Verify certificate renewal with a dry run and record the outcome.
+- Obtain human confirmation of existing-owner Google and WhatsApp sign-in and, if used,
+  Gmail callback return. Never record login codes, real messages or financial screenshots.
+- Merge and push reviewed changes to both repositories. The frontend repository's main-only
+  release job deploys only after all required checks pass, with a non-cancellable serialized
+  activation. The backend repository is a mirror and does not run duplicate CI.
+- Verify that the final deployment revision matches both main branches and the public
+  `/healthz`. Only after acceptance, remove the `finboy` CNAME in GoDaddy, wait its one-hour
+  TTL, then detach the old Vercel custom domain and disable its automatic deployment.
+- Remove the temporary old frontend origins from the API through a drained, validated
+  configuration restart. Keep `finboy-api.antlegs.in` for Gmail and Meta callbacks, all
+  provider credentials and encryption/session keys, and the existing Vercel project as
+  rollback evidence. Users sign in once on the new host.
 
-## Remaining implementation
+The user signed into GoDaddy in the `sahlcyprus@gmail.com` Chrome profile. Preserve the
+`finboy-api` A record and all unrelated domain records. Never stop shared services, run
+production test suites, or import fixtures into the production database.
 
-- Verify and repair the restricted SSH/activation helpers against disposable releases,
-  including retry, failure and rollback cases, before installing them on voxpay.
-- Exercise and repair the GitHub Actions pipeline on the feature branch; verify complete
-  coverage and measured timing before permitting the production deployment job.
-- Node 24 installation, accounts, slots, safe cache permissions, deployment credential,
-  known-host pinning and Nginx configuration validation on voxpay.
-- Hostinger DNS change, certificate issuance/renewal, Google authorized-origin update,
-  drained API origin configuration changes and browser/auth acceptance.
-- Publish/merge only after these are complete and validated. Production migration has
-  not happened; existing Vercel frontend and API remain the live deployment.
-
-## Human steering
-
-The human subsequently signed into GoDaddy in the `sahlcyprus@gmail.com` Chrome profile.
-The old `finboy` CNAME points to Vercel with a one-hour TTL. Preserve it until finboy.io
-passes acceptance; only then remove that specific record and, after its TTL, detach the
-Vercel domain assignment to avoid leaving a dangling CNAME.
-
-Preserve the existing API callback hostname, sessions/encryption keys, other applications,
-production database and all unrelated local files. No production test suites or fixture
-imports are permitted. The frontend systemd template requires a writable cache directory
-outside its protected release tree; activation tooling must establish this before use.
+Manual rollback uses `sudo /usr/local/sbin/finboy-web-control rollback <full-revision>`
+with one of the retained revisions in `/var/lib/finboy-web/state.json`. The helper refuses
+rollback if the target's API compatibility digest differs from the currently deployed API.
