@@ -29,7 +29,7 @@ jobs:
         run: |
           if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             printf 'runtime=true\n' >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BASE" HEAD | rg -q '^(apps/|deploy/|scripts/|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|pyproject.toml|uv.lock|.github/workflows/)'; then
+          elif git diff --name-only "$BASE" HEAD | grep -E '^(apps/|deploy/|scripts/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|pyproject\.toml$|uv\.lock$|\.github/workflows/)' >/dev/null; then
             printf 'runtime=true\n' >> "$GITHUB_OUTPUT"
           else
             printf 'runtime=false\n' >> "$GITHUB_OUTPUT"
