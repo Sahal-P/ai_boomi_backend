@@ -1,0 +1,30 @@
+[Unit]
+Description=FinBoy web slot %i
+After=network-online.target
+
+[Service]
+User=finboy-web
+Group=finboy-web
+WorkingDirectory=/opt/finboy-web/slots/%i
+EnvironmentFile=/etc/finboy-web/%i.env
+Environment=NODE_ENV=production
+Environment=HOSTNAME=127.0.0.1
+Environment=NEXT_TELEMETRY_DISABLED=1
+ExecStart=/opt/finboy-web/node/bin/node apps/web/server.js
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=180
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/cache/finboy-web
+MemoryMax=768M
+CPUQuota=100%
+TasksMax=128
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

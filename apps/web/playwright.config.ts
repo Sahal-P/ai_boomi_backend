@@ -32,7 +32,7 @@ export default defineConfig({
     { name: "phone-390", use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } },
     { name: "phone-320", use: { viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } },
   ],
-  webServer: {
+  webServer: process.env.E2E_EXTERNAL_SERVER === "1" ? [] : {
     command: `pnpm exec next build && pnpm exec next start --hostname 127.0.0.1 --port ${port}`,
     url: baseURL,
     // Live mode proxies the same-origin /api/v1 to a real disposable API (never production). The

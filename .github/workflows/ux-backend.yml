@@ -1,26 +1,14 @@
 name: UX backend trust
 
 on:
-  push:
-    branches: [main, feat/finboy-ux-backend, feat/finboy-ux-integration]
-    paths:
-      - apps/api/**
-      - pyproject.toml
-      - uv.lock
-      - .github/workflows/ux-backend.yml
-  pull_request:
-    paths:
-      - apps/api/**
-      - pyproject.toml
-      - uv.lock
-      - .github/workflows/ux-backend.yml
+  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   trust-and-schema:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       postgres:
@@ -60,6 +48,7 @@ jobs:
         run: |
           uv run ruff check apps/api
           uv run ruff format --check apps/api
+          uv run pytest deploy/test_web_release.py
           env -u WEB_APP_URL uv run pytest apps/api/tests -m 'not integration'
       - name: Disposable schema and real persistence journeys
         run: |

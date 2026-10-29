@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 if (process.env.E2E_LIVE_API === "1") {
   const origin = new URL(process.env.E2E_API_ORIGIN ?? "https://127.0.0.1:8032");
-  if (origin.hostname !== "127.0.0.1" || !["8031", "8032"].includes(origin.port)) {
+  if (origin.hostname !== "127.0.0.1" || !["http:", "https:"].includes(origin.protocol) || !["8031", "8032"].includes(origin.port)) {
     throw new Error("Live write journeys require the assigned loopback disposable API");
   }
 }

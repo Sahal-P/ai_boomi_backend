@@ -1,17 +1,96 @@
-name: UX web journeys
+name: FinBoy CI and frontend release
 
 on:
   push:
-    branches: [main, feat/finboy-ux-frontend, feat/finboy-ux-integration]
+    branches: [main, feat/finboy-voxpay-hosting]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+
 jobs:
-  browser-and-real-api:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+  changes:
+    if: github.repository == 'Sahal-P/ai_boomi_frontend'
+    runs-on: ubuntu-24.04
+    outputs:
+      runtime: ${{ steps.paths.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: paths
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            printf 'runtime=true\n' >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE" HEAD | rg -q '^(apps/|deploy/|scripts/|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|pyproject.toml|uv.lock|.github/workflows/)'; then
+            printf 'runtime=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'runtime=false\n' >> "$GITHUB_OUTPUT"
+          fi
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    uses: ./.github/workflows/ux-backend.yml
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: web-build-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+      - run: npm install --global pnpm@12.15.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            ~/.local/share/pnpm/store
+            apps/web/.next/cache
+          key: web-${{ runner.os }}-node24-${{ hashFiles('pnpm-lock.yaml', 'apps/web/next.config.ts') }}-${{ github.sha }}
+          restore-keys: |
+            web-${{ runner.os }}-node24-${{ hashFiles('pnpm-lock.yaml', 'apps/web/next.config.ts') }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Frontend checks
+        run: pnpm lint:web && pnpm test:web && pnpm typecheck
+      - name: Build once for verification and production
+        env:
+          NEXT_PUBLIC_API_URL: /
+          FINBOY_API_ORIGIN: ''
+        run: pnpm build
+      - name: Package immutable release
+        run: python3 scripts/web-release.py "$GITHUB_SHA" /tmp/finboy-artifact
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: finboy-web-${{ github.sha }}
+          path: /tmp/finboy-artifact/*
+          retention-days: 7
+
+  browsers:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: web-browser-${{ matrix.project }}-${{ github.ref }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop, phone-390, phone-320]
     services:
       postgres:
         image: postgres:18
@@ -19,7 +98,7 @@ jobs:
           POSTGRES_USER: finboy
           POSTGRES_PASSWORD: finboy_local_only
           POSTGRES_DB: finboy_signup
-        ports: [5432:5432]
+        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U finboy -d finboy_signup"
           --health-interval 5s --health-timeout 3s --health-retries 10
@@ -30,46 +109,93 @@ jobs:
       WEB_APP_URL: http://127.0.0.1:3031
       FINBOY_EXTRACTION_MODE: rules
       E2E_PORT: 3031
-      E2E_API_ORIGIN: https://127.0.0.1:8031
+      E2E_EXTERNAL_SERVER: '1'
+      E2E_API_ORIGIN: http://127.0.0.1:8031
+      FINBOY_RELEASE_SHA: ${{ github.sha }}
       UV_PYTHON: 3.15.1
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
         with:
           version: 0.13.5
           enable-cache: true
-      - name: Install locked runtimes
+      - run: npm install --global pnpm@12.15.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile && uv sync --locked
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends nginx ffmpeg
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: finboy-web-${{ github.sha }}
+          path: /tmp/finboy-artifact
+      - name: Start the verified standalone build and local proxy
         run: |
-          npm install --global pnpm@12.15.0
-          pnpm install --frozen-lockfile
-          uv python install 3.15.1
-          uv sync --locked
-          pnpm --filter @finboy/web exec playwright install-deps chromium
-          sudo apt-get install -y --no-install-recommends ffmpeg
-      - name: Static contracts and build
-        run: env -u WEB_APP_URL pnpm check && pnpm build
-      - name: Three-width contract browser journeys
-        run: pnpm test:e2e
-      - name: Disposable database and private loopback TLS API
-        run: |
-          pnpm db:migrate
-          pnpm db:check
-          mkdir -m 700 /tmp/finboy-ci-tls
-          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=FinBoy CI' -addext 'subjectAltName=IP:127.0.0.1' -keyout /tmp/finboy-ci-tls/key.pem -out /tmp/finboy-ci-tls/cert.pem
-          chmod 600 /tmp/finboy-ci-tls/*
-          DEMO_TODAY=2026-10-24 uv run --package finboy-api uvicorn finboy.main:create_app --factory --host 127.0.0.1 --port 8031 --ssl-keyfile /tmp/finboy-ci-tls/key.pem --ssl-certfile /tmp/finboy-ci-tls/cert.pem --no-access-log --log-config apps/api/logging.json > /tmp/finboy-ci-api.log 2>&1 &
+          cd /tmp/finboy-artifact
+          sha256sum -c "$GITHUB_SHA.sha256"
+          mkdir /tmp/finboy-runtime
+          tar xzf "$GITHUB_SHA.tar.gz" -C /tmp/finboy-runtime
+          HOSTNAME=127.0.0.1 PORT=3032 node /tmp/finboy-runtime/apps/web/server.js >/dev/null 2>&1 &
+          cd "$GITHUB_WORKSPACE"
+          python3 scripts/ci-web-proxy.py >/dev/null 2>&1 &
           for attempt in $(seq 1 30); do
-            if curl --fail --silent --cacert /tmp/finboy-ci-tls/cert.pem https://127.0.0.1:8031/api/v1/health > /dev/null; then exit 0; fi
+            if curl --fail --silent http://127.0.0.1:3031/healthz >/dev/null; then exit 0; fi
             sleep 1
           done
           exit 1
-      - name: Three-width real UI to PostgreSQL journeys
+      - name: Full contract browser coverage
+        run: pnpm --filter @finboy/web exec playwright test --project=${{ matrix.project }}
+      - name: Disposable API and schema
+        run: |
+          pnpm db:migrate
+          pnpm db:check
+          DEMO_TODAY=2026-10-24 uv run --package finboy-api uvicorn finboy.main:create_app --factory --host 127.0.0.1 --port 8031 --no-access-log --log-config apps/api/logging.json >/dev/null 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8031/api/v1/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Full real API browser coverage
         env:
           E2E_LIVE_API: '1'
-          NODE_EXTRA_CA_CERTS: /tmp/finboy-ci-tls/cert.pem
-        run: pnpm --filter @finboy/web exec playwright test e2e/live.spec.ts --workers=1
+        run: pnpm --filter @finboy/web exec playwright test e2e/live.spec.ts --project=${{ matrix.project }} --workers=1
+
+  release:
+    needs: [build, backend, browsers]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 12
+    concurrency:
+      group: finboy-web-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: finboy-web-${{ github.sha }}
+          path: release
+      - name: Verify and deploy through restricted SSH
+        env:
+          DEPLOY_KEY: ${{ secrets.FINBOY_WEB_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.FINBOY_WEB_KNOWN_HOSTS }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          test "$(gh api repos/Sahal-P/ai_boomi_frontend/commits/main --jq .sha)" = "$GITHUB_SHA"
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/finboy-web
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cd release
+          sha256sum -c "$GITHUB_SHA.sha256"
+          CHECKSUM=$(cut -d ' ' -f 1 "$GITHUB_SHA.sha256")
+          ssh -i ~/.ssh/finboy-web -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes finboy-deploy@147.93.108.162 "upload $GITHUB_SHA $CHECKSUM" < "$GITHUB_SHA.tar.gz"
+          ssh -i ~/.ssh/finboy-web -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes finboy-deploy@147.93.108.162 "stage $GITHUB_SHA $CHECKSUM"
+          test "$(gh api repos/Sahal-P/ai_boomi_frontend/commits/main --jq .sha)" = "$GITHUB_SHA"
+          ssh -i ~/.ssh/finboy-web -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes finboy-deploy@147.93.108.162 "activate $GITHUB_SHA"

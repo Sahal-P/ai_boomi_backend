@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  output: "standalone",
+  outputFileTracingRoot: path.resolve(process.cwd(), "../.."),
   async rewrites() {
     const origin = process.env.FINBOY_API_ORIGIN;
     if (!origin) return [];
