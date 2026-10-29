@@ -19,14 +19,16 @@ acceptance; it has not yet been retired.
   verifies public health, auth rejection and assets, and restores the old upstream if
   verification fails. Services use loopback ports 3100/3101 and separate web permissions.
 - Hashed static assets are shared across retained releases. The helper retains the current
-  and two prior web releases and drains the old slot before stopping it. It never touches
+  and two prior web releases, enables the active slot on reboot, and schedules a guarded
+  two-minute drain without holding the release job open. A later release waits before reusing
+  a draining slot. It never touches
   API releases, other applications, database migrations or production backups.
 - The first feature-branch run, `40802736199`, passed backend, full contract browser and
   real API browser checks at all three widths, using disposable CI databases. It finished
   in 5m58s versus the earlier 8m16s web workflow. Run `40804058903` split contract and real
   browser jobs, passed all six and finished in 4m48s without removing coverage.
 - `pnpm check`, `NEXT_PUBLIC_API_URL=/ FINBOY_API_ORIGIN= pnpm build`, `actionlint` and
-  14 isolated deployment-safety tests passed locally. The Linux artifact staged and its
+  19 isolated deployment-safety tests passed locally. The Linux artifact staged and its
   revision-matched `/healthz` passed on the server.
 - Hostinger apex A now points to 147.93.108.162 with TTL 60 (the UI rejected the previous
   TTL 50); the existing www CNAME is unchanged. Let’s Encrypt issued a certificate for
@@ -61,7 +63,8 @@ The user signed into GoDaddy in the `sahlcyprus@gmail.com` Chrome profile. Prese
 `finboy-api` A record and all unrelated domain records. Never stop shared services, run
 production test suites, or import fixtures into the production database.
 The old `finboy` CNAME's TTL was reduced from one hour to ten minutes at 02:09:55 UTC;
-its Vercel assignment must remain reserved until earlier one-hour caches have expired.
+both authoritative nameservers confirmed the new TTL by 02:12:52 UTC. Keep its Vercel
+assignment reserved until the later of 03:12:52 UTC and ten minutes after DNS deletion.
 
 Manual rollback uses `sudo /usr/local/sbin/finboy-web-control rollback <full-revision>`
 with one of the retained revisions in `/var/lib/finboy-web/state.json`. The helper refuses

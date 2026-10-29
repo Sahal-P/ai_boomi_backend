@@ -14,6 +14,7 @@ import sys
 import tarfile
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -73,6 +74,42 @@ def link(path, target):
     temporary.unlink(missing_ok=True)
     temporary.symlink_to(target)
     os.replace(temporary, path)
+
+
+def check_active_upstream(current):
+    if (DATA / "needs-reconciliation").exists():
+        raise ValueError("deployment_reconciliation_required")
+    slot = current.get("active_slot")
+    if slot and (
+        not UPSTREAM.exists() or UPSTREAM.read_text().strip() != f"server 127.0.0.1:{PORTS[slot]};"
+    ):
+        raise ValueError("deployment_state_mismatch")
+
+
+def wait_for_slot(current, slot):
+    if current.get("drain_slot") != slot:
+        return
+    delay = max(0, current.get("drain_until", 0) - time.time())
+    if delay:
+        time.sleep(min(delay, 120))
+    if current.get("drain_until", 0) > time.time():
+        raise ValueError("slot_draining")
+
+
+def drain(revision, slot):
+    current = state()
+    if current.get("active_slot") == slot:
+        return {"drained": False}
+    candidate_path = DATA / "candidate.json"
+    if candidate_path.exists():
+        candidate = json.loads(candidate_path.read_text())
+        if candidate.get("slot") == slot and candidate.get("revision") == revision:
+            return {"drained": False}
+    target = ROOT / "slots" / slot
+    if target.is_symlink() and target.resolve() == ROOT / "releases" / revision:
+        run("systemctl", "stop", f"finboy-web@{slot}")
+        return {"drained": True}
+    return {"drained": False}
 
 
 def stage(revision, checksum):
@@ -144,7 +181,9 @@ def stage(revision, checksum):
     next_cache.unlink(missing_ok=True)
     next_cache.symlink_to(cache)
     current = state()
+    check_active_upstream(current)
     slot = "green" if current.get("active_slot") == "blue" else "blue"
+    wait_for_slot(current, slot)
     run("systemctl", "stop", f"finboy-web@{slot}")
     link(ROOT / "slots" / slot, destination)
     atomic(
@@ -165,6 +204,7 @@ def stage(revision, checksum):
 
 def activate(revision):
     current = state()
+    check_active_upstream(current)
     if current.get("revision") == revision:
         metadata(revision)
         healthy(PORTS[current["active_slot"]], revision)
@@ -191,7 +231,11 @@ def activate(revision):
             shutil.copyfile(source, target)
             os.chmod(target, 0o644)
     old = UPSTREAM.read_text() if UPSTREAM.exists() else None
+    enabled_new = False
     try:
+        # During a crash both slots can start, but the nginx-selected slot remains available.
+        run("systemctl", "enable", f"finboy-web@{slot}")
+        enabled_new = True
         atomic(UPSTREAM, f"server 127.0.0.1:{PORTS[slot]};\n")
         run("nginx", "-t")
         run("systemctl", "reload", "nginx")
@@ -236,20 +280,49 @@ def activate(revision):
             ).decode()
             if status != expected:
                 raise ValueError("public_smoke_failed")
+        if current.get("active_slot") and current["active_slot"] != slot:
+            run("systemctl", "disable", f"finboy-web@{current['active_slot']}")
     except Exception:
-        if old is not None:
+        try:
+            if old is None:
+                raise ValueError("previous_upstream_missing")
             atomic(UPSTREAM, old)
             run("nginx", "-t")
             run("systemctl", "reload", "nginx")
-        run("systemctl", "stop", f"finboy-web@{slot}")
+            if enabled_new:
+                run("systemctl", "disable", f"finboy-web@{slot}")
+            if current.get("active_slot"):
+                run("systemctl", "enable", f"finboy-web@{current['active_slot']}")
+            run("systemctl", "stop", f"finboy-web@{slot}")
+        except Exception:
+            # If nginx cannot restore the prior route, do not stop either slot blindly.
+            atomic(DATA / "needs-reconciliation", "manual reconciliation required\n")
+            raise ValueError("rollback_incomplete") from None
         raise
     history = list(dict.fromkeys([revision, current.get("revision"), *current.get("history", [])]))
     history = [item for item in history if item][:3]
-    atomic(STATE, json.dumps({"active_slot": slot, "revision": revision, "history": history}))
-    # Drain the previous frontend before another deployment can reuse its slot.
+    updated = {"active_slot": slot, "revision": revision, "history": history}
     if current.get("active_slot") and current["active_slot"] != slot:
-        time.sleep(120)
-        run("systemctl", "stop", f"finboy-web@{current['active_slot']}")
+        updated.update({"drain_slot": current["active_slot"], "drain_until": time.time() + 120})
+    atomic(STATE, json.dumps(updated))
+    # A transient timer drains old workers without holding the release job open.
+    if current.get("active_slot") and current["active_slot"] != slot:
+        try:
+            run(
+                "systemd-run",
+                "--quiet",
+                "--collect",
+                f"--unit=finboy-web-drain-{uuid.uuid4().hex[:12]}",
+                "--on-active=120s",
+                "/usr/local/sbin/finboy-web-control",
+                "drain",
+                current["revision"],
+                current["active_slot"],
+            )
+        except Exception:
+            # If the timer cannot be installed, keep the lock while draining synchronously.
+            time.sleep(120)
+            run("systemctl", "stop", f"finboy-web@{current['active_slot']}")
     for path in (ROOT / "releases").iterdir():
         if path.is_dir() and re.fullmatch("[a-f0-9]{40}", path.name) and path.name not in history:
             shutil.rmtree(path)
@@ -266,22 +339,30 @@ def activate(revision):
 
 def main():
     args = sys.argv[1:]
-    if not args or args[0] not in {"stage", "activate", "rollback"}:
+    if not args or args[0] not in {"stage", "activate", "rollback", "drain"}:
         raise ValueError("invalid_command")
     command = args[0]
-    if len(args) != (3 if command == "stage" else 2) or not re.fullmatch("[a-f0-9]{40}", args[1]):
+    if len(args) != (3 if command in {"stage", "drain"} else 2) or not re.fullmatch(
+        "[a-f0-9]{40}", args[1]
+    ):
         raise ValueError("invalid_arguments")
     if command == "stage" and not re.fullmatch("[a-f0-9]{64}", args[2]):
         raise ValueError("invalid_checksum")
+    if command == "drain" and args[2] not in PORTS:
+        raise ValueError("invalid_slot")
     with Path("/run/lock/finboy-web.lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         if command == "stage":
             result = stage(args[1], args[2])
+        elif command == "drain":
+            result = drain(args[1], args[2])
         elif command == "rollback":
             current = state()
+            check_active_upstream(current)
             if args[1] not in current.get("history", []):
                 raise ValueError("unknown_rollback")
             slot = "green" if current["active_slot"] == "blue" else "blue"
+            wait_for_slot(current, slot)
             metadata(args[1])
             run("systemctl", "stop", f"finboy-web@{slot}")
             link(ROOT / "slots" / slot, ROOT / "releases" / args[1])
