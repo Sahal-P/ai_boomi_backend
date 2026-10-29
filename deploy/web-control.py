@@ -240,22 +240,26 @@ def activate(revision):
         run("nginx", "-t")
         run("systemctl", "reload", "nginx")
         # Exercise the actual nginx route and its hostname, without DNS propagation dependencies.
-        result = subprocess.check_output(
-            [
-                "curl",
-                "--fail",
-                "--silent",
-                "--show-error",
-                "--resolve",
-                "finboy.io:443:127.0.0.1",
-                "--max-time",
-                "10",
-                "https://finboy.io/healthz",
-            ],
-            stderr=subprocess.DEVNULL,
-        )
-        if json.loads(result) != {"status": "ok", "revision": revision}:
-            raise ValueError("public_health_mismatch")
+        for attempt in range(15):
+            result = subprocess.check_output(
+                [
+                    "curl",
+                    "--fail",
+                    "--silent",
+                    "--show-error",
+                    "--resolve",
+                    "finboy.io:443:127.0.0.1",
+                    "--max-time",
+                    "10",
+                    "https://finboy.io/healthz",
+                ],
+                stderr=subprocess.DEVNULL,
+            )
+            if json.loads(result) == {"status": "ok", "revision": revision}:
+                break
+            if attempt == 14:
+                raise ValueError("public_health_mismatch")
+            time.sleep(1)
         for path, expected in [
             ("/api/v1/health", "200"),
             ("/api/v1/money/summary", "401"),
