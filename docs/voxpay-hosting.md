@@ -10,7 +10,9 @@ acceptance; it has not yet been retired.
 - Node 24 was installed only under `/opt/finboy-web/node`, with the official distribution
   checksum verified. The `finboy-web` and `finboy-deploy` accounts are separate from the
   API account. The deploy SSH key is forced-command-only, host-key pinned and restricted
-  to the frontend repository's `production` GitHub environment on `main`.
+  to the frontend repository's `production` GitHub environment on `main`. A separate,
+  repository-scoped GitHub deploy key permits only publication to the backend mirror; a
+  non-fast-forward mirror push fails the release instead of overwriting history.
 - Standalone builds are packaged on Ubuntu CI, with no environment files, an API runtime
   digest and an archive checksum. A staging helper validates the archive, disk capacity,
   API compatibility and candidate revision; activation switches the nginx upstream,
@@ -21,8 +23,8 @@ acceptance; it has not yet been retired.
   API releases, other applications, database migrations or production backups.
 - The first feature-branch run, `40802736199`, passed backend, full contract browser and
   real API browser checks at all three widths, using disposable CI databases. It finished
-  in 5m58s versus the earlier 8m16s web workflow. The next run splits contract and real
-  browser jobs to improve the critical path without removing coverage.
+  in 5m58s versus the earlier 8m16s web workflow. Run `40804058903` split contract and real
+  browser jobs, passed all six and finished in 4m48s without removing coverage.
 - `pnpm check`, `NEXT_PUBLIC_API_URL=/ FINBOY_API_ORIGIN= pnpm build`, `actionlint` and
   14 isolated deployment-safety tests passed locally. The Linux artifact staged and its
   revision-matched `/healthz` passed on the server.
@@ -45,7 +47,8 @@ acceptance; it has not yet been retired.
   financial screenshots.
 - Merge and push reviewed changes to both repositories. The frontend repository's main-only
   release job deploys only after all required checks pass, with a non-cancellable serialized
-  activation. The backend repository is a mirror and does not run duplicate CI.
+  activation. It pushes the same revision to the backend mirror before activation; the backend
+  repository does not run duplicate CI.
 - Verify that the final deployment revision matches both main branches and the public
   `/healthz`. Only after acceptance, remove the `finboy` CNAME in GoDaddy, wait its one-hour
   TTL, then detach the old Vercel custom domain and disable its automatic deployment.
@@ -57,6 +60,8 @@ acceptance; it has not yet been retired.
 The user signed into GoDaddy in the `sahlcyprus@gmail.com` Chrome profile. Preserve the
 `finboy-api` A record and all unrelated domain records. Never stop shared services, run
 production test suites, or import fixtures into the production database.
+The old `finboy` CNAME's TTL was reduced from one hour to ten minutes at 02:09:55 UTC;
+its Vercel assignment must remain reserved until earlier one-hour caches have expired.
 
 Manual rollback uses `sudo /usr/local/sbin/finboy-web-control rollback <full-revision>`
 with one of the retained revisions in `/var/lib/finboy-web/state.json`. The helper refuses
