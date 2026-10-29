@@ -59,6 +59,27 @@ test("a simulation is bound to its amount and marked out of date when inputs or 
   await expect(panel.getByLabel("Monthly amount (₹)")).toHaveAttribute("aria-invalid", "true");
 });
 
+test("budgets show what is left and are added, removed and joined by a savings goal in place", async ({ page, api }) => {
+  await page.goto("/dashboard");
+  const budgets = page.getByRole("region", { name: "Budgets" });
+  await expect(budgets.getByText("Food & dining")).toBeVisible();
+  await expect(budgets.getByText(/ (left|over)$/)).toHaveCount(1);
+  await budgets.getByRole("button", { name: "Add a budget" }).click();
+  await budgets.getByLabel("Budget for").selectOption("groceries");
+  await budgets.getByLabel("Each month (₹)").fill("2500");
+  await budgets.getByRole("button", { name: "Save" }).click();
+  await expect(budgets.getByRole("button", { name: "Change the Groceries budget" })).toBeVisible();
+  const saved = api.requests.find((item) => item.method === "PATCH" && item.path.endsWith("/money/budgets"));
+  expect(saved?.body).toEqual({ category: "groceries", limit_minor: 250000 });
+  await budgets.getByRole("button", { name: "Change the Groceries budget" }).click();
+  await budgets.getByRole("button", { name: "Remove" }).click();
+  await expect(budgets.getByRole("button", { name: "Change the Groceries budget" })).toHaveCount(0);
+  await budgets.getByRole("button", { name: "Set a monthly savings goal" }).click();
+  await budgets.getByLabel("Keep each month (₹)").fill("5000");
+  await budgets.getByRole("button", { name: "Save" }).click();
+  await expect(budgets.getByText(/kept of ₹5,000/)).toBeVisible();
+});
+
 test("a failed secondary panel never blanks the primary overview", async ({ page, api }) => {
   api.failNext(/money\/obligations/, 503, "source_unavailable");
   await page.goto("/dashboard");

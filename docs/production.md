@@ -503,3 +503,44 @@ Malayalam reply, and a native read of the Malayalam copy (`malayalam.py`).
 
 **Rollback:** set `NEXT_PUBLIC_API_URL=/` and redeploy; the proxy path still works. Migration
 `0010` is not rolled back (cleared languages are not restored).
+
+## Money manager release procedure
+
+`feat/finboy-money-manager` ([contract](money-manager-round/contract.md)):
+
+1. **Backend first,** following the steps above:
+   - validated private backup and active-import check;
+   - additive migration `0011_money_manager` (budgets, merchant memory, check-ins, the savings
+     goal, the check-in choice and wider prompt purposes);
+   - drift check, then restart `finboy.service` only.
+
+   Diary entries are saved at once from this restart. `WHATSAPP_CHECKIN_TEMPLATE` stays unset, so
+   no check-in is offered or sent.
+2. **Web:** push main; Vercel builds the Budgets card. This build also applies the saved
+   `NEXT_PUBLIC_API_URL=https://finboy-api.antlegs.in`, so check the direct API calls as in the
+   previous procedure.
+3. **Check:**
+   - health 200 and finance routes 401 without a session; migration head `0011_money_manager`,
+     no drift; record counts unchanged;
+   - on the owner's phone: "chai 20, auto 50" is saved, Category opens the list, then "food budget
+     3000" and "this month";
+   - after the web deploy: sign-in (WhatsApp and Google), Review, Ask, quick add, the Budgets card
+     and the status dot, at desktop and phone width.
+4. **Check-in, only after Meta approves the template:** set
+   `WHATSAPP_CHECKIN_TEMPLATE=finboy_monthly_checkin`, restart `finboy.service`, then install and
+   enable `deploy/finboy-checkin.service` and `.timer` (hourly on the 1st to 3rd; the job sends
+   only 08:00–20:00 IST). `python -m finboy.services.pilot.cli checkin` prints counts only.
+
+**The template** (`finboy_monthly_checkin`, category Utility, no buttons, four body parameters:
+{{1}} month, {{2}} money in, {{3}} money out, {{4}} where most went):
+- en: "Your FinBoy check-in for {{1}}: money in {{2}}, money out {{3}}. Most went on {{4}}. Reply
+  "this month" to see this month so far, or STOP to stop FinBoy messages."
+- hi: "{{1}} का FinBoy हिसाब: आए {{2}}, गए {{3}}। सबसे ज़्यादा {{4}} पर। इस महीने का हिसाब देखने के
+  लिए "इस महीने" लिखिए, बंद करने के लिए "बंद"।"
+- ml: "{{1}}-ലെ FinBoy കണക്ക്: വന്നത് {{2}}, പോയത് {{3}}. കൂടുതൽ ചെലവായത് {{4}}. ഈ മാസത്തെ
+  കണക്കിന് "ഈ മാസം" എന്നും, നിർത്താൻ "നിർത്തുക" എന്നും അയക്കൂ."
+
+**Rollback:** redeploy the previous release and restart `finboy.service`. Migration `0011` is
+additive and harmless to the old code, so it stays; `alembic downgrade 0010_whatsapp_last_language`
+removes it and its budgets, goals and memory if that is ever needed. Disable the check-in timer
+first if it was enabled.

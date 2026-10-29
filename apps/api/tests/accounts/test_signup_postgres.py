@@ -39,11 +39,15 @@ def test_whatsapp_sign_up_from_the_website_end_to_end(world) -> None:
         replay = browser.post("/api/v1/auth/whatsapp/complete")
         assert replay.status_code == 410 and replay.json()["error"]["code"] == "login_expired"
 
-        # The new household records money in English on WhatsApp, and sees it on the web.
-        (record,) = phone.say("Paid the milkman 500")
-        assert record["text"].startswith("💸 ₹500 paid")
-        (added,) = phone.tap([record], "yes")
-        assert added["text"].startswith("✅ Added: ₹500 paid")
+        # The new household records money in English on WhatsApp: saved at once, with Undo,
+        # Amount and Category, and seen on the web.
+        (saved,) = phone.say("Paid the milkman 500")
+        assert saved["text"].startswith("✅ Saved: ₹500 paid")
+        assert [title for _, title in saved["buttons"]] == [
+            english.UNDO,
+            english.AMOUNT,
+            english.CATEGORY_BUTTON,
+        ]
         summary = browser.get("/api/v1/money/summary").json()
         assert summary["confirmed_outflows_minor"] == 50000
         own = browser.get("/api/v1/transactions").json()

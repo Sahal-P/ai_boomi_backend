@@ -12,6 +12,7 @@ from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.db.models import User
 from finboy.db.models.ledger import Commitment, EmailSource, ReviewDecision, Transaction
+from finboy.db.models.money import MerchantCategory
 from finboy.db.models.whatsapp import (
     WhatsAppBinding,
     WhatsAppDelivery,
@@ -69,6 +70,13 @@ class Meta:
         self.log.append({"to": recipient, "text": text, "buttons": list(buttons)})
         return "wamid.out." + uuid4().hex
 
+    def send_list(self, recipient: str, *, text: str, button: str, section: str, rows) -> str:
+        self.log.append({"to": recipient, "text": text, "rows": list(rows)})
+        return "wamid.out." + uuid4().hex
+
+    def allow(self, recipient: str) -> None:
+        raise AssertionError("pilot numbers are on the private allowlist")
+
     def close(self) -> None:
         pass
 
@@ -96,7 +104,7 @@ class Phone:
         button = next(
             key
             for reply in reversed(replies)
-            for key, _ in reply.get("buttons", [])
+            for key, _ in reply.get("buttons", []) + reply.get("rows", [])
             if key.endswith(":" + choice)
         )
         return self.send(
@@ -135,8 +143,9 @@ def phone(pg, channel: ChannelConfig, monkeypatch) -> Iterator[Phone]:
         "समूह की किस्त 1200, हर महीने": Statement(
             "due", 120000, category="loan_emi", due_date=today, label=LABEL
         ),
+        "खाने का बजट 1000": Statement("budget", 100000, category="food_dining"),
     }
-    monkeypatch.setattr(pilot.statement, "read_statement", lambda text, *_args: said[text])
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda text, *_args: [said[text]])
     try:
         yield Phone(pg, settings, replace(channel, allowlist={NUMBER: user_id}), user_id)
     finally:
@@ -149,9 +158,9 @@ def test_a_pilot_household_end_to_end(pg, phone: Phone) -> None:
     assert consent["text"] == hindi.CONSENT and consent["to"] == NUMBER
     assert phone.tap([consent], "agree")[0]["text"] == hindi.WELCOME
 
-    # Spoken money lands in review through the real pipeline, then हाँ confirms it.
-    (card,) = phone.say("दूधवाले को 500 नकद दिए")
-    assert "₹500 दिए" in card["text"] and "👤 दूधवाले" in card["text"]
+    # Spoken money goes through the real pipeline and is saved at once by a versioned decision.
+    (saved,) = phone.say("दूधवाले को 500 नकद दिए")
+    assert saved["text"].startswith("✅ जोड़ दिया: ₹500 दिए") and "👤 दूधवाले" in saved["text"]
     with pg() as session:
         first = session.scalars(
             select(Transaction).where(Transaction.user_id == phone.user_id)
@@ -159,29 +168,49 @@ def test_a_pilot_household_end_to_end(pg, phone: Phone) -> None:
         source = session.scalars(
             select(EmailSource).where(EmailSource.user_id == phone.user_id)
         ).one()
-    assert (first.status, first.category, first.direction) == ("needs_review", "groceries", "out")
+    assert (first.status, first.category, first.direction) == ("confirmed", "groceries", "out")
     assert source.source == "whatsapp_voice"
-    (done,) = phone.tap([card], "yes")
-    assert done["text"].startswith("✅ जोड़ दिया: ₹500 दिए")
 
-    # The same purchase again is a second record, never merged into the first.
+    # Category: a list of likely ones; the choice is remembered for this payee.
+    (menu,) = phone.tap([saved], "category")
+    assert menu["text"] == hindi.CATEGORY_ASK and len(menu["rows"]) == 10
+    (changed,) = phone.tap([menu], "food_dining")
+    assert changed["text"].startswith(hindi.category_changed("food_dining", "दूधवाले"))
+    with pg() as session:
+        remembered = session.scalars(
+            select(MerchantCategory).where(MerchantCategory.user_id == phone.user_id)
+        ).one()
+        assert (remembered.merchant_key, remembered.category) == ("दूधवाले", "food_dining")
+
+    # The same purchase again is a second record, never merged into the first, and lands in
+    # the remembered category. Undo takes it out; Put it back saves it again.
     (again,) = phone.say("दूधवाले को 500 नकद दिए")
-    (rejected,) = phone.tap([again], "no")
-    assert rejected["text"] == hindi.REJECTED
-    (undone,) = phone.tap([rejected], "undo")
-    assert undone["text"].startswith(hindi.UNDONE)
+    assert hindi.CATEGORY["food_dining"] in again["text"]
+    (removed,) = phone.tap([again], "undo")
+    assert removed["text"].startswith("↩️ हटा दिया: ₹500 दिए")
+    (back,) = phone.tap([removed], "putback")
+    assert back["text"].startswith(hindi.PUT_BACK_DONE)
+    phone.tap([back], "undo")
     with pg() as session:
         rows = session.scalars(
             select(Transaction).where(Transaction.user_id == phone.user_id)
         ).all()
-        assert sorted(row.status for row in rows) == ["confirmed", "needs_review"]
+        assert sorted(row.status for row in rows) == ["confirmed", "rejected"]
         assert all(row.merged_into_id is None for row in rows)
-        undone_count = session.scalar(
-            select(func.count())
-            .select_from(ReviewDecision)
-            .where(ReviewDecision.user_id == phone.user_id, ReviewDecision.undone_at.is_not(None))
-        )
-        assert undone_count == 1
+        assert {row.category for row in rows} == {"food_dining"}
+        actions = session.scalars(
+            select(ReviewDecision.action)
+            .where(ReviewDecision.user_id == phone.user_id)
+            .order_by(ReviewDecision.created_at)
+        ).all()
+        assert actions == ["confirm", "correct", "confirm", "reject", "reopen", "confirm", "reject"]
+
+    # A budget set by message shows on the month summary.
+    (budget,) = phone.say("खाने का बजट 1000")
+    assert budget["text"].startswith("🎯 बजट रख दिया: खाना-पीना ₹1,000")
+    (month,) = phone.say("इस महीने")
+    assert "🟡 खाना-पीना: ₹500 / ₹1,000" not in month["text"]  # 50%: still green
+    assert "🟢 खाना-पीना: ₹500 / ₹1,000" in month["text"]
 
     # A spoken due waits as pending, then counts after हाँ; reminders are opted into.
     (due_card,) = phone.say("समूह की किस्त 1200, हर महीने")
@@ -239,7 +268,7 @@ def test_a_pilot_household_end_to_end(pg, phone: Phone) -> None:
             for row in report.weekly(session, today=today_ist(), weeks=1)
             if row["household"].startswith("Pilot household")
             and row["dues"]["paid"] == 1
-            and row["decisions"]["undone"] == 1
+            and row["records"]["voice_or_text"] == 3
         ]
         assert row["records"]["voice_or_text"] == 3 and row["messages"]["button"] >= 8
     assert phone.receipt_errors()[-1] == "prompt_expired"

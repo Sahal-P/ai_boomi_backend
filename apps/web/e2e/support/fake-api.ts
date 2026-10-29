@@ -60,6 +60,10 @@ type ImportRun = Json & { id: string; outcome: string; mode: string; data_versio
 export const TODAY = "2026-10-24";
 export const PASSWORD = "synthetic-household-password";
 const NOW = "2026-10-24T09:30:00+05:30";
+const BUDGETED = [
+  "total", "rent", "food_dining", "groceries", "transport", "shopping", "utilities", "subscriptions", "travel", "health",
+  "education", "investments", "loan_emi", "fees", "farming", "livestock", "phone_recharge", "family_events", "remittance", "other",
+];
 const uuid = (prefix: string, index: number) => `${prefix}-0000-4000-8000-${index.toString(16).padStart(12, "0")}`;
 export const ids = {
   duplicate: uuid("10000000", 1),
@@ -137,6 +141,9 @@ export class FakeFinBoyApi {
   decisions = new Map<string, Decision[]>();
   obligations: Obligation[] = [];
   imports = new Map<string, ImportRun>();
+  // Monthly limits by category ("total" is all spending) and the savings goal (money manager).
+  budgets = new Map<string, number>([["food_dining", 300000]]);
+  goal: number | null = null;
   connection: Json | null;
   failures: { pattern: RegExp; method: string | null; response: FakeResponse; times: number }[] = [];
   delays: { pattern: RegExp; ms: number }[] = [];
@@ -349,6 +356,13 @@ export class FakeFinBoyApi {
       return ok({ status: "ok" });
     }
     if (path === "/api/v1/money/summary") return ok(this.summary(query));
+    if (path === "/api/v1/money/budgets") return this.budgetRoute(method, body, query);
+    if (path === "/api/v1/money/goal" && method === "PATCH") {
+      const goal = body.goal_minor;
+      if (goal !== null && (typeof goal !== "number" || !Number.isInteger(goal) || goal <= 0)) return envelope(422, "invalid_request");
+      this.goal = goal as number | null;
+      return ok(this.budgetPlan(null));
+    }
     if (path === "/api/v1/money/simulations" && method === "POST") return this.simulation(body);
     if (path === "/api/v1/money/obligations") {
       const status = query.get("status") ?? "unresolved";
@@ -410,6 +424,39 @@ export class FakeFinBoyApi {
   }
 
   // ── Money ──────────────────────────────────────────────────────────────────
+  budgetRoute(method: string, body: Json, query: URLSearchParams): FakeResponse {
+    if (method === "GET") return { status: 200, body: this.budgetPlan(query) };
+    const category = String(body.category);
+    const limit = body.limit_minor;
+    if (method !== "PATCH" || !BUDGETED.includes(category)) return envelope(422, "invalid_request");
+    if (limit === null) this.budgets.delete(category);
+    else if (typeof limit === "number" && Number.isInteger(limit) && limit > 0) this.budgets.set(category, limit);
+    else return envelope(422, "invalid_request");
+    return { status: 200, body: this.budgetPlan(null) };
+  }
+
+  budgetPlan(query: URLSearchParams | null) {
+    const summary = this.summary(query);
+    const spent = new Map(summary.categories.map((item) => [item.category, item.amount_minor]));
+    const kept = Math.max(0, spent.get("investments") ?? 0);
+    const items = [...this.budgets.entries()].map(([category, limit]) => {
+      const used = category === "total" ? summary.confirmed_outflows_minor : Math.max(0, spent.get(category) ?? 0);
+      return { category, limit_minor: limit, spent_minor: used, level: used > limit ? "over" : used * 5 >= limit * 4 ? "near" : "ok" };
+    });
+    items.sort((a, b) => Number(a.category !== "total") - Number(b.category !== "total") || b.spent_minor / b.limit_minor - a.spent_minor / a.limit_minor);
+    return {
+      period_start: summary.period_start,
+      period_end: summary.period_end,
+      as_of: summary.as_of,
+      income_minor: summary.tracked_income_minor,
+      spent_minor: summary.confirmed_outflows_minor,
+      saved_minor: summary.tracked_income_minor - summary.confirmed_outflows_minor + kept,
+      goal_minor: this.goal,
+      items,
+      categories: BUDGETED,
+    };
+  }
+
   summary(query: URLSearchParams | null = null) {
     const month = query?.get("period") === "month" ? Number(query.get("month")) : 10;
     const inMonth = (item: Tx) => Number(item.occurred_at.slice(5, 7)) === month && item.dataset === "household";

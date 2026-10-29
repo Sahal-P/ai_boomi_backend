@@ -173,3 +173,17 @@ These supersede, only as documented in `docs/whatsapp.md` ("Reply language") and
 One agent on feat/finboy-language-and-access, loopback 8061/3061, disposable finboy_signup. CORS
 stays exact-origin. Origin checks, `__Host-` host-only cookies and every no-storage rule are
 unchanged.
+
+## Money manager round — 29 October 2026
+
+From main 1c724a4 the human chose a WhatsApp-first money manager: diary entries (text, several
+items, voice, UPI screenshots, bill photos, pasted bank SMS) are saved at once with Undo, Amount
+and Category, and FinBoy asks first only when unsure; categories learn per payee; budgets with
+warnings, a savings goal, "today"/"this week"/"this month" replies and an opt-in monthly check-in
+template. Email stays later and Gmail invite-only; languages stay English, Hindi and Malayalam;
+the web keeps its design. `docs/money-manager-round/contract.md` supersedes "nothing counts until
+a tap", "screenshot-only events require review" and "list replies are not used" for diary
+households only as documented there. One agent on feat/finboy-money-manager, loopback 8061/3061,
+disposable finboy_signup, migration `0011_money_manager`. The check-in timer is enabled only after
+Meta approves its template. Messages, audio, images, transcripts and numbers in clear are never
+stored; advice stays on budgeting and discipline, never specific investments.

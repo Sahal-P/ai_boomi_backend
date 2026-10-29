@@ -73,7 +73,7 @@ def neighbour(session, *, pilot_user=True, opted_in=True, enabled=True, consente
 
 
 def unclear(monkeypatch) -> None:
-    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: Statement("unclear"))
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [Statement("unclear")])
 
 
 def reminder_cards(home: Household) -> list[dict]:

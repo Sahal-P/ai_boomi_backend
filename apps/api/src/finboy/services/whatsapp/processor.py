@@ -27,7 +27,13 @@ from finboy.services.whatsapp import capture, pilot, prompts, receipts, signup
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.language import written_language
-from finboy.services.whatsapp.meta import InvalidMedia, MetaClient, MetaUnavailable, SendUnknown
+from finboy.services.whatsapp.meta import (
+    InvalidMedia,
+    Listing,
+    MetaClient,
+    MetaUnavailable,
+    SendUnknown,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +63,7 @@ def send_reply(
     text: str | None = None,
     media_id: str | None = None,
     buttons: list[tuple[str, str]] | None = None,
+    listing: Listing | None = None,
     allow_disabled: bool = False,
     reminder: bool = False,
 ) -> bool:
@@ -76,10 +83,14 @@ def send_reply(
     ):
         session.rollback()
         return False
+    if expected is None:
+        # The Meta client sends only to allowlisted numbers, or to one vouched for here: this
+        # self-serve household's own number, matched to its binding just above.
+        client.allow(question.sender)
     if question.provider_at < datetime.now(UTC) - timedelta(hours=24):
         session.rollback()
         return False
-    kind = "audio" if media_id is not None else "interactive" if buttons else "text"
+    kind = "audio" if media_id is not None else "interactive" if buttons or listing else "text"
     if reminder:
         kind = "reminder"  # a pilot due card after the reply, still once per inbound message
     delivery_id = session.scalar(
@@ -106,11 +117,22 @@ def send_reply(
         session.commit()
         return False
     try:
-        delivery.outbound_message_id = (
-            client.send_buttons(question.sender, text=text or "", buttons=buttons)
-            if buttons
-            else client.send(question.sender, text=text, media_id=media_id)
-        )
+        if listing is not None:
+            delivery.outbound_message_id = client.send_list(
+                question.sender,
+                text=text or "",
+                button=listing.button,
+                section=listing.section,
+                rows=listing.rows,
+            )
+        elif buttons:
+            delivery.outbound_message_id = client.send_buttons(
+                question.sender, text=text or "", buttons=buttons
+            )
+        else:
+            delivery.outbound_message_id = client.send(
+                question.sender, text=text, media_id=media_id
+            )
         delivery.state = "sent"
     except SendUnknown:
         delivery.state = "unknown"

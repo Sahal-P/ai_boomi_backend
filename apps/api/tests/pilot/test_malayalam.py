@@ -124,7 +124,12 @@ def test_a_record_card_yes_and_undo_in_malayalam(kerala: Household) -> None:
     assert kerala.session.get(Transaction, record).status == "confirmed"
     assert kerala.texts()[-1].startswith("✅ ചേർത്തു: ₹500 കൊടുത്തു")
     assert kerala.tap("undo") is None
-    assert kerala.texts()[-1].startswith(malayalam.UNDONE) and "ശരിയാണോ?" in kerala.texts()[-1]
+    assert kerala.session.get(Transaction, record).status == "rejected"
+    assert kerala.texts()[-1].startswith("↩️ മാറ്റി: ₹500 കൊടുത്തു")
+    assert [title for _, title in kerala.buttons()] == [malayalam.PUT_BACK]
+    assert kerala.tap("putback") is None
+    assert kerala.session.get(Transaction, record).status == "confirmed"
+    assert kerala.texts()[-1].startswith(malayalam.PUT_BACK_DONE)
 
 
 def test_a_malayalam_voice_note_is_heard_in_malayalam_and_read_back(kerala, monkeypatch) -> None:
@@ -140,10 +145,10 @@ def test_a_malayalam_voice_note_is_heard_in_malayalam_and_read_back(kerala, monk
 
     spoken = Statement("spent", 50000, "പാൽക്കാരന്", "cash", today_ist(), "groceries")
     monkeypatch.setattr(pilot.speech, "transcribe_audio", transcribe)
-    monkeypatch.setattr(pilot.statement, "read_statement", lambda *_args: spoken)
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [spoken])
     monkeypatch.setattr(pilot.capture, "record_voice", record_voice)
     assert kerala.say("", kind="audio") is None
-    assert hints == ["ml"] and "ശരിയാണോ?" in kerala.texts()[-1]
+    assert hints == ["ml"] and kerala.texts()[-1].startswith("✅ ചേർത്തു: ₹500 കൊടുത്തു")
 
 
 def test_unclear_and_missing_amounts_are_explained_in_malayalam(kerala) -> None:

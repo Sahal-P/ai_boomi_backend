@@ -210,3 +210,9 @@ verification or enable account creation while `SIGNUP_ENABLED=false`.
 - **Not verified:** real Meta delivery and taps on a real phone, Google Identity Services with
   a real client, voice quick add with a real microphone and provider, and "Delete my account"
   in a live browser (covered by the integration test and the e2e double). Nothing was deployed.
+
+## Amendment — money manager round (29 October 2026)
+
+Self-serve households now get WhatsApp replies (the Meta client had refused numbers outside the
+private allowlist), and their diary entries are saved at once. See
+[the money manager contract](../money-manager-round/contract.md).

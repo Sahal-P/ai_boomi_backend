@@ -101,9 +101,9 @@ def test_a_google_household_links_its_whatsapp(world, google) -> None:
         assert browser.post("/api/v1/auth/whatsapp/complete").json() == {"linked": True}
         household = browser.get("/api/v1/auth/session").json()["household"]
         assert household["joined_via"] == "google" and household["whatsapp"] == "•••• 0071"
-        # The linked number now records into the Google household.
-        (record,) = phone.say("Paid the milkman 500")
-        phone.tap([record], "yes")
+        # The linked number now records into the Google household, saved at once.
+        (saved,) = phone.say("Paid the milkman 500")
+        assert saved["text"].startswith("✅ Saved: ₹500 paid")
         assert browser.get("/api/v1/money/summary").json()["confirmed_outflows_minor"] == 50000
 
 

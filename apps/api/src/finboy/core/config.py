@@ -93,6 +93,9 @@ class Settings(BaseSettings):
     # Village pilot: an approved Hindi utility template for due reminders (name only). Unset
     # means reminders are added to replies inside the 24-hour window instead.
     whatsapp_reminder_template: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,64}$")
+    # Money manager: an approved utility template (English, Hindi and Malayalam) for the opt-in
+    # monthly check-in (name only). Unset means it is neither offered nor sent.
+    whatsapp_checkin_template: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,64}$")
 
     # Sign-up round (docs/signup-round/contract.md). Off until the human enables it; none of
     # these values is a secret, and the web app reads them from GET /api/v1/auth/session.
@@ -126,6 +129,7 @@ class Settings(BaseSettings):
         "whatsapp_graph_api_version",
         "whatsapp_sender_allowlist_json",
         "whatsapp_reminder_template",
+        "whatsapp_checkin_template",
         "openai_api_key",
         "resend_api_key",
         "openai_extraction_model",

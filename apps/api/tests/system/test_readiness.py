@@ -7,7 +7,7 @@ from finboy.main import create_app
 
 @pytest.mark.anyio
 async def test_readiness_separates_configuration_from_live_acceptance(client, session):
-    session.scalar.side_effect = ["0010_whatsapp_last_language", 0]
+    session.scalar.side_effect = ["0011_money_manager", 0]
     response = await client.get("/api/v1/readiness")
     assert response.status_code == 200
     result = response.json()

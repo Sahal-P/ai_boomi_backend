@@ -9,6 +9,7 @@ uses only Malayalam script ("ഫിൻബോയ്", not "FinBoy") so the Malaya
 from datetime import date
 
 from finboy.services.assistant.language import money, spoken_money
+from finboy.services.money.budgets import BudgetStatus
 
 MONTHS = (
     "ജനുവരി",
@@ -78,14 +79,17 @@ CONSENT_SPEECH = (
 )
 WELCOME = (
     "നന്ദി! 🙏\n"
-    "ഇനി പറഞ്ഞാൽ മതി, ഇങ്ങനെ:\n"
-    '🎤 "പാൽക്കാരന് 500 കൊടുത്തു"\n'
-    '🎤 "PM കിസാൻ 2000 കിട്ടി"\n'
-    '🎤 "ലോൺ തവണ 1200, എല്ലാ മാസവും 10-ാം തീയതി"\n'
-    'ചോദിക്കുകയും ചെയ്യാം: "ഈ ആഴ്ച എത്ര ചെലവായി?"\n'
-    'ആഴ്ചയിലെ കണക്ക് കാണാൻ "കണക്ക്" എന്ന് അയക്കൂ.'
+    "ചെലവായതും കിട്ടിയതും ഇങ്ങനെ അയച്ചാൽ മതി:\n"
+    '✍️ "ചായ 20, ഓട്ടോ 50, ഊണ് 120"\n'
+    '🎤 പറഞ്ഞ്: "പാൽക്കാരന് 500 കൊടുത്തു"\n'
+    "📸 ബില്ലിന്റെ ഫോട്ടോ അല്ലെങ്കിൽ UPI സ്ക്രീൻഷോട്ട്\n"
+    "ഞാൻ ഉടനെ ചേർത്ത് ശരിയായ വിഭാഗത്തിലാക്കും.\n"
+    'മാസത്തെ കണക്കിന് "ഈ മാസം" എന്നും, ബജറ്റിന് "ഭക്ഷണം ബജറ്റ് 5000" എന്നും അയക്കൂ.'
 )
-WELCOME_SPEECH = "നന്ദി! ഇനി പറഞ്ഞാൽ മതി, ഇങ്ങനെ, പാൽക്കാരന് അഞ്ഞൂറ് രൂപ കൊടുത്തു. ആഴ്ചയിലെ കണക്ക് കാണാൻ കണക്ക് എന്ന് അയക്കൂ."
+WELCOME_SPEECH = (
+    "നന്ദി! ചെലവായത് പറഞ്ഞാൽ മതി, ഇങ്ങനെ, പാൽക്കാരന് അഞ്ഞൂറ് രൂപ കൊടുത്തു. ഞാൻ ഉടനെ ചേർക്കും. "
+    "മാസത്തെ കണക്ക് കാണാൻ ഈ മാസം എന്ന് അയക്കൂ."
+)
 DECLINED = 'ശരി. ഒന്നും സൂക്ഷിച്ചിട്ടില്ല. മനസ്സ് മാറിയാൽ "നമസ്കാരം" എന്ന് അയക്കൂ.'
 EXPIRED = "ഈ ബട്ടൺ ഇനി പ്രവർത്തിക്കില്ല. പുതിയ മെസേജ് അയക്കൂ."
 CHANGED = "ഈ കണക്ക് ഇതിനകം മാറിയിട്ടുണ്ട്. പുതിയ മെസേജ് അയക്കൂ."
@@ -275,3 +279,198 @@ def signup_card(device: str) -> str:
 
 def link_card(device: str) -> str:
     return f"🔗 ഈ WhatsApp നിങ്ങളുടെ FinBoy അക്കൗണ്ടുമായി ബന്ധിപ്പിക്കണോ? ({device})\n\n{SAFETY}"
+
+
+# Saved at once (docs/money-manager-round/contract.md). Buttons and list menus stay within
+# WhatsApp's limits: 20 characters for a button, 24 for a list row or section title.
+AMOUNT, CATEGORY_BUTTON = "✏️ തുക", "🏷️ വിഭാഗം"
+PUT_BACK, UNDO_ALL, FIX_ONE = "↩️ തിരികെ ചേർക്കൂ", "↩️ എല്ലാം മാറ്റൂ", "✏️ ഒന്ന് തിരുത്തൂ"
+CHECKIN_YES, CHECKIN_NO = "🔔 മാസക്കണക്ക്", "🔕 മാസക്കണക്ക് വേണ്ട"
+CATEGORY_OPEN, CATEGORY_SECTION = "വിഭാഗം മാറ്റൂ", "വിഭാഗങ്ങൾ"
+FIX_OPEN, FIX_SECTION = "തിരഞ്ഞെടുക്കൂ", "ചേർത്തവ"
+ASK_BIG = "💡 വലിയ തുകയാണ്, അതുകൊണ്ട് ഒന്ന് നോക്കി ഉറപ്പാക്കൂ.\n\n"
+ASK_SAME = "⚠️ ഇത് നിങ്ങൾ മുമ്പേ ചേർത്തതുപോലെ തോന്നുന്നു.\n\n"
+CATEGORY_ASK = "🏷️ ഏത് വിഭാഗം? ലിസ്റ്റിൽ നിന്ന് തിരഞ്ഞെടുക്കൂ, അല്ലെങ്കിൽ എഴുതൂ, ഉദാഹരണം: പലചരക്ക്"
+FIX_ASK = "✏️ ഏതാണ് തിരുത്തേണ്ടത്?"
+NOTHING_TO_FIX = "ഇവ ഇതിനകം മാറിയിട്ടുണ്ട്. പുതിയ മെസേജ് അയക്കൂ."
+PUT_BACK_DONE = "↩️ തിരികെ ചേർത്തു."
+AMOUNT_CHANGED = "✏️ തുക മാറ്റി."
+REMOVED_SPEECH = "മാറ്റി."
+TOTAL = "ആകെ ചെലവ്"
+
+
+def label(category: str) -> str:
+    return TOTAL if category == "total" else CATEGORY.get(category, CATEGORY["other"])
+
+
+def budget_line(status: BudgetStatus) -> str:
+    """🟢 പരിധിയുടെ 80%-ൽ താഴെ, 🟡 80% മുതൽ, 🔴 പരിധി കടന്നാൽ."""
+    spent, limit = money(status.spent_minor), money(status.limit_minor)
+    name = label(status.category)
+    if status.level == "over":
+        over = money(status.spent_minor - status.limit_minor)
+        return f"🔴 {name}: {spent} / {limit} — ഈ മാസം {over} കൂടുതൽ"
+    if status.level == "near":
+        left = money(status.limit_minor - status.spent_minor)
+        return f"🟡 {name}: {spent} / {limit} — ഈ മാസം {left} ബാക്കി"
+    return f"🟢 {name}: {spent} / {limit} ഈ മാസം"
+
+
+def _budget_speech(status: BudgetStatus | None) -> str:
+    if status is None or status.level == "ok":
+        return ""
+    return " ബജറ്റ് കടന്നു." if status.level == "over" else " ബജറ്റ് തീരാറായി."
+
+
+def saved(
+    *,
+    amount_minor: int,
+    out: bool,
+    counterparty: str | None,
+    day: date,
+    category: str,
+    today: date,
+    budget: BudgetStatus | None,
+) -> tuple[str, str]:
+    """ചേർത്തത് (എഴുതി) അതിന്റെ ശബ്ദരൂപവും."""
+    verb = "കൊടുത്തു" if out else "കിട്ടി"
+    lines = [f"✅ ചേർത്തു: {money(amount_minor)} {verb}", f"🏷️ {label(category)}"]
+    if counterparty:
+        lines.append(f"👤 {counterparty}")
+    lines.append(f"📅 {day_label(day, today)}")
+    if budget is not None:
+        lines.append(budget_line(budget))
+    speech = f"ചേർത്തു. {spoken_money(amount_minor, 'ml')} {verb}"
+    speech += f", {counterparty}." if counterparty else "."
+    return "\n".join(lines), speech + _budget_speech(budget)
+
+
+Item = tuple[int, bool, str | None, str]  # തുക, കൊടുത്തതോ, ആർക്ക്, വിഭാഗം
+
+
+def _item(item: Item) -> str:
+    amount, out, payee, category = item
+    return f"• {money(amount)}{'' if out else ' കിട്ടി'} · {label(category)}" + (
+        f" · {payee}" if payee else ""
+    )
+
+
+def saved_many(
+    *, saved: list[Item], unsure: list[Item], budgets: list[BudgetStatus]
+) -> tuple[str, str]:
+    """ഒരു മെസേജിലെ പലതും: ചേർത്തവ, ഒന്ന് നോക്കേണ്ടവ."""
+    lines = []
+    if saved:
+        total = sum(amount for amount, _, _, _ in saved)
+        lines.append(f"✅ {len(saved)} എണ്ണം ചേർത്തു · {money(total)}")
+        lines += [_item(item) for item in saved]
+    if unsure:
+        lines.append("⚠️ ഇതുവരെ ചേർത്തിട്ടില്ല — ✏️ ഒന്ന് തിരുത്തൂ വഴി നോക്കൂ:")
+        lines += [_item(item) for item in unsure]
+    lines += [budget_line(status) for status in budgets]
+    speech = f"{len(saved)} എണ്ണം ചേർത്തു." if saved else ""
+    if unsure:
+        speech += f" {len(unsure)} എണ്ണം നോക്കാനുണ്ട്."
+    return "\n".join(lines), speech.strip()
+
+
+def removed(amount_minor: int, out: bool, counterparty: str | None) -> str:
+    who = f" · {counterparty}" if counterparty else ""
+    return f"↩️ മാറ്റി: {money(amount_minor)} {'കൊടുത്തു' if out else 'കിട്ടി'}{who}"
+
+
+def removed_many(count: int, total_minor: int) -> str:
+    return f"↩️ {count} എണ്ണം മാറ്റി ({money(total_minor)})."
+
+
+def category_changed(category: str, counterparty: str | None) -> str:
+    text = f"🏷️ വിഭാഗം {label(category)} ആക്കി."
+    return text + (f" ഇനി {counterparty} ഇതിൽത്തന്നെ ചേർക്കും." if counterparty else "")
+
+
+TODAY_EMPTY = 'ഇന്ന് ഇതുവരെ ഒന്നും ചേർത്തിട്ടില്ല.\nഅയച്ചാൽ മതി, ഇങ്ങനെ:\n✍️ "ചായ 20, ഓട്ടോ 50"'
+TODAY_EMPTY_SPEECH = "ഇന്ന് ഇതുവരെ ഒന്നും ചേർത്തിട്ടില്ല."
+
+
+def today(*, income: int, outflow: int, count: int, top: list[tuple[str, int]]) -> tuple[str, str]:
+    lines = ["📒 ഇന്നത്തെ കണക്ക്", f"💸 പോയത്: {money(outflow)} · {count} എണ്ണം"]
+    if income:
+        lines.append(f"💰 വന്നത്: {money(income)}")
+    if top:
+        lines.append("🏷️ " + " · ".join(f"{label(c)} {money(a)}" for c, a in top))
+    return "\n".join(lines), f"ഇന്ന് {spoken_money(outflow, 'ml')} പോയി."
+
+
+MONTH_EMPTY = (
+    "ഈ മാസം ഇതുവരെ ഒന്നും ചേർത്തിട്ടില്ല.\nഅയച്ചാൽ മതി, ഇങ്ങനെ:\n"
+    '✍️ "ചായ 20, ഓട്ടോ 50"\n🎤 "പാൽക്കാരന് 500 കൊടുത്തു"\n📸 ബില്ലിന്റെ ഫോട്ടോ'
+)
+MONTH_EMPTY_SPEECH = "ഈ മാസം ഇതുവരെ ഒന്നും ചേർത്തിട്ടില്ല."
+PLAN_HINT = '🎯 ബജറ്റ് വയ്ക്കാം: "ഭക്ഷണം ബജറ്റ് 5000" · സമ്പാദ്യം: "മാസം 5000 സമ്പാദിക്കണം"'
+
+
+def goal_line(goal_minor: int, saved_minor: int, income_minor: int) -> str:
+    if not income_minor:
+        return (
+            f'🎯 സമ്പാദ്യ ലക്ഷ്യം മാസം {money(goal_minor)} — കാണാൻ വരുമാനം ചേർക്കൂ, ഇങ്ങനെ: "ശമ്പളം 30000 കിട്ടി"'
+        )
+    if saved_minor >= goal_minor:
+        return f"💚 സമ്പാദിച്ചത് {money(saved_minor)} — {money(goal_minor)} ലക്ഷ്യം എത്തി ✅"
+    if saved_minor < 0:
+        return f"💸 വരുമാനത്തേക്കാൾ {money(-saved_minor)} കൂടുതൽ ചെലവായി — ലക്ഷ്യം {money(goal_minor)}"
+    gap = money(goal_minor - saved_minor)
+    return f"🎯 സമ്പാദിച്ചത് {money(saved_minor)} / ലക്ഷ്യം {money(goal_minor)} — ഇനി {gap}"
+
+
+def month(
+    *,
+    month: int,
+    income: int,
+    outflow: int,
+    saved: int,
+    goal: int | None,
+    top: list[tuple[str, int]],
+    budgets: list[BudgetStatus],
+    dues: list[tuple[int, str, date]],
+    waiting: int,
+) -> tuple[str, str]:
+    """ഈ മാസം ഇതുവരെ: വന്നത്, പോയത്, എവിടെ, ബജറ്റ്, സമ്പാദ്യ ലക്ഷ്യം, വരാനുള്ള ബില്ലുകൾ."""
+    lines = [f"📒 {MONTHS[month - 1]} — ഇതുവരെയുള്ള കണക്ക്", f"💰 വന്നത്: {money(income)}"]
+    lines.append(f"💸 പോയത്: {money(outflow)}")
+    if top:
+        lines.append("🏷️ കൂടുതൽ ചെലവായത്: " + " · ".join(f"{label(c)} {money(a)}" for c, a in top))
+    lines += [budget_line(status) for status in budgets[:4]]
+    if goal:
+        lines.append(goal_line(goal, saved, income))
+    elif not budgets:
+        lines.append(PLAN_HINT)
+    lines += [f"📌 വരാനുള്ളത്: {money(a)} · {name} · {date_label(day)}" for a, name, day in dues]
+    if waiting:
+        lines.append(f"⏳ {waiting} എണ്ണം നോക്കാനുണ്ട് — അവയുടെ മെസേജിൽ ✅ ശരിയാണ് അമർത്തൂ.")
+    speech = f"ഈ മാസം {spoken_money(income, 'ml')} വന്നു, {spoken_money(outflow, 'ml')} പോയി."
+    if any(status.level == "over" for status in budgets):
+        speech += " ഒരു ബജറ്റ് കടന്നു."
+    return "\n".join(lines), speech
+
+
+def budget_set(status: BudgetStatus) -> str:
+    return (
+        f"🎯 ബജറ്റ് വച്ചു: {label(status.category)} മാസം {money(status.limit_minor)}.\n"
+        + budget_line(status)
+    )
+
+
+def budget_removed(category: str) -> str:
+    return f"🎯 ബജറ്റ് മാറ്റി: {label(category)}."
+
+
+def goal_set(goal_minor: int) -> str:
+    return f"🎯 സമ്പാദ്യ ലക്ഷ്യം വച്ചു: മാസം {money(goal_minor)}."
+
+
+BUDGET_SET_SPEECH = "ബജറ്റ് വച്ചു."
+GOAL_SET_SPEECH = "സമ്പാദ്യ ലക്ഷ്യം വച്ചു."
+GOAL_REMOVED = "🎯 സമ്പാദ്യ ലക്ഷ്യം മാറ്റി."
+CHECKIN_ASK = "🔔 എല്ലാ മാസവും 1-ാം തീയതി ഇതുപോലൊരു ചെറിയ കണക്ക് അയക്കട്ടെ?"
+CHECKIN_ON = "🔔 ശരി. എല്ലാ മാസവും 1-ാം തീയതി കഴിഞ്ഞ മാസത്തെ കണക്ക് ഇവിടെ അയക്കാം."
+CHECKIN_OFF = "🔕 ശരി, ഇനി മാസക്കണക്ക് അയക്കില്ല."

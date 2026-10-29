@@ -14,9 +14,11 @@ from finboy.services.ingestion.extract import prepare
 from finboy.services.ingestion.screenshot import (
     CaptureUnavailable,
     InvalidImage,
+    ScreenshotBill,
     ScreenshotPayment,
     ScreenshotReading,
     as_message,
+    bill_line,
     payment_line,
     read_payment,
     sanitize,
@@ -290,3 +292,71 @@ def test_read_payment_failures_are_fixed_and_redacted(
     with pytest.raises(CaptureUnavailable):
         read_payment(png, "image/png", vision, RECEIVED)
     assert create.call_count == calls
+
+
+SHOP_BILL = [
+    "SRI LAKSHMI SUPERMARKET",
+    "GSTIN 32ABCDE1234F1Z5",
+    "Date: 24/10/2026 18:05",
+    "Rice 5kg 320.00",
+    "Milk 1L 56.00",
+    "Sub Total 376.00",
+    "CGST 2.5% 9.40",
+    "Grand Total ₹385.40",
+    "Thank you, visit again",
+]
+
+
+def bill(**fields: object) -> ScreenshotReading:
+    values = {
+        "total": "₹385.40",
+        "shop": "SRI LAKSHMI SUPERMARKET",
+        "when": "24/10/2026 18:05",
+        "category": "groceries",
+    }
+    return ScreenshotReading(
+        lines=SHOP_BILL, payment=None, bill=ScreenshotBill(**(values | fields))
+    )
+
+
+@pytest.mark.parametrize(
+    ("item", "expected"),
+    [
+        (bill(), "Rs. 385.40 paid to SRI LAKSHMI SUPERMARKET on 24-10-26 18:05"),
+        (bill(shop="Big Bazaar"), "Rs. 385.40 paid on 24-10-26 18:05"),  # not on the bill
+        (bill(when=None), "Rs. 385.40 paid to SRI LAKSHMI SUPERMARKET"),
+        (bill(total="₹999"), None),  # an invented total is never used
+        (bill(total=None), None),
+        (ScreenshotReading(lines=SHOP_BILL, payment=None), None),
+    ],
+)
+def test_a_bill_becomes_a_purchase_line_from_grounded_fields(
+    item: ScreenshotReading, expected: str | None
+) -> None:
+    assert bill_line(item, RECEIVED) == expected
+
+
+def test_a_payment_screen_is_never_read_as_a_bill_too() -> None:
+    both = reading()
+    both.bill = bill().bill
+    assert bill_line(both, RECEIVED) is None
+
+
+def test_read_image_returns_the_bills_kind_of_shop(
+    monkeypatch: pytest.MonkeyPatch, vision: Settings
+) -> None:
+    monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "live")
+    fake = MagicMock()
+    create = fake.return_value.__enter__.return_value.responses.parse
+    monkeypatch.setattr(screenshot, "OpenAI", fake)
+    png = image(vision, "png")
+    create.return_value.output_parsed = bill()
+    result = screenshot.read_image(png, "image/png", vision, RECEIVED)
+    assert result is not None and result.category == "groceries"
+    assert result.line == "Rs. 385.40 paid to SRI LAKSHMI SUPERMARKET on 24-10-26 18:05"
+    create.return_value.output_parsed = bill(category="other")
+    other = screenshot.read_image(png, "image/png", vision, RECEIVED)
+    assert other is not None and other.category is None
+    create.return_value.output_parsed = reading()
+    payment = screenshot.read_image(png, "image/png", vision, RECEIVED)
+    assert payment is not None and payment.category is None and payment.line.startswith("Rs. 500")

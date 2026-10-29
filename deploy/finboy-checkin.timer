@@ -1,0 +1,10 @@
+[Unit]
+Description=FinBoy monthly check-ins, hourly on the 1st to 3rd (the job sends only 08:00-20:00 IST)
+
+[Timer]
+OnCalendar=*-*-01..03 02..14:15:00 UTC
+Persistent=false
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target

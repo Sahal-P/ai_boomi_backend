@@ -1,11 +1,12 @@
 """Consent and transport metadata only. Never add message/answer/audio/image columns."""
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -43,6 +44,8 @@ class WhatsAppBinding(Base):
     reminders_opt_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Self-serve households only: Fernet copy of the number for opted-in reminder templates.
     encrypted_sender: Mapped[bytes | None] = mapped_column(LargeBinary)
+    # The monthly check-in message was opted into (docs/money-manager-round/contract.md).
+    checkin_opt_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class WhatsAppReceipt(Base):
@@ -105,7 +108,8 @@ class WhatsAppPrompt(Base):
     __table_args__ = (
         CheckConstraint(
             "purpose IN ('consent','confirm','change_amount','undo','due_paid','due_repeat',"
-            "'reminder_opt_in','web_login','link')",
+            "'reminder_opt_in','web_login','link','saved','pick_item','pick_category',"
+            "'checkin_opt_in')",
             name="purpose",
         ),
         CheckConstraint("state IN ('open','answered','expired','superseded')", name="state"),
@@ -126,6 +130,10 @@ class WhatsAppPrompt(Base):
     )
     login_request_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("login_requests.id", ondelete="CASCADE"), index=True
+    )
+    # The message of several saved items this item's card belongs to (its "Undo all").
+    group_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("whatsapp_prompts.id", ondelete="CASCADE"), index=True
     )
     fingerprint: Mapped[str | None] = mapped_column(Text)
     state: Mapped[str] = mapped_column(Text, server_default="open")
@@ -148,6 +156,26 @@ class WhatsAppReminder(Base):
     binding_id: Mapped[UUID] = mapped_column(ForeignKey("whatsapp_bindings.id", ondelete="CASCADE"))
     commitment_id: Mapped[UUID] = mapped_column(ForeignKey("commitments.id", ondelete="CASCADE"))
     kind: Mapped[str] = mapped_column(Text)
+    state: Mapped[str] = mapped_column(Text)
+    outbound_message_id: Mapped[str | None] = mapped_column(Text, unique=True)
+    provider_status: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WhatsAppCheckin(Base):
+    """One opted-in monthly check-in send; unique per household number and month."""
+
+    __tablename__ = "whatsapp_checkins"
+    __table_args__ = (
+        UniqueConstraint("binding_id", "month"),
+        CheckConstraint("state IN ('sending','sent','failed','unknown')", name="state"),
+        CheckConstraint("provider_status IN ('sent','delivered','read','failed')", name="status"),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    binding_id: Mapped[UUID] = mapped_column(ForeignKey("whatsapp_bindings.id", ondelete="CASCADE"))
+    # The first day of the month the check-in summarised.
+    month: Mapped[date] = mapped_column(Date)
     state: Mapped[str] = mapped_column(Text)
     outbound_message_id: Mapped[str | None] = mapped_column(Text, unique=True)
     provider_status: Mapped[str | None] = mapped_column(Text)

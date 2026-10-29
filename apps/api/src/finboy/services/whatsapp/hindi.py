@@ -8,6 +8,7 @@ script ("फ़िनबॉय", not "FinBoy") so Hindi voices pronounce it.
 from datetime import date
 
 from finboy.services.assistant.language import money, spoken_money
+from finboy.services.money.budgets import BudgetStatus
 
 MONTHS = (
     "जनवरी",
@@ -75,15 +76,16 @@ CONSENT_SPEECH = (
 )
 WELCOME = (
     "धन्यवाद! 🙏\n"
-    "अब बोलकर बताइए, जैसे:\n"
-    '🎤 "दूधवाले को 500 दिए"\n'
-    '🎤 "PM किसान के 2000 आए"\n'
-    '🎤 "समूह की किस्त 1200, हर महीने 10 तारीख"\n'
-    'सवाल भी पूछ सकते हैं: "इस हफ़्ते कितना खर्च हुआ?"\n'
-    'हफ़्ते का हिसाब देखने के लिए "हिसाब" लिखिए।'
+    "अब जो भी खर्च हो या पैसे आएँ, बस भेज दीजिए:\n"
+    '✍️ "चाय 20, ऑटो 50, खाना 120"\n'
+    '🎤 बोलकर: "दूधवाले को 500 दिए"\n'
+    "📸 बिल की फ़ोटो या UPI का स्क्रीनशॉट\n"
+    "मैं तुरंत जोड़कर सही श्रेणी में रख दूँगा।\n"
+    'महीने का हिसाब देखने के लिए "इस महीने" लिखिए, बजट के लिए "खाने का बजट 5000"।'
 )
 WELCOME_SPEECH = (
-    "धन्यवाद! अब बोलकर बताइए, जैसे, दूधवाले को पाँच सौ दिए। हफ़्ते का हिसाब देखने के लिए हिसाब लिखिए।"
+    "धन्यवाद! अब जो भी खर्च हो, बस बताइए, जैसे, दूधवाले को पाँच सौ दिए। मैं तुरंत जोड़ दूँगा। "
+    "महीने का हिसाब देखने के लिए इस महीने लिखिए।"
 )
 DECLINED = 'ठीक है। कुछ भी नहीं रखा गया। मन बदले तो "नमस्ते" लिखिए।'
 EXPIRED = "यह बटन अब काम नहीं करता। नया संदेश भेजिए।"
@@ -271,3 +273,199 @@ def signup_card(device: str) -> str:
 
 def link_card(device: str) -> str:
     return f"🔗 यह WhatsApp {device} वाले FinBoy खाते से जोड़ें?\n\n{SAFETY}"
+
+
+# Saved at once (docs/money-manager-round/contract.md). Buttons and list menus stay within
+# WhatsApp's limits: 20 characters for a button, 24 for a list row or section title.
+AMOUNT, CATEGORY_BUTTON = "✏️ रकम", "🏷️ श्रेणी"
+PUT_BACK, UNDO_ALL, FIX_ONE = "↩️ वापस जोड़ें", "↩️ सब हटाएँ", "✏️ एक बदलें"
+CHECKIN_YES, CHECKIN_NO = "🔔 महीने का हिसाब", "🔕 हिसाब बंद करें"
+CATEGORY_OPEN, CATEGORY_SECTION = "श्रेणी चुनें", "श्रेणियाँ"
+FIX_OPEN, FIX_SECTION = "चुनें", "जोड़ी गई बातें"
+ASK_BIG = "💡 रकम बड़ी है, इसलिए पहले एक बार देख लीजिए।\n\n"
+ASK_SAME = "⚠️ लगता है यह आप पहले ही जोड़ चुके हैं।\n\n"
+CATEGORY_ASK = "🏷️ कौन-सी श्रेणी? सूची से चुनिए या लिखिए, जैसे: राशन"
+FIX_ASK = "✏️ कौन-सी बात बदलनी है?"
+NOTHING_TO_FIX = "ये बातें पहले ही बदल चुकी हैं। नया संदेश भेजिए।"
+PUT_BACK_DONE = "↩️ वापस जोड़ दिया।"
+AMOUNT_CHANGED = "✏️ रकम बदल दी।"
+REMOVED_SPEECH = "हटा दिया।"
+TOTAL = "कुल खर्च"
+
+
+def label(category: str) -> str:
+    return TOTAL if category == "total" else CATEGORY.get(category, CATEGORY["other"])
+
+
+def budget_line(status: BudgetStatus) -> str:
+    """🟢 सीमा के 80% से कम, 🟡 80% से, 🔴 सीमा पार होने पर।"""
+    spent, limit = money(status.spent_minor), money(status.limit_minor)
+    name = label(status.category)
+    if status.level == "over":
+        over = money(status.spent_minor - status.limit_minor)
+        return f"🔴 {name}: {spent} / {limit} — इस महीने {over} ज़्यादा"
+    if status.level == "near":
+        left = money(status.limit_minor - status.spent_minor)
+        return f"🟡 {name}: {spent} / {limit} — इस महीने {left} बाकी"
+    return f"🟢 {name}: {spent} / {limit} इस महीने"
+
+
+def _budget_speech(status: BudgetStatus | None) -> str:
+    if status is None or status.level == "ok":
+        return ""
+    return " बजट से ज़्यादा हो गया।" if status.level == "over" else " बजट पूरा होने वाला है।"
+
+
+def saved(
+    *,
+    amount_minor: int,
+    out: bool,
+    counterparty: str | None,
+    day: date,
+    category: str,
+    today: date,
+    budget: BudgetStatus | None,
+) -> tuple[str, str]:
+    """जोड़ी गई बात (लिखकर) और उसका बोला हुआ रूप।"""
+    verb = "दिए" if out else "मिले"
+    lines = [f"✅ जोड़ दिया: {money(amount_minor)} {verb}", f"🏷️ {label(category)}"]
+    if counterparty:
+        lines.append(f"👤 {counterparty}")
+    lines.append(f"📅 {day_label(day, today)}")
+    if budget is not None:
+        lines.append(budget_line(budget))
+    speech = f"जोड़ दिया। {spoken_money(amount_minor, 'hi')} {verb}"
+    speech += f", {counterparty}।" if counterparty else "।"
+    return "\n".join(lines), speech + _budget_speech(budget)
+
+
+Item = tuple[int, bool, str | None, str]  # रकम, दिए या मिले, किसे, श्रेणी
+
+
+def _item(item: Item) -> str:
+    amount, out, payee, category = item
+    return f"• {money(amount)}{'' if out else ' मिले'} · {label(category)}" + (
+        f" · {payee}" if payee else ""
+    )
+
+
+def saved_many(
+    *, saved: list[Item], unsure: list[Item], budgets: list[BudgetStatus]
+) -> tuple[str, str]:
+    """एक संदेश की कई बातें: क्या जुड़ा, और क्या एक बार देखना है।"""
+    lines = []
+    if saved:
+        total = sum(amount for amount, _, _, _ in saved)
+        lines.append(f"✅ {len(saved)} बातें जोड़ दीं · {money(total)}")
+        lines += [_item(item) for item in saved]
+    if unsure:
+        lines.append("⚠️ अभी नहीं जोड़ा — ✏️ एक बदलें से देखिए:")
+        lines += [_item(item) for item in unsure]
+    lines += [budget_line(status) for status in budgets]
+    speech = f"{len(saved)} बातें जोड़ दीं।" if saved else ""
+    if unsure:
+        speech += f" {len(unsure)} देखनी हैं।"
+    return "\n".join(lines), speech.strip()
+
+
+def removed(amount_minor: int, out: bool, counterparty: str | None) -> str:
+    who = f" · {counterparty}" if counterparty else ""
+    return f"↩️ हटा दिया: {money(amount_minor)} {'दिए' if out else 'मिले'}{who}"
+
+
+def removed_many(count: int, total_minor: int) -> str:
+    return f"↩️ {count} बातें हटा दीं ({money(total_minor)})।"
+
+
+def category_changed(category: str, counterparty: str | None) -> str:
+    text = f"🏷️ श्रेणी बदलकर {label(category)} कर दी।"
+    return text + (f" अगली बार {counterparty} भी इसी में जाएगा।" if counterparty else "")
+
+
+TODAY_EMPTY = 'आज अभी कुछ नहीं जुड़ा।\nबस भेज दीजिए, जैसे:\n✍️ "चाय 20, ऑटो 50"'
+TODAY_EMPTY_SPEECH = "आज अभी कुछ नहीं जुड़ा।"
+
+
+def today(*, income: int, outflow: int, count: int, top: list[tuple[str, int]]) -> tuple[str, str]:
+    lines = ["📒 आज का हिसाब", f"💸 गए: {money(outflow)} · {count} बातें"]
+    if income:
+        lines.append(f"💰 आए: {money(income)}")
+    if top:
+        lines.append("🏷️ " + " · ".join(f"{label(c)} {money(a)}" for c, a in top))
+    return "\n".join(lines), f"आज {spoken_money(outflow, 'hi')} गए।"
+
+
+MONTH_EMPTY = (
+    "इस महीने अभी कुछ नहीं जुड़ा।\nबस भेज दीजिए, जैसे:\n"
+    '✍️ "चाय 20, ऑटो 50"\n🎤 "दूधवाले को 500 दिए"\n📸 बिल की फ़ोटो'
+)
+MONTH_EMPTY_SPEECH = "इस महीने अभी कुछ नहीं जुड़ा।"
+PLAN_HINT = '🎯 बजट रखिए: "खाने का बजट 5000" · बचत: "हर महीने 5000 बचाना है"'
+
+
+def goal_line(goal_minor: int, saved_minor: int, income_minor: int) -> str:
+    if not income_minor:
+        return (
+            f"🎯 बचत का लक्ष्य {money(goal_minor)} महीना — देखने के लिए आमदनी जोड़िए, "
+            'जैसे: "तनख़्वाह 30000 आई"'
+        )
+    if saved_minor >= goal_minor:
+        return f"💚 बचत {money(saved_minor)} — {money(goal_minor)} का लक्ष्य पूरा ✅"
+    if saved_minor < 0:
+        return f"💸 आमदनी से {money(-saved_minor)} ज़्यादा खर्च हुआ — लक्ष्य {money(goal_minor)}"
+    gap = money(goal_minor - saved_minor)
+    return f"🎯 बचत {money(saved_minor)} / लक्ष्य {money(goal_minor)} — {gap} और"
+
+
+def month(
+    *,
+    month: int,
+    income: int,
+    outflow: int,
+    saved: int,
+    goal: int | None,
+    top: list[tuple[str, int]],
+    budgets: list[BudgetStatus],
+    dues: list[tuple[int, str, date]],
+    waiting: int,
+) -> tuple[str, str]:
+    """इस महीने अब तक: आए, गए, कहाँ गए, बजट, बचत का लक्ष्य, आगे के बिल।"""
+    lines = [f"📒 {MONTHS[month - 1]} का हिसाब (अब तक)", f"💰 आए: {money(income)}"]
+    lines.append(f"💸 गए: {money(outflow)}")
+    if top:
+        lines.append("🏷️ सबसे ज़्यादा: " + " · ".join(f"{label(c)} {money(a)}" for c, a in top))
+    lines += [budget_line(status) for status in budgets[:4]]
+    if goal:
+        lines.append(goal_line(goal, saved, income))
+    elif not budgets:
+        lines.append(PLAN_HINT)
+    lines += [f"📌 आगे देना है: {money(a)} · {name} · {date_label(day)}" for a, name, day in dues]
+    if waiting:
+        lines.append(f"⏳ {waiting} बातें देखनी हैं — उनके संदेश में ✅ हाँ दबाइए।")
+    speech = f"इस महीने {spoken_money(income, 'hi')} आए, {spoken_money(outflow, 'hi')} गए।"
+    if any(status.level == "over" for status in budgets):
+        speech += " एक बजट पार हो गया।"
+    return "\n".join(lines), speech
+
+
+def budget_set(status: BudgetStatus) -> str:
+    return (
+        f"🎯 बजट रख दिया: {label(status.category)} {money(status.limit_minor)} महीना।\n"
+        + budget_line(status)
+    )
+
+
+def budget_removed(category: str) -> str:
+    return f"🎯 बजट हटा दिया: {label(category)}।"
+
+
+def goal_set(goal_minor: int) -> str:
+    return f"🎯 बचत का लक्ष्य रख दिया: हर महीने {money(goal_minor)}।"
+
+
+BUDGET_SET_SPEECH = "बजट रख दिया।"
+GOAL_SET_SPEECH = "बचत का लक्ष्य रख दिया।"
+GOAL_REMOVED = "🎯 बचत का लक्ष्य हटा दिया।"
+CHECKIN_ASK = "🔔 हर महीने की 1 तारीख को ऐसा छोटा हिसाब भेजूँ?"
+CHECKIN_ON = "🔔 ठीक है। हर महीने की 1 तारीख को पिछले महीने का हिसाब यहीं भेजूँगा।"
+CHECKIN_OFF = "🔕 ठीक है, महीने का हिसाब अब नहीं भेजूँगा।"
