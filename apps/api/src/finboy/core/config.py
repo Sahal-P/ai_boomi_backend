@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     database_url: SecretStr
     cors_origins: list[AnyHttpUrl] = []
     openai_api_key: SecretStr | None = None
+    resend_api_key: SecretStr | None = None
 
     openai_extraction_model: str | None = None
     openai_assistant_model: str | None = None
@@ -126,6 +127,7 @@ class Settings(BaseSettings):
         "whatsapp_sender_allowlist_json",
         "whatsapp_reminder_template",
         "openai_api_key",
+        "resend_api_key",
         "openai_extraction_model",
         "openai_assistant_model",
         "openai_transcribe_model",
