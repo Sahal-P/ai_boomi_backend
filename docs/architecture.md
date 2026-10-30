@@ -92,6 +92,9 @@ period clarification. Results include snapshot, resolved period, localized fact/
 labels and separate display-script/speech metadata. LLMs never calculate ledger totals
 or choose SQL/tools. Resemble Ultra English/Hindi, Gemini Malayalam and OpenAI
 transcription remain backend-only, with independent speech failure and text fallback.
+Liquid AI's d1-ultra decision model (backend-only, off until released) sorts messages,
+questions and photos in parallel with the OpenAI call, so sure common cases answer first
+(`services/triage`, [contract](triage-round/contract.md)); it never sees ledger amounts.
 
 Explicit authenticated export downloads structured records/corrections, excluding raw
 bodies, evidence snippets, credentials and account/reference/payment identifiers.

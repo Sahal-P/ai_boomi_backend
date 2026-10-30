@@ -187,3 +187,16 @@ households only as documented there. One agent on feat/finboy-money-manager, loo
 disposable finboy_signup, migration `0011_money_manager`. The check-in timer is enabled only after
 Meta approves its template. Messages, audio, images, transcripts and numbers in clear are never
 stored; advice stays on budgeting and discipline, never specific investments.
+
+## Fast decisions round — 30 October 2026
+
+From main b89821d the human chose Liquid AI's d1-ultra decision model to make FinBoy answer faster.
+It sorts each diary message, question and WhatsApp photo; when it is sure, FinBoy answers without
+waiting for OpenAI: simple entries, check-ups in other words, greetings, common questions (engine
+figures and templates, without the AI intro line) and photos that are not payments or bills.
+Today's OpenAI call always starts at the same moment, so nothing waits longer.
+`docs/triage-round/contract.md` supersedes "every question uses OpenAI" only as documented there.
+One agent on feat/finboy-fast-decisions, loopback 8061/3061, disposable finboy_signup, no migration.
+`TRIAGE_ENABLED` stays false until `pnpm eval:triage` passes for each enabled language, the human has
+checked Liquid's data terms and approves the release. d1-ultra gets masked text and a small photo
+preview, never ledger amounts; nothing it sees or answers is stored.

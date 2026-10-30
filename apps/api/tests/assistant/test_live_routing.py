@@ -1,5 +1,6 @@
 """Provider-boundary regressions; no credentials, network, or database required."""
 
+import threading
 from unittest.mock import MagicMock
 
 import httpx
@@ -9,8 +10,10 @@ from finboy.core.errors import ProviderUnavailable
 from finboy.services.assistant import intent
 from finboy.services.assistant.intent import AssistantReply, ParsedIntent, parse_intent
 from finboy.services.assistant.service import answer_question
+from finboy.services.triage.service import Sorted
 from openai import APIConnectionError
 from pydantic import SecretStr, ValidationError
+from triage.support import choice, held, late, noul, triaged
 
 
 @pytest.fixture
@@ -142,3 +145,114 @@ async def test_http_provider_errors_are_redacted_and_cors_is_preserved(client, s
     assert response.json()["error"]["request_id"]
     assert "sensitive" not in response.text
     assert response.headers["Access-Control-Allow-Origin"] == "http://localhost:3000"
+
+
+# d1-ultra fast answers (docs/triage-round/contract.md).
+
+MODEL = ParsedIntent(intent="out_of_scope")
+
+
+def asked(**overrides) -> Sorted:
+    """A sure question about all spending this month, unless overridden."""
+    answers = {
+        "intent": choice("spending"),
+        "topic": choice("none"),
+        "category": choice("none"),
+        "merchant": noul(0.02),
+    }
+    return Sorted(answers | overrides)
+
+
+@pytest.mark.parametrize(
+    ("question", "answers", "expected"),
+    [
+        (
+            "How much did I spend on food this month?",
+            {"category": choice("food_dining")},
+            ParsedIntent(intent="spending_query", category="food_dining"),
+        ),
+        (
+            "How much did I spend on food this month?",
+            # The rules name food, so d1-ultra need only lean the same way.
+            {"category": choice("food_dining", 0.6)},
+            ParsedIntent(intent="spending_query", category="food_dining"),
+        ),
+        ("इस महीने कुल कितना खर्च हुआ?", {}, ParsedIntent(intent="spending_query")),
+        (
+            "What income was recorded this month?",
+            {"intent": choice("income")},
+            ParsedIntent(intent="income_query"),
+        ),
+        (
+            "How much is left?",
+            {"intent": choice("left_over")},
+            ParsedIntent(intent="unallocated_query"),
+        ),
+        (
+            "What bills are coming up?",
+            {"intent": choice("bills")},
+            ParsedIntent(intent="upcoming_commitments"),
+        ),
+        (
+            "SIP enthanu?",
+            {"intent": choice("explain"), "topic": choice("sip")},
+            ParsedIntent(intent="education", topic="sip"),
+        ),
+        (
+            "Konsa share lena chahiye?",
+            {"intent": choice("investment_pick")},
+            ParsedIntent(intent="regulated_advice"),
+        ),
+        (
+            "How much did I spend last week?",
+            {},
+            ParsedIntent(intent="clarification", clarification_reason="period"),
+        ),
+    ],
+)
+def test_sure_common_questions_do_not_wait_for_the_model(
+    question, answers, expected, configured, monkeypatch
+):
+    release = threading.Event()
+    monkeypatch.setattr(intent, "_model_intent", held(MODEL, release))
+    monkeypatch.setattr(intent.triage, "sort_question", lambda *_args: asked(**answers))
+    try:
+        assert parse_intent(question, triaged(configured)) == expected
+    finally:
+        release.set()
+
+
+@pytest.mark.parametrize(
+    ("question", "answers"),
+    [
+        ("I need to buy gt 650 next month, what is your opinion?", {"intent": choice("purchase")}),
+        # Even sorted as spending, a number in the question keeps it off the fast path.
+        ("I need to buy gt 650 next month, what is your opinion?", {}),
+        (
+            "Would a 5000 monthly SIP fit the tracked cash flow?",
+            {"intent": choice("afford_monthly")},
+        ),
+        ("How much did I pay Ramesh this month?", {"merchant": noul(0.96)}),
+        ("How much did I spend at Swiggy this month?", {}),  # the rules found a merchant
+        ("How much did I spend on food this month?", {"category": choice("groceries")}),
+        ("How much did I spend on food this month?", {"category": choice("groceries", 0.6)}),
+        ("How much did I spend this month?", {"category": choice("none", 0.6)}),
+        ("How much did I spend this month?", {"intent": choice("spending", 0.7)}),
+        ("How much did I spend this month?", {"merchant": noul(0.5)}),
+        ("How much did I spend in dollars?", {}),  # the rules ask about the currency
+        ("What is the weather today?", {"intent": choice("other")}),
+    ],
+)
+def test_other_questions_wait_for_the_model(question, answers, configured, monkeypatch):
+    monkeypatch.setattr(intent, "_model_intent", late(MODEL))
+    monkeypatch.setattr(intent.triage, "sort_question", lambda *_args: asked(**answers))
+    assert parse_intent(question, triaged(configured)) is MODEL
+
+
+def test_a_security_pick_declines_without_asking_any_model(configured, provider, monkeypatch):
+    sort = MagicMock()
+    monkeypatch.setattr(intent.triage, "sort_question", sort)
+    assert (
+        parse_intent("Which stock should I buy?", triaged(configured)).intent == "regulated_advice"
+    )
+    assert not provider.called and not sort.called

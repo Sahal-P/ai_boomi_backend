@@ -190,6 +190,8 @@ export function PrivacyScreen() {
             the configured speech provider (Sarvam AI, Groq or OpenAI) and never stored. Questions
             are sent to OpenAI to understand and word the reply; household
             record amounts are calculated by FinBoy and are not sent for answer wording.
+            Liquid AI quickly tells what a message, question or photo is about, so common ones are
+            answered sooner; it gets no record amounts.
             Where WhatsApp is enabled, payment screenshots are read by OpenAI and never stored.
           </p>
         </aside>

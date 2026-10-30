@@ -29,6 +29,7 @@
     "test:web": "pnpm --filter @finboy/web test",
     "env:setup": "node scripts/setup.mjs",
     "eval:extraction": "uv run --package finboy-api python -m finboy.services.ingestion.evaluate",
+    "eval:triage": "uv run --package finboy-api python -m finboy.services.triage.evaluate",
     "demo:render-mailbox": "uv run --package finboy-api python -m finboy.services.ingestion.render_demo_mailbox",
     "seed:fixture-ledger": "uv run --package finboy-api python -m finboy.services.money.seed_fixture_ledger",
     "seed:gmail-demo-inbox": "uv run --package finboy-api python -m finboy.services.mail.seed_demo_inbox",

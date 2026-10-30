@@ -4,7 +4,7 @@ import re
 import unicodedata
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Literal
+from typing import Literal, get_args
 
 from openai import OpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -15,6 +15,7 @@ from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
 from finboy.db.models.ledger import Category
 from finboy.services.money.engine import PeriodSpec
+from finboy.services.triage import service as triage
 
 Intent = Literal[
     "spending_query",
@@ -30,6 +31,15 @@ Intent = Literal[
     "clarification",
     "purchase_planning",
 ]
+Topic = Literal["sip", "emi", "upi", "diversification", "index_fund"]
+# d1-ultra's intents that the engine and templates answer without the model's prose.
+RECORDS: dict[str, Intent] = {
+    "spending": "spending_query",
+    "income": "income_query",
+    "left_over": "unallocated_query",
+    "bills": "upcoming_commitments",
+}
+TOPICS: dict[str, Topic] = {topic: topic for topic in get_args(Topic)}
 
 
 class AssistantReply(BaseModel):
@@ -55,7 +65,7 @@ class ParsedIntent(BaseModel):
     period: PeriodSpec = Field(default_factory=PeriodSpec)
     amount_minor: int | None = Field(default=None, gt=0, le=100_000_000_00)
     merchant: str | None = Field(default=None, min_length=1, max_length=80)
-    topic: Literal["sip", "emi", "upi", "diversification", "index_fund"] | None = None
+    topic: Topic | None = None
     reply: AssistantReply | None = None
 
 
@@ -400,6 +410,63 @@ def parse_intent(
         if settings.environment == "production":
             raise ProviderUnavailable("configuration_missing")
         return fallback
+    if fallback.intent == "regulated_advice":
+        # A provider cannot override the explicit security-pick boundary, so it is not asked.
+        return fallback
+    return triage.first(
+        "question",
+        settings,
+        lambda: _model_intent(text, settings, display_style, speech_language),
+        lambda: triage.sort_question(text, _language(text), settings),
+        lambda sort: _quick(sort, text, fallback),
+    )
+
+
+def _language(text: str) -> Language:
+    from finboy.services.assistant.language import resolve_style  # it imports this module
+
+    return resolve_style(text, "auto")[1]
+
+
+def _quick(sort: triage.Sorted, text: str, fallback: ParsedIntent) -> ParsedIntent | None:
+    """A question d1-ultra is sure about, answered from the engine and templates without the
+    model's prose: a record total that names no amount or payee, a term to explain, or a security
+    pick to decline. Anything the rules read differently stays with the model."""
+    intent = sort.pick("intent") or ""
+    if intent == "investment_pick":
+        return ParsedIntent(intent="regulated_advice")
+    if intent == "explain":
+        topic = TOPICS.get(sort.pick("topic") or "")
+        return ParsedIntent(intent="education", topic=topic) if topic else None
+    if (
+        intent not in RECORDS
+        or fallback.intent in {"merchant_lookup", "affordability_check", "savings_simulation"}
+        or (fallback.intent == "clarification" and fallback.clarification_reason != "period")
+        or amounts_in_question(text)
+        or sort.says("merchant") is not False
+    ):
+        return None
+    category: Category | None = None
+    if intent == "spending" and fallback.category is not None:
+        # The keyword rules named it, so d1-ultra need only lean the same way.
+        if sort.pick("category", 0) != fallback.category:
+            return None
+        category = fallback.category
+    elif intent == "spending":
+        chosen = sort.pick("category")
+        if chosen is None or chosen == "other":
+            return None
+        category = triage.CATEGORIES.get(chosen)  # "none": all spending
+    period, unsupported = resolve_period(normalized(text))
+    if unsupported:
+        return ParsedIntent(intent="clarification", clarification_reason="period")
+    return ParsedIntent(intent=RECORDS[intent], category=category, period=period)
+
+
+def _model_intent(
+    text: str, settings: Settings, display_style: str, speech_language: Language
+) -> ParsedIntent:
+    """The assistant model's reading and contextual prose, checked against the question."""
     try:
         with OpenAI(
             api_key=settings.openai_api_key.get_secret_value(),
@@ -462,9 +529,6 @@ def parse_intent(
             parsed = response.output_parsed
         if not isinstance(parsed, ParsedIntent):
             raise ProviderUnavailable("assistant_unavailable")
-        # A provider cannot override the explicit security-pick boundary.
-        if fallback.intent == "regulated_advice":
-            return fallback
         if parsed.reply and speech_language in {"hi", "ml"}:
             native = r"[\u0900-\u097f]" if speech_language == "hi" else r"[\u0d00-\u0d7f]"
             if re.search(r"[A-Za-z]", parsed.reply.speech_text) or not re.search(

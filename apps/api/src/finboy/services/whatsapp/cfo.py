@@ -154,6 +154,14 @@ def month(conversation: Conversation) -> str | None:
     return _reply(conversation, text, spoken, buttons)
 
 
+# The same check-ups for a message d1-ultra recognised as one (statement.Statement.checkup).
+CHECKUPS: dict[str, Callable[[Conversation], str | None]] = {
+    "today": today,
+    "week": week,
+    "month": month,
+}
+
+
 def set_budget(conversation: Conversation, reading: Statement) -> str | None:
     """ "food budget 5000": a monthly limit for one category, or for all spending; 0 removes it."""
     session, binding, words = conversation.session, conversation.binding, conversation.words

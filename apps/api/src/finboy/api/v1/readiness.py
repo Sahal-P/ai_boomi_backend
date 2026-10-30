@@ -14,6 +14,7 @@ from finboy.api.deps import CurrentUser
 from finboy.core.config import API_ROOT, Settings
 from finboy.db.models.mail import ImportRun
 from finboy.db.session import get_session
+from finboy.services.triage.provider import MODELS as DECISION_MODELS
 from finboy.services.whatsapp.config import ChannelUnavailable, channel_config
 
 router = APIRouter(tags=["readiness"])
@@ -30,6 +31,7 @@ class Readiness(BaseModel):
     english_hindi_tts_configuration: Literal["configured", "missing"]
     malayalam_tts_configuration: Literal["configured", "missing"]
     whatsapp_configuration: Literal["disabled", "configured", "missing"]
+    triage_configuration: Literal["off", "configured", "missing"]
     import_worker: Literal["in_process_not_durable"] = "in_process_not_durable"
     recorded_active_imports: int | None
     live_provider_acceptance: Literal["not_checked_by_readiness"] = "not_checked_by_readiness"
@@ -52,6 +54,14 @@ def _malayalam_tts(settings: Settings) -> bool:
             settings.sarvam_api_key and settings.sarvam_tts_model and settings.sarvam_tts_speaker_ml
         )
     return bool(settings.gemini_api_key and settings.gemini_tts_model and settings.gemini_tts_voice)
+
+
+def _triage(settings: Settings) -> Literal["off", "configured", "missing"]:
+    if not settings.triage_enabled:
+        return "off"
+    if settings.liquid_api_key and settings.liquid_decision_model in DECISION_MODELS:
+        return "configured"
+    return "missing"
 
 
 @router.get("/readiness", response_model=Readiness)
@@ -104,6 +114,7 @@ def readiness(
         else "missing",
         malayalam_tts_configuration="configured" if _malayalam_tts(settings) else "missing",
         whatsapp_configuration=whatsapp,
+        triage_configuration=_triage(settings),
         recorded_active_imports=active,
     )
     response.status_code = 200 if result.status == "ready" else 503

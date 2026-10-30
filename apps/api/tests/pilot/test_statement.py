@@ -1,3 +1,4 @@
+import threading
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
 
@@ -6,8 +7,10 @@ from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.services.ingestion.normalize import normalize
 from finboy.services.ingestion.rules import extract_rules
+from finboy.services.triage.service import Sorted
 from finboy.services.whatsapp import statement
 from finboy.services.whatsapp.statement import Statement, StatementReading
+from triage.support import choice, held, noul, triaged
 
 TODAY = date(2026, 10, 26)
 
@@ -341,3 +344,121 @@ def test_a_model_budget_is_grounded_like_any_amount() -> None:
     assert statement._ground(overall, "budget 20000", TODAY).overall is True
     goal = reading(type="goal", amount_phrase="9000", category=None)
     assert statement._ground(goal, "save 5000 a month", TODAY).amount_minor == 500000
+
+
+# d1-ultra in front of the statement model (docs/triage-round/contract.md).
+
+
+def sure_message(**overrides) -> Sorted:
+    """A single UPI tea payment, every answer sure, unless overridden."""
+    answers = {
+        "kind": choice("spent"),
+        "several": noul(0.02),
+        "payee": noul(0.03),
+        "category": choice("food_dining"),
+        "mode": choice("upi"),
+    }
+    return Sorted(answers | overrides)
+
+
+def test_a_sure_single_entry_is_read_without_the_model() -> None:
+    assert statement._fast(sure_message(), "chai 20 gpay se diye", TODAY) == [
+        Statement("spent", 2000, None, "upi", TODAY, "food_dining")
+    ]
+    received = sure_message(
+        kind=choice("received"), category=choice("salary"), mode=choice("unknown")
+    )
+    assert statement._fast(received, "kal salary 30000 aayi", TODAY) == [
+        Statement("received", 3000000, None, "unknown", date(2026, 10, 25), "salary")
+    ]
+    nothing_named = sure_message(category=choice("none"))
+    assert statement._fast(nothing_named, "500 diye", TODAY)[0].category == "other"
+
+
+@pytest.mark.parametrize(
+    ("text", "overrides"),
+    [
+        ("doodhwale ko 500 diye", {"payee": noul(0.97)}),  # a payee's name needs the model
+        ("chai 20", {"payee": noul(0.5)}),  # not clear whether it names one
+        ("chai 20, auto 50", {"several": noul(0.95)}),
+        ("chai 20 auto 50", {}),  # two amounts, even when d1-ultra misses them
+        ("Rs 500 debited from a/c [account] to VPA [number]", {}),  # a pasted bank SMS
+        ("chai 20", {"category": choice("food_dining", 0.6)}),
+        ("chai 20", {"kind": choice("spent", 0.6)}),
+        ("samooh ki kist 1200", {"kind": choice("due")}),  # dues keep the model
+        ("paise diye", {}),  # no amount
+    ],
+)
+def test_the_model_reads_what_d1_ultra_is_not_sure_of(text: str, overrides: dict) -> None:
+    assert statement._fast(sure_message(**overrides), text, TODAY) is None
+
+
+@pytest.mark.parametrize(
+    ("kind", "expected"),
+    [
+        ("today", Statement("question", checkup="today")),
+        ("week", Statement("question", checkup="week")),
+        ("month", Statement("question", checkup="month")),
+        ("question", Statement("question")),
+        ("other", Statement("unclear")),
+    ],
+)
+def test_sure_check_ups_questions_and_greetings(kind: str, expected: Statement) -> None:
+    assert statement._fast(sure_message(kind=choice(kind)), "aaj ka hisaab batao", TODAY) == [
+        expected
+    ]
+
+
+def test_sure_budgets_and_goals_are_read_like_the_rules() -> None:
+    budget = sure_message(kind=choice("budget"), category=choice("food_dining"))
+    assert statement._fast(budget, "khane ka budget 5000", TODAY) == [
+        Statement("budget", 500000, category="food_dining")
+    ]
+    overall = sure_message(kind=choice("budget"), category=choice("none"))
+    assert statement._fast(overall, "budget 20000", TODAY) == [
+        Statement("budget", 2000000, category="other", overall=True)
+    ]
+    unsure = sure_message(kind=choice("budget"), category=choice("other"))
+    assert statement._fast(unsure, "budget 20000", TODAY) is None
+    goal = sure_message(kind=choice("goal"), category=choice("none"))
+    assert statement._fast(goal, "save 5000 a month", TODAY) == [Statement("goal", 500000)]
+
+
+def test_a_sure_entry_does_not_wait_for_the_statement_model(monkeypatch) -> None:
+    release = threading.Event()
+
+    class Client:
+        def __init__(self, **_kwargs):
+            self.responses = SimpleNamespace(
+                parse=held(SimpleNamespace(output_parsed=reading()), release)
+            )
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(statement, "OpenAI", Client)
+    seen: list[tuple[str, str]] = []
+
+    def sort_message(text: str, language: str, settings: Settings) -> Sorted:
+        seen.append((text, language))
+        return sure_message()
+
+    monkeypatch.setattr(statement.triage, "sort_message", sort_message)
+    settings = triaged(
+        Settings(
+            _env_file=None,
+            database_url="postgresql+psycopg://test:test@127.0.0.1:1/finboy_test",
+            environment="test",
+            openai_api_key="synthetic-key",
+            openai_assistant_model="synthetic-model",
+        )
+    )
+    try:
+        result = statement.read_statements("चाय 20 दिए", settings, TODAY)
+    finally:
+        release.set()
+    assert result == [Statement("spent", 2000, None, "upi", TODAY, "food_dining")]
+    assert seen == [("चाय 20 दिए", "hi")]

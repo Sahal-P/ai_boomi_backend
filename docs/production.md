@@ -544,3 +544,36 @@ Malayalam reply, and a native read of the Malayalam copy (`malayalam.py`).
 additive and harmless to the old code, so it stays; `alembic downgrade 0010_whatsapp_last_language`
 removes it and its budgets, goals and memory if that is ever needed. Disable the check-in timer
 first if it was enabled.
+
+## Fast decisions release procedure
+
+`feat/finboy-fast-decisions` ([contract](triage-round/contract.md)) has no migration. With
+`TRIAGE_ENABLED` unset, production behaves as before, apart from two things: an explicit security
+pick declines without an OpenAI call, and the new `triage.answered` and `whatsapp.processed` logs
+show reply times.
+
+**Before release:**
+- The Liquid key is in the private secrets file, and `pnpm eval:triage` passed locally for each
+  language to enable, with its output recorded in the contract. Done 31 October 2026: English,
+  Hindi and Malayalam passed.
+- Liquid's console and terms are checked for training and retention controls, as the privacy
+  policy promises.
+
+**Release.** With approval, deploy the release as usual (backend first, then push main for the
+privacy text), add the settings to `/etc/finboy/production.env`, then restart `finboy.service` only:
+
+```
+LIQUID_API_KEY=<from the private secrets file>
+LIQUID_DECISION_MODEL=d1-ultra
+TRIAGE_ENABLED=true
+TRIAGE_LANGUAGES=["en","hi","ml"]
+```
+
+**Check:** signed in, `/api/v1/readiness` reports `triage_configuration` as `configured`. The
+service log shows `triage.sorted` with outcome `sorted` and `triage.answered` with outcomes `fast`
+and `model`; `whatsapp.processed` gives reply times to compare with the days before.
+
+**Rollback:** set `TRIAGE_ENABLED=false` and restart.
+
+**Acceptance:** real phone messages, questions and a stray photo in each enabled language, recorded
+separately from these checks.

@@ -3,6 +3,7 @@
 import logging
 import re
 from datetime import UTC, datetime, timedelta
+from time import perf_counter
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -150,6 +151,7 @@ def process_question(
     receipt_id: UUID,
     question: InboundQuestion,
 ) -> None:
+    started = perf_counter()
     client = MetaClient(config)
     try:
         with factory() as session:
@@ -378,3 +380,8 @@ def process_question(
             logger.error("whatsapp.receipt_update_failed", extra={"outcome": "unavailable"})
     finally:
         client.close()
+        # Reply time per kind of message (text, audio, image, button), without its content.
+        logger.info(
+            "whatsapp.processed",
+            extra={"stage": question.kind, "duration_ms": round((perf_counter() - started) * 1000)},
+        )

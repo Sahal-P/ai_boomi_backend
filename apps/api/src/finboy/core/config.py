@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
+from finboy.core.languages import Language
+
 LOCAL_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 API_ROOT = Path(__file__).resolve().parents[3]
@@ -47,6 +49,15 @@ class Settings(BaseSettings):
     sarvam_base_url: AnyHttpUrl = "https://api.sarvam.ai"
     # Malayalam spoken replies; English and Hindi stay on Resemble.
     malayalam_tts_provider: Literal["gemini", "sarvam"] = "gemini"
+    # Liquid AI d1-ultra sorts messages, questions and photos so a sure answer need not wait for
+    # the slower model call (docs/triage-round/contract.md). Off until the human releases it.
+    liquid_api_key: SecretStr | None = None
+    liquid_decision_model: str | None = None
+    liquid_base_url: AnyHttpUrl = "https://api.liquid.ai"
+    triage_enabled: bool = False
+    triage_timeout_seconds: float = Field(default=2, ge=0.5, le=10)
+    # Only languages that passed the offline gate (`pnpm eval:triage`) are sorted.
+    triage_languages: list[Language] = ["en", "hi", "ml"]
     google_oauth_client_id: str | None = None
     google_oauth_client_secret: SecretStr | None = None
     google_oauth_redirect_uri: AnyHttpUrl | None = None
@@ -142,6 +153,8 @@ class Settings(BaseSettings):
         "sarvam_stt_model",
         "sarvam_tts_model",
         "sarvam_tts_speaker_ml",
+        "liquid_api_key",
+        "liquid_decision_model",
         "google_oauth_client_id",
         "google_oauth_client_secret",
         "google_oauth_redirect_uri",
@@ -160,7 +173,11 @@ class Settings(BaseSettings):
         return None if value == "" else value
 
     @field_validator(
-        "resemble_tts_base_url", "gemini_tts_base_url", "groq_base_url", "sarvam_base_url"
+        "resemble_tts_base_url",
+        "gemini_tts_base_url",
+        "groq_base_url",
+        "sarvam_base_url",
+        "liquid_base_url",
     )
     @classmethod
     def require_provider_url(cls, value: AnyHttpUrl) -> AnyHttpUrl:

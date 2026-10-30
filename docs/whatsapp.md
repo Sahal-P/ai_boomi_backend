@@ -431,3 +431,19 @@ more, a possible duplicate, or a typed entry matching a screenshot, bill, SMS or
 **Self-serve replies.** Until this round the Meta client refused every number outside the private
 allowlist, so self-serve households got no reply. `send_reply` now vouches for a number only after
 matching it to its own self-serve binding, and only for that message's client.
+
+## Fast decisions (30 October 2026)
+
+With `TRIAGE_ENABLED`, Liquid AI's d1-ultra sorts each diary message and photo while the OpenAI call
+runs ([contract](triage-round/contract.md)). When it is sure:
+- one payment with no payee named ("chai 20", "salary 30000 aayi"), a budget or a savings goal is
+  read by code, with d1-ultra's category, and saved as before;
+- a check-up in other words ("aaj ka kharcha batao", "is hafte ka hisaab dikhao") gets the today,
+  week or month check-up;
+- a greeting gets the "not sure" reply;
+- a photo that is neither a payment screen nor a bill gets the existing "send a payment screenshot
+  or a bill photo" reply without a vision read.
+
+A named payee, several items, a pasted bank SMS or a due still go to the statement model, as does
+anything d1-ultra is unsure of. d1-ultra gets the masked text and a small JPEG of the cleaned photo;
+nothing is stored. `whatsapp.processed` logs each message's reply time.

@@ -17,6 +17,7 @@ async def test_readiness_separates_configuration_from_live_acceptance(client, se
     assert result["english_hindi_tts_configuration"] == "missing"
     assert result["malayalam_tts_configuration"] == "missing"
     assert result["whatsapp_configuration"] == "disabled"
+    assert result["triage_configuration"] == "off"
     assert result["live_provider_acceptance"] == "not_checked_by_readiness"
     assert result["import_worker"] == "in_process_not_durable"
     assert response.headers["cache-control"] == "no-store"

@@ -115,6 +115,16 @@ If an introductory speech sentence would exceed the existing audio limit, speech
 keeps the complete financial statement. Questions remain independent requests;
 no server-side conversation memory or stored question history was added.
 
+**Fast answers (fast decisions round, [contract](triage-round/contract.md)).** With
+`TRIAGE_ENABLED`, Liquid AI's d1-ultra sorts each question while the OpenAI call runs. When it is
+sure the question asks for spending (in total or for a category), income, what is left or bills
+due, names no rupee amount and no shop or person, and the keyword rules agree (for a category the
+rules name, d1-ultra's leading choice must be the same one), the answer is the
+engine's figures in the templates, without the model's intro line. A sure money term gets its
+education template and a sure fund or share pick declines. Everything else, including purchases,
+"can I afford" and simulations, waits for the model as before. An explicit security pick that the
+rules decline no longer calls OpenAI.
+
 All totals come from the existing money engine signatures. There is no independent
 SQL, money summation, balance inference, or ledger mutation in this owner. Category
 amounts come from `category_breakdown`; summary fields and simulation values come

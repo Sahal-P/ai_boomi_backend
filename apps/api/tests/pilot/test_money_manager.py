@@ -361,3 +361,12 @@ def test_a_self_serve_household_gets_its_check_in_at_its_own_number(
     client.allow.assert_called_once_with(number)
     assert client.send_template.call_args.args == (number,)
     assert client.send_template.call_args.kwargs["language"] == "ml"
+
+
+def test_a_check_up_in_other_words_gets_the_check_up(household, monkeypatch) -> None:
+    """d1-ultra recognised "aaj ka kharcha kitna hua batao" as today's check-up
+    (docs/triage-round/contract.md): the calculated reply, with no assistant call."""
+    said(monkeypatch, Statement("question", checkup="today"))
+    monkeypatch.setattr(pilot, "_answer", MagicMock(side_effect=AssertionError))
+    assert household.say("aaj ka kharcha kitna hua batao") is None
+    assert household.texts()[-1] == hindi.TODAY_EMPTY

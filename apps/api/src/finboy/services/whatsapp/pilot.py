@@ -210,6 +210,8 @@ def _handle(conversation: Conversation) -> str | None:
         sent = conversation.send(conversation.words.UNAVAILABLE)
         return conversation.done(sent, "statement_unavailable")
     reading = readings[0]
+    if reading.kind == "question" and reading.checkup is not None:
+        return cfo.CHECKUPS[reading.checkup](conversation)
     if reading.kind == "question":
         return _answer(conversation, text)
     if reading.kind == "unclear":

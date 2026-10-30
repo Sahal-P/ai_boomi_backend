@@ -2,8 +2,10 @@ import base64
 import json
 import struct
 import subprocess
+import threading
 import zlib
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -25,7 +27,9 @@ from finboy.services.ingestion.screenshot import (
     screenshot_time,
 )
 from finboy.services.ledger.confidence import confidence_for
+from finboy.services.triage.service import Sorted
 from pydantic import SecretStr
+from triage.support import choice, held, late, triaged
 
 # 10:42 IST on 24 October 2026, when the synthetic screenshot message arrives.
 RECEIVED = datetime(2026, 10, 24, 5, 12, tzinfo=UTC)
@@ -360,3 +364,54 @@ def test_read_image_returns_the_bills_kind_of_shop(
     create.return_value.output_parsed = reading()
     payment = screenshot.read_image(png, "image/png", vision, RECEIVED)
     assert payment is not None and payment.category is None and payment.line.startswith("Rs. 500")
+
+
+# d1-ultra's photo check (docs/triage-round/contract.md).
+
+
+def sorted_image(option: str, probability: float = 0.99) -> Sorted:
+    return Sorted({"image": choice(option, probability)})
+
+
+def vision_client(monkeypatch: pytest.MonkeyPatch, answer) -> MagicMock:
+    fake = MagicMock()
+    fake.return_value.__enter__.return_value.responses.parse.side_effect = answer
+    monkeypatch.setattr(screenshot, "OpenAI", fake)
+    return fake
+
+
+def test_a_photo_surely_not_money_needs_no_vision_read(
+    monkeypatch: pytest.MonkeyPatch, vision: Settings
+) -> None:
+    monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "live")
+    release = threading.Event()
+    vision_client(monkeypatch, held(SimpleNamespace(output_parsed=reading()), release))
+    previews: list[bytes] = []
+
+    def sort_image(jpeg: bytes, settings: Settings) -> Sorted:
+        previews.append(jpeg)
+        return sorted_image("other")
+
+    monkeypatch.setattr(screenshot.triage, "sort_image", sort_image)
+    try:
+        result = screenshot.read_image(image(vision, "png"), "image/png", triaged(vision), RECEIVED)
+    finally:
+        release.set()
+    assert result is None
+    # d1-ultra sees a small JPEG of the cleaned image, never the original upload.
+    (jpeg,) = previews
+    assert jpeg.startswith(b"\xff\xd8") and dimensions(vision, jpeg) == (346, 768)
+
+
+@pytest.mark.parametrize(
+    "sort",
+    [sorted_image("payment_screen"), sorted_image("bill"), sorted_image("other", 0.9), None],
+)
+def test_payments_bills_and_unsure_photos_get_the_vision_read(
+    monkeypatch: pytest.MonkeyPatch, vision: Settings, sort: Sorted | None
+) -> None:
+    monkeypatch.setenv("FINBOY_EXTRACTION_MODE", "live")
+    vision_client(monkeypatch, late(SimpleNamespace(output_parsed=reading())))
+    monkeypatch.setattr(screenshot.triage, "sort_image", lambda *_args: sort)
+    result = screenshot.read_image(image(vision, "png"), "image/png", triaged(vision), RECEIVED)
+    assert result is not None and result.line.startswith("Rs. 500")
