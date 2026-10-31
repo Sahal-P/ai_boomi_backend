@@ -35,6 +35,8 @@ export function ExportButton({
     <div className="space-y-2">
       <Button
         variant={variant}
+        // The label wraps rather than pushing a 320 px screen sideways.
+        className="h-auto min-h-11 py-2.5 whitespace-normal"
         disabled={!version || action.busy !== null}
         onClick={async () => {
           if (!version) return;

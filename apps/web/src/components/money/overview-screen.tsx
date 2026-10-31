@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  Calculator,
   CalendarClock,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
   Inbox,
@@ -11,7 +11,6 @@ import {
   Plus,
   RefreshCw,
   ShieldAlert,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -22,52 +21,159 @@ import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { EmptyState, LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
 import { EmptyMonthArt, NoRecordsArt } from "@/components/illustrations/scenes";
 import { BudgetsCard } from "@/components/money/budgets-card";
+import { MonthSelect } from "@/components/money/month-select";
 import { ObligationDialog } from "@/components/money/obligation-dialog";
-import { QuickAdd } from "@/components/money/quick-add";
-import { SimulationPanel } from "@/components/money/simulation-panel";
-import { coverageHeadline } from "@/components/sources/coverage-summary";
+import { useQuickAdd } from "@/components/money/quick-add-provider";
+import { AnimatedAmount } from "@/components/motion/animated-amount";
 import { Button } from "@/components/ui/button";
 import { useQueryUpdate } from "@/hooks/use-query-update";
+import { useRecordsChanged } from "@/hooks/use-records-changed";
 import { useResource } from "@/hooks/use-resource";
 import { chatLink } from "@/lib/api/auth";
-import { formatMoney, getObligations, getSummary, recordsNote, type MoneySummary, type Period } from "@/lib/api/money";
+import {
+  formatMoney,
+  getObligations,
+  getSummary,
+  periodFromParams,
+  periodSearch,
+  type MoneySummary,
+  type Period,
+} from "@/lib/api/money";
 import { recordOutcome } from "@/lib/api/privacy";
-import { formatDay, formatDayTime, formatRange, istDate, monthLabel } from "@/lib/dates";
-import { categoryLabels, liabilityLabels, obligationKindLabels } from "@/lib/labels";
+import { formatDay, formatPeriod, monthLabel } from "@/lib/dates";
+import { liabilityLabels, obligationKindLabels } from "@/lib/labels";
 import { describeProblem } from "@/lib/messages";
 import { cn } from "@/lib/utils";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
-function readPeriod(params: URLSearchParams): Period {
-  const year = Number(params.get("year"));
-  const month = Number(params.get("month"));
-  return Number.isInteger(year) && year >= 2000 && year <= 2100 && Number.isInteger(month) && month >= 1 && month <= 12
-    ? { year, month }
-    : null;
+/** The month's one number, with the three figures behind it and the full working on request. */
+function Hero({ summary, period }: { summary: MoneySummary; period: Period }) {
+  const suffix = periodSearch(period);
+  const stats = [
+    { label: "Money in", value: summary.tracked_income_minor, sign: "+", href: `/transactions?status=confirmed${suffix}` },
+    { label: "Money out", value: summary.confirmed_outflows_minor, sign: "−", href: `/transactions?status=confirmed${suffix}` },
+    { label: "Bills due", value: summary.unresolved_commitments_minor, sign: "−", href: "#obligations" },
+  ];
+  const lines = [
+    {
+      label: "Money in",
+      value: summary.tracked_income_minor,
+      sign: "+",
+      href: `/transactions?status=confirmed${suffix}`,
+      note: plural(summary.income_transaction_count, "confirmed record", "confirmed records"),
+    },
+    {
+      label: "Money out",
+      value: summary.confirmed_outflows_minor,
+      sign: "−",
+      href: `/transactions?status=confirmed${suffix}`,
+      note: "Refunds reduce spending; transfers between your accounts aren't counted",
+    },
+    {
+      label: "Bills due",
+      value: summary.unresolved_commitments_minor,
+      sign: "−",
+      href: "#obligations",
+      note:
+        [
+          summary.overdue_commitments_minor ? `${formatMoney(summary.overdue_commitments_minor)} overdue` : null,
+          summary.uncertain_commitments_minor ? `${formatMoney(summary.uncertain_commitments_minor)} unverified` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || "Due by the end of the month, until paid or dismissed",
+    },
+  ];
+  return (
+    <section aria-labelledby="estimate-title" className="solid-hero relative overflow-hidden rounded-3xl p-5 sm:p-8">
+      {/* Halftone corner: the illustrations' dot language, kept to the hero's empty corner. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-16 -right-16 size-64 bg-[radial-gradient(rgb(14_16_19/0.16)_1px,transparent_1.5px)] [background-size:9px_9px] [mask-image:radial-gradient(circle,#000_20%,transparent_68%)]"
+      />
+      <div className="relative">
+        <h2 id="estimate-title" className="text-sm font-medium text-sunflower-ink">
+          Left {period ? `in ${monthLabel(period.year, period.month)}` : "this month"}
+        </h2>
+        <p className="mt-2 text-[2.75rem] leading-none font-semibold tracking-[-0.04em] sm:text-6xl">
+          <AnimatedAmount amountMinor={summary.estimated_unallocated_minor} format={formatMoney} duration={1.2} />
+        </p>
+        <p className="mt-3 text-sm text-sunflower-ink">From your confirmed records — not your bank balance.</p>
+
+        {/* A white tint on yellow, never glass: blurred yellow over the blue field turns muddy. */}
+        <ul className="mt-5 grid gap-2 min-[400px]:grid-cols-3 sm:max-w-2xl">
+          {stats.map((stat) => (
+            <li key={stat.label}>
+              <Link
+                href={stat.href}
+                onClick={() => recordOutcome("overview_explanation_opened")}
+                className="flex items-baseline justify-between gap-3 rounded-2xl bg-white/55 px-4 py-3 transition-colors hover:bg-white/75 min-[400px]:block"
+              >
+                <span className="block text-xs font-medium text-sunflower-ink">{stat.label}</span>
+                <span className="block text-base font-semibold tabular-nums min-[400px]:mt-1">
+                  {stat.sign} {formatMoney(stat.value)}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <details className="group mt-3 rounded-2xl bg-white/55 sm:max-w-2xl">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+            How is this worked out?
+            <ChevronDown className="size-4 shrink-0 transition-transform duration-300 group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="px-4 pb-4">
+            <ul className="divide-y divide-ink/10">
+              {lines.map((line) => (
+                <li key={line.label}>
+                  <Link
+                    href={line.href}
+                    onClick={() => recordOutcome("overview_explanation_opened")}
+                    className="-mx-2 flex items-start justify-between gap-3 rounded-xl px-2 py-3 hover:bg-white/60"
+                  >
+                    <span>
+                      <span className="block text-sm font-medium">{line.label}</span>
+                      <span className="block text-xs text-ink-soft">{line.note}</span>
+                    </span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums">
+                      {line.sign} {formatMoney(line.value)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 flex justify-between gap-3 border-t border-ink/15 pt-3 text-sm font-semibold">
+              <span>Left</span>
+              <span className="tabular-nums">{formatMoney(summary.estimated_unallocated_minor)}</span>
+            </p>
+            {summary.pending_review_count > 0 && (
+              <Link href="/review" className="mt-3 block rounded-xl bg-ink p-3 text-xs leading-relaxed text-white hover:bg-ink/90">
+                <span className="font-semibold">Not included:</span>{" "}
+                {plural(summary.pending_review_count, "record", "records")} ({formatMoney(summary.pending_review_minor)}) from this period
+                {summary.pending_review_count === 1 ? " waits" : " wait"} for review. Review them →
+              </Link>
+            )}
+          </div>
+        </details>
+      </div>
+    </section>
+  );
 }
 
-function periodParams(period: Period) {
-  return period ? `&year=${period.year}&month=${period.month}` : "";
-}
-
-function Exceptions({ summary, period }: { summary: MoneySummary; period: Period }) {
+/** One row of chips, only when something needs a look; each opens the place to fix it. */
+function Attention({ summary }: { summary: MoneySummary }) {
   const { coverage } = summary;
   const items: { key: string; href: string; icon: typeof Inbox; text: string }[] = [];
   if (coverage.pending_review_count > 0) {
-    items.push({
-      key: "review",
-      href: "/review",
-      icon: ListChecks,
-      text: `${plural(coverage.pending_review_count, "record waits", "records wait")} for review and ${coverage.pending_review_count === 1 ? "isn't" : "aren't"} in these totals`,
-    });
+    items.push({ key: "review", href: "/review", icon: ListChecks, text: `${plural(coverage.pending_review_count, "record", "records")} to review` });
   }
   if (summary.overdue_commitment_count > 0) {
     items.push({
       key: "overdue",
       href: "#obligations",
       icon: CalendarClock,
-      text: `${plural(summary.overdue_commitment_count, "overdue obligation", "overdue obligations")} (${formatMoney(summary.overdue_commitments_minor)}) still deducted`,
+      text: `${plural(summary.overdue_commitment_count, "bill", "bills")} overdue · ${formatMoney(summary.overdue_commitments_minor)}`,
     });
   }
   if (coverage.failed_source_count > 0) {
@@ -78,256 +184,73 @@ function Exceptions({ summary, period }: { summary: MoneySummary; period: Period
       text: `${plural(coverage.failed_source_count, "email", "emails")} couldn't be read`,
     });
   }
-  if (coverage.state === "unknown" || coverage.truncated) {
-    items.push({
-      key: "coverage",
-      href: "/sources",
-      icon: Inbox,
-      text: coverage.state === "unknown" ? "Coverage unknown — no completed scan yet" : "The last scan stopped at its limit",
-    });
+  if (coverage.truncated) {
+    items.push({ key: "limit", href: "/sources", icon: Inbox, text: "The last email check stopped at its limit" });
   }
   if (coverage.quarantined_count > 0) {
     items.push({
       key: "hold",
       href: "/transactions?dataset=quarantined&scope=all",
       icon: ShieldAlert,
-      text: `${plural(coverage.quarantined_count, "record is", "records are")} on hold and excluded`,
+      text: `${plural(coverage.quarantined_count, "record", "records")} on hold`,
     });
   }
   if (!items.length) return null;
   return (
     <section aria-label="Needs your attention">
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <ul className="flex flex-wrap gap-2">
         {items.map(({ key, href, icon: Icon, text }) => (
           <li key={key}>
             <Link
               href={href}
               onClick={() => recordOutcome("overview_explanation_opened")}
-              className="flex min-h-12 items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950 hover:bg-amber-100/70"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-amber-200 bg-amber-50 py-2 pr-3 pl-4 text-sm font-medium text-amber-950 transition-colors hover:bg-amber-100/70"
             >
               <Icon className="size-4 shrink-0 text-amber-800" aria-hidden="true" />
-              <span className="flex-1">{text}</span>
+              {text}
               <ChevronRight className="size-4 shrink-0 text-amber-800" aria-hidden="true" />
             </Link>
           </li>
         ))}
       </ul>
-      {period && <p className="sr-only">These exceptions apply to all your records, not only this month.</p>}
     </section>
   );
 }
 
-function Estimate({ summary, period }: { summary: MoneySummary; period: Period }) {
-  const headline = coverageHeadline(summary.coverage);
-  const window = formatRange(summary.coverage.window_start, summary.coverage.window_end);
-  const linkSuffix = periodParams(period);
-  const lines = [
-    {
-      label: "Tracked income",
-      value: summary.tracked_income_minor,
-      sign: "+",
-      href: `/transactions?status=confirmed${linkSuffix}`,
-      note: `${plural(summary.income_transaction_count, "confirmed record", "confirmed records")}`,
-    },
-    {
-      label: "Confirmed net outflows",
-      value: summary.confirmed_outflows_minor,
-      sign: "−",
-      href: `/transactions?status=confirmed${linkSuffix}`,
-      note: "Refunds reduce spending; transfers between your accounts aren't counted",
-    },
-    {
-      label: "Unresolved obligations",
-      value: summary.unresolved_commitments_minor,
-      sign: "−",
-      href: "#obligations",
-      note: [
-        summary.overdue_commitments_minor ? `${formatMoney(summary.overdue_commitments_minor)} overdue` : null,
-        summary.uncertain_commitments_minor ? `${formatMoney(summary.uncertain_commitments_minor)} unverified` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ") || "Due by the end of the period, until paid or dismissed",
-    },
-  ];
-  return (
-    <section aria-labelledby="estimate-title" className="solid-hero relative overflow-hidden rounded-3xl p-5 sm:p-8">
-      {/* Halftone corner: the illustrations' dot language, kept to the hero's empty corner. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-16 -right-16 size-64 bg-[radial-gradient(rgb(14_16_19/0.16)_1px,transparent_1.5px)] [background-size:9px_9px] [mask-image:radial-gradient(circle,#000_20%,transparent_68%)]"
-      />
-      <div className="relative grid gap-6 lg:grid-cols-[1fr_1.1fr] lg:gap-10">
-        <div>
-          <h2 id="estimate-title" className="text-sm font-medium text-sunflower-ink">
-            Estimated unallocated · {period ? monthLabel(period.year, period.month) : "this month"}
-          </h2>
-          <p className="mt-2 text-[2.75rem] leading-none font-semibold tracking-[-0.04em] tabular-nums sm:text-6xl">
-            {formatMoney(summary.estimated_unallocated_minor)}
-          </p>
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-sunflower-ink">{recordsNote}</p>
-          <dl className="mt-5 space-y-1.5 text-sm">
-            <div className="flex flex-wrap gap-x-2">
-              <dt className="text-sunflower-ink">Last successful scan</dt>
-              <dd className="font-semibold">
-                {summary.coverage.last_successful_scan_at ? formatDayTime(summary.coverage.last_successful_scan_at) : "none yet"}
-              </dd>
-            </div>
-            <div className="flex flex-wrap gap-x-2">
-              <dt className="text-sunflower-ink">Emails checked</dt>
-              <dd className="font-semibold">{window ?? "unknown"} · {headline.label.toLowerCase()}</dd>
-            </div>
-          </dl>
-        </div>
-        {/* A white tint on yellow, never glass: blurred yellow over the blue field turns muddy. */}
-        <div className="rounded-2xl bg-white/55 p-4 sm:p-5">
-          <h3 className="text-sm font-semibold">How this is calculated</h3>
-          <ul className="mt-2 divide-y divide-ink/10">
-            {lines.map((line) => (
-              <li key={line.label}>
-                <Link
-                  href={line.href}
-                  onClick={() => recordOutcome("overview_explanation_opened")}
-                  className="-mx-2 flex items-start justify-between gap-3 rounded-xl px-2 py-3 hover:bg-white/60"
-                >
-                  <span>
-                    <span className="block text-sm font-medium">{line.label}</span>
-                    <span className="block text-xs text-ink-soft">{line.note}</span>
-                  </span>
-                  <span className="shrink-0 text-sm font-semibold tabular-nums">
-                    {line.sign} {formatMoney(line.value)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-1 flex justify-between gap-3 border-t border-ink/15 pt-3 text-sm font-semibold">
-            <span>Estimated unallocated</span>
-            <span className="tabular-nums">{formatMoney(summary.estimated_unallocated_minor)}</span>
-          </p>
-          {summary.pending_review_count > 0 && (
-            <Link href="/review" className="mt-3 block rounded-xl bg-ink p-3 text-xs leading-relaxed text-white hover:bg-ink/90">
-              <span className="font-semibold">Not included:</span>{" "}
-              {plural(summary.pending_review_count, "record", "records")} ({formatMoney(summary.pending_review_minor)}) from this period
-              {summary.pending_review_count === 1 ? " waits" : " wait"} for review. Review them →
-            </Link>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
+const BILLS_SHOWN = 4;
 
-/** The reference's action tiles; every one opens something that already exists. */
-function ActionTiles({ summary }: { summary: MoneySummary }) {
-  const waiting = summary.coverage.pending_review_count;
-  const tiles = [
-    { href: "/assistant", label: "Ask", name: "Ask about my money", icon: Sparkles },
-    { href: "/review", label: "Review", name: waiting ? `Review ${plural(waiting, "record", "records")}` : "Review", icon: ListChecks, count: waiting },
-    { href: "/sources", label: "Sources", name: "Sources", icon: Inbox },
-    { href: "#simulation", label: "What if", name: "What if I set money aside", icon: Calculator },
-  ];
-  return (
-    <nav aria-label="Overview actions">
-      <ul className="grid grid-cols-4 gap-2 sm:max-w-md sm:gap-3">
-        {tiles.map(({ href, label, name, icon: Icon, count }) => (
-          <li key={href}>
-            <Link href={href} aria-label={name} className="group flex flex-col items-center gap-1.5 text-xs font-semibold text-ink">
-              <span className="surface relative grid h-14 w-full place-items-center rounded-2xl transition-colors group-hover:bg-white/80">
-                <Icon className="size-5" aria-hidden="true" />
-                {count ? (
-                  <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1 text-[11px] text-white tabular-nums">
-                    {count}
-                  </span>
-                ) : null}
-              </span>
-              {label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-}
-
-function Categories({ summary, period }: { summary: MoneySummary; period: Period }) {
-  const rows = summary.categories.filter((item) => item.amount_minor !== 0);
-  const largest = Math.max(1, ...rows.map((row) => Math.abs(row.amount_minor)));
-  return (
-    <section aria-labelledby="categories-title" className="surface rounded-3xl p-5 sm:p-6">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 id="categories-title" className="text-lg font-semibold">Where it went</h2>
-        <p className="text-xs text-ink-soft">Largest first</p>
-      </div>
-      {!rows.length ? (
-        <p className="mt-4 text-sm text-ink-soft">No confirmed spending in this period yet.</p>
-      ) : (
-        <ul className="mt-4 space-y-1">
-          {rows.map((item) => {
-            const refund = item.amount_minor < 0;
-            return (
-              <li key={item.category}>
-                <Link
-                  href={`/transactions?category=${item.category}&status=confirmed${periodParams(period)}`}
-                  onClick={() => recordOutcome("overview_explanation_opened")}
-                  className="block rounded-2xl px-2 py-2.5 hover:bg-white/50"
-                >
-                  <span className="flex justify-between gap-4 text-sm">
-                    <span>
-                      {categoryLabels[item.category]}
-                      <span className="text-xs text-ink-soft"> · {plural(item.transaction_count, "record", "records")}</span>
-                    </span>
-                    <strong className={cn("tabular-nums", refund && "text-positive")}>
-                      {refund ? `Net refund ${formatMoney(-item.amount_minor)}` : formatMoney(item.amount_minor)}
-                    </strong>
-                  </span>
-                  <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-                    <span
-                      className={cn("block h-full rounded-full", refund ? "bg-positive" : "bg-ink")}
-                      style={{ width: `${Math.max(2, (Math.abs(item.amount_minor) / largest) * 100)}%` }}
-                    />
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      <p className="mt-3 text-xs leading-relaxed text-ink-soft">
-        Refunds count against the original purchase&apos;s category. Transfers between your own accounts aren&apos;t spending.
-      </p>
-    </section>
-  );
-}
-
-function Obligations({ onOpen, version }: { onOpen: (id: string) => void; version: number }) {
+function Bills({ onOpen, version }: { onOpen: (id: string) => void; version: number }) {
   const [showAll, setShowAll] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const status = showAll ? "all" : "unresolved";
   const obligations = useResource(`obligations:${status}:${version}`, (signal) => getObligations(status, signal));
   const items = obligations.stale ? null : obligations.data?.items;
+  const shown = items && !expanded ? items.slice(0, BILLS_SHOWN) : items;
   return (
     <section id="obligations" aria-labelledby="obligations-title" className="surface scroll-mt-24 rounded-3xl p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="obligations-title" className="text-lg font-semibold">Bills and obligations</h2>
+        <h2 id="obligations-title" className="text-lg font-semibold">Bills due</h2>
         <Button variant="ghost" size="sm" onClick={() => setShowAll((value) => !value)} aria-pressed={showAll}>
           {showAll ? "Show unresolved only" : "Include paid and dismissed"}
         </Button>
       </div>
-      <p className="mt-1 text-xs text-ink-soft">Unresolved ones are deducted from your estimate — open one to check or resolve it.</p>
-      {obligations.status === "loading" && <LoadingPanel className="mt-3 shadow-none" label="Loading obligations…" />}
+      {obligations.status === "loading" && <LoadingPanel className="mt-3 shadow-none" label="Loading bills…" />}
       <RefreshingLabel active={obligations.status === "refreshing"}>Updating…</RefreshingLabel>
       {obligations.error !== null && (
-        <ProblemNotice className="mt-3" problem={describeProblem(obligations.error, "Obligations couldn't be loaded")} onRetry={obligations.reload} />
+        <ProblemNotice className="mt-3" problem={describeProblem(obligations.error, "Bills couldn't be loaded")} onRetry={obligations.reload} />
       )}
-      {items && !items.length && <p className="mt-4 text-sm text-ink-soft">No {showAll ? "" : "unresolved "}obligations in your records.</p>}
-      {items && items.length > 0 && (
-        <ul className="mt-3 divide-y">
-          {items.map((item) => (
+      {items && !items.length && (
+        <p className="mt-3 text-sm text-ink-soft">{showAll ? "No bills in your records." : "Nothing due. Unpaid bills are taken off what's left."}</p>
+      )}
+      {shown && shown.length > 0 && (
+        <ul className="mt-2 divide-y">
+          {shown.map((item) => (
             <li key={item.id}>
               <button
                 type="button"
                 data-obligation-id={item.id}
                 onClick={() => onOpen(item.id)}
-                className="flex w-full items-center justify-between gap-4 py-3 text-left hover:bg-white/50"
+                className="-mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-4 rounded-xl px-2 py-3 text-left transition-colors hover:bg-white/50"
               >
                 <span className="min-w-0">
                   <span className="block text-sm font-medium break-words">{item.label}</span>
@@ -352,6 +275,11 @@ function Obligations({ onOpen, version }: { onOpen: (id: string) => void; versio
           ))}
         </ul>
       )}
+      {items && items.length > BILLS_SHOWN && (
+        <Button variant="ghost" size="sm" className="mt-2" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
+          {expanded ? "Show fewer" : `Show all ${items.length}`}
+        </Button>
+      )}
     </section>
   );
 }
@@ -359,75 +287,59 @@ function Obligations({ onOpen, version }: { onOpen: (id: string) => void; versio
 export function OverviewScreen() {
   const params = useSearchParams();
   const update = useQueryUpdate();
-  const period = readPeriod(new URLSearchParams(params.toString()));
+  const period = periodFromParams(new URLSearchParams(params.toString()));
   const summary = useResource(`summary:${period ? `${period.year}-${period.month}` : "current"}`, (signal) => getSummary(period, signal));
   const [obligation, setObligation] = useState<string | null>(null);
   const [changes, setChanges] = useState(0);
-  const [adding, setAdding] = useState(false);
+  const quickAdd = useQuickAdd();
   const { signIn } = useHouseholdAccess();
-  const data = summary.stale ? null : summary.data;
-  const [year = 2026, month = 1] = istDate(new Date()).split("-").map(Number);
-  const months = Array.from({ length: 18 }, (_, index) => {
-    const offset = month - 1 - index;
-    return { year: year + Math.floor(offset / 12), month: (((offset % 12) + 12) % 12) + 1 };
+  useRecordsChanged(() => {
+    setChanges((value) => value + 1);
+    summary.reload();
   });
+  const data = summary.stale ? null : summary.data;
   const empty = data && !data.income_transaction_count && !data.outflow_transaction_count && !data.commitment_count;
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Overview"
+        title="Home"
         description={
-          data
-            ? `Your household · ${formatRange(data.period_start, data.period_end)} · as of ${formatDay(data.as_of)}`
-            : "Your household's tracked money"
+          data ? `${formatPeriod(data.period_start, data.period_end)} · as of ${formatDay(data.as_of)}` : "Your household's money"
         }
         actions={
-          // One row even at 320 px: on phones Refresh is just its icon and the period select
-          // takes the rest of the row instead of wrapping.
+          // One row even at 320 px: the month takes the room and Refresh is an icon.
           <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
-            <Button className="shrink-0" onClick={() => setAdding(true)}>
-              <Plus aria-hidden="true" /> Add
-            </Button>
-            <label className="sr-only" htmlFor="overview-period">Period</label>
-            <select
-              id="overview-period"
-              value={period ? `${period.year}-${period.month}` : ""}
-              onChange={(event) => {
-                const [y, m] = event.target.value.split("-");
-                update({ year: y || null, month: m || null });
-              }}
-              className="h-11 min-w-0 flex-1 rounded-full border border-input bg-white/80 px-4 text-sm font-semibold sm:flex-none"
-            >
-              <option value="">This month</option>
-              {months.slice(1).map((item) => (
-                <option key={`${item.year}-${item.month}`} value={`${item.year}-${item.month}`}>
-                  {monthLabel(item.year, item.month)}
-                </option>
-              ))}
-            </select>
+            <MonthSelect
+              id="home-period"
+              period={period}
+              onChange={(next) => update(next ? { year: String(next.year), month: String(next.month) } : { year: null, month: null })}
+              className="flex-1 sm:flex-none"
+            />
             <Button
               variant="outline"
-              className="shrink-0 max-sm:w-11 max-sm:px-0"
+              size="icon"
+              aria-label="Refresh"
+              className="shrink-0"
               onClick={summary.reload}
               disabled={summary.status === "loading" || summary.status === "refreshing"}
             >
-              <RefreshCw aria-hidden="true" /> <span className="max-sm:sr-only">Refresh</span>
+              <RefreshCw aria-hidden="true" />
             </Button>
           </div>
         }
       />
-      <RefreshingLabel active={summary.status === "refreshing"}>Refreshing your overview…</RefreshingLabel>
-      {summary.status === "loading" && <LoadingPanel label="Loading your overview…" />}
+      <RefreshingLabel active={summary.status === "refreshing"}>Refreshing…</RefreshingLabel>
+      {summary.status === "loading" && <LoadingPanel label="Loading your month…" />}
       {summary.error !== null && (
         <ProblemNotice
-          problem={describeProblem(summary.error, data ? "Couldn't refresh — showing the last loaded overview" : "Your overview couldn't be loaded")}
+          problem={describeProblem(summary.error, data ? "Couldn't refresh — showing what was last loaded" : "Home couldn't be loaded")}
           onRetry={summary.reload}
         />
       )}
       {empty && period && (
         <EmptyState illustration={<EmptyMonthArt />} title={`No records for ${monthLabel(period.year, period.month)}`}>
-          Nothing was imported for this month. Choose another period, or add a source that covers it.
+          Nothing was added for this month. Choose another month, or add an entry with +.
         </EmptyState>
       )}
       {empty && !period && (
@@ -436,7 +348,7 @@ export function OverviewScreen() {
           title="Add what you spent today"
           actions={
             <>
-              <Button onClick={() => setAdding(true)}>
+              <Button onClick={quickAdd.open}>
                 <Plus aria-hidden="true" /> Add an entry
               </Button>
               {signIn?.whatsapp_number && (
@@ -462,29 +374,16 @@ export function OverviewScreen() {
           and category. The sample is read-only and never changes your records.
         </EmptyState>
       )}
-      {data && (
+      {data && !empty && (
         <>
-          <Estimate summary={data} period={period} />
-          <ActionTiles summary={data} />
-          <Exceptions summary={data} period={period} />
-          <div className="grid items-start gap-5 xl:grid-cols-2">
-            <div className="space-y-5">
-              <Categories summary={data} period={period} />
-              <BudgetsCard period={period} version={changes} />
-            </div>
-            <Obligations onOpen={setObligation} version={changes} />
+          <Hero summary={data} period={period} />
+          <Attention summary={data} />
+          <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+            <Bills onOpen={setObligation} version={changes} />
+            <BudgetsCard period={period} version={changes} compact />
           </div>
         </>
       )}
-      <SimulationPanel current={summary.data && !summary.stale && !period ? summary.data : null} />
-      <QuickAdd
-        open={adding}
-        onOpenChange={setAdding}
-        onSaved={() => {
-          setChanges((value) => value + 1);
-          summary.reload();
-        }}
-      />
       <ObligationDialog
         id={obligation}
         onClose={() => setObligation(null)}

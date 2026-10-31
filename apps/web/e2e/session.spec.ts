@@ -49,14 +49,17 @@ test("an expired session during a correction keeps the draft and re-signs in pla
   expect(decision?.body).toMatchObject({ action: "confirm", correction: { merchant: "Sample Corner Shop" } });
 });
 
-test("sign-out lives in account navigation, never floating over content", async ({ page }, testInfo) => {
+test("sign-out lives in the account menu, never floating over content", async ({ page }, testInfo) => {
   await signIn(page, "/sources");
-  if (testInfo.project.name === "desktop") {
-    await expect(page.getByRole("complementary").getByRole("button", { name: "Sign out" })).toBeVisible();
-  } else {
-    await page.getByRole("button", { name: "Account and settings" }).click();
-    await expect(page.getByRole("menuitem", { name: "Sign out" })).toBeVisible();
-    await page.keyboard.press("Escape");
+  await expect(page.locator("button", { hasText: "Sign out" }).filter({ visible: true })).toHaveCount(0);
+  const account =
+    testInfo.project.name === "desktop"
+      ? page.getByRole("complementary").getByRole("button", { name: /^Your household/ })
+      : page.getByRole("button", { name: "Account and settings" });
+  await account.click();
+  for (const name of ["Sources", "Privacy & data", "Keyboard shortcuts", "Sign out"]) {
+    await expect(page.getByRole("menuitem", { name })).toBeVisible();
   }
-  await expect(page.locator("button", { hasText: "Sign out" }).filter({ visible: true })).toHaveCount(testInfo.project.name === "desktop" ? 1 : 0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menuitem", { name: "Sign out" })).toBeHidden();
 });

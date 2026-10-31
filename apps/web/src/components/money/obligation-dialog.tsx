@@ -67,11 +67,11 @@ function ObligationBody({ detail, onChanged }: { detail: ObligationDetail; onCha
       </header>
       <p className="rounded-2xl bg-ink/[0.04] p-4 text-sm leading-relaxed">
         {resolved
-          ? "This obligation is resolved, so it isn't deducted from your estimate."
+          ? "This bill is resolved, so it isn't taken off what's left."
           : item.liability_state === "overdue"
-            ? "It's past its due date and still unpaid in your records, so it stays deducted from your estimate until you mark it paid or dismiss it."
-            : "It's deducted from your estimate until it's paid or dismissed."}
-        {item.uncertain && !resolved && " FinBoy isn't sure this bill is real or correct, so it's deducted conservatively until you check it."}
+            ? "It's past its due date and still unpaid in your records, so it stays taken off what's left until you mark it paid or dismiss it."
+            : "It's taken off what's left until it's paid or dismissed."}
+        {item.uncertain && !resolved && " FinBoy isn't sure this bill is real or correct, so it's taken off to be safe until you check it."}
       </p>
 
       {!resolved && (
@@ -105,22 +105,22 @@ function ObligationBody({ detail, onChanged }: { detail: ObligationDetail; onCha
             if (label.trim() !== item.label) update.label = label.trim();
             if (parsed !== item.amount_minor) update.amount_minor = parsed;
             if (due !== item.due_date) update.due_date = due;
-            void change(update, "Saved. The estimate uses the corrected obligation.");
+            void change(update, "Saved. What's left now uses the corrected bill.");
           }}
         >
           <h3 className="font-semibold">Correct it</h3>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="sm:col-span-3">
               <label htmlFor={`${ids}-label`} className="text-xs font-semibold">Name</label>
-              <input id={`${ids}-label`} value={label} maxLength={120} onChange={(event) => setLabel(event.target.value)} className="mt-1.5 block h-11 w-full rounded-xl border border-input px-3 text-sm" />
+              <input id={`${ids}-label`} value={label} maxLength={120} onChange={(event) => setLabel(event.target.value)} className="field mt-1.5 block h-11 w-full rounded-lg px-3 text-sm" />
             </div>
             <div className="sm:col-span-2">
               <label htmlFor={`${ids}-amount`} className="text-xs font-semibold">Amount (₹)</label>
-              <input id={`${ids}-amount`} value={amount} inputMode="decimal" aria-invalid={(invalid && parsed === null) || undefined} onChange={(event) => setAmount(event.target.value)} className="mt-1.5 block h-11 w-full rounded-xl border border-input px-3 text-sm tabular-nums aria-invalid:border-destructive" />
+              <input id={`${ids}-amount`} value={amount} inputMode="decimal" aria-invalid={(invalid && parsed === null) || undefined} onChange={(event) => setAmount(event.target.value)} className="field mt-1.5 block h-11 w-full rounded-lg px-3 text-sm tabular-nums" />
             </div>
             <div>
               <label htmlFor={`${ids}-due`} className="text-xs font-semibold">Due date</label>
-              <input id={`${ids}-due`} type="date" value={due} onChange={(event) => setDue(event.target.value)} className="mt-1.5 block h-11 w-full rounded-xl border border-input px-3 text-sm" />
+              <input id={`${ids}-due`} type="date" value={due} onChange={(event) => setDue(event.target.value)} className="field mt-1.5 block h-11 w-full rounded-lg px-3 text-sm" />
             </div>
           </div>
           {invalid && (
@@ -177,7 +177,7 @@ function ObligationBody({ detail, onChanged }: { detail: ObligationDetail; onCha
   );
 }
 
-/** Inspect and resolve one obligation that the estimate deducts. */
+/** Inspect and resolve one bill that is taken off what's left. */
 export function ObligationDialog({
   id,
   onClose,

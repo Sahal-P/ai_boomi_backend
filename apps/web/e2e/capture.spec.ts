@@ -48,14 +48,14 @@ test.describe("household", () => {
   test("overview-loading", async ({ page, api }, testInfo) => {
     api.delay(/money\/summary/, 20_000);
     await page.goto("/dashboard");
-    await expect(page.getByText("Loading your overview…")).toBeVisible();
+    await expect(page.getByText("Loading your month…")).toBeVisible();
     await shot(page, "overview-loading", testInfo, false);
   });
 
   test("overview-degraded", async ({ page, api }, testInfo) => {
     api.failNext(/money\/obligations/, 503, "source_unavailable");
     await page.goto("/dashboard");
-    await expect(page.getByRole("region", { name: "Bills and obligations" }).getByRole("alert")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Bills due" }).getByRole("alert")).toBeVisible();
     await shot(page, "overview-degraded", testInfo);
   });
 
@@ -72,7 +72,7 @@ test.describe("household", () => {
     await page.goto("/assistant");
     await page.getByLabel("Your question").fill("How much did I spend this month?");
     await page.getByRole("button", { name: "Ask", exact: true }).click();
-    await expect(page.getByText("Thinking through your question…")).toBeVisible();
+    await expect(page.getByText("Thinking…")).toBeVisible();
     await shot(page, "assistant-pending", testInfo);
   });
 

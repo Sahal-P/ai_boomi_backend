@@ -1,8 +1,9 @@
 // Task names used in sign-in return messages; page titles live in each route's metadata.
 const destinations: Record<string, string> = {
-  "/dashboard": "your overview",
+  "/dashboard": "Home",
   "/transactions": "Transactions",
   "/review": "Review",
+  "/reports": "Reports",
   "/assistant": "Ask FinBoy",
   "/sources": "Sources",
   "/connect": "Sources",

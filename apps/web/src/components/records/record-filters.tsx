@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useQueryUpdate } from "@/hooks/use-query-update";
 import { categories, kinds, statuses } from "@/lib/api/money";
-import { istDate, monthLabel } from "@/lib/dates";
+import { monthLabel, recentMonths } from "@/lib/dates";
 import { categoryLabels, kindLabels, statusLabels } from "@/lib/labels";
 import { shortcutsEnabled, typingTarget } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
@@ -16,15 +16,7 @@ const FILTER_KEYS = ["q", "status", "category", "kind", "source", "scope", "year
 const PANEL_FILTERS = [["status"], ["category"], ["kind"], ["source"], ["scope", "year", "month"]];
 
 /** Recent calendar months (IST), newest first, for the period selector. */
-function recentMonths(count: number): { year: number; month: number }[] {
-  const [year = 2026, month = 1] = istDate(new Date()).split("-").map(Number);
-  return Array.from({ length: count }, (_, index) => {
-    const offset = month - 1 - index;
-    return { year: year + Math.floor(offset / 12), month: (((offset % 12) + 12) % 12) + 1 };
-  });
-}
-
-const selectClass = "mt-1.5 block h-11 w-full rounded-lg border border-input bg-white/80 px-3 text-sm";
+const selectClass = "field field-select mt-1.5 block h-11 w-full rounded-lg pl-3 text-sm";
 
 /** URL-backed filters; search is debounced so typing doesn't fire a request per key. */
 export function RecordFilters({ view }: { view: "transactions" | "review" }) {
@@ -85,7 +77,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
             placeholder="Search merchant or payer"
             aria-describedby={`${ids}-q-hint`}
             onChange={(event) => setDraft(event.target.value)}
-            className="block h-12 w-full rounded-lg border border-input bg-white/80 pr-4 pl-11 text-sm placeholder:text-ink-soft"
+            className="field block h-12 w-full rounded-lg pr-4 pl-11 text-sm"
           />
           <p id={`${ids}-q-hint`} className="sr-only">
             Results update as you type. Press slash to jump here.
@@ -93,9 +85,9 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
         </div>
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon-lg"
-          className="relative rounded-lg border-input sm:hidden"
+          className="field relative size-12 rounded-lg"
           aria-expanded={open}
           aria-controls={`${ids}-panel`}
           aria-label={applied ? `Filters, ${applied} on` : "Filters"}
@@ -109,7 +101,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
           )}
         </Button>
       </div>
-      <div id={`${ids}-panel`} className={cn("surface grid gap-3 rounded-3xl p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-5", !open && "max-sm:hidden")}>
+      <div id={`${ids}-panel`} className={cn("surface grid gap-3 rounded-3xl p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-5", !open && "hidden")}>
         <div>
           <label htmlFor={`${ids}-period`} className="text-xs font-semibold">
             Period

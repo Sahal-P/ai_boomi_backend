@@ -186,21 +186,21 @@ export function importOutcome(run: ImportRun): ImportOutcomeCopy {
       detail: [
         allNeedReview
           ? "They don't change your confirmed totals until you check them."
-          : "Confirmed records already count toward your overview; the rest wait for your review.",
+          : "Confirmed records already count toward what's left; the rest wait for your review.",
         ...notes,
       ],
       primary: reviewAction,
-      secondary: [...(continuation ? [continuation] : []), { kind: "overview", label: "Go to overview" }],
+      secondary: [...(continuation ? [continuation] : []), { kind: "overview", label: "Go to Home" }],
     };
   }
 
   return {
     tone: "success",
     title: `${plural(created, "new record", "new records")} added`,
-    detail: ["They're confirmed and already count toward your overview.", ...notes],
-    primary: continuation ?? { kind: "overview", label: "See your overview" },
+    detail: ["They're confirmed and already count toward what's left.", ...notes],
+    primary: continuation ?? { kind: "overview", label: "Go to Home" },
     secondary: continuation
-      ? [{ kind: "overview", label: "See your overview" }]
+      ? [{ kind: "overview", label: "Go to Home" }]
       : [{ kind: "sources", label: "Back to Sources" }],
   };
 }

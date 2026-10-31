@@ -38,7 +38,9 @@ test("an answer citation opens its exact record and Back restores the answer", a
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   const answer = page.getByRole("article", { name: /Question: How much did I spend at Sample Books/ });
   await expect(answer.getByText("Spent at Sample Books")).toBeVisible();
-  await expect(answer.getByText("showing 2 of 3 — a sample, not the full list")).toBeVisible();
+  // The supporting records fold under the answer until asked for.
+  await expect(answer.getByRole("link", { name: /Sample Books/ })).toHaveCount(0);
+  await answer.getByText("showing 2 of 3 — a sample, not the full list").click();
   await answer.getByRole("link", { name: /Sample Books/ }).first().click();
   await expect(page).toHaveURL(new RegExp(`/transactions\\?selected=${ids.duplicateTarget}$`));
   await expect(page.getByRole("dialog").getByRole("heading", { name: "Sample Books" })).toBeVisible();

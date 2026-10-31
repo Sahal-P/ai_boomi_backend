@@ -5,7 +5,6 @@ import type {
   Kind,
   RecordStatus,
   ReviewReason,
-  Simulation,
   SourceMode,
   Transaction,
 } from "@/lib/api/money";
@@ -193,21 +192,6 @@ export const liabilityLabels: Record<Commitment["liability_state"], string> = {
   overdue: "Overdue",
   paid: "Paid",
   dismissed: "Dismissed",
-};
-
-export const simulationLineLabels: Record<Simulation["lines"][number]["label_key"], string> = {
-  tracked_income: "Tracked income",
-  confirmed_outflows: "Confirmed net outflows",
-  upcoming_commitments: "Upcoming obligations",
-  overdue_commitments: "Overdue obligations",
-  proposed_monthly: "Monthly amount set aside",
-};
-
-export const simulationWarningLabels: Record<Simulation["warnings"][number], string> = {
-  pending_review_items: "Records waiting for review aren't included in this estimate.",
-  negative_remaining: "This would leave less than nothing in your tracked records.",
-  low_buffer: "This leaves only a thin buffer in your tracked records.",
-  incomplete_coverage: "Email coverage is incomplete, so some spending may be missing.",
 };
 
 export const issueReasonLabels: Record<ImportIssue["reason"], string> = {

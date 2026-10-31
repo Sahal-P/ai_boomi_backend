@@ -18,7 +18,7 @@ test("primary actions are never covered by fixed layers on phones", async ({ pag
   test.skip(testInfo.project.name === "desktop", "fixed phone chrome only");
   for (const [path, name] of [
     ["/sources", "Scan now"],
-    ["/dashboard", "Ask about my money"],
+    ["/dashboard", "All budgets"],
     ["/assistant", "Ask"],
     ["/privacy", "Preview deletion"],
   ] as const) {
@@ -43,9 +43,20 @@ test("the tab bar steps aside while typing so the keyboard never hides the field
   await expect(page.locator(".app-tabbar")).toBeHidden();
 });
 
+test("Add entry opens quick add from every screen", async ({ page }) => {
+  for (const path of ["/dashboard", "/transactions", "/review", "/reports", "/assistant", "/sources", "/privacy"]) {
+    await page.goto(path);
+    await page.getByRole("button", { name: "Add entry", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: "Add money in or out" });
+    await expect(sheet, path).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sheet, path).toBeHidden();
+  }
+});
+
 test("navigation labels meet WCAG AA contrast as rendered", async ({ page }) => {
   await page.goto("/dashboard");
-  await expect(page.getByRole("link", { name: "Overview", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Home", exact: true })).toBeVisible();
   const samples = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('nav[aria-label="App navigation"] a')]
       .filter((link) => link.checkVisibility())
@@ -91,9 +102,10 @@ test("keyboard users can skip to content and see focus", async ({ page }, testIn
 
 test("every app route has a task title and one page heading", async ({ page }) => {
   for (const [path, title] of [
-    ["/dashboard", "Overview · FinBoy"],
+    ["/dashboard", "Home · FinBoy"],
     ["/transactions", "Transactions · FinBoy"],
     ["/review", "Review · FinBoy"],
+    ["/reports", "Reports · FinBoy"],
     ["/assistant", "Ask FinBoy · FinBoy"],
     ["/sources", "Sources · FinBoy"],
     ["/privacy", "Privacy & data · FinBoy"],
@@ -104,13 +116,31 @@ test("every app route has a task title and one page heading", async ({ page }) =
   }
 });
 
+test("no app screen scrolls sideways once its content is in", async ({ page }) => {
+  for (const [path, ready] of [
+    ["/dashboard", page.getByRole("region", { name: /Left this month/ })],
+    ["/transactions", page.locator("[data-record-id]").first()],
+    ["/review", page.getByRole("list", { name: "Records to review" })],
+    ["/reports", page.getByRole("table", { name: "Money in and money out, the last six months" })],
+    ["/assistant", page.getByLabel("Your question")],
+    ["/sources", page.getByRole("heading", { level: 1 })],
+    ["/privacy", page.getByRole("heading", { level: 1 })],
+  ] as const) {
+    await page.goto(path);
+    await expect(ready).toBeAttached();
+    // Against the layout viewport: a phone zooms out to fit overflow, which hides it from innerWidth.
+    const fits = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+    expect(fits, `${path} is wider than the screen`).toBe(true);
+  }
+});
+
 test("offline shows an honest banner and recovers when back online", async ({ page, context }) => {
   await page.goto("/dashboard");
-  await expect(page.getByRole("region", { name: /Estimated unallocated/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /Left this month/ })).toBeVisible();
   await context.setOffline(true);
   await expect(page.getByText("You're offline.")).toBeVisible();
   await page.getByRole("button", { name: "Refresh" }).click();
-  await expect(page.getByRole("region", { name: /Estimated unallocated/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /Left this month/ })).toBeVisible();
   await context.setOffline(false);
   await expect(page.getByText("You're offline.")).toBeHidden();
 });
@@ -123,7 +153,7 @@ test("daily screens load no WebGL, and the landing page works without it", async
   // Thinking orbs are small 2D canvases, not WebGL; every other canvas is a 3D layer.
   const webgl = page.locator("canvas:not([data-thinking-orb])");
   await page.goto("/dashboard");
-  await expect(page.getByRole("region", { name: /Estimated unallocated/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /Left this month/ })).toBeVisible();
   expect(await webgl.count()).toBe(0);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?graphics=off");

@@ -21,13 +21,22 @@ type AnimatedAmountProps = {
   className?: string;
   duration?: number;
   prefix?: string;
+  /** Final text; the default rounds to whole rupees (marketing). App screens pass formatMoney so
+   *  paise are never hidden. */
+  format?: (amountMinor: number) => string;
 };
 
 /**
  * Counts up to an INR amount when it enters the view. Text is written straight to the
  * DOM node (no re-render per frame); the final value is server-rendered for SEO and a11y.
  */
-export function AnimatedAmount({ amountMinor, className, duration = 1.6, prefix = "" }: AnimatedAmountProps) {
+export function AnimatedAmount({
+  amountMinor,
+  className,
+  duration = 1.6,
+  prefix = "",
+  format = formatRupees,
+}: AnimatedAmountProps) {
   const node = useRef<HTMLSpanElement>(null);
   const inView = useInView(node, { once: true, margin: "-10% 0px" });
   const reduced = useReducedMotion();
@@ -39,15 +48,19 @@ export function AnimatedAmount({ amountMinor, className, duration = 1.6, prefix 
       duration,
       ease: [0.16, 1, 0.3, 1],
       onUpdate: (value) => {
-        element.textContent = prefix + formatRupees(Math.round(value / 100) * 100);
+        // Whole rupees while counting; the exact amount lands with the last frame.
+        element.textContent = prefix + format(value === amountMinor ? amountMinor : Math.round(value / 100) * 100);
+      },
+      onComplete: () => {
+        element.textContent = prefix + format(amountMinor);
       },
     });
     return () => controls.stop();
-  }, [amountMinor, duration, inView, prefix, reduced]);
+  }, [amountMinor, duration, format, inView, prefix, reduced]);
 
   return (
     <span ref={node} className={cn("tabular", className)}>
-      {prefix + formatRupees(amountMinor)}
+      {prefix + format(amountMinor)}
     </span>
   );
 }

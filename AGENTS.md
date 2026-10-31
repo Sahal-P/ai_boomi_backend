@@ -200,3 +200,14 @@ One agent on feat/finboy-fast-decisions, loopback 8061/3061, disposable finboy_s
 `TRIAGE_ENABLED` stays false until `pnpm eval:triage` passes for each enabled language, the human has
 checked Liquid's data terms and approves the release. d1-ultra gets masked text and a small photo
 preview, never ledger amounts; nothing it sees or answers is stored.
+
+## UI refresh round — 31 October 2026
+
+From main a09d1bd the human asked for a calmer web app: four tabs (Home, Transactions with an
+All · To review tab, Reports, Ask), Sources and Privacy & data in the account menu, a + that
+opens quick add from every screen, glass fields, expense reports (a spending donut, six months
+of money in and out, budget meters) and a chat-style Ask like Gemini's in FinBoy's theme.
+`docs/ui-refresh/contract.md` supersedes the earlier navigation, Overview and Ask layouts only as
+documented there. One agent on feat/finboy-ui-refresh, loopback web 3061 with API 8061,
+disposable finboy_signup; web only, no API or migration change. Charts follow the dataviz method
+with validated tokens; contrast, blur and reduced-motion rules are unchanged.

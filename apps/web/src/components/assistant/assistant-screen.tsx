@@ -1,26 +1,48 @@
 "use client";
 
-import { Send, Trash2 } from "lucide-react";
-import { useId, useState } from "react";
-import { PageHeader } from "@/components/app-shell/page-header";
-import { styleLabels, TurnCard } from "@/components/assistant/turn-card";
-import { VoiceControls } from "@/components/assistant/voice-controls";
+import { ArrowDown, Calculator, PiggyBank, SquarePen, UtensilsCrossed, Wallet } from "lucide-react";
+import { motion } from "motion/react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Composer } from "@/components/assistant/composer";
+import { TurnCard } from "@/components/assistant/turn-card";
 import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { Button } from "@/components/ui/button";
 import { useAssistant } from "@/hooks/use-assistant";
 import { useSpeech } from "@/hooks/use-speech";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
-import { styles } from "@/lib/api/assistant";
-import { recordsNote } from "@/lib/api/money";
+import { cn } from "@/lib/utils";
 
-const examples = [
-  { text: "How much did I spend on food this month?", lang: "en" },
-  { text: "How much did I spend at Amazon last month?", lang: "en" },
+const SUGGESTIONS: { text: string; lang?: string; icon?: typeof Wallet }[] = [
+  { text: "How much did I spend this month?", icon: Wallet },
+  { text: "How much did I spend on food this month?", icon: UtensilsCrossed },
+  { text: "How much money is left this month?", icon: PiggyBank },
+  { text: "Can I set aside ₹5,000 each month?", icon: Calculator },
   { text: "इस महीने कितना पैसा बाकी है?", lang: "hi" },
   { text: "ഈ മാസം ഭക്ഷണത്തിന് എത്ര ചെലവായി?", lang: "ml" },
-  { text: "Can I set aside ₹5,000 each month?", lang: "en" },
 ];
 
+const istHour = new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: "Asia/Kolkata" });
+
+/** A time-of-day hello. FinBoy keeps no name, so it never pretends to know one. */
+function greeting(now: Date) {
+  const hour = Number(istHour.format(now));
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
+  if (hour >= 17 && hour < 22) return "Good evening";
+  return "Hello";
+}
+
+/** To the bottom of the page, where the conversation's end always sits clear of the docked composer. */
+function scrollToEnd() {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: document.documentElement.scrollHeight, behavior: reduce ? "auto" : "smooth" });
+}
+
+/**
+ * Ask, laid out like a chat: a greeting and suggestions until the first question, then the
+ * conversation oldest-first with the composer docked below it. Questions and answers live in
+ * memory only (lib/conversation.ts).
+ */
 export function AssistantScreen() {
   const assistant = useAssistant();
   const speech = useSpeech();
@@ -31,164 +53,161 @@ export function AssistantScreen() {
     setFromVoice(true);
   });
   const ids = useId();
-  const voiceBusy =
-    voice.state.step === "requesting" ||
-    voice.state.step === "recording" ||
-    voice.state.step === "transcribing";
+  const input = useRef<HTMLTextAreaElement>(null);
+  const end = useRef<HTMLDivElement>(null);
+  const [atEnd, setAtEnd] = useState(true);
+  const [hello] = useState(() => greeting(new Date()));
+  const turns = [...assistant.turns].reverse();
+  const empty = turns.length === 0;
+  const latest = assistant.turns[0];
+  const latestId = latest?.id ?? null;
+  const latestState = latest?.state ?? null;
 
-  function submit() {
-    if (assistant.ask(draft)) {
+  // A new question always scrolls to the end; its answer does only if you were already there.
+  const following = useRef(true);
+  useEffect(() => {
+    following.current = atEnd;
+  }, [atEnd]);
+  useEffect(() => {
+    if (latestId) scrollToEnd();
+  }, [latestId]);
+  useEffect(() => {
+    if (latestState && latestState !== "pending" && following.current) scrollToEnd();
+  }, [latestState]);
+
+  // "At the end" means the last answer is visible above the docked composer.
+  useEffect(() => {
+    const target = end.current;
+    if (!target) return;
+    const observer = new IntersectionObserver(([entry]) => setAtEnd(entry?.isIntersecting ?? true), {
+      rootMargin: "0px 0px -180px 0px",
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [empty]);
+
+  function submit(text = draft) {
+    if (assistant.ask(text)) {
       setDraft("");
       setFromVoice(false);
       voice.reset();
     }
   }
 
+  function newChat() {
+    assistant.clear();
+    setDraft("");
+    setFromVoice(false);
+    voice.reset();
+    input.current?.focus();
+  }
+
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="Ask FinBoy"
-        description="Ask in English, हिन्दी or മലയാളം — or mix them. AI helps explain your money and plan purchases; financial totals use confirmed household records."
-      />
-      <section aria-labelledby={`${ids}-ask`} className="surface rounded-3xl p-5 sm:p-7">
-        <h2 id={`${ids}-ask`} className="sr-only">
-          Ask a question
-        </h2>
-        <details className="rounded-2xl bg-well px-4 py-3 text-sm ring-1 ring-ink/5">
-          <summary className="cursor-pointer font-semibold">What can I ask?</summary>
-          <ul className="mt-2 list-disc space-y-1 pl-5 leading-relaxed text-ink-soft">
-            <li>Spending for today, yesterday, this month, last month or a month like 2026-09.</li>
-            <li>Spending by category or at a merchant, including refunds.</li>
-            <li>How much is left this month, and whether you can set aside a monthly amount.</li>
-            <li>Planning a purchase: discuss the quote, savings and cash or financing options.</li>
-            <li>FinBoy doesn&apos;t pick funds or stocks, and only counts confirmed records.</li>
-          </ul>
-        </details>
-        <form
-          className="mt-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <label htmlFor={`${ids}-question`} className="text-sm font-medium">
-            {fromVoice ? "Your question (from your recording — check it)" : "Your question"}
-          </label>
-          <textarea
-            id={`${ids}-question`}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            maxLength={2000}
-            rows={3}
-            placeholder="How much did I spend on food this month?"
-            className="mt-2 block w-full resize-y rounded-2xl border border-input bg-white/80 p-4 text-base leading-relaxed placeholder:text-ink-soft"
-            disabled={voiceBusy}
-          />
-          <div className="mt-3 flex flex-wrap items-end gap-3">
-            <div className="min-w-48 flex-1">
-              <label htmlFor={`${ids}-style`} className="text-xs font-semibold">
-                Reply style
-              </label>
-              <select
-                id={`${ids}-style`}
-                value={assistant.style}
-                aria-describedby={`${ids}-style-hint`}
-                onChange={(event) => {
-                  const next = styles.find((style) => style === event.target.value);
-                  if (next) assistant.setStyle(next);
-                }}
-                className="mt-1.5 block h-11 w-full rounded-lg border border-input bg-white/80 px-3 text-sm"
+    <div className="ask-page mx-auto flex min-h-[calc(100dvh-10.75rem)] max-w-3xl flex-col lg:min-h-[calc(100dvh-4rem)]">
+      <header className="flex min-h-11 items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold tracking-[-0.01em]">Ask FinBoy</h1>
+        {!empty && (
+          <Button variant="ghost" size="sm" onClick={newChat}>
+            <SquarePen aria-hidden="true" /> New chat
+          </Button>
+        )}
+      </header>
+
+      <div className={cn("flex flex-1 flex-col", empty && "justify-center")}>
+        {empty ? (
+          <section aria-labelledby={`${ids}-hello`} className="pb-8 text-center">
+            <ThinkingOrb state="breathing" rest className="mx-auto" />
+            <h2 id={`${ids}-hello`} className="rise-in mt-6 text-[2rem] leading-tight font-medium tracking-[-0.035em] sm:text-[2.6rem]">
+              {hello}
+            </h2>
+            <p className="rise-in mt-2 text-base text-ink-soft [animation-delay:120ms]">
+              Ask about your money in English, <span lang="hi">हिन्दी</span> or <span lang="ml">മലയാളം</span>.
+            </p>
+          </section>
+        ) : (
+          <section role="log" aria-label="Conversation" className="flex flex-1 flex-col gap-10 pt-6 pb-10">
+            {turns.map((turn) => {
+              return (
+                <TurnCard
+                  key={turn.id}
+                  turn={turn}
+                  currentStyle={assistant.style}
+                  playback={speech.playback}
+                  busy={assistant.pending}
+                  onPlay={() => {
+                    if (turn.answer) speech.play(turn.id, turn.answer);
+                  }}
+                  onResume={() => speech.resume(turn.id)}
+                  onStop={speech.stop}
+                  onRetry={() => assistant.retry(turn.id)}
+                  onCancel={assistant.cancel}
+                  onAskAgain={() => assistant.ask(turn.question)}
+                />
+              );
+            })}
+            <div ref={end} />
+          </section>
+        )}
+
+        {!empty && <div aria-hidden="true" className="ask-fade" />}
+        {/* One composer for both layouts, so typing and focus survive the first question while it
+            glides from the middle of the screen down to its dock. */}
+        <motion.div layout="position" transition={{ type: "spring", stiffness: 260, damping: 32 }} className="sticky bottom-[5.5rem] z-30 lg:bottom-6">
+          <div className="relative">
+            {!empty && !atEnd && (
+              <Button
+                variant="glass"
+                size="icon"
+                aria-label="Jump to the latest answer"
+                className="absolute -top-14 left-1/2 size-10 -translate-x-1/2 bg-white/90"
+                onClick={scrollToEnd}
               >
-                {styles.map((style) => (
-                  <option key={style} value={style} lang={styleLabels[style].lang}>
-                    {styleLabels[style].label}
-                  </option>
-                ))}
-              </select>
-              <p id={`${ids}-style-hint`} className="mt-1 text-xs text-ink-soft">
-                Applies to your next question; remembered for this browser session.
-              </p>
-            </div>
-            <Button type="submit" disabled={assistant.pending || voiceBusy || !draft.trim()}>
-              <Send aria-hidden="true" /> {assistant.pending ? "Waiting for the answer…" : "Ask"}
-            </Button>
-          </div>
-        </form>
-        <div className="mt-4 border-t pt-4">
-          <VoiceControls
-            state={voice.state}
-            level={voice.level}
-            disabled={assistant.pending}
-            onStart={voice.start}
-            onStop={voice.stop}
-            onCancel={voice.cancel}
-            onDiscardTranscript={() => {
-              setDraft("");
-              setFromVoice(false);
-              voice.reset();
-            }}
-          />
-        </div>
-      </section>
-
-      {!assistant.turns.length && (
-        // A yellow moment: FinBoy at rest until the first question of the session.
-        <section aria-label="Example questions" className="moment flex flex-col gap-5 rounded-3xl p-5 sm:flex-row sm:items-start sm:p-7">
-          <ThinkingOrb state="breathing" rest className="shrink-0" />
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold tracking-[-0.02em]">Try one of these</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {examples.map((example) => (
-                <button
-                  key={example.text}
-                  type="button"
-                  lang={example.lang}
-                  onClick={() => setDraft(example.text)}
-                  className="min-h-11 rounded-2xl border border-ink/10 bg-white/80 px-4 py-2.5 text-left text-sm leading-relaxed text-ink hover:bg-white"
-                >
-                  {example.text}
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {assistant.turns.length > 0 && (
-        <section aria-label="This session's questions" className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">This session</h2>
-            <Button variant="ghost" size="sm" onClick={assistant.clear}>
-              <Trash2 aria-hidden="true" /> Clear
-            </Button>
-          </div>
-          {assistant.turns.map((turn) => (
-            <TurnCard
-              key={turn.id}
-              turn={turn}
-              currentStyle={assistant.style}
-              playback={speech.playback}
-              busy={assistant.pending}
-              onPlay={() => {
-                if (turn.answer) speech.play(turn.id, turn.answer);
+                <ArrowDown aria-hidden="true" />
+              </Button>
+            )}
+            <Composer
+              id={`${ids}-question`}
+              inputRef={input}
+              value={draft}
+              onChange={setDraft}
+              onSubmit={() => submit()}
+              pending={assistant.pending}
+              onStop={assistant.cancel}
+              style={assistant.style}
+              onStyle={assistant.setStyle}
+              voice={voice}
+              fromVoice={fromVoice}
+              onDiscardTranscript={() => {
+                setDraft("");
+                setFromVoice(false);
+                voice.reset();
               }}
-              onResume={() => speech.resume(turn.id)}
-              onStop={speech.stop}
-              onRetry={() => assistant.retry(turn.id)}
-              onCancel={assistant.cancel}
-              onAskAgain={() => assistant.ask(turn.question)}
             />
-          ))}
-          <p className="text-xs text-ink-soft">
-            Questions and answers stay on this page until you reload or clear them. FinBoy
-            doesn&apos;t keep them.
-          </p>
-        </section>
-      )}
+            <p className="mt-2 text-center text-xs text-ink-soft">
+              FinBoy answers from your confirmed records and never picks funds or stocks.
+            </p>
+          </div>
+        </motion.div>
 
-      <p className="max-w-xl text-xs leading-relaxed text-ink-soft">
-        {recordsNote} FinBoy can model cash flow; it doesn&apos;t pick funds or stocks.
-      </p>
+        {empty && (
+          <ul aria-label="Suggested questions" className="mt-6 flex flex-wrap justify-center gap-2">
+            {SUGGESTIONS.map((suggestion, index) => (
+              <li key={suggestion.text} className="rise-in" style={{ animationDelay: `${200 + index * 60}ms` }}>
+                <button
+                  type="button"
+                  lang={suggestion.lang}
+                  disabled={assistant.pending}
+                  onClick={() => submit(suggestion.text)}
+                  className="surface inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-left text-sm text-ink transition-[transform,background-color] duration-300 ease-out-expo hover:-translate-y-px hover:bg-white/80"
+                >
+                  {suggestion.icon && <suggestion.icon className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />}
+                  {suggestion.text}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

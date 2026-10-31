@@ -119,7 +119,7 @@ test("leaving with an unsaved correction asks first", async ({ page }, testInfo)
   const panel = await openRecord(page, testInfo.project.name === "desktop", "Unknown merchant");
   await panel.getByLabel("Merchant or payer").fill("Edited name");
   if (testInfo.project.name === "desktop") {
-    await page.getByRole("navigation", { name: "App navigation" }).first().getByRole("link", { name: "Overview" }).click();
+    await page.getByRole("navigation", { name: "App navigation" }).first().getByRole("link", { name: "Home" }).click();
     const confirm = page.getByRole("alertdialog", { name: "Leave without saving?" });
     await expect(confirm).toBeVisible();
     await confirm.getByRole("button", { name: "Keep editing" }).click();

@@ -46,13 +46,15 @@ test("idempotency: re-uploading the same files adds nothing new", async ({ page 
   await expect(page.locator("dt", { hasText: "New records added" }).locator("xpath=following-sibling::dd")).toHaveText("0");
 });
 
-test("overview: estimate, calculation, coverage and categories come from the API", async ({ page }) => {
+test("home and reports: what is left, its working and the categories come from the API", async ({ page }) => {
   await page.goto("/dashboard");
-  const estimate = page.getByRole("region", { name: /Estimated unallocated/ });
-  await expect(estimate).toBeVisible();
-  await expect(estimate.getByRole("heading", { name: "How this is calculated" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Where it went" }).getByRole("link").first()).toBeVisible();
-  test.info().annotations.push({ type: "estimate", description: (await estimate.locator("p").nth(0).textContent()) ?? "" });
+  const hero = page.getByRole("region", { name: /Left this month/ });
+  await expect(hero).toBeVisible();
+  await hero.getByText("How is this worked out?").click();
+  await expect(hero.getByText("Left", { exact: true })).toBeVisible();
+  test.info().annotations.push({ type: "left", description: (await hero.locator("p").nth(0).textContent()) ?? "" });
+  await page.goto("/reports");
+  await expect(page.getByRole("region", { name: "Where your money went" }).getByRole("link").first()).toBeVisible();
 });
 
 test("review: a decision is version-checked and undo restores the queue", async ({ page }, testInfo) => {
@@ -133,9 +135,9 @@ test("real obligations: an overdue bill stays deducted, can be resolved and reop
   const yesterday = "2026-10-23";
   await due.fill(yesterday);
   await dialog.getByRole("button", { name: "Save correction" }).click();
-  await expect(dialog.getByText(/stays deducted from your estimate/)).toBeVisible();
+  await expect(dialog.getByText(/stays taken off what's left/)).toBeVisible();
   await dialog.getByRole("button", { name: "Close obligation" }).click();
-  await expect(page.getByRole("region", { name: /Estimated unallocated/ }).getByText("₹14,780", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("region", { name: /Left this month/ }).getByText("₹14,780", { exact: true }).first()).toBeVisible();
   await page.locator(`[data-obligation-id="${id}"]`).click();
   await dialog.getByRole("button", { name: "I've paid this" }).click();
   await expect(dialog.getByText("Marked as paid. It's no longer deducted.")).toBeVisible();
@@ -143,7 +145,7 @@ test("real obligations: an overdue bill stays deducted, can be resolved and reop
   await expect(dialog.getByText("Reopened. It's deducted again until resolved.")).toBeVisible();
   await due.fill(original);
   await dialog.getByRole("button", { name: "Save correction" }).click();
-  await expect(dialog.getByText("Saved. The estimate uses the corrected obligation.")).toBeVisible();
+  await expect(dialog.getByText("Saved. What's left now uses the corrected bill.")).toBeVisible();
   await dialog.getByRole("button", { name: "Close obligation" }).click();
 });
 

@@ -246,6 +246,20 @@ export type Simulation = z.infer<typeof simulationSchema>;
 /** A month the user selected; `null` means the current IST month resolved by the backend. */
 export type Period = { year: number; month: number } | null;
 
+/** The month in a screen's URL (`?year=&month=`), or null for the current month. */
+export function periodFromParams(params: URLSearchParams): Period {
+  const year = Number(params.get("year"));
+  const month = Number(params.get("month"));
+  return Number.isInteger(year) && year >= 2000 && year <= 2100 && Number.isInteger(month) && month >= 1 && month <= 12
+    ? { year, month }
+    : null;
+}
+
+/** `&year=…&month=…` to carry a chosen month into a records link; empty for the current month. */
+export function periodSearch(period: Period): string {
+  return period ? `&year=${period.year}&month=${period.month}` : "";
+}
+
 export function periodQuery(period: Period) {
   return period
     ? { period: "month", year: period.year, month: period.month }
@@ -278,8 +292,6 @@ export const simulate = (amount: number, signal?: AbortSignal) =>
 
 export const recordsNote =
   "Based on email-derived and confirmed records. Your actual bank balance may differ.";
-export const simulationDisclaimer =
-  "This models cash flow from FinBoy's tracked records. It is not a recommendation to purchase any security.";
 
 export const formatMoney = (minor: number) =>
   new Intl.NumberFormat("en-IN", {

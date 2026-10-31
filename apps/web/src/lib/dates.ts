@@ -52,6 +52,22 @@ export function monthLabel(year: number, month: number): string {
   return monthYear.format(new Date(year, month - 1, 1));
 }
 
+export type Month = { year: number; month: number };
+
+/** `count` calendar months ending with (and including) year-month, newest first. */
+export function monthsBack(year: number, month: number, count: number): Month[] {
+  return Array.from({ length: count }, (_, index) => {
+    const offset = month - 1 - index;
+    return { year: year + Math.floor(offset / 12), month: (((offset % 12) + 12) % 12) + 1 };
+  });
+}
+
+/** The current IST month and the ones before it, newest first. */
+export function recentMonths(count: number, now: Date = new Date()): Month[] {
+  const [year = 2026, month = 1] = istDate(now).split("-").map(Number);
+  return monthsBack(year, month, count);
+}
+
 /** Calendar date in IST for an instant, as YYYY-MM-DD (date inputs, comparisons). */
 export function istDate(value: string | Date): string {
   const parts = new Intl.DateTimeFormat("en-CA", {

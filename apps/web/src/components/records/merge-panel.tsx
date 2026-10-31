@@ -121,7 +121,7 @@ export function MergePanel({
                 <li>&ldquo;{chosen.merchant}&rdquo; stays; this record&apos;s {currentPreview.source_count} source {currentPreview.source_count === 1 ? "email moves" : "emails move"} to it.</li>
                 <li>{currentPreview.affected_transaction_ids.length} {currentPreview.affected_transaction_ids.length === 1 ? "record changes" : "records change"}; you can undo it from the record&apos;s history.</li>
                 <li>
-                  Estimated unallocated this month: {formatMoney(currentPreview.before_summary.estimated_unallocated_minor)} →{" "}
+                  Left this month: {formatMoney(currentPreview.before_summary.estimated_unallocated_minor)} →{" "}
                   {formatMoney(currentPreview.after_summary.estimated_unallocated_minor)}
                 </li>
               </ul>

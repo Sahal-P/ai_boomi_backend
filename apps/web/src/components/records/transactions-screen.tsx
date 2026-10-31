@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef } from "react";
@@ -12,10 +12,12 @@ import { RecordDialog } from "@/components/records/record-dialog";
 import { RecordFilters } from "@/components/records/record-filters";
 import { RecordGroups } from "@/components/records/record-groups";
 import { RecordRow } from "@/components/records/record-row";
+import { RecordTabs } from "@/components/records/record-tabs";
 import { Button } from "@/components/ui/button";
+import { useQuickAdd } from "@/components/money/quick-add-provider";
 import { useQueryUpdate } from "@/hooks/use-query-update";
 import { PAGE_SIZE, useRecordList } from "@/hooks/use-record-list";
-import { recordsNote } from "@/lib/api/money";
+import { useRecordsChanged } from "@/hooks/use-records-changed";
 import { monthLabel } from "@/lib/dates";
 import { describeProblem, hasCode } from "@/lib/messages";
 
@@ -40,6 +42,8 @@ export function TransactionsScreen() {
         ? monthLabel(query.period.year, query.period.month)
         : "this month";
   const versionConflict = list.error !== null && hasCode(list.error, "version_conflict");
+  const quickAdd = useQuickAdd();
+  useRecordsChanged(list.reload);
 
   function hrefFor(id: string) {
     const next = new URLSearchParams(params.toString());
@@ -64,13 +68,21 @@ export function TransactionsScreen() {
     <div className="space-y-5">
       <PageHeader
         title="Transactions"
-        description={recordsNote}
+        description="Every entry and record, newest first."
         actions={
-          <Button variant="outline" onClick={list.reload} disabled={list.status === "loading" || list.status === "refreshing"}>
-            <RefreshCw aria-hidden="true" /> Refresh
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Refresh"
+            onClick={list.reload}
+            disabled={list.status === "loading" || list.status === "refreshing"}
+          >
+            <RefreshCw aria-hidden="true" />
           </Button>
         }
-      />
+      >
+        <RecordTabs current="all" toReview={page && !list.stale ? page.unresolved_total : null} />
+      </PageHeader>
       <RecordFilters view="transactions" />
 
       {query.dataset === "quarantined" && (
@@ -92,11 +104,6 @@ export function TransactionsScreen() {
                 : `Showing ${page.offset + 1}–${page.offset + page.items.length} of ${page.total} for ${periodLabel}`
               : `Records for ${periodLabel}`}
           </h2>
-          {page && page.unresolved_total > 0 && (
-            <Link href="/review" className="text-sm font-semibold text-ink underline underline-offset-4">
-              {page.unresolved_total} {page.unresolved_total === 1 ? "record needs" : "records need"} review
-            </Link>
-          )}
         </div>
         <RefreshingLabel active={list.status === "refreshing"}>
           {list.stale ? "Updating for your new filters…" : "Refreshing…"}
@@ -137,16 +144,16 @@ export function TransactionsScreen() {
               title={`No records for ${periodLabel}`}
               actions={
                 <>
+                  <Button onClick={quickAdd.open}>
+                    <Plus aria-hidden="true" /> Add an entry
+                  </Button>
                   <Button asChild variant="outline">
                     <Link href="/transactions?scope=all">See all time</Link>
-                  </Button>
-                  <Button asChild variant="ghost">
-                    <Link href="/sources">Go to Sources</Link>
                   </Button>
                 </>
               }
             >
-              Nothing was found in this period. Scan Gmail or upload emails to add records.
+              Nothing here for this period yet. Add an entry, or send it to FinBoy on WhatsApp.
             </EmptyState>
           )
         )}

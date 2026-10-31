@@ -8,21 +8,30 @@ Phase-1 integration history (design snapshot, package provenance) stays in
 
 ## Shape
 
-- Routes: `/dashboard` (Overview), `/transactions`, `/review`, `/assistant`, `/sources`,
-  `/import/<id>`, `/privacy` inside the authenticated `(app)` shell; public `/`, `/demo`,
-  `/login`, `/privacy-policy` and `/terms`. `/connect` only forwards the registered OAuth
-  callback to Sources.
-- Desktop has a glass sidebar with household identity, service status, Shortcuts and Sign out.
-  Phones have a compact header with an **Account and settings** menu and the reference's
-  floating five-tab bar (black active capsule, every tab labelled) that steps aside while a
-  text field is focused. Nothing else floats over content.
-- Every page has one task title (`<title>` "Task · FinBoy") and one `PageHeader` heading;
-  Import results adds the glass back button to Sources.
-- The theme (`docs/design-system.md`): glass cards on a fixed field, the estimate on a solid
-  sunflower card with the reference's action tiles below, records as glass cards under month
-  headings, and yellow moments with drawn illustrations for sign-in, empty and all-done states
-  and the landing hero. Dotted thinking orbs appear only while FinBoy's AI is working (an answer,
-  a transcription, a spoken answer, an import) and resting on Ask's empty state.
+- Routes: `/dashboard` (Home), `/transactions` and `/review` (two tabs of Transactions),
+  `/reports`, `/assistant` (Ask), `/sources`, `/import/<id>`, `/privacy` inside the
+  authenticated `(app)` shell; public `/`, `/demo`, `/login`, `/privacy-policy` and `/terms`.
+  `/connect` only forwards the registered OAuth callback to Sources.
+- Four tabs (UI refresh round, [contract](ui-refresh/contract.md)): **Home**, **Transactions**
+  (with **All** and **To review** tabs), **Reports** and **Ask**. Sources, Privacy & data,
+  Keyboard shortcuts and Sign out live in the account menu: the avatar in the phone header, the
+  account button at the foot of the desktop sidebar. The sidebar mentions the service only when
+  it is degraded or unreachable.
+- Quick add is one sheet for the whole app (`components/money/quick-add-provider.tsx`): the
+  desktop sidebar's **Add entry** and the round **+** beside the phone tab bar open it from any
+  screen, and a save or undo emits `lib/record-events.ts` so Home, Transactions, Review and
+  Reports reload. Phones have a compact header and the floating tab pill (black active capsule,
+  every tab labelled); the pill and the + step aside while a text field is focused.
+- Every page has one task title (`<title>` "Task · FinBoy") and one heading; Import results adds
+  the glass back button to Sources.
+- The theme (`docs/design-system.md`): glass cards on a fixed field; Home's sunflower hero
+  ("Left this month", money in, money out, bills due, and the working on request); Reports'
+  charts (a spending donut, six months of money in and out, budget meters); records as glass
+  cards under month headings; and yellow moments with drawn illustrations for sign-in, empty and
+  all-done states and the landing hero. Ask is a chat: a greeting and suggestions, then the
+  conversation with the composer docked below. Dotted thinking orbs appear only while FinBoy's
+  AI is working (an answer, a transcription, a spoken answer, an import) and resting on Ask's
+  greeting.
 - Daily screens carry no WebGL (orbs are 2D canvases). The 3D brand scenes stay in the landing
   page's lower sections, honour reduced motion, and fall back to DOM with `?graphics=off` or a
   failed context probe.
@@ -44,7 +53,10 @@ Phase-1 integration history (design snapshot, package provenance) stays in
   `lib/import-outcome.ts` turns an import run into its title, details and next actions.
 - Money is never computed in the browser. Totals, deductions, previews, simulations and
   answers come from the API as integer paise; the UI only formats them and converts typed
-  rupees to paise for corrections. Corrections send only changed fields with the record's
+  rupees to paise for corrections. Reports is the one place that derives display-only figures
+  from those totals (`lib/charts.ts`): category shares, the "Everything else" slice, the change
+  against the month before and a daily average. None of them is saved, sent or used in a
+  decision. Corrections send only changed fields with the record's
   `expected_version`; save-and-confirm is one atomic decision, and every decision can be undone
   while the backend allows it.
 - URL state carries filters, period, paging and the selected record (in the list and the
@@ -64,8 +76,8 @@ exist from `GET /api/v1/auth/session` (`sign_in`), never from build-time variabl
   illustration. The session-ended prompt reuses the same options.
 - **WhatsApp only:** "Prefer WhatsApp? Say hi to FinBoy" on the landing hero and `/login`, shown
   only while sign-ups are open, opens the chat with "Hi FinBoy" typed.
-- **Quick add** (`quick-add.tsx`): Overview's **Add** button and the empty state "Add what you
-  spent today" open a sheet (right on desktop, bottom on phones). Type or **Say it** in
+- **Quick add** (`quick-add.tsx`): the sidebar's **Add entry**, the phone **+** and Home's empty
+  state "Add what you spent today" open a sheet (right on desktop, bottom on phones). Type or **Say it** in
   English, Hindi or Malayalam, with an example in each (the Malayalam one marked `lang="ml"`);
   Enter works like Next. The editable card (money out, money in or
   to pay later; amount; date; to or for; category) saves with one tap. **Undo** rejects the
@@ -76,7 +88,7 @@ exist from `GET /api/v1/auth/session` (`sign_in`), never from build-time variabl
   Google, **Sign out on every device** and **Delete my account** (one confirmation, then back to
   the landing page). Households that can't connect Gmail yet see "Gmail import is invite-only
   while Google reviews FinBoy" on Privacy and Sources instead of a Connect button.
-- Overview's toolbar keeps one row at 320 px: Add, the period, and Refresh as an icon on phones.
+- Home's toolbar keeps one row at 320 px: the month and Refresh as an icon.
 
 ## Session, drafts and storage
 
@@ -124,13 +136,13 @@ client component or browser request. Product outcome events (`evidence_opened`,
 ## Budgets and savings (money manager round)
 
 Specified in the [money manager contract](money-manager-round/contract.md), in the existing design:
-- **Budgets card** (`budgets-card.tsx`) under "Where it went" on Overview, in the same `surface`
-  card. One row per budget, most urgent first after "All spending": spent of limit, a bar (green
+- **Budgets card** (`budgets-card.tsx`) on Reports, in a `surface` card; Home shows the three
+  fullest budgets and the goal (once set) with an **All budgets** link to it. One row per budget, most urgent first after "All spending": spent of limit, a bar (green
   under 80%, amber from 80%, red once over) and "₹800 left" or "₹250 over" in text, never colour
   alone. A pencil opens an inline form to change or remove it; **Add a budget** offers the
   categories without one. Limits apply to every month; another period shows that month's spending.
 - **Savings goal** in the same card: "₹11,550 kept of ₹5,000" with a sunflower bar, or **Set a
   monthly savings goal**. Without income it asks for income instead of showing a misleading figure.
-- **Empty Overview:** **Send it on WhatsApp** opens the chat with the existing link.
+- **Empty Home:** **Send it on WhatsApp** opens the chat with the existing link.
 - Data comes from `lib/api/budgets.ts` (`GET /api/v1/money/budgets`, `PATCH .../budgets`, `PATCH
   .../goal`), validated with zod like every other response.

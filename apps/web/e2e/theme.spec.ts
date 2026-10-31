@@ -147,6 +147,7 @@ const ROUTES = [
   "/review",
   `/review?selected=${ids.duplicate}`,
   "/assistant",
+  "/reports",
   "/sources",
   `/import/${ids.partialImport}`,
   "/privacy",
@@ -264,7 +265,7 @@ test("a pending answer shows the searching orb beside its text", async ({ page, 
   await page.getByLabel("Your question").fill("How much did I spend this month?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   const pending = page.getByRole("article", { name: /spend this month/ });
-  await expect(pending.getByText("Thinking through your question…")).toBeVisible();
+  await expect(pending.getByText("Thinking…")).toBeVisible();
   await expect(pending.locator('canvas[data-thinking-orb="searching"]')).toHaveAttribute("aria-hidden", "true");
 });
 

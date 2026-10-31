@@ -158,8 +158,8 @@ export function CorrectionForm({
         {errors[key]}
       </p>
     ) : null;
-  const inputClass =
-    "mt-1.5 block h-11 w-full rounded-xl border border-input bg-white px-3 text-sm disabled:bg-muted disabled:text-ink-soft aria-invalid:border-destructive";
+  const inputClass = "field mt-1.5 block h-11 w-full rounded-lg px-3 text-sm";
+  const selectClass = cn(inputClass, "field-select");
 
   return (
     <form
@@ -194,7 +194,7 @@ export function CorrectionForm({
         </div>
         <div>
           <label htmlFor={ids.direction} className="text-xs font-semibold">Direction</label>
-          <select id={ids.direction} value={draft.direction} onChange={(event) => update("direction", event.target.value === "in" ? "in" : "out")} className={inputClass} {...field("direction")}>
+          <select id={ids.direction} value={draft.direction} onChange={(event) => update("direction", event.target.value === "in" ? "in" : "out")} className={selectClass} {...field("direction")}>
             <option value="out">Money out</option>
             <option value="in">Money in</option>
           </select>
@@ -202,7 +202,7 @@ export function CorrectionForm({
         </div>
         <div>
           <label htmlFor={ids.kind} className="text-xs font-semibold">Type</label>
-          <select id={ids.kind} value={draft.kind} onChange={(event) => update("kind", event.target.value)} className={inputClass} {...field("kind")}>
+          <select id={ids.kind} value={draft.kind} onChange={(event) => update("kind", event.target.value)} className={selectClass} {...field("kind")}>
             {kinds.map((value) => (
               <option key={value} value={value}>{kindLabels[value]}</option>
             ))}
@@ -210,7 +210,7 @@ export function CorrectionForm({
         </div>
         <div className="sm:col-span-2">
           <label htmlFor={ids.category} className="text-xs font-semibold">Category</label>
-          <select id={ids.category} value={draft.category} onChange={(event) => update("category", event.target.value)} className={inputClass}>
+          <select id={ids.category} value={draft.category} onChange={(event) => update("category", event.target.value)} className={selectClass}>
             {categories.map((value) => (
               <option key={value} value={value}>{categoryLabels[value]}</option>
             ))}

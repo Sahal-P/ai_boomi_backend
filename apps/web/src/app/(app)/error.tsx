@@ -14,7 +14,7 @@ export default function AppError({ retry }: { error: unknown; retry: () => void 
       <div className="mt-5 flex flex-wrap gap-2">
         <Button onClick={retry}>Try again</Button>
         <Button asChild variant="ghost">
-          <Link href="/dashboard">Go to your overview</Link>
+          <Link href="/dashboard">Go to Home</Link>
         </Button>
       </div>
     </div>

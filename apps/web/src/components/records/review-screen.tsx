@@ -12,6 +12,7 @@ import { RecordDecision } from "@/components/records/record-decision";
 import { RecordDialog } from "@/components/records/record-dialog";
 import { RecordFilters } from "@/components/records/record-filters";
 import { RecordRow } from "@/components/records/record-row";
+import { RecordTabs } from "@/components/records/record-tabs";
 import { Button } from "@/components/ui/button";
 import { useAction } from "@/hooks/use-action";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -20,6 +21,7 @@ import type { DecisionOutcome } from "@/hooks/use-record";
 import { PAGE_SIZE, useRecordList } from "@/hooks/use-record-list";
 import { recordOutcome } from "@/lib/api/privacy";
 import { undoDecision } from "@/lib/api/transactions";
+import { useRecordsChanged } from "@/hooks/use-records-changed";
 import { describeProblem, hasCode } from "@/lib/messages";
 import { shortcutsEnabled, typingTarget } from "@/lib/shortcuts";
 
@@ -52,6 +54,7 @@ export function ReviewScreen() {
   const position = activeId ? items.findIndex((item) => item.id === activeId) : -1;
   const filtered = Boolean(query.q || query.category || query.kind || query.source || query.period);
   const versionConflict = list.error !== null && hasCode(list.error, "version_conflict");
+  useRecordsChanged(list.reload);
 
   function select(id: string | null) {
     update({ selected: id });
@@ -153,14 +156,22 @@ export function ReviewScreen() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Review"
-        description="Records FinBoy isn't sure about. They stay out of your totals until you decide."
+        title="Transactions"
+        description="Records FinBoy isn't sure about stay out of your totals until you decide."
         actions={
-          <Button variant="outline" onClick={list.reload} disabled={list.status === "loading" || list.status === "refreshing"}>
-            <RefreshCw aria-hidden="true" /> Refresh
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Refresh"
+            onClick={list.reload}
+            disabled={list.status === "loading" || list.status === "refreshing"}
+          >
+            <RefreshCw aria-hidden="true" />
           </Button>
         }
-      />
+      >
+        <RecordTabs current="review" toReview={page ? page.unresolved_total : null} />
+      </PageHeader>
       <RecordFilters view="review" />
 
       {!(wide && activeId) && !(!wide && selected) && undoBar}
@@ -212,7 +223,7 @@ export function ReviewScreen() {
           actions={
             <>
               <Button asChild>
-                <Link href="/dashboard">See your overview</Link>
+                <Link href="/dashboard">Go to Home</Link>
               </Button>
               <Button asChild variant="ghost">
                 <Link href="/transactions">All transactions</Link>

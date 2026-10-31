@@ -285,7 +285,7 @@ export function QuickAdd({
                 onChange={(event) =>
                   setDraft({ ...draft, category: event.target.value as Draft["category"] })
                 }
-                className="h-11 w-full rounded-2xl border border-input bg-white/80 px-3 text-sm"
+                className="field field-select h-11 w-full rounded-lg pl-3 text-sm"
               >
                 {categories.map((category) => (
                   <option key={category} value={category}>
@@ -334,7 +334,7 @@ export function QuickAdd({
                 event.preventDefault();
                 if (text.trim() && action.busy === null && !listening) void read();
               }}
-              className="rounded-2xl text-base"
+              className="text-base"
             />
             <div className="flex flex-wrap gap-2">
               {EXAMPLES.map((example) => (

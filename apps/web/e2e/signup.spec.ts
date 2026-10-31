@@ -108,7 +108,7 @@ test.describe("quick add for a new household", () => {
 
   test("a question goes to Ask instead of becoming a record", async ({ page }) => {
     await page.goto("/dashboard");
-    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.getByRole("button", { name: "Add entry", exact: true }).click();
     const sheet = page.getByRole("dialog", { name: "Add money in or out" });
     const sentence = sheet.getByLabel("What happened?");
     await sentence.fill("How much did I spend this week?");
@@ -119,7 +119,7 @@ test.describe("quick add for a new household", () => {
 
   test("a Malayalam example fills the box and reads like any other", async ({ page }) => {
     await page.goto("/dashboard");
-    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await page.getByRole("button", { name: "Add entry", exact: true }).click();
     const sheet = page.getByRole("dialog", { name: "Add money in or out" });
     const example = sheet.getByRole("button", { name: "പാൽക്കാരന് 500 കൊടുത്തു" });
     await expect(example).toHaveAttribute("lang", "ml");

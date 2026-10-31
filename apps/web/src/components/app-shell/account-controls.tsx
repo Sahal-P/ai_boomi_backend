@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleUserRound, Keyboard, LogOut, ShieldCheck } from "lucide-react";
+import { ChevronsUpDown, CircleUserRound, Inbox, Keyboard, LogOut, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { GuardedLink } from "@/components/app-shell/guarded-link";
@@ -42,8 +42,8 @@ export function householdLine(household: Household | null): string {
   return household.owner ? "Owner · private records" : "Private records";
 }
 
-/** API reachability only. Data freshness is shown separately on Overview and Sources. */
-export function ServiceStatus({ className }: { className?: string }) {
+/** API reachability only. Data freshness is shown on Sources. */
+export function ServiceStatus({ className }: { className?: string | undefined }) {
   const { connection } = useHealth();
   const label =
     connection.state === "connected"
@@ -111,35 +111,80 @@ function SignOutConfirm({ state }: { state: ReturnType<typeof useGuardedSignOut>
   );
 }
 
-/** Desktop sidebar footer: household identity, service status and account actions. */
-export function AccountPanel() {
+/** Sources, Privacy & data, shortcuts and sign-out: the same menu on phones and desktop. */
+function AccountItems({ signOut }: { signOut: ReturnType<typeof useGuardedSignOut> }) {
   const { required, household } = useHouseholdAccess();
+  return (
+    <>
+      <DropdownMenuLabel className="px-2 py-1.5">
+        <span className="block text-sm font-semibold text-ink">Your household</span>
+        <span className="block text-xs font-normal break-words text-ink-soft">
+          {householdLine(household)}
+        </span>
+        <ServiceStatus className="mt-1 font-normal" />
+      </DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem asChild className="min-h-11 px-2">
+        <GuardedLink href="/sources">
+          <Inbox aria-hidden="true" /> Sources
+        </GuardedLink>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild className="min-h-11 px-2">
+        <GuardedLink href="/privacy">
+          <ShieldCheck aria-hidden="true" /> Privacy &amp; data
+        </GuardedLink>
+      </DropdownMenuItem>
+      <DropdownMenuItem className="min-h-11 px-2" onSelect={openKeyboardHelp}>
+        <Keyboard aria-hidden="true" /> Keyboard shortcuts
+      </DropdownMenuItem>
+      {required && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="min-h-11 px-2" disabled={signOut.busy} onSelect={signOut.request}>
+            <LogOut aria-hidden="true" /> {signOut.busy ? "Signing out…" : "Sign out"}
+          </DropdownMenuItem>
+        </>
+      )}
+    </>
+  );
+}
+
+/** The sidebar mentions the service only when it is degraded or unreachable. */
+function ServiceProblem({ className }: { className?: string | undefined }) {
+  const { connection } = useHealth();
+  if (connection.state === "connected" || connection.state === "checking") return null;
+  return <ServiceStatus className={className} />;
+}
+
+/** Desktop sidebar footer: one account button that opens the account menu. */
+export function AccountPanel() {
+  const { household } = useHouseholdAccess();
   const signOut = useGuardedSignOut();
   return (
-    <div className="mt-4 space-y-3 border-t border-white/70 px-2 pt-4">
-      <div>
-        <p className="text-sm font-semibold text-ink">Your household</p>
-        <p className="text-xs break-words text-ink-soft">{householdLine(household)}</p>
-      </div>
-      <ServiceStatus />
-      <div className="flex flex-wrap gap-1">
-        <Button variant="ghost" size="sm" className="h-11 px-3" onClick={openKeyboardHelp}>
-          <Keyboard aria-hidden="true" /> Shortcuts
-        </Button>
-        {required && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-11 px-3"
-            disabled={signOut.busy}
-            onClick={signOut.request}
+    <div className="mt-4 space-y-2 border-t border-white/70 pt-3">
+      <ServiceProblem className="px-2" />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-white/60 aria-expanded:bg-white/70"
           >
-            <LogOut aria-hidden="true" /> {signOut.busy ? "Signing out…" : "Sign out"}
-          </Button>
-        )}
-      </div>
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white shadow-hairline">
+              <CircleUserRound className="size-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-ink">Your household</span>
+              <span className="block truncate text-xs text-ink-soft">{householdLine(household)}</span>
+            </span>
+            <ChevronsUpDown className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="start" className="w-[232px] rounded-2xl p-2">
+          <AccountItems signOut={signOut} />
+        </DropdownMenuContent>
+      </DropdownMenu>
       {signOut.problem && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="px-2 text-xs text-destructive">
           {signOut.problem.title}. {signOut.problem.detail}
         </p>
       )}
@@ -148,9 +193,8 @@ export function AccountPanel() {
   );
 }
 
-/** Phone header account menu; keeps sign-out out of the content area. */
+/** Phone header account menu; keeps Sources, Privacy & data and sign-out out of the tab bar. */
 export function AccountMenu() {
-  const { required, household } = useHouseholdAccess();
   const signOut = useGuardedSignOut();
   return (
     <>
@@ -166,31 +210,7 @@ export function AccountMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2">
-          <DropdownMenuLabel className="px-2 py-1.5">
-            <span className="block text-sm font-semibold text-ink">Your household</span>
-            <span className="block text-xs font-normal break-words text-ink-soft">
-              {householdLine(household)}
-            </span>
-            <ServiceStatus className="mt-1 font-normal" />
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild className="min-h-11 px-2">
-            <GuardedLink href="/privacy">
-              <ShieldCheck aria-hidden="true" /> Privacy &amp; data
-            </GuardedLink>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="min-h-11 px-2" onSelect={openKeyboardHelp}>
-            <Keyboard aria-hidden="true" /> Keyboard shortcuts
-          </DropdownMenuItem>
-          {required && (
-            <DropdownMenuItem
-              className="min-h-11 px-2"
-              disabled={signOut.busy}
-              onSelect={signOut.request}
-            >
-              <LogOut aria-hidden="true" /> {signOut.busy ? "Signing out…" : "Sign out"}
-            </DropdownMenuItem>
-          )}
+          <AccountItems signOut={signOut} />
         </DropdownMenuContent>
       </DropdownMenu>
       {signOut.problem && (

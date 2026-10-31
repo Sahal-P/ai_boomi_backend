@@ -47,7 +47,7 @@ export function PrivacyScreen() {
         {notice && <p className="rounded-2xl bg-white/60 p-4 text-sm font-medium">{notice}</p>}
       </div>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-5">
           <AccountSection />
           <section aria-labelledby="access-title" className="surface rounded-3xl p-5 sm:p-6">

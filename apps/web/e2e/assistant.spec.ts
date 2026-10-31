@@ -10,7 +10,7 @@ test("each answer is paired with its question, style and period; a failed follow
   await expect(page.getByLabel("Your question")).toHaveValue("");
   const first = page.getByRole("article", { name: /Sample Books this month/ });
   await expect(first.getByText("October 2026")).toBeVisible();
-  await expect(first.getByText("You asked · reply style Match my question")).toBeVisible();
+  await expect(first.getByText("How much did I spend at Sample Books this month?")).toBeVisible();
   await page.getByLabel("Your question").fill("Is the service unavailable?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   const failed = page.getByRole("article", { name: /service unavailable/ });
@@ -24,14 +24,16 @@ test("a slow question can be cancelled without losing earlier answers", async ({
   await page.getByLabel("Your question").fill("How much did I spend this month?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   const pending = page.getByRole("article", { name: /spend this month/ });
-  await expect(pending.getByText("Thinking through your question…")).toBeVisible();
+  await expect(pending.getByText("Thinking…")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeVisible();
   await pending.getByRole("button", { name: "Cancel" }).click();
   await expect(pending.getByText("You cancelled this question. Nothing was saved.")).toBeVisible();
 });
 
 test("romanized replies are announced as romanized, with localized labels and warnings", async ({ page }) => {
   await page.goto("/assistant");
-  await page.getByLabel("Reply style").selectOption("hinglish");
+  await page.getByRole("button", { name: /^Reply style/ }).click();
+  await page.getByRole("menuitemradio", { name: "Hinglish" }).click();
   await page.getByLabel("Your question").fill("Sample Books par kitna kharch hua?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   const answer = page.getByRole("article", { name: /Sample Books par/ });
@@ -42,7 +44,7 @@ test("romanized replies are announced as romanized, with localized labels and wa
   await expect(answer.getByRole("button", { name: "Jawab sunein" })).toBeVisible();
   await expect(answer.getByText(/Pending Review|Incomplete Coverage/)).toHaveCount(0);
   await page.reload();
-  await expect(page.getByLabel("Reply style")).toHaveValue("hinglish");
+  await expect(page.getByRole("button", { name: "Reply style, Hinglish" })).toBeVisible();
 });
 
 test("playing an answer prepares audio on the tap and keeps the text on failure", async ({ page, api }) => {
@@ -103,4 +105,20 @@ test("a recording is transcribed for review and never sent automatically", async
   expect(api.requests.some((item) => item.path === "/api/v1/assistant/ask")).toBe(false);
   await page.getByRole("button", { name: "Discard transcript" }).click();
   await expect(page.getByLabel("Your question")).toHaveValue("");
+});
+
+test("Ask reads like a chat: a suggestion asks at once, answers follow their questions, New chat starts over", async ({ page }) => {
+  await page.goto("/assistant");
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText(/^(Good (morning|afternoon|evening)|Hello)$/);
+  await page.getByRole("button", { name: "How much did I spend this month?" }).click();
+  const log = page.getByRole("log", { name: "Conversation" });
+  await expect(log.getByRole("article")).toHaveCount(1);
+  await page.getByLabel("Your question").fill("How much did I spend at Sample Books this month?");
+  await page.getByLabel("Your question").press("Enter");
+  // Oldest first, like a conversation: the newest exchange is last.
+  await expect(log.getByRole("article").last()).toHaveAccessibleName(/Sample Books this month/);
+  await expect(log.getByRole("article").last().getByText("Spent at Sample Books")).toBeVisible();
+  await page.getByRole("button", { name: "New chat" }).click();
+  await expect(page.getByRole("log", { name: "Conversation" })).toHaveCount(0);
+  await expect(page.getByLabel("Your question")).toBeFocused();
 });

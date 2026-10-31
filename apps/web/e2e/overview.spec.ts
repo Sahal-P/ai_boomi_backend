@@ -3,32 +3,27 @@ import { expect, test } from "./support/fixtures.ts";
 
 test.use({ scenario: { authRequired: false } });
 
-test("the estimate shows its dataset, freshness, exclusions and how it was calculated", async ({ page }) => {
+test("Home shows what is left, the three figures behind it and the working on request", async ({ page }) => {
   await page.goto("/dashboard");
-  await expect(page).toHaveTitle("Overview · FinBoy");
-  const estimate = page.getByRole("region", { name: /Estimated unallocated/ });
-  await expect(estimate.getByText("Last successful scan")).toBeVisible();
-  await expect(estimate.getByText("partly scanned")).toBeVisible();
-  await expect(estimate.getByRole("heading", { name: "How this is calculated" })).toBeVisible();
-  await expect(estimate.getByText("₹1,000 overdue · ₹1,000 unverified")).toBeVisible();
-  await expect(estimate.getByText(/Not included:/)).toBeVisible();
+  await expect(page).toHaveTitle("Home · FinBoy");
+  const hero = page.getByRole("region", { name: /Left this month/ });
+  for (const name of [/^Money in/, /^Money out/, /^Bills due/]) await expect(hero.getByRole("link", { name }).first()).toBeVisible();
+  await expect(hero.getByText("₹1,000 overdue · ₹1,000 unverified")).toBeHidden();
+  await hero.getByText("How is this worked out?").click();
+  await expect(hero.getByText("₹1,000 overdue · ₹1,000 unverified")).toBeVisible();
+  await expect(hero.getByText(/Not included:/)).toBeVisible();
+  // Review, an overdue bill, unread emails and records on hold; nothing about scans or coverage.
   await expect(page.getByRole("region", { name: "Needs your attention" }).getByRole("link")).toHaveCount(4);
+  await expect(page.getByText(/Last successful scan|coverage/i)).toHaveCount(0);
 });
 
-test("a category opens exactly its confirmed records for the period", async ({ page }) => {
+test("an overdue bill stays taken off what's left until it is resolved through the dialog", async ({ page, api }) => {
   await page.goto("/dashboard");
-  await page.getByRole("region", { name: "Where it went" }).getByRole("link", { name: /Groceries/ }).click();
-  await expect(page).toHaveURL(/\/transactions\?category=groceries&status=confirmed/);
-  await expect(page.getByRole("list").getByText("Sample Grocer")).toBeVisible();
-});
-
-test("an overdue obligation stays deducted until it is resolved through the dialog", async ({ page, api }) => {
-  await page.goto("/dashboard");
-  const obligations = page.getByRole("region", { name: "Bills and obligations" });
-  await expect(obligations.getByText("Overdue")).toBeVisible();
-  await obligations.locator(`[data-obligation-id="${ids.obligationOverdue}"]`).click();
+  const bills = page.getByRole("region", { name: "Bills due" });
+  await expect(bills.getByText("Overdue")).toBeVisible();
+  await bills.locator(`[data-obligation-id="${ids.obligationOverdue}"]`).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("stays deducted from your estimate until you mark it paid or dismiss it")).toBeVisible();
+  await expect(dialog.getByText("stays taken off what's left until you mark it paid or dismiss it")).toBeVisible();
   await expect(dialog.getByText("FinBoy isn't sure this bill is real")).toBeVisible();
   await dialog.getByRole("button", { name: "I've paid this" }).click();
   await expect(dialog.getByText("Marked as paid. It's no longer deducted.")).toBeVisible();
@@ -38,51 +33,19 @@ test("an overdue obligation stays deducted until it is resolved through the dial
   await expect(page.locator(`[data-obligation-id="${ids.obligationOverdue}"]`)).toHaveCount(0);
 });
 
-test("a simulation is bound to its amount and marked out of date when inputs or records change", async ({ page, api }) => {
-  await page.goto("/dashboard");
-  const panel = page.getByRole("region", { name: "What if I set money aside each month?" });
-  await panel.getByLabel("Monthly amount (₹)").fill("5000");
-  await panel.getByRole("button", { name: "Model cash flow" }).click();
-  await expect(panel.getByText("Calculated for ₹5,000 a month")).toBeVisible();
-  await panel.getByLabel("Monthly amount (₹)").fill("7000");
-  await expect(panel.getByText("Out of date — you changed the amount")).toBeVisible();
-  await panel.getByRole("button", { name: "Recalculate" }).click();
-  await expect(panel.getByText("Calculated for ₹7,000 a month")).toBeVisible();
-  api.bump();
-  await page.getByRole("button", { name: "Refresh" }).click();
-  await expect(panel.getByText("Out of date — your records changed since")).toBeVisible();
-  api.failNext(/simulations/, 503, "source_unavailable");
-  await panel.getByRole("button", { name: "Recalculate" }).click();
-  await expect(panel.getByRole("alert")).toContainText("The result below is your last successful calculation.");
-  await panel.getByLabel("Monthly amount (₹)").fill("abc");
-  await panel.getByRole("button", { name: "Recalculate" }).click();
-  await expect(panel.getByLabel("Monthly amount (₹)")).toHaveAttribute("aria-invalid", "true");
-});
-
-test("budgets show what is left and are added, removed and joined by a savings goal in place", async ({ page, api }) => {
+test("the budgets snapshot leads to every budget in Reports", async ({ page }) => {
   await page.goto("/dashboard");
   const budgets = page.getByRole("region", { name: "Budgets" });
   await expect(budgets.getByText("Food & dining")).toBeVisible();
-  await expect(budgets.getByText(/ (left|over)$/)).toHaveCount(1);
-  await budgets.getByRole("button", { name: "Add a budget" }).click();
-  await budgets.getByLabel("Budget for").selectOption("groceries");
-  await budgets.getByLabel("Each month (₹)").fill("2500");
-  await budgets.getByRole("button", { name: "Save" }).click();
-  await expect(budgets.getByRole("button", { name: "Change the Groceries budget" })).toBeVisible();
-  const saved = api.requests.find((item) => item.method === "PATCH" && item.path.endsWith("/money/budgets"));
-  expect(saved?.body).toEqual({ category: "groceries", limit_minor: 250000 });
-  await budgets.getByRole("button", { name: "Change the Groceries budget" }).click();
-  await budgets.getByRole("button", { name: "Remove" }).click();
-  await expect(budgets.getByRole("button", { name: "Change the Groceries budget" })).toHaveCount(0);
-  await budgets.getByRole("button", { name: "Set a monthly savings goal" }).click();
-  await budgets.getByLabel("Keep each month (₹)").fill("5000");
-  await budgets.getByRole("button", { name: "Save" }).click();
-  await expect(budgets.getByText(/kept of ₹5,000/)).toBeVisible();
+  await expect(budgets.getByRole("button", { name: /^Change the/ })).toHaveCount(0);
+  await budgets.getByRole("link", { name: "All budgets" }).click();
+  await expect(page).toHaveURL(/\/reports#budgets$/);
+  await expect(page.getByRole("region", { name: "Budgets" }).getByRole("button", { name: "Add a budget" })).toBeVisible();
 });
 
-test("a failed secondary panel never blanks the primary overview", async ({ page, api }) => {
+test("a failed bills panel never blanks Home", async ({ page, api }) => {
   api.failNext(/money\/obligations/, 503, "source_unavailable");
   await page.goto("/dashboard");
-  await expect(page.getByRole("region", { name: /Estimated unallocated/ })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Bills and obligations" }).getByRole("alert")).toContainText("Obligations couldn't be loaded");
+  await expect(page.getByRole("region", { name: /Left this month/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Bills due" }).getByRole("alert")).toContainText("Bills couldn't be loaded");
 });

@@ -1,49 +1,44 @@
 "use client";
 
-import {
-  ArrowLeftRight,
-  Inbox,
-  LayoutDashboard,
-  ListChecks,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { ArrowLeftRight, ChartPie, House, Plus, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { usePathname } from "next/navigation";
 
 import { AccountMenu, AccountPanel } from "@/components/app-shell/account-controls";
 import { GuardedLink } from "@/components/app-shell/guarded-link";
 import { Brand } from "@/components/brand";
+import { useQuickAdd } from "@/components/money/quick-add-provider";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+/** Four destinations. Review is a tab inside Transactions; Sources and Privacy & data live in
+ *  the account menu, so nothing here competes with the daily tasks. */
 export const APP_NAVIGATION = [
-  { label: "Overview", href: "/dashboard", icon: LayoutDashboard, mobile: true },
-  { label: "Transactions", href: "/transactions", icon: ArrowLeftRight, mobile: true },
-  { label: "Review", href: "/review", icon: ListChecks, mobile: true },
-  { label: "Ask", href: "/assistant", icon: Sparkles, mobile: true },
-  { label: "Sources", href: "/sources", icon: Inbox, mobile: true },
-  { label: "Privacy", href: "/privacy", icon: ShieldCheck, mobile: false },
+  { label: "Home", href: "/dashboard", icon: House },
+  { label: "Transactions", href: "/transactions", icon: ArrowLeftRight },
+  { label: "Reports", href: "/reports", icon: ChartPie },
+  { label: "Ask", href: "/assistant", icon: Sparkles },
 ] as const;
 
 function isActive(pathname: string, href: string) {
-  if (href === "/sources") {
-    return ["/sources", "/connect", "/import"].some(
-      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-    );
-  }
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const prefixes = href === "/transactions" ? ["/transactions", "/review"] : [href];
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-/** Floating glass sidebar (desktop); compact header and five-tab bar (phones). */
+/** Floating glass sidebar (desktop); compact header, tab pill and a round + (phones). */
 export function AppNav() {
   const pathname = usePathname();
+  const quickAdd = useQuickAdd();
 
   return (
     <>
       {/* In-flow glass: content never scrolls under the sidebar, so it needs no blur. */}
       <aside className="surface fixed top-3 bottom-3 left-3 z-40 hidden w-[264px] flex-col rounded-3xl p-4 lg:flex">
         <Brand className="px-2 pt-1" />
-        <nav aria-label="App navigation" className="mt-8 flex-1">
+        <Button className="mt-7 w-full" onClick={quickAdd.open}>
+          <Plus aria-hidden="true" /> Add entry
+        </Button>
+        <nav aria-label="App navigation" className="mt-5 flex-1">
           <ul className="space-y-1">
             {APP_NAVIGATION.map(({ label, href, icon: Icon }) => {
               const active = isActive(pathname, href);
@@ -82,40 +77,43 @@ export function AppNav() {
         <AccountMenu />
       </header>
 
-      <nav
-        aria-label="App navigation"
-        className="app-tabbar glass fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-full bg-white/[0.94] p-1.5 lg:hidden"
-      >
-        {/* The reference's black active capsule, but every tab keeps its label. Content-sized
-            cells so "Transactions" fits at 320px without shrinking labels. */}
-        <ul className="flex">
-          {APP_NAVIGATION.filter((item) => item.mobile).map(({ label, href, icon: Icon }) => {
-            const active = isActive(pathname, href);
-            return (
-              <li key={href} className="min-w-11 flex-auto">
-                <GuardedLink
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "relative flex h-12 flex-col items-center justify-center gap-1 rounded-full px-1 text-[11px] leading-none font-semibold whitespace-nowrap",
-                    active ? "px-2.5 text-white" : "text-ink-soft",
-                  )}
-                >
-                  {active ? (
-                    <motion.span
-                      layoutId="app-tab-active"
-                      className="absolute inset-0 rounded-full bg-ink shadow-lift"
-                      transition={{ type: "spring", stiffness: 420, damping: 36 }}
-                    />
-                  ) : null}
-                  <Icon className="relative size-[18px]" aria-hidden="true" />
-                  <span className="relative">{label}</span>
-                </GuardedLink>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {/* The tab pill and the + step aside together while typing (globals.css). */}
+      <div className="app-tabbar fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex items-center gap-2 lg:hidden">
+        <nav aria-label="App navigation" className="glass min-w-0 flex-1 rounded-full bg-white/[0.94] p-1.5">
+          {/* The reference's black active capsule, and every tab keeps its label. Content-sized
+              cells so "Transactions" fits at 320 px beside the +. */}
+          <ul className="flex">
+            {APP_NAVIGATION.map(({ label, href, icon: Icon }) => {
+              const active = isActive(pathname, href);
+              return (
+                <li key={href} className="min-w-11 flex-auto">
+                  <GuardedLink
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "relative flex h-12 flex-col items-center justify-center gap-1 rounded-full px-1 text-[11px] leading-none font-semibold whitespace-nowrap",
+                      active ? "px-2.5 text-white" : "text-ink-soft",
+                    )}
+                  >
+                    {active ? (
+                      <motion.span
+                        layoutId="app-tab-active"
+                        className="absolute inset-0 rounded-full bg-ink shadow-lift"
+                        transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                      />
+                    ) : null}
+                    <Icon className="relative size-[18px]" aria-hidden="true" />
+                    <span className="relative">{label}</span>
+                  </GuardedLink>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+        <Button size="icon" aria-label="Add entry" className="size-[60px] shrink-0" onClick={quickAdd.open}>
+          <Plus className="size-6" aria-hidden="true" />
+        </Button>
+      </div>
     </>
   );
 }

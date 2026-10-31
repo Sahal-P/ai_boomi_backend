@@ -69,8 +69,10 @@ the CSS minifier merges the pair into the `-webkit-` form only, which Chrome and
 | `surface` | In-flow frosted glass: tint, 1 px white edge, inset top-left rim, soft shadow; **no blur** | Cards, panels, rows, the desktop sidebar (nothing scrolls under it) |
 | `glass` | Floating glass: `float-fill` + `--glass-blur` | Phone header and tab bar (near-opaque), menus, selects, landing nav after the hero |
 | `float-panel` | Crisp near-opaque panel; its frosted scrim (`bg-ink/20 backdrop-blur-sm`) is the blurred layer | Dialogs, sheets, alert dialogs |
-| `solid-hero` | Sunflower with ink and a soft warm shadow | The one money number per screen (Overview, demo, the landing simulator's estimate and the mosaic's overview tile) |
-| `moment` | Flat sunflower with ink | Sign-in, empty and all-done states, Ask's empty state, landing hero |
+| `solid-hero` | Sunflower with ink and a soft warm shadow | The one money number per screen (Home's "Left this month", the demo, the landing simulator's estimate and the mosaic's overview tile) |
+| `moment` | Flat sunflower with ink | Sign-in, empty and all-done states, landing hero |
+| `field` | Glass field: 74% white with a soft top sheen, white inner rim, soft drop, 1 px `--input` edge (≥ 3:1); focus turns the edge ink with a soft ink halo | Every input, textarea and select |
+| `composer` | Floating glass bubble: `field`'s look plus `--glass-blur`, a deeper shadow and, on focus, an ink edge with a sunflower halo; 16 px radius | Ask's composer (the textarea carries the edge, so the boundary check still measures it) |
 
 Inside yellow, use white tints (`bg-white/55`), never glass. Fallbacks (unlayered, so they win
 over utilities): no `backdrop-filter` → near-opaque `.glass`; **Reduce Transparency** →
@@ -92,19 +94,31 @@ reference's welcome screen). Mark language on text: `lang="ml"`/`"hi"` for nativ
 - **One page header** (`components/app-shell/page-header.tsx`): direct task title, one sentence
   of support, actions on the right. Screens reached from another one (Import results) pass
   `back` for the reference's glass square back button; top-level tabs never do.
-- **Navigation:** desktop glass sidebar (in-flow, no blur) with a black active capsule;
-  phones get a compact blurred header (wordmark, white account button) and the reference's
-  floating tab bar — black active capsule with white icon and label, every other tab keeps its
-  label in secondary ink. Content-sized cells keep "Transactions" readable at 320 px. Nothing
-  else is fixed over content. Phone page margins are 24 px from 390 px up, 16 px below.
-- **Overview:** the sunflower estimate with its calculation beside it on a white tint, then the
-  reference's action tiles — Ask, Review (with the waiting count), Sources, What if — which
-  all open existing destinations.
+- **Navigation:** four tabs — Home, Transactions, Reports, Ask. Desktop: glass sidebar (in-flow,
+  no blur) with the ink **Add entry** pill, the tabs (black active capsule) and an account button
+  at its foot. Phones: a compact blurred header (wordmark, white account button) and a floating
+  tab pill — black active capsule with white icon and label, every other tab labelled in
+  secondary ink — with a round ink **+** beside it. Content-sized cells keep "Transactions"
+  readable at 320 px. Sources, Privacy & data, shortcuts and sign-out are in the account menu.
+  Phone page margins are 24 px from 390 px up, 16 px below.
+- **Home:** the sunflower hero — "Left this month", then Money in, Money out and Bills due on
+  white tints, and "How is this worked out?" folding the calculation away — then one row of
+  amber attention chips (only when something needs a look), Bills due and a budgets snapshot.
+- **Reports:** three stat tiles (spent against the month before, money in, daily average), the
+  spending donut with its legend table, six months of money in and out as columns, and the
+  budget meters with the savings goal. See **Charts**.
+- **Ask:** a chat in one centred column (≤ 768 px): a greeting under the resting orb and
+  suggestion chips; then questions as right-aligned glass bubbles and answers beside FinBoy's
+  mark, without a box. The **composer** docks at the bottom (above the phone tab pill); a new
+  question or a followed answer scrolls to the page's end, which always clears the dock, and the
+  conversation fades into the field beneath it (`.ask-fade`: a fixed, unblurred copy of the
+  field's paint masked to the bottom band, so it adds no blurred layer).
 - **Records:** each record is a glass card (12 px radius, 8 px apart) with a circular glyph;
   Transactions groups them under IST month headings; the "how it counts" line sits under the
   details on phones and under the amount on wider screens (one element, placed by the grid).
-  Filters: a search field and, on phones, a filter button that folds the five selects away
-  and shows how many are on.
+  Transactions and Review are two tabs of one place (**All** · **To review** with its count, a
+  glass segmented control). Filters: a search field and a filter button that folds the five
+  selects away and shows how many are on.
 - **Feedback:** `ProblemNotice`, `LoadingPanel`, `RefreshingLabel` (spinner), amber
   attention strips. Successes are polite live regions; failures are alerts.
 
@@ -114,8 +128,8 @@ reference's welcome screen). Mark language on text: `lang="ml"`/`"hi"` for nativ
 on wider screens): no records yet, nothing matches, all reviewed, an empty month. Sign-in is
 a full-page moment (logo and ink wordmark, 2 px ink-bordered field, black pill whose chevron
 capsule is decoration — never a swipe) with a sunflower `themeColor`; the landing hero is the
-same moment with the existing headline and CTAs. Ask's empty state is a moment with the
-resting orb.
+same moment with the existing headline and CTAs. Ask's greeting is not a moment: it sits on the
+field like the rest of the chat, under the resting orb.
 
 ## Thinking orbs (`components/feedback/thinking-orb.tsx`)
 
@@ -130,8 +144,8 @@ orbs pause offscreen and in hidden tabs.
 
 | Where | State · size |
 | --- | --- |
-| Ask's empty state (moment) | breathing · 64, rests after 5 s |
-| Answer pending | searching · 64 |
+| Ask's greeting | breathing · 64, rests after 5 s |
+| Answer pending (in FinBoy's avatar, beside the shimmering "Thinking…") | searching · 20 |
 | Transcribing a recording (never while recording: the real mic level is the honest signal) | listening · 20 |
 | Preparing a spoken answer | composing · 20 |
 | Import running; Sources' link to it | working · 64 / 20 |
@@ -156,10 +170,32 @@ defaults where they conflict.
   (white pill, faint ink border), `secondary` (ink tint), `ghost`, `destructive`, `link`.
   Sizes `sm` 36 px, `default` 44 px, `lg` 48 px, `icon*`. Pills everywhere.
 - **Card** — `surface`, 24 px radius. **Badge** — `default` (ink tint), `solid`, `positive`,
-  `warning`, `outline`, `destructive`. **Input / Textarea / Select** — white 80%, 12 px radius,
-  50% ink boundary (≥ 3:1), placeholder in secondary ink.
+  `warning`, `outline`, `destructive`. **Input / Textarea / Select** — the `field` material
+  (below), 12 px radius; native selects add `field-select` (a drawn chevron; forced colours get
+  the platform arrow back).
 - **Dialog / AlertDialog / Sheet** — `float-panel` over a frosted ink scrim; **DropdownMenu /
   Select content** — `glass` with the 90% popover fill. **Switch** — ink track, white thumb.
+
+## Charts (`components/charts`, `lib/charts.ts`)
+
+Plain SVG and HTML, no chart library, built to the dataviz method: the form first, then colour,
+validated with its `validate_palette.js` against glass at the field's warmest point (#ebe6de).
+
+- **Donut** (part-to-whole): the five largest spending categories plus "Everything else" in grey
+  (≤ 6 slices, 2 px apart), on one amber ramp `--chart-1` … `--chart-5` (#2e2200 → #c49400,
+  darkest for the largest; few slices spread across the ramp). It sweeps in clockwise; hovering
+  or tapping a slice (or focusing its row) puts it in the centre readout. The legend is a real
+  table — every category with amount and share, each a link to its records — so the drawing is
+  hidden from screen readers. Net refunds are listed, never drawn.
+- **Columns** (money in and out by month): `--chart-in` blue #2a78d6 and `--chart-out` amber
+  #b87800 on one ₹ axis with Indian compact ticks (₹10K, ₹1.2L), thin bars with 4 px rounded
+  tops growing from the baseline, the chosen month full strength and the rest receding, a glass
+  tooltip per month, and **Show as table** (the table is always there for screen readers).
+  Amber is 2.95:1 on glass, so the legend and table are required, not optional.
+- **Meters** (budgets): the same-ramp track with a status fill (green under 80%, amber from 80%,
+  red over), always with "₹X left" or "₹X over" in words.
+- Chart text stays in ink tokens, never series colours; reveals are CSS (`animate-sweep`,
+  `animate-grow-y`, `animate-grow-x`), so reduced motion shows the finished chart.
 
 ## Motion (`components/motion`)
 
@@ -172,6 +208,8 @@ defaults where they conflict.
 | `gsap.ts` | The page's single animation clock: `gsap`, `ScrollTrigger`, `useGSAP`. |
 | `.rise-in`, `.line-mask` + `.line-up` | CSS entrances for above-the-fold copy (no JS needed). |
 | `<ViewTransition default="page">` | App route crossfade (in `(app)/layout.tsx`; disabled under reduced motion). |
+| `AppMotion` | `MotionConfig reducedMotion="user"` around the app shell, so springs and layout moves (the nav capsule, the Transactions tabs, Ask's composer gliding to its dock) honour reduced motion. |
+| `.word-in`, `.shimmer-text` | An answer arriving word by word (≤ about 0.9 s), and the light sweeping through "Thinking…" (its colour stays ink-soft for contrast). |
 
 Rules: durations 0.6–1.3 s for reveals, 0.2–0.35 s for UI feedback; springs
 (`stiffness≈380–420, damping≈32–36`) for the nav capsule. **Never branch rendered output on

@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ChevronRight, Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import Link from "next/link";
 import { useId, useState, type FormEvent } from "react";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
@@ -33,18 +34,19 @@ const LEVEL = {
 
 type Editing = { kind: "budget"; category: BudgetCategory | null } | { kind: "goal" } | null;
 
+/** A meter: same-ramp track; the fill grows in once (CSS, so reduced motion holds it still). */
 function Bar({ share, className }: { share: number; className: string }) {
   return (
-    <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+    <span className="mt-2 block h-2 overflow-hidden rounded-full bg-ink/[0.07]" aria-hidden="true">
       <span
-        className={cn("block h-full rounded-full", className)}
+        className={cn("block h-full origin-left animate-grow-x rounded-full", className)}
         style={{ width: `${Math.min(100, Math.max(2, share * 100))}%` }}
       />
     </span>
   );
 }
 
-function BudgetRow({ item, onEdit }: { item: BudgetItem; onEdit: () => void }) {
+function BudgetRow({ item, onEdit }: { item: BudgetItem; onEdit?: (() => void) | undefined }) {
   const left = item.limit_minor - item.spent_minor;
   const level = LEVEL[item.level];
   return (
@@ -62,22 +64,25 @@ function BudgetRow({ item, onEdit }: { item: BudgetItem; onEdit: () => void }) {
           {left < 0 ? `${formatMoney(-left)} over` : `${formatMoney(left)} left`}
         </p>
       </div>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        className="mt-0.5"
-        aria-label={`Change the ${budgetLabel(item.category)} budget`}
-        onClick={onEdit}
-      >
-        <Pencil aria-hidden="true" />
-      </Button>
+      {onEdit && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="mt-0.5"
+          aria-label={`Change the ${budgetLabel(item.category)} budget`}
+          onClick={onEdit}
+        >
+          <Pencil aria-hidden="true" />
+        </Button>
+      )}
     </li>
   );
 }
 
-function Goal({ plan, onEdit }: { plan: BudgetPlan; onEdit: () => void }) {
+function Goal({ plan, onEdit }: { plan: BudgetPlan; onEdit?: (() => void) | undefined }) {
   const goal = plan.goal_minor;
   if (goal === null) {
+    if (!onEdit) return null;
     return (
       <Button variant="outline" size="sm" onClick={onEdit}>
         <Plus aria-hidden="true" /> Set a monthly savings goal
@@ -107,9 +112,11 @@ function Goal({ plan, onEdit }: { plan: BudgetPlan; onEdit: () => void }) {
           {note}
         </p>
       </div>
-      <Button variant="ghost" size="icon-sm" className="mt-0.5" aria-label="Change the savings goal" onClick={onEdit}>
-        <Pencil aria-hidden="true" />
-      </Button>
+      {onEdit && (
+        <Button variant="ghost" size="icon-sm" className="mt-0.5" aria-label="Change the savings goal" onClick={onEdit}>
+          <Pencil aria-hidden="true" />
+        </Button>
+      )}
     </div>
   );
 }
@@ -168,7 +175,7 @@ function EditForm({
               value={category}
               disabled={existing !== undefined && existing !== null}
               onChange={(event) => setCategory(event.target.value as BudgetCategory)}
-              className="h-11 w-full rounded-2xl border border-input bg-white/80 px-3 text-sm"
+              className="field field-select h-11 w-full rounded-lg pl-3 text-sm"
             >
               {(existing ? [existing.category] : unused).map((option) => (
                 <option key={option} value={option}>
@@ -210,27 +217,52 @@ function EditForm({
   );
 }
 
-/** Monthly budgets and the savings goal, against this period's confirmed spending. */
-export function BudgetsCard({ period, version }: { period: Period; version: number }) {
+/** Monthly budgets and the savings goal, against this period's confirmed spending. Reports holds
+ *  the full editor; Home shows a compact snapshot (the three fullest budgets) that links to it. */
+export function BudgetsCard({
+  period,
+  version,
+  compact = false,
+}: {
+  period: Period;
+  version: number;
+  compact?: boolean;
+}) {
   const budgets = useResource(`budgets:${period ? `${period.year}-${period.month}` : "current"}:${version}`, (signal) =>
     getBudgets(period, signal),
   );
   const [editing, setEditing] = useState<Editing>(null);
   const plan = budgets.stale ? null : budgets.data;
   const canAdd = plan ? plan.categories.some((category) => !plan.items.some((item) => item.category === category)) : false;
+  const reports = `/reports${period ? `?year=${period.year}&month=${period.month}` : ""}#budgets`;
+  const items = plan
+    ? compact
+      ? [...plan.items].sort((a, b) => b.spent_minor / b.limit_minor - a.spent_minor / a.limit_minor).slice(0, 3)
+      : plan.items
+    : [];
   return (
-    <section aria-labelledby="budgets-title" className="surface rounded-3xl p-5 sm:p-6">
+    <section id={compact ? undefined : "budgets"} aria-labelledby="budgets-title" className="surface scroll-mt-24 rounded-3xl p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="budgets-title" className="text-lg font-semibold">Budgets</h2>
-        {plan && canAdd && editing === null && (
-          <Button variant="ghost" size="sm" onClick={() => setEditing({ kind: "budget", category: null })}>
-            <Plus aria-hidden="true" /> Add a budget
-          </Button>
+        {compact ? (
+          <Link href={reports} className="inline-flex items-center gap-0.5 text-sm font-semibold text-ink underline-offset-4 hover:underline">
+            All budgets <ChevronRight className="size-4" aria-hidden="true" />
+          </Link>
+        ) : (
+          plan &&
+          canAdd &&
+          editing === null && (
+            <Button variant="ghost" size="sm" onClick={() => setEditing({ kind: "budget", category: null })}>
+              <Plus aria-hidden="true" /> Add a budget
+            </Button>
+          )
         )}
       </div>
-      <p className="mt-1 text-xs text-ink-soft">
-        {period ? `${monthLabel(period.year, period.month)} · ` : "This month · "}FinBoy warns you on WhatsApp from 80%.
-      </p>
+      {!compact && (
+        <p className="mt-1 text-xs text-ink-soft">
+          {period ? `${monthLabel(period.year, period.month)} · ` : "This month · "}FinBoy warns you on WhatsApp from 80%.
+        </p>
+      )}
       {budgets.status === "loading" && <LoadingPanel className="mt-3 shadow-none" label="Loading budgets…" />}
       <RefreshingLabel active={budgets.status === "refreshing"}>Updating…</RefreshingLabel>
       {budgets.error !== null && (
@@ -238,7 +270,7 @@ export function BudgetsCard({ period, version }: { period: Period; version: numb
       )}
       {plan && (
         <>
-          {editing && (
+          {editing && !compact && (
             <EditForm
               key={editing.kind === "budget" ? `budget:${editing.category ?? "new"}` : "goal"}
               plan={plan}
@@ -252,22 +284,38 @@ export function BudgetsCard({ period, version }: { period: Period; version: numb
               }}
             />
           )}
-          {plan.items.length > 0 ? (
+          {items.length > 0 ? (
             <ul className="mt-2 divide-y">
-              {plan.items.map((item) => (
-                <BudgetRow key={item.category} item={item} onEdit={() => setEditing({ kind: "budget", category: item.category })} />
+              {items.map((item) => (
+                <BudgetRow
+                  key={item.category}
+                  item={item}
+                  onEdit={compact ? undefined : () => setEditing({ kind: "budget", category: item.category })}
+                />
               ))}
             </ul>
           ) : (
             editing === null && (
               <p className="mt-4 text-sm text-ink-soft">
-                No budgets yet. Add one here, or send &ldquo;food budget 5000&rdquo; to FinBoy on WhatsApp.
+                {compact ? (
+                  <>
+                    No budgets yet.{" "}
+                    <Link href={reports} className="font-semibold text-ink underline underline-offset-4">
+                      Set one in Reports
+                    </Link>
+                    , or send &ldquo;food budget 5000&rdquo; to FinBoy on WhatsApp.
+                  </>
+                ) : (
+                  <>No budgets yet. Add one here, or send &ldquo;food budget 5000&rdquo; to FinBoy on WhatsApp.</>
+                )}
               </p>
             )
           )}
-          <div className="mt-4 border-t pt-4">
-            <Goal plan={plan} onEdit={() => setEditing({ kind: "goal" })} />
-          </div>
+          {(!compact || plan.goal_minor !== null) && (
+            <div className="mt-4 border-t pt-4">
+              <Goal plan={plan} onEdit={compact ? undefined : () => setEditing({ kind: "goal" })} />
+            </div>
+          )}
         </>
       )}
     </section>
