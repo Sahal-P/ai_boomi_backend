@@ -100,6 +100,20 @@ for opening the calculation explanation. `overview_understood` is retained only 
 a legacy/self-report event; a click must not be presented as observed comprehension.
 Human comprehension remains a separate acceptance session.
 
+- v1.3.0 statement round (31 October 2026, [contract](../statement-round/contract.md)), additive:
+  `SourceMode` and import `mode` add `gpay_statement` (and the existing `whatsapp_image`,
+  `whatsapp_voice`, `manual_entry`). `POST /imports/gpay` (multipart `file`, one PDF) =>202
+  `{import_run_id}`; errors `statement_import_off` 404, `invalid_statement` 400, `upload_limit`
+  413, `not_gpay_statement`/`statement_locked`/`statement_unreadable` 422,
+  `statement_already_imported`/`import_busy` 409. Import gains `statement:StatementSummary|null`.
+  `GET /imports/{id}/removal-preview` => `{records_removed,records_kept,data_version}`; `POST
+  /imports/{id}/remove` `{expected_version}` => Import (409 `version_conflict` or
+  `invalid_decision`). Money and record queries accept `period=range&start&end` (≤731 days);
+  budgets answer for the range's last month. `GET /money/insights` and `GET /money/payees` take
+  any period; `POST /money/payees/category` `{name,category,expected_version}` =>
+  `{updated,data_version}`. The session adds `statement_import:boolean`. Record search `q`
+  ignores spaces.
+
 ## AI assistant clarification — 24 October 2026
 
 The human authorized real AI understanding and contextual responses after a consumer

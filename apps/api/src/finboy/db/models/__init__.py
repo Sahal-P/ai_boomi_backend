@@ -1,5 +1,6 @@
 from finboy.db.models import accounts as accounts
 from finboy.db.models import money as money
+from finboy.db.models import statements as statements
 from finboy.db.models import whatsapp as whatsapp
 from finboy.db.models.core import User
 from finboy.db.models.ledger import (

@@ -45,7 +45,13 @@ class ImportIssue(BaseModel):
     id: UUID
     source_id: UUID
     source_mode: Literal[
-        "gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice", "manual_entry"
+        "gmail",
+        "eml_upload",
+        "demo_mailbox",
+        "whatsapp_image",
+        "whatsapp_voice",
+        "manual_entry",
+        "gpay_statement",
     ]
     reason: Literal["extraction_failed", "no_supported_events", "message_unavailable"]
     retryable: bool

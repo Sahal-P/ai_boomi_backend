@@ -24,7 +24,7 @@ from finboy.services.accounts import households, login, usage
 from finboy.services.assistant import service as assistant
 from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
-from finboy.services.whatsapp import capture, pilot, prompts, receipts, signup
+from finboy.services.whatsapp import capture, documents, pilot, prompts, receipts, signup
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.language import written_language
@@ -258,6 +258,36 @@ def process_question(
                 and not households.signup_open(session, settings)
             ):
                 receipts.finish(session, receipt_id, error=signup.join(conversation))
+                return
+            if question.kind == "document":
+                # A Google Pay statement PDF (docs/statement-round/contract.md), for every
+                # household; diary households agree to FinBoy's terms first. No AI is used.
+                if diary and binding.consented_at is None:
+                    receipts.finish(session, receipt_id, error=pilot.ask_consent(conversation))
+                    return
+                # End this read snapshot; the import commits through its own sessions.
+                session.rollback()
+                imported = documents.import_document(
+                    session.get_bind(), settings, client, question, binding.user_id
+                )
+                # Pilot households use WhatsApp only, so they get the facts without a link.
+                link = None if is_pilot else documents.reports_link(settings, imported.statement)
+                ok = send_reply(
+                    session,
+                    config,
+                    client,
+                    receipt,
+                    question,
+                    text=phone_text(
+                        documents.document_reply(imported, conversation.language, link=link)
+                    ),
+                )
+                receipts.finish(
+                    session,
+                    receipt_id,
+                    error=documents.RECEIPT_ERRORS.get(imported.outcome)
+                    or (None if ok else "provider_unavailable"),
+                )
                 return
             if self_serve and household.consented_at is not None and question.kind != "button":
                 try:

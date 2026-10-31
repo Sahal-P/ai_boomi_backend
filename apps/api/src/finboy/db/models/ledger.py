@@ -58,7 +58,7 @@ class EmailSource(Base):
         UniqueConstraint("user_id", "source", "provider_message_id"),
         CheckConstraint(
             "source IN ('gmail','eml_upload','demo_mailbox','whatsapp_image','whatsapp_voice',"
-            "'manual_entry')",
+            "'manual_entry','gpay_statement')",
             name="source",
         ),
         CheckConstraint(

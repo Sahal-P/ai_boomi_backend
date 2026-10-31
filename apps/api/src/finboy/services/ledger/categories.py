@@ -15,6 +15,31 @@ CATEGORY_RULES: tuple[tuple[str, Category], ...] = (
     (r"rent|landlord", "rent"),
     (r"netflix|music|subscription", "subscriptions"),
     (r"electricity|internet", "utilities"),
+    # UPI payee names as payment-app statements print them; whole words only, so "Smart Mobiles"
+    # is not a "mart". Names that could be anything (a person, "… Stores") wait for Sort payees.
+    (r"\b(airtel|jio|vodafone|vi (?:prepaid|postpaid)|bsnl|recharge)\b", "phone_recharge"),
+    (
+        r"\b(apple media services|google play|youtube|spotify|hotstar|jiocinema|prime video"
+        r"|aws|amazon web services)\b",
+        "subscriptions",
+    ),
+    (
+        r"\b(broad ?band|fibernet|kseb|electricity board|gas agency|indane|bharat gas)\b",
+        "utilities",
+    ),
+    (r"\b(indian railways|irctc|redbus|makemytrip|goibibo|ksrtc|airlines?)\b", "travel"),
+    (r"\b(petrol|petroleum|fuels?|filling station|rapido|fastag|parking)\b", "transport"),
+    (r"\b(medicals?|pharmacy|pharma|chemists?|hospital|clinic|diagnostics?|dental)\b", "health"),
+    (r"\b(school|college|academy|university|tuition|coaching)\b", "education"),
+    (
+        r"\b(super ?market|hyper ?market|supermart|grocery|groceries|vegetables?|provisions?)\b",
+        "groceries",
+    ),
+    (
+        r"\b(hotel|restaurant|caf[eé]|bakery|bakers|juice|biriyani|biryani|tea stall|coffee)\b",
+        "food_dining",
+    ),
+    (r"\b(flipkart|meesho|ajio|nykaa|textiles?|fashion|footwear|electronics)\b", "shopping"),
 )
 
 

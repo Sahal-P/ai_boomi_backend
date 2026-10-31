@@ -116,6 +116,7 @@ class TransactionView(BaseModel):
             "whatsapp_image",
             "whatsapp_voice",
             "manual_entry",
+            "gpay_statement",
         ]
     ] = Field(default_factory=list)
     source_count: int = 0

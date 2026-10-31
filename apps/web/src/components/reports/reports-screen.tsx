@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowDownRight, ArrowUpRight, ChartColumn, Plus, Table2 } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ChartColumn, FileText, ListChecks, Plus, Table2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ColumnChart, type ColumnGroup, type ColumnSeries } from "@/components/charts/column-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
@@ -13,6 +14,8 @@ import { EmptyMonthArt } from "@/components/illustrations/scenes";
 import { BudgetsCard } from "@/components/money/budgets-card";
 import { MonthSelect } from "@/components/money/month-select";
 import { useQuickAdd } from "@/components/money/quick-add-provider";
+import { MoneyWithPeople, RegularPayments, SmallPayments, WhoYouPay } from "@/components/reports/insight-sections";
+import { SortPayees } from "@/components/reports/sort-payees";
 import { AnimatedAmount } from "@/components/motion/animated-amount";
 import { Button } from "@/components/ui/button";
 import { useQueryUpdate } from "@/hooks/use-query-update";
@@ -20,14 +23,18 @@ import { useRecordsChanged } from "@/hooks/use-records-changed";
 import { useResource, type Resource } from "@/hooks/use-resource";
 import {
   formatMoney,
+  getInsights,
   getSummary,
+  isRange,
+  monthKey,
   periodFromParams,
   periodSearch,
+  rangeMonths,
   type MoneySummary,
   type Period,
 } from "@/lib/api/money";
 import { daysCounted, foldSlices, sharePercent, type Slice } from "@/lib/charts";
-import { monthLabel, monthsBack, recentMonths, type Month } from "@/lib/dates";
+import { monthLabel, monthsBack, rangeLabel, recentMonths, type Month } from "@/lib/dates";
 import { categoryLabels } from "@/lib/labels";
 import { describeProblem } from "@/lib/messages";
 import { cn } from "@/lib/utils";
@@ -46,8 +53,18 @@ function sliceLabel(key: Slice["key"]) {
   return key === "rest" ? "Everything else" : categoryLabels[key];
 }
 
-/** Three figures for the month: spent (against the month before), money in, and a daily average. */
-function Figures({ summary, before, beforeMonth }: { summary: MoneySummary; before: MoneySummary | undefined; beforeMonth: Month | undefined }) {
+/** Three figures: spent (against the month before, for one month), money in, and a daily average. */
+function Figures({
+  summary,
+  before,
+  beforeMonth,
+  months,
+}: {
+  summary: MoneySummary;
+  before: MoneySummary | undefined;
+  beforeMonth: Month | undefined;
+  months: number;
+}) {
   const spent = summary.confirmed_outflows_minor;
   const days = daysCounted(summary.period_start, summary.period_end, summary.as_of);
   const previous = before?.confirmed_outflows_minor;
@@ -59,7 +76,7 @@ function Figures({ summary, before, beforeMonth }: { summary: MoneySummary; befo
       amount: spent,
       note:
         change === null || !versus ? (
-          "Confirmed spending"
+          months > 1 ? `Confirmed spending over ${months} months` : "Confirmed spending"
         ) : Math.round(change * 100) === 0 ? (
           `About the same as ${versus}`
         ) : (
@@ -88,7 +105,7 @@ function Figures({ summary, before, beforeMonth }: { summary: MoneySummary; befo
 }
 
 /** The donut and its legend table: every category with its amount and share, each a link. */
-function Categories({ summary, period }: { summary: MoneySummary; period: Period }) {
+function Categories({ summary, period, label }: { summary: MoneySummary; period: Period; label: string }) {
   const [active, setActive] = useState<string | null>(null);
   const { slices, spending, refunds, total_minor } = foldSlices(summary.categories);
   // Few slices spread across the whole ramp, so neighbours never sit one step apart.
@@ -106,7 +123,7 @@ function Categories({ summary, period }: { summary: MoneySummary; period: Period
       <h2 id="where-title" className="text-lg font-semibold">Where your money went</h2>
       <p className="mt-1 text-xs text-ink-soft">Confirmed spending by category. Tap a slice or a row.</p>
       {!slices.length ? (
-        <p className="mt-4 text-sm text-ink-soft">No confirmed spending in this month yet.</p>
+        <p className="mt-4 text-sm text-ink-soft">No confirmed spending in {label} yet.</p>
       ) : (
         <div className="mt-5 grid items-center gap-6 sm:grid-cols-[minmax(0,13rem)_1fr]">
           <DonutChart
@@ -118,7 +135,7 @@ function Categories({ summary, period }: { summary: MoneySummary; period: Period
             <span className="mt-1 block text-lg font-semibold tracking-[-0.02em] tabular-nums sm:text-xl">
               {formatMoney(readout ? readout.amount_minor : total_minor)}
             </span>
-            <span className="block text-xs text-ink-soft">{readout ? sharePercent(readout.share) : "this month"}</span>
+            <span className="block text-xs text-ink-soft">{readout ? sharePercent(readout.share) : label}</span>
           </DonutChart>
           <table className="w-full text-sm">
             <caption className="sr-only">Confirmed spending by category</caption>
@@ -187,10 +204,12 @@ function Trend({
   months,
   trend,
   chosen,
+  caption,
 }: {
   months: Month[];
   trend: Resource<MoneySummary[]>;
   chosen: string;
+  caption: string;
 }) {
   const [table, setTable] = useState(false);
   const results = trend.stale ? null : trend.data;
@@ -220,9 +239,9 @@ function Trend({
           </li>
         ))}
       </ul>
-      {trend.status === "loading" && <LoadingPanel className="mt-4 shadow-none" label="Loading six months…" />}
+      {trend.status === "loading" && <LoadingPanel className="mt-4 shadow-none" label="Loading the months…" />}
       {trend.error !== null && (
-        <ProblemNotice className="mt-4" problem={describeProblem(trend.error, "The last six months couldn't be loaded")} onRetry={trend.reload} />
+        <ProblemNotice className="mt-4" problem={describeProblem(trend.error, "Month by month couldn't be loaded")} onRetry={trend.reload} />
       )}
       {groups.length > 0 && (
         <>
@@ -234,7 +253,7 @@ function Trend({
           {/* Hidden from sight by a wrapper: a table sizes to its content, so it can't shrink itself. */}
           <div className={cn("mt-4", !table && "sr-only")}>
             <table className="w-full text-sm">
-              <caption className="sr-only">Money in and money out, the last six months</caption>
+              <caption className="sr-only">{caption}</caption>
               <thead>
                 <tr className="text-left text-xs text-ink-soft">
                   <th scope="col" className="py-2 font-medium">Month</th>
@@ -263,22 +282,33 @@ export function ReportsScreen() {
   const params = useSearchParams();
   const update = useQueryUpdate();
   const quickAdd = useQuickAdd();
+  const { statementImport } = useHouseholdAccess();
   const period = periodFromParams(new URLSearchParams(params.toString()));
   const [current = { year: 2026, month: 1 }] = recentMonths(1);
-  const month = period ?? current;
-  const chosen = `${month.year}-${month.month}`;
-  const months = monthsBack(month.year, month.month, 6).reverse();
-  const summary = useResource(`report:${chosen}`, (signal) => getSummary(period, signal));
-  const trend = useResource(`trend:${chosen}`, (signal) => Promise.all(months.map((item) => getSummary(item, signal))));
+  const range = isRange(period) ? period : null;
+  const month: Month = isRange(period) ? period.to : (period ?? current);
+  const key = range ? `${monthKey(range.from)}:${monthKey(range.to)}` : `${month.year}-${month.month}`;
+  // A range shows its own months (the last 12 of a longer one); a month shows the six ending with it.
+  const months = range ? rangeMonths(range).slice(-12) : monthsBack(month.year, month.month, 6).reverse();
+  const chosen = range ? "" : `${month.year}-${month.month}`;
+  const label = range ? rangeLabel(range.from, range.to) : period ? monthLabel(month.year, month.month) : "this month";
+  const summary = useResource(`report:${key}`, (signal) => getSummary(period, signal));
+  const trend = useResource(`trend:${key}`, (signal) => Promise.all(months.map((item) => getSummary(item, signal))));
+  const insights = useResource(`insights:${key}`, (signal) => getInsights(period, signal));
   const [changes, setChanges] = useState(0);
+  const [sorting, setSorting] = useState(params.get("sort") === "payees");
   useRecordsChanged(() => {
     summary.reload();
     trend.reload();
+    insights.reload();
     setChanges((value) => value + 1);
   });
   const data = summary.stale ? null : summary.data;
   const results = trend.stale ? null : trend.data;
+  const patterns = insights.stale ? null : insights.data;
   const empty = data && !data.outflow_transaction_count && !data.income_transaction_count;
+  const unsorted = data?.categories.find((item) => item.category === "other")?.amount_minor ?? 0;
+  const spent = data?.confirmed_outflows_minor ?? 0;
   // Home's "All budgets" lands here; the card's place is known only once everything above it is in.
   const settled = Boolean(data && results);
   useEffect(() => {
@@ -294,7 +324,16 @@ export function ReportsScreen() {
           <MonthSelect
             id="reports-period"
             period={period}
-            onChange={(next) => update(next ? { year: String(next.year), month: String(next.month) } : { year: null, month: null })}
+            ranges
+            onChange={(next) =>
+              update(
+                isRange(next)
+                  ? { from: monthKey(next.from), to: monthKey(next.to), year: null, month: null }
+                  : next
+                    ? { year: String(next.year), month: String(next.month), from: null, to: null }
+                    : { year: null, month: null, from: null, to: null },
+              )
+            }
             className="w-full sm:w-auto"
           />
         }
@@ -310,26 +349,81 @@ export function ReportsScreen() {
       {empty && (
         <EmptyState
           illustration={<EmptyMonthArt />}
-          title={`Nothing recorded for ${monthLabel(month.year, month.month)}`}
+          title={`Nothing recorded for ${range ? label : monthLabel(month.year, month.month)}`}
           actions={
-            <Button onClick={quickAdd.open}>
-              <Plus aria-hidden="true" /> Add an entry
-            </Button>
+            <>
+              <Button onClick={quickAdd.open}>
+                <Plus aria-hidden="true" /> Add an entry
+              </Button>
+              {statementImport && (
+                <Button asChild variant="outline">
+                  <Link href="/sources#statement">
+                    <FileText aria-hidden="true" /> Import a Google Pay statement
+                  </Link>
+                </Button>
+              )}
+            </>
           }
         >
-          Reports fill in as you add what you spend and receive, here or on WhatsApp.
+          Reports fill in as you add what you spend and receive, here or on WhatsApp
+          {statementImport ? " — or bring in months at once from a Google Pay statement." : "."}
         </EmptyState>
       )}
       {data && !empty && (
         <>
-          <Figures summary={data} before={results?.[results.length - 2]} beforeMonth={months[months.length - 2]} />
+          <Figures
+            summary={data}
+            before={range ? undefined : results?.[results.length - 2]}
+            beforeMonth={range ? undefined : months[months.length - 2]}
+            months={range ? rangeMonths(range).length : 1}
+          />
+          {spent > 0 && unsorted / spent > 0.2 && (
+            <div className="surface flex flex-wrap items-center gap-3 rounded-3xl p-4 sm:p-5">
+              <ListChecks className="size-5 shrink-0 text-ink" aria-hidden="true" />
+              <p className="min-w-0 flex-1 basis-56 text-sm">
+                <span className="font-semibold">{formatMoney(unsorted)} of your spending is still “Other”.</span>{" "}
+                <span className="text-ink-soft">Sort your biggest payees once; past and future payments follow.</span>
+              </p>
+              <Button variant="outline" onClick={() => setSorting(true)}>
+                Sort payees
+              </Button>
+            </div>
+          )}
           <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
-            <Categories summary={data} period={period} />
-            <Trend months={months} trend={trend} chosen={chosen} />
+            <Categories summary={data} period={period} label={label} />
+            <Trend
+              months={months}
+              trend={trend}
+              chosen={chosen}
+              caption={range ? `Money in and money out, ${label}` : "Money in and money out, the last six months"}
+            />
           </div>
+          {insights.status === "loading" && <LoadingPanel label="Finding your patterns…" />}
+          {insights.error !== null && (
+            <ProblemNotice problem={describeProblem(insights.error, "Payees and patterns couldn't be loaded")} onRetry={insights.reload} />
+          )}
+          {patterns && (
+            <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+              <WhoYouPay insights={patterns} period={period} label={label} />
+              <div className="grid min-w-0 grid-cols-1 gap-5">
+                <RegularPayments insights={patterns} />
+                <MoneyWithPeople insights={patterns} period={period} label={label} />
+                <SmallPayments insights={patterns} period={period} />
+              </div>
+            </div>
+          )}
           <BudgetsCard period={period} version={changes} />
         </>
       )}
+      <SortPayees
+        open={sorting}
+        onOpenChange={(open) => {
+          setSorting(open);
+          if (!open && params.get("sort")) update({ sort: null });
+        }}
+        period={period}
+        label={label}
+      />
     </div>
   );
 }

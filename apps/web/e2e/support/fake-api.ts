@@ -32,7 +32,7 @@ type Tx = {
   linked_transaction_id: string | null;
   merged_into_id: string | null;
   dataset: "household" | "quarantined";
-  source_modes: ("gmail" | "eml_upload" | "whatsapp_image" | "whatsapp_voice" | "manual_entry")[];
+  source_modes: ("gmail" | "eml_upload" | "whatsapp_image" | "whatsapp_voice" | "manual_entry" | "gpay_statement")[];
   source_count: number;
   extraction_quality: "complete" | "partial";
   payment_verification: "verified" | "unverified" | "failed";
@@ -129,7 +129,41 @@ export type Scenario = {
   signupOpen?: boolean;
   /** The signed-in household joined by itself (so it can delete its account). */
   selfServe?: boolean;
+  /** Statement round: Google Pay statements can be imported (STATEMENT_IMPORT_ENABLED). */
+  statementImport?: boolean;
 };
+
+/** One synthetic statement row: invented payees, a made-up bank and UPI IDs. */
+type StatementRow = { name: string; rupees: number; day: string; direction?: Direction; category?: string };
+// Apr–Sep 2026: a card bill and broadband paid every month, tea several times a week, money
+// lent to a friend and mostly paid back, and one payment the household had already spoken.
+const STATEMENT_ROWS: StatementRow[] = [
+  { name: "Asha Stores", rupees: 2840, day: "2026-04-01" },
+  { name: "Ravi Kumar", rupees: 12400, day: "2026-05-01" },
+  { name: "Asha Stores", rupees: 1150, day: "2026-05-03" },
+  { name: "Ravi Kumar", rupees: 12320, day: "2026-05-09", direction: "in" },
+  { name: "Asha Stores", rupees: 3960, day: "2026-06-03" },
+  ...["06", "07", "08", "09"].map((month) => ({ name: "Sample Broadband", rupees: 749.5, day: `2026-${month}-05`, category: "utilities" })),
+  ...["07", "08", "09"].flatMap((month) => ["02", "09", "16"].map((day) => ({ name: "Corner Tea", rupees: 12, day: `2026-${month}-${day}` }))),
+  { name: "Meera Nair", rupees: 2000, day: "2026-07-15", direction: "in" },
+  { name: "Sample Card", rupees: 4810, day: "2026-07-20" },
+  { name: "Big Electronics", rupees: 9720, day: "2026-08-09", category: "shopping" },
+  { name: "Sample Card", rupees: 4830, day: "2026-08-20" },
+  { name: "Sample Dairy", rupees: 500, day: "2026-09-03", category: "groceries" },
+  { name: "Sample Card", rupees: 4865, day: "2026-09-20" },
+];
+const isSpending = (item: Tx) => item.direction === "out" && item.kind !== "transfer";
+const isIncome = (item: Tx) => item.direction === "in" && ["salary", "income_other"].includes(item.kind);
+// Payees and searches ignore spaces, as the API does: Google Pay prints some names both ways.
+const payeeKey = (name: string) => name.toLowerCase().replace(/\s+/g, "");
+const share = (part: number, whole: number) => (whole ? Math.round((part / whole) * 10_000) / 10_000 : 0);
+const lastDay = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate();
+function groupByPayee(rows: Tx[]) {
+  const groups = new Map<string, Tx[]>();
+  for (const row of rows) groups.set(payeeKey(row.merchant), [...(groups.get(payeeKey(row.merchant)) ?? []), row]);
+  return [...groups.values()];
+}
+const amountOf = (rows: Tx[]) => rows.reduce((sum, row) => sum + row.amount_minor, 0);
 
 export const LOGIN_CODE = "K7Q2-9FXM";
 
@@ -153,6 +187,10 @@ export class FakeFinBoyApi {
   signupOpen: boolean;
   selfServe: boolean;
   login: { state: "pending" | "confirmed" | "declined" | "used"; purpose: string } | null = null;
+  statementImport: boolean;
+  /** What the next uploaded statement turns out to be; errors use failNext on /imports/gpay. */
+  statementOutcome: "imported" | "mismatch" = "imported";
+  private statements = new Map<string, { rows: Tx[]; polls: number }>();
   private polls = 0;
   private counter = 900;
 
@@ -162,12 +200,17 @@ export class FakeFinBoyApi {
     this.whatsapp = scenario.whatsapp ?? false;
     this.signupOpen = scenario.signupOpen ?? true;
     this.selfServe = scenario.selfServe ?? false;
+    this.statementImport = scenario.statementImport ?? false;
     const status = scenario.connection ?? "active";
     this.connection =
       status === "none"
         ? null
         : { id: ids.connection, provider: "gmail", account_email_masked: "ho***@example.test", status, last_synced_at: "2026-10-24T09:00:00+05:30" };
     if (!scenario.emptyLedger) this.seed(scenario.bulk ?? 0);
+    // Said on WhatsApp before the statement arrived: the statement's own row waits for review.
+    if (this.statementImport && !scenario.emptyLedger) {
+      this.transactions.push(tx(13, { merchant: "Milk", amount_minor: 50000, category: "groceries", occurred_at: "2026-09-03T08:00:00+05:30", source_modes: ["whatsapp_voice"], payment_verification: "unverified" }));
+    }
   }
 
   private seed(bulk: number) {
@@ -243,6 +286,13 @@ export class FakeFinBoyApi {
     this.version += 1;
     return String(this.version);
   }
+  /** A statement already imported and saved, as if uploaded earlier; returns its import run. */
+  seedStatement() {
+    const id = this.startStatement();
+    const run = this.imports.get(id) as ImportRun;
+    while (run.outcome === "running") this.statementRoute(id, run, null, {});
+    return id;
+  }
   get unresolved() {
     return this.transactions.filter((item) => item.status === "needs_review" && item.dataset === "household");
   }
@@ -293,6 +343,7 @@ export class FakeFinBoyApi {
           signup_open: this.signupOpen,
           gmail: !this.selfServe,
         },
+        statement_import: this.statementImport,
       });
     }
     if (path === "/api/v1/auth/whatsapp/start" && method === "POST" && this.whatsapp) {
@@ -356,6 +407,9 @@ export class FakeFinBoyApi {
       return ok({ status: "ok" });
     }
     if (path === "/api/v1/money/summary") return ok(this.summary(query));
+    if (path === "/api/v1/money/insights") return ok(this.insights(query));
+    if (path === "/api/v1/money/payees") return ok(this.payees(query));
+    if (path === "/api/v1/money/payees/category" && method === "POST") return this.sortPayee(body);
     if (path === "/api/v1/money/budgets") return this.budgetRoute(method, body, query);
     if (path === "/api/v1/money/goal" && method === "PATCH") {
       const goal = body.goal_minor;
@@ -388,7 +442,11 @@ export class FakeFinBoyApi {
       this.imports.set(id, { ...(this.imports.get(ids.completeImport) as ImportRun), id, mode: "eml_upload", started_at: NOW, data_version: this.bump() });
       return ok({ import_run_id: id }, 202);
     }
-    if ((match = path.match(/^\/api\/v1\/imports\/([^/]+)(?:\/(issues|retry|cancel|continue))?$/))) return this.importRoute(match[1] ?? "", match[2] ?? null, body);
+    if (path === "/api/v1/imports/gpay" && method === "POST") {
+      if (!this.statementImport) return envelope(404, "statement_import_off");
+      return ok({ import_run_id: this.startStatement() }, 202);
+    }
+    if ((match = path.match(/^\/api\/v1\/imports\/([^/]+)(?:\/(issues|retry|cancel|continue|removal-preview|remove))?$/))) return this.importRoute(match[1] ?? "", match[2] ?? null, body);
     if (path === "/api/v1/privacy/isolation") return ok({ data_version: String(this.version), demo_only_transactions: 3, mixed_transactions: 1, demo_only_obligations: 0, quarantined_obligations: 0 });
     if (path === "/api/v1/privacy/audit-events") {
       return ok([
@@ -457,9 +515,25 @@ export class FakeFinBoyApi {
     };
   }
 
-  summary(query: URLSearchParams | null = null) {
+  /** The query's days: a month (this one, October, by default) or `period=range` start–end. */
+  periodOf(query: URLSearchParams | null) {
+    if (query?.get("period") === "range") {
+      const start = query.get("start") ?? TODAY;
+      const end = query.get("end") ?? TODAY;
+      return { start, end, includes: (item: Tx) => item.occurred_at.slice(0, 10) >= start && item.occurred_at.slice(0, 10) <= end };
+    }
     const month = query?.get("period") === "month" ? Number(query.get("month")) : 10;
-    const inMonth = (item: Tx) => Number(item.occurred_at.slice(5, 7)) === month && item.dataset === "household";
+    const mm = String(month).padStart(2, "0");
+    return {
+      start: `2026-${mm}-01`,
+      end: `2026-${mm}-${lastDay(2026, month)}`,
+      includes: (item: Tx) => Number(item.occurred_at.slice(5, 7)) === month,
+    };
+  }
+
+  summary(query: URLSearchParams | null = null) {
+    const period = this.periodOf(query);
+    const inMonth = (item: Tx) => period.includes(item) && item.dataset === "household";
     const confirmed = this.transactions.filter((item) => item.status === "confirmed" && inMonth(item) && item.kind !== "transfer");
     const income = confirmed.filter((item) => item.direction === "in" && ["salary", "income_other"].includes(item.kind));
     const outflows = confirmed.filter((item) => item.direction === "out" || ["refund", "reversal"].includes(item.kind));
@@ -477,8 +551,8 @@ export class FakeFinBoyApi {
     const incomeTotal = sum(income);
     const unresolved = sum(open);
     return {
-      period_start: `2026-${String(month).padStart(2, "0")}-01`,
-      period_end: month === 9 ? "2026-09-30" : "2026-10-31",
+      period_start: period.start,
+      period_end: period.end,
       as_of: TODAY,
       currency: "INR",
       tracked_income_minor: incomeTotal,
@@ -513,6 +587,122 @@ export class FakeFinBoyApi {
         quarantined_count: this.transactions.filter((item) => item.dataset === "quarantined").length,
       },
     };
+  }
+
+  /** A small mirror of services/money/insights.py over the confirmed records. */
+  insights(query: URLSearchParams | null) {
+    const period = this.periodOf(query);
+    const confirmed = this.transactions.filter((item) => item.status === "confirmed" && item.dataset === "household");
+    const entries = confirmed.filter(period.includes);
+    const out = entries.filter(isSpending);
+    const got = entries.filter(isIncome);
+    const moneyOut = amountOf(out);
+    const months = (Number(period.end.slice(0, 4)) - Number(period.start.slice(0, 4))) * 12 + Number(period.end.slice(5, 7)) - Number(period.start.slice(5, 7)) + 1;
+    const payees = (rows: Tx[], whole: number, limit: number) =>
+      groupByPayee(rows)
+        .sort((a, b) => amountOf(b) - amountOf(a))
+        .slice(0, limit)
+        .map((items) => ({ name: items[0]?.merchant ?? "", amount_minor: amountOf(items), count: items.length, share: share(amountOf(items), whole), category: items[0]?.category ?? "other" }));
+    // Regular: a steady amount (±10%) in 3+ of the six months ending with the period, at most twice a
+    // month, and not over ten days late by the last record in the window.
+    const endMonth = Number(period.end.slice(0, 4)) * 12 + Number(period.end.slice(5, 7)) - 1;
+    const monthIndex = (item: Tx) => Number(item.occurred_at.slice(0, 4)) * 12 + Number(item.occurred_at.slice(5, 7)) - 1;
+    const window = confirmed.filter((item) => isSpending(item) && endMonth - monthIndex(item) < 6 && monthIndex(item) <= endMonth);
+    const latest = window.map((item) => item.occurred_at.slice(0, 10)).sort().at(-1) ?? TODAY;
+    const regular = groupByPayee(window).flatMap((items) => {
+      let best: { months: number; near: Tx[] } | null = null;
+      for (const usual of [...new Set(items.map((item) => item.amount_minor))].sort((a, b) => a - b)) {
+        const near = items.filter((item) => Math.abs(item.amount_minor - usual) <= usual * 0.1);
+        const seen = new Set(near.map(monthIndex)).size;
+        if (seen < 3 || near.length > 2 * seen) continue;
+        if (!best || seen > best.months || (seen === best.months && near.length >= best.near.length)) best = { months: seen, near };
+      }
+      if (!best) return [];
+      const amounts = best.near.map((item) => item.amount_minor).sort((a, b) => a - b);
+      const last = best.near.map((item) => item.occurred_at.slice(0, 10)).sort().at(-1) ?? TODAY;
+      const [year, month, day] = last.split("-").map(Number) as [number, number, number];
+      const next = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
+      const expected = `${next.year}-${String(next.month).padStart(2, "0")}-${String(Math.min(day, lastDay(next.year, next.month))).padStart(2, "0")}`;
+      if (Date.parse(latest) - Date.parse(expected) > 10 * 86_400_000) return [];
+      return [{
+        name: items[0]?.merchant ?? "",
+        usual_minor: amounts[Math.floor((amounts.length - 1) / 2)] ?? 0,
+        months: best.months,
+        last_paid: last,
+        next_expected: expected,
+        category: best.near[0]?.category ?? "other",
+      }];
+    }).sort((a, b) => b.usual_minor - a.usual_minor);
+    const sent = new Map(groupByPayee(out).map((items) => [payeeKey(items[0]?.merchant ?? ""), items]));
+    const people = groupByPayee(got)
+      .filter((items) => sent.has(payeeKey(items[0]?.merchant ?? "")))
+      .map((back) => {
+        const went = sent.get(payeeKey(back[0]?.merchant ?? "")) ?? [];
+        const all = [...went, ...back];
+        return {
+          name: went[0]?.merchant ?? "",
+          sent_minor: amountOf(went),
+          received_minor: amountOf(back),
+          balance_minor: amountOf(back) - amountOf(went),
+          count: all.length,
+          last_on: all.map((item) => item.occurred_at.slice(0, 10)).sort().at(-1) ?? TODAY,
+        };
+      });
+    const small = out.filter((item) => item.amount_minor < 20_000);
+    return {
+      period_start: period.start,
+      period_end: period.end,
+      months,
+      money_out_minor: moneyOut,
+      money_in_minor: amountOf(got),
+      payment_count: out.length,
+      top_payees: payees(out, moneyOut, 8),
+      top_senders: payees(got, amountOf(got), 5),
+      biggest: [...out]
+        .sort((a, b) => b.amount_minor - a.amount_minor || a.occurred_at.localeCompare(b.occurred_at))
+        .slice(0, 5)
+        .map((item) => ({ id: item.id, name: item.merchant, amount_minor: item.amount_minor, occurred_at: item.occurred_at, category: item.category })),
+      regular: regular.slice(0, 8),
+      regular_monthly_minor: regular.reduce((sum, item) => sum + item.usual_minor, 0),
+      people,
+      small: {
+        threshold_minor: 20_000,
+        count: small.length,
+        amount_minor: amountOf(small),
+        per_month_minor: Math.floor(amountOf(small) / months),
+        count_share: share(small.length, out.length),
+        amount_share: share(amountOf(small), moneyOut),
+        places: groupByPayee(small)
+          .sort((a, b) => b.length - a.length)
+          .slice(0, 3)
+          .map((items) => ({ name: items[0]?.merchant ?? "", amount_minor: amountOf(items), count: items.length, share: share(items.length, small.length), category: items[0]?.category ?? "other" })),
+      },
+      data_version: String(this.version),
+    };
+  }
+
+  /** Spending payees still under "Other" in the period, largest first. */
+  payees(query: URLSearchParams | null) {
+    const period = this.periodOf(query);
+    const out = this.transactions.filter((item) => item.status === "confirmed" && item.dataset === "household" && isSpending(item) && period.includes(item));
+    const unsorted = out.filter((item) => item.category === "other");
+    return {
+      items: groupByPayee(unsorted)
+        .sort((a, b) => amountOf(b) - amountOf(a))
+        .map((items) => ({ name: items[0]?.merchant ?? "", count: items.length, amount_minor: amountOf(items) })),
+      spent_minor: amountOf(out),
+      unsorted_minor: amountOf(unsorted),
+      data_version: String(this.version),
+    };
+  }
+
+  private sortPayee(body: Json): FakeResponse {
+    if (body.expected_version !== String(this.version)) return envelope(409, "version_conflict");
+    const key = payeeKey(String(body.name ?? ""));
+    const category = String(body.category);
+    const rows = this.transactions.filter((item) => item.dataset === "household" && isSpending(item) && payeeKey(item.merchant) === key && item.category !== category);
+    for (const row of rows) row.category = category;
+    return { status: 200, body: { updated: rows.length, data_version: this.bump() } };
   }
 
   private simulation(body: Json): FakeResponse {
@@ -574,12 +764,15 @@ export class FakeFinBoyApi {
     let rows = this.transactions.filter((item) => item.dataset === dataset);
     if (scope === "unresolved") rows = rows.filter((item) => item.status === "needs_review");
     else if (query.get("status")) rows = rows.filter((item) => item.status === query.get("status"));
-    const month = query.get("period") === "month" ? Number(query.get("month")) : scope === "month" ? 10 : null;
-    if (month !== null && (scope === "month" || query.get("period") === "month")) rows = rows.filter((item) => Number(item.occurred_at.slice(5, 7)) === month);
+    if (query.get("period") === "range") rows = rows.filter(this.periodOf(query).includes);
+    else {
+      const month = query.get("period") === "month" ? Number(query.get("month")) : scope === "month" ? 10 : null;
+      if (month !== null && (scope === "month" || query.get("period") === "month")) rows = rows.filter((item) => Number(item.occurred_at.slice(5, 7)) === month);
+    }
     for (const key of ["category", "kind"] as const) if (query.get(key)) rows = rows.filter((item) => item[key] === query.get(key));
     if (query.get("source")) rows = rows.filter((item) => item.source_modes.includes(query.get("source") as "gmail"));
-    const q = query.get("q")?.toLowerCase();
-    if (q) rows = rows.filter((item) => item.merchant.toLowerCase().includes(q));
+    const q = query.get("q");
+    if (q) rows = rows.filter((item) => payeeKey(item.merchant).includes(payeeKey(q)));
     rows.sort((a, b) => b.occurred_at.localeCompare(a.occurred_at) || a.id.localeCompare(b.id));
     const items = rows.slice(offset, offset + limit).map((item) => ({ ...item, version: String(this.version) }));
     return {
@@ -609,10 +802,36 @@ export class FakeFinBoyApi {
     };
   }
 
+  /** A statement row's evidence, as services/statements/persist.py writes it. */
+  private statementSource(item: Tx) {
+    const index = parseInt(item.id.slice(-4), 16);
+    return {
+      ...this.source(item.id, item.direction === "in" ? "credit" : "debit", item.amount_minor),
+      id: uuid("82000000", index),
+      email_source_id: uuid("83000000", index),
+      source: "gpay_statement",
+      sender_domain: "google-pay.invalid",
+      received_at: item.occurred_at,
+      classification: "upi_alert",
+      merchant: item.merchant,
+      occurred_at: item.occurred_at,
+      extractor_id: "gpay-statement-v1",
+      evidence: {
+        payment_proof: "Google Pay statement",
+        statement: "gpay",
+        detail: `${item.direction === "in" ? "Received from" : "Paid to"} ${item.merchant}`,
+        bank: "Sample Bank",
+        page: "3",
+        row: "2",
+      },
+      field_confidence: { amount_minor: 1, occurred_at: 1, merchant: 1, reference_id: 1 },
+    };
+  }
+
   private detail(item: Tx) {
     return {
       transaction: { ...item, version: String(this.version) },
-      sources: [this.source(item.id, "debit", item.amount_minor)],
+      sources: [item.source_modes.includes("gpay_statement") ? this.statementSource(item) : this.source(item.id, "debit", item.amount_minor)],
       confidence_factors: { trusted_sender_template: 0.25, deterministic_amount_date: 0.25, unique_reference: 0, cross_source_agreement: null, merchant_category_quality: 0.15, source_count: item.source_count },
       revisions: [],
       version: String(this.version),
@@ -762,9 +981,127 @@ export class FakeFinBoyApi {
   }
 
   // ── Imports ────────────────────────────────────────────────────────────────
+  /** A checked statement saves on the third poll; one that doesn't add up fails at once. */
+  private startStatement(): string {
+    const id = uuid("30000000", this.counter++);
+    const reconciled = this.statementOutcome === "imported";
+    const rows = STATEMENT_ROWS.map((row, index) => {
+      const direction = row.direction ?? "out";
+      const amount = Math.round(row.rupees * 100);
+      const occurred = `${row.day}T19:${String(index % 60).padStart(2, "0")}:00+05:30`;
+      const spoken = this.transactions.find(
+        (item) =>
+          item.source_modes.includes("whatsapp_voice") &&
+          item.status === "confirmed" &&
+          item.direction === direction &&
+          item.amount_minor === amount &&
+          Math.abs(Date.parse(item.occurred_at) - Date.parse(occurred)) <= 36 * 3_600_000,
+      );
+      return tx(this.counter++, {
+        direction,
+        kind: direction === "in" ? "income_other" : "purchase",
+        amount_minor: amount,
+        merchant: row.name,
+        category: row.category ?? (direction === "in" ? "other_income" : "other"),
+        occurred_at: occurred,
+        status: spoken ? "needs_review" : "confirmed",
+        review_reason: spoken ? "possible_duplicate" : null,
+        possible_duplicate_of_id: spoken?.id ?? null,
+        confidence: 1,
+        reference_id: `${row.day.replaceAll("-", "").slice(2)}${String(index + 1).padStart(6, "0")}`,
+        payment_instrument: "UPI",
+        account_last4: "1234",
+        source_modes: ["gpay_statement"],
+      });
+    });
+    const paid = amountOf(rows.filter((row) => row.direction === "out"));
+    const got = amountOf(rows.filter((row) => row.direction === "in"));
+    this.imports.set(id, {
+      id,
+      mode: "gpay_statement",
+      status: reconciled ? "running" : "failed",
+      headers_checked: rows.length,
+      candidates_found: rows.length,
+      emails_processed: 0,
+      events_extracted: 0,
+      transactions_created: 0,
+      duplicates_merged: 0,
+      needs_review: 0,
+      non_financial_skipped: 0,
+      failed: 0,
+      error_code: reconciled ? null : "extraction_failed",
+      started_at: NOW,
+      finished_at: reconciled ? null : NOW,
+      outcome: reconciled ? "running" : "failed",
+      retryable: false,
+      retry_strategy: "none",
+      cancel_requested: false,
+      window_start: "2026-04-01",
+      window_end: "2026-09-30",
+      truncated: false,
+      data_version: this.bump(),
+      can_continue: false,
+      statement: {
+        provider: "gpay",
+        period_start: "2026-04-01",
+        period_end: "2026-09-30",
+        pages: 3,
+        rows: rows.length,
+        new: 0,
+        linked: 0,
+        possible_duplicates: 0,
+        already_imported: 0,
+        not_counted: 0,
+        // Google's own totals; a statement that doesn't add up was missing a ₹12,500 row.
+        sent_minor: reconciled ? paid : paid + 1_250_000,
+        received_minor: got,
+        paid_minor: paid,
+        got_minor: got,
+        reconciled,
+        accounts: ["Sample Bank ••1234"],
+        holder_matches: null,
+        removed_at: null,
+      },
+    });
+    // Two polls of saving (about three seconds) keep the saving state on screen long enough to see.
+    if (reconciled) this.statements.set(id, { rows, polls: 2 });
+    return id;
+  }
+
+  private statementRoute(id: string, run: ImportRun, action: string | null, body: Json): FakeResponse | null {
+    const saved = this.statements.get(id);
+    const statement = run.statement as Json;
+    if (action === null && saved && run.outcome === "running") {
+      if (saved.polls > 0) saved.polls -= 1;
+      else {
+        this.transactions.push(...saved.rows);
+        const added = saved.rows.filter((row) => row.status === "confirmed").length;
+        const check = saved.rows.length - added;
+        Object.assign(run, { status: "completed", outcome: "complete", finished_at: NOW, emails_processed: saved.rows.length, events_extracted: saved.rows.length, transactions_created: saved.rows.length, needs_review: check });
+        Object.assign(statement, { new: added, possible_duplicates: check });
+        this.bump();
+      }
+      return null;
+    }
+    if (action !== "removal-preview" && action !== "remove") return null;
+    if (!saved) return envelope(404, "not_found");
+    if (run.status !== "completed" || statement.removed_at) return envelope(409, "invalid_decision");
+    const kept = new Set(saved.rows.map((row) => row.id));
+    const present = this.transactions.filter((row) => kept.has(row.id));
+    if (action === "removal-preview") return { status: 200, body: { records_removed: present.length, records_kept: 0, data_version: String(this.version) } };
+    if (body.expected_version !== String(this.version)) return envelope(409, "version_conflict");
+    this.transactions = this.transactions.filter((row) => !kept.has(row.id));
+    statement.removed_at = NOW;
+    return { status: 200, body: { ...run, data_version: this.bump() } };
+  }
+
   private importRoute(id: string, action: string | null, body: Json): FakeResponse {
     const run = this.imports.get(id);
     if (!run) return envelope(404, "not_found");
+    if (run.mode === "gpay_statement") {
+      const handled = this.statementRoute(id, run, action, body);
+      if (handled) return handled;
+    }
     if (action === null) {
       if (id === ids.runningImport && run.outcome === "running") {
         this.polls += 1;

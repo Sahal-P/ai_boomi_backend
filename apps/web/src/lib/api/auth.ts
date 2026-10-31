@@ -29,6 +29,8 @@ export const sessionSchema = z.object({
   required: z.boolean(),
   household: householdSchema.nullable(),
   sign_in: signInSchema,
+  /** Google Pay statement import; older servers don't send it. */
+  statement_import: z.boolean().default(false),
 });
 export type SessionView = z.infer<typeof sessionSchema>;
 export type Household = z.infer<typeof householdSchema>;

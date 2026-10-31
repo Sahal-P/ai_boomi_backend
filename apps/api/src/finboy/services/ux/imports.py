@@ -13,6 +13,7 @@ from finboy.db.models.ledger import EmailSource, SourceEvent, Transaction
 from finboy.db.models.mail import ImportRun, MailConnection
 from finboy.services.imports.locking import import_lock
 from finboy.services.mail.security import MailError
+from finboy.services.statements.views import StatementView, statement_view
 from finboy.services.ux.decisions import VersionRequest
 from finboy.services.ux.state import TaskError, data_version, require_version
 
@@ -47,6 +48,8 @@ class ImportView(BaseModel):
     truncated: bool
     can_continue: bool
     data_version: str
+    # A Google Pay statement: its period, own totals and what the import did with its rows.
+    statement: StatementView | None = None
 
 
 class RetryRequest(VersionRequest):
@@ -140,6 +143,7 @@ def import_view(session: Session, row: ImportRun) -> ImportView:
             "window_start": row.window_start.isoformat() if row.window_start else None,
             "window_end": row.window_end.isoformat() if row.window_end else None,
             "data_version": data_version(session, row.user_id),
+            "statement": statement_view(session, row) if row.mode == "gpay_statement" else None,
         }
     )
 

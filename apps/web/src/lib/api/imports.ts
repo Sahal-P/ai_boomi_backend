@@ -8,6 +8,29 @@ const timestamp = z.iso.datetime({ offset: true });
 const retryStrategy = z.enum(["refetch_gmail", "select_original_files", "none"]);
 export type RetryStrategy = z.infer<typeof retryStrategy>;
 
+/** What an imported Google Pay statement said (its own totals) and what FinBoy did with its rows. */
+export const statementSchema = z.object({
+  provider: z.literal("gpay"),
+  period_start: z.iso.date(),
+  period_end: z.iso.date(),
+  pages: counter,
+  rows: counter,
+  new: counter,
+  linked: counter,
+  possible_duplicates: counter,
+  already_imported: counter,
+  not_counted: counter,
+  sent_minor: counter,
+  received_minor: counter,
+  paid_minor: counter,
+  got_minor: counter,
+  reconciled: z.boolean(),
+  accounts: z.array(z.string().max(120)).max(20),
+  holder_matches: z.boolean().nullable(),
+  removed_at: timestamp.nullable(),
+});
+export type StatementSummary = z.infer<typeof statementSchema>;
+
 export const importRunSchema = z.object({
   id: z.uuid(),
   mode: sourceModeSchema,
@@ -34,6 +57,7 @@ export const importRunSchema = z.object({
   data_version: opaque,
   /** v1.1: a truncated Gmail scan can continue its original window as a new bounded job. */
   can_continue: z.boolean(),
+  statement: statementSchema.nullable().default(null),
 });
 export type ImportRun = z.infer<typeof importRunSchema>;
 export type ImportOutcome = ImportRun["outcome"];
@@ -110,30 +134,18 @@ export function fileProblem(file: Pick<File, "name" | "size" | "type">): FilePro
 }
 
 /**
- * Uploads a validated batch. XMLHttpRequest is used only because fetch cannot report
- * upload progress; credentials, envelope parsing and session expiry match requestJson.
+ * XMLHttpRequest is used only because fetch cannot report upload progress; credentials, envelope
+ * parsing and session expiry match requestJson.
  */
-export function uploadEml(
-  files: File[],
-  options: { signal?: AbortSignal; onProgress?: (fraction: number) => void } = {},
+function uploadForm(
+  path: string,
+  body: FormData,
+  options: { signal?: AbortSignal; onProgress?: (fraction: number) => void },
 ): Promise<{ import_run_id: string }> {
-  if (
-    !files.length ||
-    files.length > UPLOAD_LIMITS.files ||
-    files.some((file) => fileProblem(file) !== null)
-  ) {
-    return Promise.reject(
-      new ApiError("Choose 1–50 .eml files, up to 2 MB each.", undefined, { kind: "validation" }),
-    );
-  }
   const base = apiBaseUrl();
-  const body = new FormData();
-  for (const file of files) {
-    body.append("files", new File([file], file.name, { type: "message/rfc822" }));
-  }
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("POST", `${base}/api/v1/imports/eml`);
+    request.open("POST", `${base}${path}`);
     request.withCredentials = apiCredentials(base) === "include";
     request.timeout = 120_000;
     request.setRequestHeader("Accept", "application/json");
@@ -193,3 +205,73 @@ export function uploadEml(
     request.send(body);
   });
 }
+
+/** Uploads a validated batch of emails. */
+export function uploadEml(
+  files: File[],
+  options: { signal?: AbortSignal; onProgress?: (fraction: number) => void } = {},
+): Promise<{ import_run_id: string }> {
+  if (
+    !files.length ||
+    files.length > UPLOAD_LIMITS.files ||
+    files.some((file) => fileProblem(file) !== null)
+  ) {
+    return Promise.reject(
+      new ApiError("Choose 1–50 .eml files, up to 2 MB each.", undefined, { kind: "validation" }),
+    );
+  }
+  const body = new FormData();
+  for (const file of files) {
+    body.append("files", new File([file], file.name, { type: "message/rfc822" }));
+  }
+  return uploadForm("/api/v1/imports/eml", body, options);
+}
+
+export const STATEMENT_MAX_BYTES = 10 * 1024 * 1024;
+export type StatementFileProblem = "not_pdf" | "empty" | "too_large";
+
+/** Local check mirroring the server's; nothing leaves the device until it passes. */
+export function statementFileProblem(
+  file: Pick<File, "name" | "size" | "type">,
+): StatementFileProblem | null {
+  if (!file.name.toLowerCase().endsWith(".pdf")) return "not_pdf";
+  if (!["", "application/pdf", "application/octet-stream"].includes(file.type)) return "not_pdf";
+  if (file.size === 0) return "empty";
+  if (file.size > STATEMENT_MAX_BYTES) return "too_large";
+  return null;
+}
+
+/** Uploads one Google Pay statement PDF; the server reads and checks it before saving anything. */
+export function uploadStatement(
+  file: File,
+  options: { signal?: AbortSignal; onProgress?: (fraction: number) => void } = {},
+): Promise<{ import_run_id: string }> {
+  if (statementFileProblem(file) !== null) {
+    return Promise.reject(
+      new ApiError("Choose your Google Pay statement PDF, up to 10 MB.", undefined, {
+        kind: "validation",
+      }),
+    );
+  }
+  const body = new FormData();
+  body.append("file", new File([file], file.name, { type: "application/pdf" }));
+  return uploadForm("/api/v1/imports/gpay", body, options);
+}
+
+export const removalPreviewSchema = z.object({
+  records_removed: counter,
+  records_kept: counter,
+  data_version: opaque,
+});
+export type RemovalPreview = z.infer<typeof removalPreviewSchema>;
+export const getRemovalPreview = (id: string, signal?: AbortSignal) =>
+  requestJson(`/api/v1/imports/${encodeURIComponent(id)}/removal-preview`, removalPreviewSchema, {
+    signal,
+  });
+/** Undo one imported statement: records only it supports go; records with other evidence stay. */
+export const removeImport = (id: string, expectedVersion: string) =>
+  requestJson(`/api/v1/imports/${encodeURIComponent(id)}/remove`, importRunSchema, {
+    method: "POST",
+    ...jsonBody({ expected_version: expectedVersion }),
+    timeoutMs: 30_000,
+  });

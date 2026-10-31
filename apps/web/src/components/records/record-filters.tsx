@@ -5,15 +5,15 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useQueryUpdate } from "@/hooks/use-query-update";
-import { categories, kinds, statuses } from "@/lib/api/money";
-import { monthLabel, recentMonths } from "@/lib/dates";
+import { categories, isRange, kinds, periodFromParams, statuses } from "@/lib/api/money";
+import { monthLabel, rangeLabel, recentMonths } from "@/lib/dates";
 import { categoryLabels, kindLabels, statusLabels } from "@/lib/labels";
 import { shortcutsEnabled, typingTarget } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils";
 
-const FILTER_KEYS = ["q", "status", "category", "kind", "source", "scope", "year", "month", "dataset"];
+const FILTER_KEYS = ["q", "status", "category", "kind", "source", "scope", "year", "month", "from", "to", "dataset"];
 // What the phone filter button counts: everything except the search text (shown in the field).
-const PANEL_FILTERS = [["status"], ["category"], ["kind"], ["source"], ["scope", "year", "month"]];
+const PANEL_FILTERS = [["status"], ["category"], ["kind"], ["source"], ["scope", "year", "month", "from", "to"]];
 
 /** Recent calendar months (IST), newest first, for the period selector. */
 const selectClass = "field field-select mt-1.5 block h-11 w-full rounded-lg pl-3 text-sm";
@@ -53,7 +53,17 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
   const year = params.get("year");
   const month = params.get("month");
   const scope = params.get("scope") === "all" ? "all" : "month";
-  const periodValue = year && month ? `${year}-${month}` : view === "review" ? "" : scope === "all" ? "all" : "current";
+  // A range comes from Reports (an imported statement's months); it keeps its own option.
+  const range = periodFromParams(new URLSearchParams(params.toString()));
+  const periodValue = isRange(range)
+    ? "range"
+    : year && month
+      ? `${year}-${month}`
+      : view === "review"
+        ? ""
+        : scope === "all"
+          ? "all"
+          : "current";
   const active = FILTER_KEYS.some((key) => params.has(key));
   const set = (updates: Record<string, string | null>) => update({ ...updates, offset: null });
   // Phones show the reference's search + filter button; wider screens keep every filter open.
@@ -112,11 +122,13 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
             className={selectClass}
             onChange={(event) => {
               const value = event.target.value;
-              if (value === "" || value === "current") set({ scope: null, year: null, month: null });
-              else if (value === "all") set({ scope: "all", year: null, month: null });
+              const cleared = { from: null, to: null };
+              if (value === "range") return;
+              if (value === "" || value === "current") set({ ...cleared, scope: null, year: null, month: null });
+              else if (value === "all") set({ ...cleared, scope: "all", year: null, month: null });
               else {
                 const [y, m] = value.split("-");
-                set({ scope: null, year: y ?? null, month: m ?? null });
+                set({ ...cleared, scope: null, year: y ?? null, month: m ?? null });
               }
             }}
           >
@@ -128,6 +140,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
                 <option value="all">All time</option>
               </>
             )}
+            {isRange(range) && <option value="range">{rangeLabel(range.from, range.to)}</option>}
             {recentMonths(18).map((item) => (
               <option key={`${item.year}-${item.month}`} value={`${item.year}-${item.month}`}>
                 {monthLabel(item.year, item.month)}
@@ -171,6 +184,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
               <option value="whatsapp_image">WhatsApp screenshots</option>
               <option value="whatsapp_voice">WhatsApp voice notes</option>
               <option value="manual_entry">Added by you</option>
+              <option value="gpay_statement">Google Pay statements</option>
             </select>
           </div>
         )}
@@ -227,6 +241,7 @@ export function RecordFilters({ view }: { view: "transactions" | "review" }) {
               <option value="whatsapp_image">WhatsApp screenshots</option>
               <option value="whatsapp_voice">WhatsApp voice notes</option>
               <option value="manual_entry">Added by you</option>
+              <option value="gpay_statement">Google Pay statements</option>
             </select>
           </div>
         )}

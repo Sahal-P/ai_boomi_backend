@@ -106,7 +106,11 @@ reference's welcome screen). Mark language on text: `lang="ml"`/`"hi"` for nativ
   amber attention chips (only when something needs a look), Bills due and a budgets snapshot.
 - **Reports:** three stat tiles (spent against the month before, money in, daily average), the
   spending donut with its legend table, six months of money in and out as columns, and the
-  budget meters with the savings goal. See **Charts**.
+  budget meters with the savings goal. See **Charts**. For a range of months (statement round)
+  the first tile reads "Confirmed spending over 6 months" and the columns show the range's own
+  months; below them come Who you pay most, then Regular payments, Money with people and Small
+  payments stacked beside it on wide screens, each a `surface` card that appears only with data.
+  A glass callout with **Sort payees** appears when more than 20% of spending is "Other".
 - **Ask:** a chat in one centred column (≤ 768 px): a greeting under the resting orb and
   suggestion chips; then questions as right-aligned glass bubbles and answers beside FinBoy's
   mark, without a box. The **composer** docks at the bottom (above the phone tab pill); a new
@@ -194,6 +198,11 @@ validated with its `validate_palette.js` against glass at the field's warmest po
   Amber is 2.95:1 on glass, so the legend and table are required, not optional.
 - **Meters** (budgets): the same-ramp track with a status fill (green under 80%, amber from 80%,
   red over), always with "₹X left" or "₹X over" in words.
+- **Payee bars** (who you pay, who pays you): a table of names with a thin 6 px bar under each,
+  scaled to the largest, in `--chart-out` for payments and `--chart-in` for money received (one
+  series per table, so the heading names it and no legend is needed); amount, share and count
+  are text in ink. Regular payments, money with people and small payments are lists with figures
+  in words, not charts. Sort payees uses the existing progress meter for "how much is sorted".
 - Chart text stays in ink tokens, never series colours; reveals are CSS (`animate-sweep`,
   `animate-grow-y`, `animate-grow-x`), so reduced motion shows the finished chart.
 

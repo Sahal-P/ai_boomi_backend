@@ -54,6 +54,17 @@ export function monthLabel(year: number, month: number): string {
 
 export type Month = { year: number; month: number };
 
+const monthShort = new Intl.DateTimeFormat("en-IN", { month: "short" });
+
+/** "Apr – Sep 2026", or "Nov 2025 – Apr 2026" across a year. */
+export function rangeLabel(from: Month, to: Month): string {
+  const start = new Date(from.year, from.month - 1, 1);
+  const end = new Date(to.year, to.month - 1, 1);
+  return from.year === to.year
+    ? `${monthShort.format(start)} – ${monthShort.format(end)} ${to.year}`
+    : `${monthShort.format(start)} ${from.year} – ${monthShort.format(end)} ${to.year}`;
+}
+
 /** `count` calendar months ending with (and including) year-month, newest first. */
 export function monthsBack(year: number, month: number, count: number): Month[] {
   return Array.from({ length: count }, (_, index) => {

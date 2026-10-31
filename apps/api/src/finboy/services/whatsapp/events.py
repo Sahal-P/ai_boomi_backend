@@ -43,7 +43,7 @@ class InboundQuestion:
     message_id: str
     sender: str = field(repr=False)
     provider_at: datetime
-    kind: Literal["text", "audio", "image", "button"]
+    kind: Literal["text", "audio", "image", "document", "button"]
     text: str = field(default="", repr=False)
     media_id: str | None = None
     mime_type: str | None = None
@@ -66,6 +66,10 @@ class AudioBody(BaseModel):
 
 class ImageBody(AudioBody):
     """Only the Graph media ID and MIME are read; caption and webhook URL are ignored."""
+
+
+class DocumentBody(AudioBody):
+    """A PDF statement: only the media ID and MIME are read; the file name and caption aren't."""
 
 
 # Choices are short words, list-row categories ("food_dining") or item numbers ("i3").
@@ -98,6 +102,7 @@ class Message(BaseModel):
     text: TextBody | None = None
     audio: AudioBody | None = None
     image: ImageBody | None = None
+    document: DocumentBody | None = None
     interactive: InteractiveBody | None = None
     button: TemplateButton | None = None
 
@@ -151,7 +156,14 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                 for item in messages:
                     if not isinstance(item, dict):
                         raise InvalidWebhook
-                    if item.get("type") not in {"text", "audio", "image", "interactive", "button"}:
+                    if item.get("type") not in {
+                        "text",
+                        "audio",
+                        "image",
+                        "document",
+                        "interactive",
+                        "button",
+                    } or (item.get("type") == "document" and not config.statements):
                         continue
                     interactive = item.get("interactive")
                     if item.get("type") == "interactive" and (
@@ -186,6 +198,17 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                                 "image",
                                 media_id=msg.image.id,
                                 mime_type=msg.image.mime_type,
+                            )
+                        )
+                    elif msg.type == "document" and msg.document is not None:
+                        questions.append(
+                            InboundQuestion(
+                                msg.id,
+                                msg.from_,
+                                when,
+                                "document",
+                                media_id=msg.document.id,
+                                mime_type=msg.document.mime_type,
                             )
                         )
                     elif (

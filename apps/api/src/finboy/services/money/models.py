@@ -9,21 +9,45 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, m
 from finboy.db.models.ledger import Category, TransactionStatus
 from finboy.services.money.engine import PeriodSpec, TransactionView
 
+# An imported statement can span a year or more; two years bounds every report's work.
+MAX_RANGE_DAYS = 731
+
 
 class PeriodQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    period: Literal["current_month", "month"] = "current_month"
+    period: Literal["current_month", "month", "range"] = "current_month"
     year: int | None = Field(default=None, ge=1, le=9999)
     month: int | None = Field(default=None, ge=1, le=12)
+    start: date | None = None
+    end: date | None = None
 
     @model_validator(mode="after")
     def valid_period(self) -> PeriodQuery:
+        if self.period == "range":
+            if (
+                self.year is not None
+                or self.month is not None
+                or self.start is None
+                or self.end is None
+                or (self.end - self.start).days > MAX_RANGE_DAYS
+            ):
+                raise ValueError("A range takes start and end dates, at most two years apart")
+        elif self.start is not None or self.end is not None:
+            raise ValueError("Only a range takes start and end dates")
         self.to_period()
         return self
 
     def to_period(self) -> PeriodSpec:
+        if self.period == "range":
+            return PeriodSpec(kind="range", start_date=self.start, end_date=self.end)
         return PeriodSpec(kind=self.period, year=self.year, month=self.month)
+
+    def last_month(self) -> PeriodSpec:
+        """Monthly figures such as budgets read a range's last month."""
+        if self.period == "range" and self.end is not None:
+            return PeriodSpec(kind="month", year=self.end.year, month=self.end.month)
+        return self.to_period()
 
 
 class TransactionFilters(PeriodQuery):
@@ -115,7 +139,13 @@ class TransactionSource(BaseModel):
     id: UUID
     email_source_id: UUID
     source: Literal[
-        "gmail", "eml_upload", "demo_mailbox", "whatsapp_image", "whatsapp_voice", "manual_entry"
+        "gmail",
+        "eml_upload",
+        "demo_mailbox",
+        "whatsapp_image",
+        "whatsapp_voice",
+        "manual_entry",
+        "gpay_statement",
     ]
     sender_domain: str
     received_at: datetime

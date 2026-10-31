@@ -10,10 +10,19 @@ from finboy.api.deps import CurrentUser
 from finboy.db.models.mail import ImportRun
 from finboy.db.session import get_session
 from finboy.services.imports.runner import create_run, run_import
-from finboy.services.imports.upload import read_eml_uploads
+from finboy.services.imports.upload import read_eml_uploads, read_statement_upload
 from finboy.services.ingestion.pipeline import InboundMessage
 from finboy.services.mail.http import MailRoute, failure
-from finboy.services.mail.security import MailError
+from finboy.services.mail.security import MailError, sha256
+from finboy.services.statements.gpay import StatementError, read_statement
+from finboy.services.statements.service import (
+    already_imported,
+    removal_preview,
+    remove_statement,
+    run_statement_import,
+    start_import,
+)
+from finboy.services.statements.views import RemovalPreview
 from finboy.services.ux.contracts import ImportPage, ImportStarted, IssuePage
 from finboy.services.ux.decisions import VersionRequest
 from finboy.services.ux.imports import (
@@ -84,6 +93,70 @@ def start_eml(
         return failure(request, exc)
 
 
+async def statement_upload(request: Request) -> bytes:
+    # Checked before the body is read: nothing is accepted while statement import is off.
+    if not request.app.state.settings.statement_import_enabled:
+        raise MailError("statement_import_off")
+    return await read_statement_upload(request)
+
+
+@router.post(
+    "/gpay",
+    status_code=202,
+    response_model=None,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["file"],
+                        "properties": {"file": {"type": "string", "format": "binary"}},
+                    }
+                }
+            },
+        },
+    },
+)
+def start_gpay(
+    request: Request,
+    background: BackgroundTasks,
+    session: DB,
+    user_id: CurrentUser,
+    data: Annotated[bytes, Depends(statement_upload)],
+) -> dict | JSONResponse:
+    """Read and check a Google Pay statement now; save its rows in the background."""
+    try:
+        digest = sha256(data)
+        if already_imported(session, user_id, digest):
+            raise MailError("statement_already_imported")
+        try:
+            statement = read_statement(data)
+        except StatementError as exc:
+            raise MailError(exc.code) from None
+        run, holder = start_import(
+            session,
+            settings=request.app.state.settings,
+            user_id=user_id,
+            statement=statement,
+            file_sha256=digest,
+        )
+        if run.status == "queued":
+            background.add_task(
+                run_statement_import,
+                request.app.state.engine,
+                run.id,
+                statement,
+                file_sha256=digest,
+                holder=holder,
+            )
+        return {"import_run_id": str(run.id)}
+    except MailError as exc:
+        session.rollback()
+        return failure(request, exc)
+
+
 @router.get("", response_model=ImportPage)
 def list_imports(
     request: Request,
@@ -130,6 +203,21 @@ def list_issues(
     offset: Annotated[int, Query(ge=0, le=1000000)] = 0,
 ) -> dict:
     return issues(session, user_id=user_id, run_id=run_id, limit=limit, offset=offset)
+
+
+@router.get("/{run_id}/removal-preview", response_model=RemovalPreview)
+def preview_removal(run_id: UUID, session: DB, user_id: CurrentUser) -> RemovalPreview:
+    return removal_preview(session, user_id=user_id, run_id=run_id)
+
+
+@router.post("/{run_id}/remove", response_model=ImportView)
+def remove(run_id: UUID, body: VersionRequest, session: DB, user_id: CurrentUser) -> ImportView:
+    """Undo one imported statement; records with other evidence stay."""
+    require_version(session, user_id, body.expected_version)
+    remove_statement(session, user_id=user_id, run_id=run_id)
+    result = import_view(session, run_for(session, run_id, user_id))
+    session.commit()
+    return result
 
 
 @router.post("/{run_id}/retry", status_code=202, response_model=ImportStarted)

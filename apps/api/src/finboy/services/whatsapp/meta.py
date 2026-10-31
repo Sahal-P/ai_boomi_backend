@@ -15,9 +15,12 @@ from finboy.services.whatsapp.events import BUTTON_ID
 
 AUDIO_TYPES = {"audio/aac", "audio/amr", "audio/mpeg", "audio/mp4", "audio/ogg"}
 IMAGE_TYPES = {"image/jpeg", "image/png"}
+# A Google Pay statement (docs/statement-round/contract.md); read in memory, never stored.
+DOCUMENT_TYPES = {"application/pdf"}
 MEDIA_HOSTS = {"lookaside.fbsbx.com", "mmg.whatsapp.net"}
 MAX_AUDIO_BYTES = 3 * 1024 * 1024
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
 BUTTON_PATTERN = re.compile(BUTTON_ID)
 TEMPLATE_NAME = re.compile(r"[a-z0-9_]{1,64}")
 
@@ -129,6 +132,9 @@ class MetaClient:
 
     def download_image(self, media_id: str, webhook_mime: str) -> DownloadedMedia:
         return self._download(media_id, webhook_mime, IMAGE_TYPES, MAX_IMAGE_BYTES)
+
+    def download_document(self, media_id: str, webhook_mime: str) -> DownloadedMedia:
+        return self._download(media_id, webhook_mime, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES)
 
     def _download(
         self, media_id: str, webhook_mime: str, allowed: set[str], limit: int

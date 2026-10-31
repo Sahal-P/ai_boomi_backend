@@ -17,18 +17,30 @@ from finboy.db.models.ledger import (
     TransactionRevision,
 )
 from finboy.db.models.mail import ImportRun
+from finboy.db.models.statements import StatementImport
 from finboy.services.ledger.reconcile import revision
 from finboy.services.privacy.audit import audit
 from finboy.services.privacy.scope import transaction_impact
 
 
 def delete_imported_data(
-    session: Session, *, user_id: UUID | None = None, connection_id: UUID | None = None
+    session: Session,
+    *,
+    user_id: UUID | None = None,
+    connection_id: UUID | None = None,
+    import_run_id: UUID | None = None,
 ) -> None:
+    """Remove imported evidence: every source, one connection's, or one import's (a statement).
+
+    Records only the removed evidence supports are deleted; records with other evidence stay and
+    lose only that evidence.
+    """
     user_id = user_id or LOCAL_USER_ID  # existing callers delete for the owner
     source_filter = [EmailSource.user_id == user_id]
     if connection_id is not None:
         source_filter.append(EmailSource.mail_connection_id == connection_id)
+    if import_run_id is not None:
+        source_filter.append(EmailSource.import_run_id == import_run_id)
     sources = select(EmailSource.id).where(*source_filter)
     events = select(SourceEvent.id).where(
         SourceEvent.email_source_id.in_(sources), SourceEvent.user_id == user_id
@@ -183,6 +195,10 @@ def delete_imported_data(
     from finboy.services.ledger.persist import refresh_links
 
     refresh_links(session, user_id)
+    if import_run_id is not None:
+        # Removing one statement: no model output came from it and no other import is affected.
+        audit(session, "data.deleted", "import", import_run_id, user_id=user_id)
+        return
     # The cache has no source/user FK, so privacy deletion clears it for every household;
     # it is regenerable and keeps no household identity.
     session.execute(delete(ExtractionCache))
@@ -194,6 +210,9 @@ def delete_imported_data(
         .where(*runs)
         .values(status="failed", error_code="import_failed", finished_at=now_ist())
     )
+    if connection_id is None:
+        # Statement totals and account labels are financial data too.
+        session.execute(delete(StatementImport).where(StatementImport.user_id == user_id))
     audit(
         session,
         "data.deleted",

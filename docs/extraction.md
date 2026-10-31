@@ -241,3 +241,31 @@ outage/cache modes, idempotent skipped-source persistence, and zero false transa
 or commitment rows. The original rules and offline 42-message oracles remain binding.
 This is regression protection, not a promise that arbitrary future emails can
 never be misclassified. Preserve review and incomplete-coverage disclosures.
+
+## Google Pay statements — 31 October 2026
+
+A second, separate reader for one kind of PDF ([statement round
+contract](statement-round/contract.md)); email extraction above is unchanged.
+
+- **Rules only, no model.** `services/statements/gpay.py` rebuilds each row from PDFium's
+  positioned text (`pypdfium2`), using the table header's column positions, in an isolated child
+  process (`python -I`, empty environment, 30 s, CPU/memory limits). Extractor ID
+  `gpay-statement-v1`; every field is a rule field with confidence 1.
+- **All or nothing.** The rows must add up to the statement's printed Sent and Received totals to
+  the paisa, every page must be present in order, and every row must parse; otherwise nothing is
+  saved and the import shows both totals.
+- **Evidence kept per row:** the name as printed (`merchant_raw`), the printed details line, the
+  UPI transaction ID (`reference_id`), bank and last four digits, page and row. Statement rows are
+  payment proof: they are confirmed on arrival, stay trusted in later confidence refreshes, and an
+  unsorted category does not send them to review.
+- **Reconciliation:** a row joins an existing record with the same UPI transaction ID (or the
+  usual instrument/merchant and time rules); a diary record of the same direction and amount
+  within 36 hours is never joined — the row waits as its possible duplicate. Exact re-imports skip
+  rows by source key. Saving is one bulk pass under the household lock (2,000 rows in well under
+  10 s), not `persist_event` per row.
+- **Categories:** merchant memory, then wider rules in `services/ledger/categories.py` (recharges,
+  broadband and power, app stores and streaming, railways and travel, fuel, supermarkets,
+  pharmacies and hospitals, food and cafés); otherwise "Other" for Sort payees.
+- **Gate:** `pnpm eval:gpay <statement.pdf>` reads a real statement kept outside the repository
+  and prints aggregates only. Synthetic statements for tests are drawn in code
+  (`apps/api/tests/statements/statement_pdf.py`).

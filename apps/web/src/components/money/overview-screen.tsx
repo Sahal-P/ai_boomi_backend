@@ -34,13 +34,13 @@ import {
   formatMoney,
   getObligations,
   getSummary,
-  periodFromParams,
+  isRange,
+  monthFromParams,
   periodSearch,
   type MoneySummary,
-  type Period,
 } from "@/lib/api/money";
 import { recordOutcome } from "@/lib/api/privacy";
-import { formatDay, formatPeriod, monthLabel } from "@/lib/dates";
+import { formatDay, formatPeriod, monthLabel, type Month } from "@/lib/dates";
 import { liabilityLabels, obligationKindLabels } from "@/lib/labels";
 import { describeProblem } from "@/lib/messages";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ import { cn } from "@/lib/utils";
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
 /** The month's one number, with the three figures behind it and the full working on request. */
-function Hero({ summary, period }: { summary: MoneySummary; period: Period }) {
+function Hero({ summary, period }: { summary: MoneySummary; period: Month | null }) {
   const suffix = periodSearch(period);
   const stats = [
     { label: "Money in", value: summary.tracked_income_minor, sign: "+", href: `/transactions?status=confirmed${suffix}` },
@@ -287,7 +287,7 @@ function Bills({ onOpen, version }: { onOpen: (id: string) => void; version: num
 export function OverviewScreen() {
   const params = useSearchParams();
   const update = useQueryUpdate();
-  const period = periodFromParams(new URLSearchParams(params.toString()));
+  const period = monthFromParams(new URLSearchParams(params.toString()));
   const summary = useResource(`summary:${period ? `${period.year}-${period.month}` : "current"}`, (signal) => getSummary(period, signal));
   const [obligation, setObligation] = useState<string | null>(null);
   const [changes, setChanges] = useState(0);
@@ -313,7 +313,9 @@ export function OverviewScreen() {
             <MonthSelect
               id="home-period"
               period={period}
-              onChange={(next) => update(next ? { year: String(next.year), month: String(next.month) } : { year: null, month: null })}
+              onChange={(next) =>
+                update(next && !isRange(next) ? { year: String(next.year), month: String(next.month) } : { year: null, month: null })
+              }
               className="flex-1 sm:flex-none"
             />
             <Button

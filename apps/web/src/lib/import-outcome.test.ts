@@ -28,6 +28,7 @@ const base: ImportRun = {
   truncated: false,
   data_version: "42",
   can_continue: false,
+  statement: null,
 };
 
 test("the audited partial import leads with review, not success", () => {

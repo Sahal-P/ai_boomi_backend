@@ -19,7 +19,15 @@ from finboy.services.money.engine import (
     upcoming_commitments,
 )
 from finboy.services.money.http import MoneyRoute
+from finboy.services.money.insights import Insights, money_insights
 from finboy.services.money.models import PeriodQuery, SimulationRequest
+from finboy.services.money.payees import (
+    PayeeChoice,
+    PayeeList,
+    PayeeResult,
+    sort_payee,
+    unsorted_payees,
+)
 from finboy.services.ux.contracts import ObligationDetail, ObligationList
 from finboy.services.ux.obligations import (
     ObligationCorrection,
@@ -37,6 +45,24 @@ def summary(
     session: DB, user_id: CurrentUser, query: Annotated[PeriodQuery, Query()]
 ) -> MoneySummary:
     return money_summary(session, user_id=user_id, period=query.to_period())
+
+
+@router.get("/insights")
+def insights(session: DB, user_id: CurrentUser, query: Annotated[PeriodQuery, Query()]) -> Insights:
+    return money_insights(session, user_id=user_id, period=query.to_period())
+
+
+@router.get("/payees")
+def payees(session: DB, user_id: CurrentUser, query: Annotated[PeriodQuery, Query()]) -> PayeeList:
+    """Spending payees still under "Other" in the period, largest first."""
+    return unsorted_payees(session, user_id=user_id, period=query.to_period())
+
+
+@router.post("/payees/category")
+def sort_payee_category(session: DB, user_id: CurrentUser, body: PayeeChoice) -> PayeeResult:
+    result = sort_payee(session, user_id=user_id, choice=body)
+    session.commit()
+    return result
 
 
 @router.get("/commitments")

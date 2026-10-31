@@ -108,6 +108,10 @@ class Settings(BaseSettings):
     # monthly check-in (name only). Unset means it is neither offered nor sent.
     whatsapp_checkin_template: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,64}$")
 
+    # Statement round (docs/statement-round/contract.md): Google Pay statement imports on the web
+    # and by WhatsApp document. Off until the human enables it; the web reads it from the session.
+    statement_import_enabled: bool = False
+
     # Sign-up round (docs/signup-round/contract.md). Off until the human enables it; none of
     # these values is a secret, and the web app reads them from GET /api/v1/auth/session.
     signup_enabled: bool = False

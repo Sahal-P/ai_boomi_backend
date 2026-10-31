@@ -10,6 +10,7 @@ import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { LoadingPanel } from "@/components/feedback/states";
 import { CoverageSummary } from "@/components/sources/coverage-summary";
 import { ImportHistory } from "@/components/sources/import-history";
+import { StatementImport } from "@/components/sources/statement-import";
 import { UploadStager } from "@/components/sources/upload-stager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ const connectionState: Record<
 
 export function SourcesScreen({ errorCode, intent }: { errorCode: string | null; intent: string | null }) {
   const router = useRouter();
-  const { signIn } = useHouseholdAccess();
+  const { signIn, statementImport } = useHouseholdAccess();
   const connections = useResource("connections", (signal) => getConnections(signal));
   const summary = useResource("summary:current", (signal) => getSummary(null, signal));
   const action = useAction();
@@ -74,7 +75,7 @@ export function SourcesScreen({ errorCode, intent }: { errorCode: string | null;
     <div className="space-y-6">
       <PageHeader
         title="Sources"
-        description="Where FinBoy reads your money emails. Scans are manual: nothing runs until you start one."
+        description="Where your records come from. Nothing is read until you start an import."
       />
       {oauthMessage && (
         <ProblemNotice
@@ -87,8 +88,9 @@ export function SourcesScreen({ errorCode, intent }: { errorCode: string | null;
         )}
       </div>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[1.25fr_1fr]">
-        <div className="space-y-5">
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1.25fr_1fr]">
+        <div className="min-w-0 space-y-5">
+          {statementImport && <StatementImport />}
           <section aria-labelledby="accounts-title" className="surface rounded-3xl p-5 sm:p-6">
             <h2 id="accounts-title" className="text-lg font-semibold">
               Gmail
@@ -203,7 +205,7 @@ export function SourcesScreen({ errorCode, intent }: { errorCode: string | null;
           <UploadStager />
         </div>
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <section aria-labelledby="coverage-title" className="surface rounded-3xl p-5 sm:p-6">
             <h2 id="coverage-title" className="text-lg font-semibold">
               What&apos;s covered

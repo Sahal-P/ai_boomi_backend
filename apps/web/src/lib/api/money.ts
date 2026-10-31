@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Month } from "../dates.ts";
 import { jsonBody, query, requestJson } from "./http.ts";
 
 export const categories = [
@@ -65,6 +66,7 @@ export const sourceModeSchema = z.enum([
   "whatsapp_image",
   "whatsapp_voice",
   "manual_entry",
+  "gpay_statement",
 ]);
 export type SourceMode = z.infer<typeof sourceModeSchema>;
 export const datasetSchema = z.enum(["household", "demo", "quarantined"]);
@@ -243,24 +245,69 @@ export const simulationSchema = z.object({
 });
 export type Simulation = z.infer<typeof simulationSchema>;
 
-/** A month the user selected; `null` means the current IST month resolved by the backend. */
-export type Period = { year: number; month: number } | null;
+/** A chosen month; a range of whole months (Reports, an imported statement); `null` is this month. */
+export type MonthRange = { from: Month; to: Month };
+export type Period = Month | MonthRange | null;
+export const isRange = (period: Period): period is MonthRange => period !== null && "from" in period;
+/** The API reads at most two years at once. */
+export const MAX_RANGE_MONTHS = 24;
 
-/** The month in a screen's URL (`?year=&month=`), or null for the current month. */
-export function periodFromParams(params: URLSearchParams): Period {
-  const year = Number(params.get("year"));
-  const month = Number(params.get("month"));
-  return Number.isInteger(year) && year >= 2000 && year <= 2100 && Number.isInteger(month) && month >= 1 && month <= 12
-    ? { year, month }
-    : null;
+const monthIndex = (month: Month) => month.year * 12 + month.month - 1;
+const pad = (value: number) => String(value).padStart(2, "0");
+const validMonth = (year: number, month: number) =>
+  Number.isInteger(year) && year >= 2000 && year <= 2100 && Number.isInteger(month) && month >= 1 && month <= 12;
+
+function monthParam(value: string | null): Month | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(value ?? "");
+  const year = Number(match?.[1]);
+  const month = Number(match?.[2]);
+  return match && validMonth(year, month) ? { year, month } : null;
 }
 
-/** `&year=…&month=…` to carry a chosen month into a records link; empty for the current month. */
+/** `YYYY-MM`, as ranges travel in links. */
+export const monthKey = (month: Month) => `${month.year}-${pad(month.month)}`;
+
+/** Every month of a range, oldest first. */
+export function rangeMonths(range: MonthRange): Month[] {
+  const first = monthIndex(range.from);
+  return Array.from({ length: monthIndex(range.to) - first + 1 }, (_, offset) => ({
+    year: Math.floor((first + offset) / 12),
+    month: ((first + offset) % 12) + 1,
+  }));
+}
+
+/** The month in a URL (`?year=&month=`), or null for the current month. Home reads only this. */
+export function monthFromParams(params: URLSearchParams): Month | null {
+  const year = Number(params.get("year"));
+  const month = Number(params.get("month"));
+  return validMonth(year, month) ? { year, month } : null;
+}
+
+/** A range (`?from=2026-04&to=2026-09`) or a month in a screen's URL; null for the current month. */
+export function periodFromParams(params: URLSearchParams): Period {
+  const from = monthParam(params.get("from"));
+  const to = monthParam(params.get("to"));
+  if (from && to && monthIndex(from) <= monthIndex(to) && monthIndex(to) - monthIndex(from) < MAX_RANGE_MONTHS) {
+    return monthIndex(from) === monthIndex(to) ? from : { from, to };
+  }
+  return monthFromParams(params);
+}
+
+/** `&year=…&month=…` or `&from=…&to=…` to carry the period into a link; empty for this month. */
 export function periodSearch(period: Period): string {
+  if (isRange(period)) return `&from=${monthKey(period.from)}&to=${monthKey(period.to)}`;
   return period ? `&year=${period.year}&month=${period.month}` : "";
 }
 
 export function periodQuery(period: Period) {
+  if (isRange(period)) {
+    const last = new Date(Date.UTC(period.to.year, period.to.month, 0)).getUTCDate();
+    return {
+      period: "range",
+      start: `${monthKey(period.from)}-01`,
+      end: `${monthKey(period.to)}-${pad(last)}`,
+    };
+  }
   return period
     ? { period: "month", year: period.year, month: period.month }
     : { period: "current_month" };
@@ -268,6 +315,79 @@ export function periodQuery(period: Period) {
 
 export const getSummary = (period: Period, signal?: AbortSignal) =>
   requestJson(`/api/v1/money/summary${query(periodQuery(period))}`, summarySchema, { signal });
+const payeeTotalSchema = z.object({
+  name: z.string(),
+  amount_minor: count,
+  count: count,
+  share: z.number().min(0).max(1),
+  category: categorySchema,
+});
+export type PayeeTotal = z.infer<typeof payeeTotalSchema>;
+export const insightsSchema = z.object({
+  period_start: z.iso.date(),
+  period_end: z.iso.date(),
+  months: count,
+  money_out_minor: count,
+  money_in_minor: count,
+  payment_count: count,
+  top_payees: z.array(payeeTotalSchema),
+  top_senders: z.array(payeeTotalSchema),
+  biggest: z.array(
+    z.object({ id: z.uuid(), name: z.string(), amount_minor: count, occurred_at: timestamp, category: categorySchema }),
+  ),
+  regular: z.array(
+    z.object({
+      name: z.string(),
+      usual_minor: count,
+      months: count,
+      last_paid: z.iso.date(),
+      next_expected: z.iso.date(),
+      category: categorySchema,
+    }),
+  ),
+  regular_monthly_minor: count,
+  people: z.array(
+    z.object({
+      name: z.string(),
+      sent_minor: count,
+      received_minor: count,
+      balance_minor: integer,
+      count: count,
+      last_on: z.iso.date(),
+    }),
+  ),
+  small: z.object({
+    threshold_minor: count,
+    count: count,
+    amount_minor: count,
+    per_month_minor: count,
+    count_share: z.number().min(0).max(1),
+    amount_share: z.number().min(0).max(1),
+    places: z.array(payeeTotalSchema),
+  }),
+  data_version: opaque,
+});
+export type Insights = z.infer<typeof insightsSchema>;
+export const getInsights = (period: Period, signal?: AbortSignal) =>
+  requestJson(`/api/v1/money/insights${query(periodQuery(period))}`, insightsSchema, { signal });
+
+const payeeListSchema = z.object({
+  items: z.array(z.object({ name: z.string(), count: count, amount_minor: count })),
+  spent_minor: count,
+  unsorted_minor: count,
+  data_version: opaque,
+});
+export type PayeeList = z.infer<typeof payeeListSchema>;
+/** Spending payees still under "Other" in the period, largest first. */
+export const getPayees = (period: Period, signal?: AbortSignal) =>
+  requestJson(`/api/v1/money/payees${query(periodQuery(period))}`, payeeListSchema, { signal });
+/** One category for every spending record of the payee, remembered for its next entries. */
+export const sortPayee = (name: string, category: Category, expectedVersion: string) =>
+  requestJson(
+    "/api/v1/money/payees/category",
+    z.object({ updated: count, data_version: opaque }),
+    { method: "POST", ...jsonBody({ name, category, expected_version: expectedVersion }) },
+  );
 export const getObligations = (
   status: "unresolved" | "all" | "paid" | "dismissed",
   signal?: AbortSignal,

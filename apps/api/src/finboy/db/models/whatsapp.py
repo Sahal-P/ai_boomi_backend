@@ -51,7 +51,9 @@ class WhatsAppBinding(Base):
 class WhatsAppReceipt(Base):
     __tablename__ = "whatsapp_receipts"
     __table_args__ = (
-        CheckConstraint("kind IN ('text','audio','image','command','button')", name="kind"),
+        CheckConstraint(
+            "kind IN ('text','audio','image','command','button','document')", name="kind"
+        ),
         CheckConstraint("language IN ('en','hi','ml')", name="language"),
         CheckConstraint(
             "state IN ('admitted','processing','completed','failed','interrupted','ignored')",
@@ -62,7 +64,8 @@ class WhatsAppReceipt(Base):
             "'processing_failed','window_expired','interrupted','disabled','stale_message',"
             "'invalid_image','capture_unavailable','capture_busy','prompt_expired',"
             "'record_changed','amount_unclear','statement_unavailable','signup_full',"
-            "'login_expired','usage_limit','web_not_available')",
+            "'login_expired','usage_limit','web_not_available','invalid_document',"
+            "'document_unavailable')",
             name="error_code",
         ),
         Index("ix_whatsapp_receipts_state_received_at", "state", "received_at"),

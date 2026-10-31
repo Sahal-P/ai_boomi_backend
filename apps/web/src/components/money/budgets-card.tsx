@@ -16,7 +16,7 @@ import {
   type BudgetItem,
   type BudgetPlan,
 } from "@/lib/api/budgets";
-import { formatMoney, inputPaise, type Period } from "@/lib/api/money";
+import { formatMoney, inputPaise, isRange, type Period } from "@/lib/api/money";
 import { monthLabel } from "@/lib/dates";
 import { categoryLabels } from "@/lib/labels";
 import { describeProblem, type Problem } from "@/lib/messages";
@@ -228,13 +228,15 @@ export function BudgetsCard({
   version: number;
   compact?: boolean;
 }) {
-  const budgets = useResource(`budgets:${period ? `${period.year}-${period.month}` : "current"}:${version}`, (signal) =>
-    getBudgets(period, signal),
+  // Limits are monthly: a range of months shows its last month's budgets.
+  const month = isRange(period) ? period.to : period;
+  const budgets = useResource(`budgets:${month ? `${month.year}-${month.month}` : "current"}:${version}`, (signal) =>
+    getBudgets(month, signal),
   );
   const [editing, setEditing] = useState<Editing>(null);
   const plan = budgets.stale ? null : budgets.data;
   const canAdd = plan ? plan.categories.some((category) => !plan.items.some((item) => item.category === category)) : false;
-  const reports = `/reports${period ? `?year=${period.year}&month=${period.month}` : ""}#budgets`;
+  const reports = `/reports${month ? `?year=${month.year}&month=${month.month}` : ""}#budgets`;
   const items = plan
     ? compact
       ? [...plan.items].sort((a, b) => b.spent_minor / b.limit_minor - a.spent_minor / a.limit_minor).slice(0, 3)
@@ -260,7 +262,7 @@ export function BudgetsCard({
       </div>
       {!compact && (
         <p className="mt-1 text-xs text-ink-soft">
-          {period ? `${monthLabel(period.year, period.month)} · ` : "This month · "}FinBoy warns you on WhatsApp from 80%.
+          {month ? `${monthLabel(month.year, month.month)} · ` : "This month · "}FinBoy warns you on WhatsApp from 80%.
         </p>
       )}
       {budgets.status === "loading" && <LoadingPanel className="mt-3 shadow-none" label="Loading budgets…" />}

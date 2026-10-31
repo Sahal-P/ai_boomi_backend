@@ -73,6 +73,8 @@ class SessionView(BaseModel):
     authenticated: bool
     household: Household | None
     sign_in: SignInOptions
+    # Google Pay statement import (docs/statement-round/contract.md); off until enabled.
+    statement_import: bool = False
 
 
 class Started(BaseModel):
@@ -147,6 +149,7 @@ def session_view(request: Request, session: DB) -> SessionView:
         authenticated=user_id is not None,
         household=household,
         sign_in=options,
+        statement_import=settings.statement_import_enabled,
     )
 
 

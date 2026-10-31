@@ -29,6 +29,9 @@ class ChannelConfig:
     allowlist: dict[str, UUID] = field(repr=False)
     timeout: float = 15
     max_body: int = 262144
+    # Google Pay statement PDFs (docs/statement-round/contract.md); while off, documents are
+    # acknowledged and ignored exactly as before the statement round.
+    statements: bool = False
 
     def digest(self, purpose: str, value: str | bytes) -> str:
         data = value.encode() if isinstance(value, str) else value
@@ -78,4 +81,5 @@ def channel_config(settings: Settings) -> ChannelConfig:
         allowlist,
         timeout=settings.whatsapp_timeout_seconds,
         max_body=settings.whatsapp_max_webhook_bytes,
+        statements=settings.statement_import_enabled,
     )

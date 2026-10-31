@@ -226,6 +226,7 @@ def correct_transaction(
     occurred_at: datetime | None = None,
     direction: str | None = None,
     kind: str | None = None,
+    reason: str = "user_correction",
 ) -> None:
     if category is not None and category not in get_args(Category):
         raise ValueError("invalid_correction")
@@ -272,11 +273,11 @@ def correct_transaction(
             if isinstance(getattr(item, field), datetime)
             else getattr(item, field),
             value.isoformat() if isinstance(value, datetime) else value,
-            reason="user_correction",
+            reason=reason,
             changed_by="user",
         )
         setattr(item, field, value)
-    _lock_fields(session, item, set(changes), "user_correction")
+    _lock_fields(session, item, set(changes), reason)
     item.updated_at = now_ist()
     session.flush()
 

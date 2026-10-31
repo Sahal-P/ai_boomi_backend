@@ -15,6 +15,7 @@ import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { LoadingPanel } from "@/components/feedback/states";
 import { outcomeBadges } from "@/components/sources/import-history";
+import { StatementResult } from "@/components/sources/statement-result";
 import { UploadStager } from "@/components/sources/upload-stager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -149,6 +150,20 @@ export function ImportResult({ runId }: { runId: string }) {
           <LoadingPanel label="Loading this import…" />
         )}
       </div>
+    );
+  }
+
+  if (run.mode === "gpay_statement") {
+    return (
+      <StatementResult
+        run={run}
+        onChange={tracker.replace}
+        problem={
+          tracker.problem && (
+            <ProblemNotice className="mt-4" problem={tracker.problem} onRetry={tracker.refresh} retryLabel="Refresh now" />
+          )
+        }
+      />
     );
   }
 

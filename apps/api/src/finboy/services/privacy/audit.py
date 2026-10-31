@@ -39,6 +39,7 @@ METADATA = {
         "whatsapp_image",
         "whatsapp_voice",
         "manual_entry",
+        "gpay_statement",
     },
     "result": {"success", "failure"},
 }

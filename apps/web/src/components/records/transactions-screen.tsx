@@ -18,7 +18,8 @@ import { useQuickAdd } from "@/components/money/quick-add-provider";
 import { useQueryUpdate } from "@/hooks/use-query-update";
 import { PAGE_SIZE, useRecordList } from "@/hooks/use-record-list";
 import { useRecordsChanged } from "@/hooks/use-records-changed";
-import { monthLabel } from "@/lib/dates";
+import { isRange } from "@/lib/api/money";
+import { monthLabel, rangeLabel } from "@/lib/dates";
 import { describeProblem, hasCode } from "@/lib/messages";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -38,9 +39,11 @@ export function TransactionsScreen() {
   const periodLabel =
     query.scope === "all"
       ? "all time"
-      : query.period
-        ? monthLabel(query.period.year, query.period.month)
-        : "this month";
+      : isRange(query.period)
+        ? rangeLabel(query.period.from, query.period.to)
+        : query.period
+          ? monthLabel(query.period.year, query.period.month)
+          : "this month";
   const versionConflict = list.error !== null && hasCode(list.error, "version_conflict");
   const quickAdd = useQuickAdd();
   useRecordsChanged(list.reload);

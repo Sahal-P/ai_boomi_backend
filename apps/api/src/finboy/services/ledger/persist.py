@@ -28,6 +28,17 @@ from finboy.services.ledger.matching import (
 )
 from finboy.services.ledger.reconcile import revision
 
+STATEMENT_SOURCES = frozenset({"gpay_statement"})
+
+
+def from_statement(source: EmailSource | None) -> bool:
+    return source is not None and source.source in STATEMENT_SOURCES
+
+
+def trusted_source(source: EmailSource | None) -> bool:
+    """A trusted sender's template, or a payment app's own statement row."""
+    return source is not None and (trusted_domain(source.sender_domain) or from_statement(source))
+
 
 def as_event(row: SourceEvent) -> Event:
     return Event(
@@ -165,9 +176,10 @@ def refresh_review_confidence(
     )
     confidence = confidence_for(
         best,
-        trusted=trusted_domain(sender.sender_domain) if sender else False,
+        trusted=trusted_source(sender),
         source_count=len({row.email_source_id for row in sources}),
         agreement=all(claims_agree(best, as_event(row)) for row in sources),
+        statement=from_statement(sender),
     )
     _set_confidence(session, transaction, confidence, preserve_status=preserve_status)
 
@@ -347,12 +359,63 @@ def refresh_links(session: Session, user_id: UUID, dataset: str = "household") -
             commitment.paid_transaction_id = candidates[0].id
 
 
+def attach_evidence(
+    session: Session,
+    *,
+    transaction: Transaction,
+    source_event: SourceEvent,
+    event: Event,
+    had_proof: bool,
+    fallback_time: datetime,
+) -> None:
+    """Join new evidence to the record it matched; the first payment proof corrects its fields."""
+    source_event.transaction_id = transaction.id
+    source_event.origin_transaction_id = transaction.id
+    session.flush()
+    sources = list(
+        session.scalars(select(SourceEvent).where(SourceEvent.transaction_id == transaction.id))
+    )
+    chosen = next((item for item in sources if "payment_proof" in item.evidence), source_event)
+    best = as_event(chosen)
+    sender = session.get(EmailSource, chosen.email_source_id)
+    confidence = confidence_for(
+        best,
+        trusted=trusted_source(sender),
+        source_count=len({item.email_source_id for item in sources}),
+        agreement=all(claims_agree(best, as_event(item)) for item in sources),
+        statement=from_statement(sender),
+    )
+    if event.payment_proof and not had_proof:
+        locked = set(transaction.user_locked_fields or [])
+        for field, value in {
+            "kind": kind(event),
+            "merchant": normalize_merchant(event.merchant) or "Unknown",
+            "category": category_for(event),
+            "occurred_at": event.occurred_at or fallback_time,
+            "reference_id": event.reference_id,
+            "payment_instrument": event.payment_instrument,
+            "account_last4": event.account_last4,
+        }.items():
+            if field not in locked:
+                old = getattr(transaction, field)
+                revision(
+                    session,
+                    transaction,
+                    field,
+                    old.isoformat() if isinstance(old, datetime) else old,
+                    value.isoformat() if isinstance(value, datetime) else value,
+                    reason="payment_evidence",
+                )
+                setattr(transaction, field, value)
+    _set_confidence(session, transaction, confidence)
+
+
 def persist_event(
     session: Session, *, user_id: UUID, source: EmailSource, event: Event, fallback_time: datetime
 ) -> tuple[bool, bool]:
     """Return (transaction created, duplicate merged); caller commits one message."""
     source_event = _source_event(session, user_id, source, event)
-    trusted = trusted_domain(source.sender_domain)
+    trusted = trusted_source(source)
     dataset = "demo" if source.source == "demo_mailbox" else "household"
     if event.event_type in {"bill_due", "emi_due"}:
         _commitment(session, user_id, event, source_event, trusted)
@@ -400,49 +463,18 @@ def persist_event(
         else choose_match(event, existing_events, excluded=excluded)
     )
     if match.index is not None:
-        transaction = transactions[match.index]
-        source_event.transaction_id = transaction.id
-        source_event.origin_transaction_id = transaction.id
-        session.flush()
-        sources = list(
-            session.scalars(select(SourceEvent).where(SourceEvent.transaction_id == transaction.id))
+        attach_evidence(
+            session,
+            transaction=transactions[match.index],
+            source_event=source_event,
+            event=event,
+            had_proof=existing_events[match.index].payment_proof,
+            fallback_time=fallback_time,
         )
-        chosen = next((item for item in sources if "payment_proof" in item.evidence), source_event)
-        best = as_event(chosen)
-        sender = session.get(EmailSource, chosen.email_source_id)
-        confidence = confidence_for(
-            best,
-            trusted=trusted_domain(sender.sender_domain) if sender else False,
-            source_count=len({item.email_source_id for item in sources}),
-            agreement=all(claims_agree(best, as_event(item)) for item in sources),
-        )
-        if event.payment_proof and not existing_events[match.index].payment_proof:
-            locked = set(transaction.user_locked_fields or [])
-            for field, value in {
-                "kind": kind(event),
-                "merchant": normalize_merchant(event.merchant) or "Unknown",
-                "category": category_for(event),
-                "occurred_at": event.occurred_at or fallback_time,
-                "reference_id": event.reference_id,
-                "payment_instrument": event.payment_instrument,
-                "account_last4": event.account_last4,
-            }.items():
-                if field not in locked:
-                    old = getattr(transaction, field)
-                    revision(
-                        session,
-                        transaction,
-                        field,
-                        old.isoformat() if isinstance(old, datetime) else old,
-                        value.isoformat() if isinstance(value, datetime) else value,
-                        reason="payment_evidence",
-                    )
-                    setattr(transaction, field, value)
-        _set_confidence(session, transaction, confidence)
         session.flush()
         refresh_links(session, user_id, dataset)
         return False, True
-    confidence = confidence_for(event, trusted=trusted)
+    confidence = confidence_for(event, trusted=trusted, statement=from_statement(source))
     if match.possible_index is not None:
         confidence = Confidence(
             confidence.value, confidence.factors, "needs_review", "possible_duplicate"

@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useResource } from "@/hooks/use-resource";
-import { categorySchema, kindSchema, statusSchema, type Period } from "@/lib/api/money";
+import { categorySchema, kindSchema, periodFromParams, statusSchema } from "@/lib/api/money";
 import {
   getTransactionPage,
   recordQueryString,
@@ -20,9 +20,7 @@ function boundedInt(value: string | null, min: number, max: number): number | nu
 
 /** Reads list state from the URL; unknown or unsafe values are ignored rather than sent. */
 export function readRecordQuery(params: URLSearchParams, view: "transactions" | "review"): RecordQuery {
-  const year = boundedInt(params.get("year"), 2000, 2100);
-  const month = boundedInt(params.get("month"), 1, 12);
-  const period: Period = year && month ? { year, month } : null;
+  const period = periodFromParams(params);
   const source = params.get("source");
   const q = params.get("q")?.trim().slice(0, 160);
   const offset = boundedInt(params.get("offset"), 0, 1_000_000) ?? 0;
@@ -37,7 +35,8 @@ export function readRecordQuery(params: URLSearchParams, view: "transactions" | 
       source === "eml_upload" ||
       source === "whatsapp_image" ||
       source === "whatsapp_voice" ||
-      source === "manual_entry"
+      source === "manual_entry" ||
+      source === "gpay_statement"
         ? source
         : undefined,
     q: q || undefined,

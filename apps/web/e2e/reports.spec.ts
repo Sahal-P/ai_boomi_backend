@@ -36,9 +36,21 @@ test("a month with nothing recorded says so, and the month control brings this m
   await page.getByRole("button", { name: "Add an entry" }).click();
   await expect(page.getByRole("dialog", { name: "Add money in or out" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.getByLabel("Month").selectOption({ label: "This month" });
+  await page.getByLabel("Period").selectOption({ label: "This month" });
   await expect(page).toHaveURL(/\/reports$/);
   await expect(page.getByRole("region", { name: "Where your money went" })).toBeVisible();
+});
+
+test("the period control reaches back several months at once", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-10-24T10:00:00+05:30"));
+  await page.goto("/reports");
+  await page.getByLabel("Period").selectOption({ label: "Last 6 months" });
+  await expect(page).toHaveURL(/\/reports\?from=2026-05&to=2026-10$/);
+  await expect(page.getByLabel("Period")).toHaveValue("range:2026-05:2026-10");
+  await expect(page.getByRole("listitem").filter({ hasText: "Confirmed spending over 6 months" })).toBeVisible();
+  // A range lists its own months, oldest first.
+  const table = page.getByRole("region", { name: "Month by month" }).getByRole("table");
+  await expect(table.getByRole("row")).toHaveCount(7);
 });
 
 test("budgets show what is left and are added, removed and joined by a savings goal in place", async ({ page, api }) => {

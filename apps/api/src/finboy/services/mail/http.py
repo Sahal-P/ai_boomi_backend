@@ -17,7 +17,27 @@ from finboy.services.ux.state import TaskError
 logger = logging.getLogger(__name__)
 
 
+# Statement problems the household can act on, in words the import card can show as they are.
+STATEMENT_FAILURES = {
+    "invalid_statement": (400, "Choose one PDF file."),
+    "not_gpay_statement": (422, "This isn't a Google Pay statement."),
+    "statement_locked": (
+        422,
+        "This statement is password-protected. Download it again without a password.",
+    ),
+    "statement_unreadable": (
+        422,
+        "FinBoy couldn't read every row of this statement, so nothing was imported.",
+    ),
+    "statement_already_imported": (409, "This statement is already in FinBoy."),
+    "statement_import_off": (404, "Statement import isn't available yet."),
+}
+
+
 def failure(request: Request, exc: MailError) -> JSONResponse:
+    if exc.code in STATEMENT_FAILURES:
+        status, message = STATEMENT_FAILURES[exc.code]
+        return error_response(request, status, exc.code, message)
     status = 409 if exc.code in {"import_busy", "connection_inactive"} else 400
     if exc.code in {
         "gmail_not_configured",

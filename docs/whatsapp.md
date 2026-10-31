@@ -447,3 +447,18 @@ runs ([contract](triage-round/contract.md)). When it is sure:
 A named payee, several items, a pasted bank SMS or a due still go to the statement model, as does
 anything d1-ultra is unsure of. d1-ultra gets the masked text and a small JPEG of the cleaned photo;
 nothing is stored. `whatsapp.processed` logs each message's reply time.
+
+## Google Pay statements (31 October 2026)
+
+Specified in the [statement round contract](statement-round/contract.md). While
+`STATEMENT_IMPORT_ENABLED` is true (`ChannelConfig.statements`), a `document` message of type
+`application/pdf` (10 MB at most, downloaded through the bounded Meta media path) is read as a
+Google Pay statement with the web's reader and importer; other document types get the existing
+"can't read this" reply, and while the flag is off documents are ignored as before. Diary
+households agree to the terms first. No AI is used. The reply follows the household's reply
+language: the rows and period, paid and received both matching Google Pay, new / already in
+FinBoy / to check, regular payments and small payments a month, and — for web households only —
+a link to Reports for the statement's months. Every other outcome is one plain line. Receipts
+keep kind `document` and a fixed code (`invalid_document`, `document_unavailable`,
+`capture_busy`); the PDF, its phone number and email are never stored. WhatsApp never removes an
+import or merges records.

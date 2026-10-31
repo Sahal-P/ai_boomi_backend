@@ -57,7 +57,7 @@ class ImportRun(Base):
     __table_args__ = (
         CheckConstraint(
             "mode IN ('gmail','eml_upload','demo_mailbox','whatsapp_image','whatsapp_voice',"
-            "'manual_entry')",
+            "'manual_entry','gpay_statement')",
             name="mode",
         ),
         CheckConstraint("status IN ('queued','running','completed','failed')", name="status"),

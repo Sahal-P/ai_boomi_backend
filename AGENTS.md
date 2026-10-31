@@ -211,3 +211,16 @@ of money in and out, budget meters) and a chat-style Ask like Gemini's in FinBoy
 documented there. One agent on feat/finboy-ui-refresh, loopback web 3061 with API 8061,
 disposable finboy_signup; web only, no API or migration change. Charts follow the dataviz method
 with validated tokens; contrast, blur and reduced-motion rules are unchanged.
+
+## Statement round — 31 October 2026
+
+From feat/finboy-ui-refresh 00904f2 the human asked to import transactions from a Google Pay
+statement PDF, on the web and by sending it on WhatsApp, keeping every detail and losing nothing,
+with four new report sections: Who you pay most, Regular payments, Money with people and Small
+payments. `docs/statement-round/contract.md` supersedes "PDFs can't be read", WhatsApp ignoring
+documents and single-month periods only as documented there. One agent on
+feat/finboy-statement-import, loopback 8061/3061, disposable finboy_signup, migration
+`0012_statement_imports`. `STATEMENT_IMPORT_ENABLED` stays false until `pnpm eval:gpay` passes and
+the human approves the release. A statement saves nothing unless every row adds up to Google's own
+totals; the PDF, its phone number and email are never stored or logged; WhatsApp never removes an
+import or merges records. Never commit a real statement or use one as a fixture.

@@ -50,6 +50,14 @@ const byCode: Record<string, string> = {
   web_not_available: "Your household uses FinBoy on WhatsApp.",
   entry_busy: "FinBoy is still saving your last entry. Nothing was added twice. Try again in a moment.",
   entry_unavailable: "That entry couldn't be saved. Nothing was added. Try again.",
+  // Statement round (docs/statement-round/contract.md).
+  invalid_statement: "Choose one PDF file — your Google Pay statement.",
+  not_gpay_statement: "This isn't a Google Pay statement. Nothing was imported.",
+  statement_locked: "This statement is password-protected. Download it again from Google Pay without a password.",
+  statement_unreadable:
+    "FinBoy couldn't read every row of this statement, so nothing was imported. Download it again and retry.",
+  statement_already_imported: "This statement is already in FinBoy. Nothing was added twice.",
+  statement_import_off: "Statement import isn't available yet.",
 };
 
 const byKind: Record<Problem["kind"], string> = {

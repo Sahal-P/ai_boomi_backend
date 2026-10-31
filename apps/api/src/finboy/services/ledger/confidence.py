@@ -14,8 +14,16 @@ class Confidence:
 
 
 def confidence_for(
-    event: Event, *, trusted: bool, source_count: int = 1, agreement: bool = True
+    event: Event,
+    *,
+    trusted: bool,
+    source_count: int = 1,
+    agreement: bool = True,
+    statement: bool = False,
 ) -> Confidence:
+    """`statement`: the evidence is a payment app's own statement row. Its amount, time, payee and
+    reference are the payment's record, so an unsorted category waits for Sort payees instead of
+    sending the row to review (docs/statement-round/contract.md)."""
     # A missing second source is unavailable evidence, not evidence of disagreement.
     # Normalize over applicable weights; a known disagreement receives zero instead.
     factors: dict[str, float | int | None] = {
@@ -42,6 +50,8 @@ def confidence_for(
         reason = "unverified_payment"
     elif not event.merchant or "unknown" in event.merchant.lower() or "[address]" in event.merchant:
         reason = "merchant_uncertain"
+    elif statement:
+        pass
     elif category_for(event) == "other":
         reason = "category_uncertain"
     elif value < 0.90:

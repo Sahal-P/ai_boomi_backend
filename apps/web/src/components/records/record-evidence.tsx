@@ -1,8 +1,54 @@
-import { ImageIcon, Mail, Mic, PencilLine } from "lucide-react";
+import { FileText, ImageIcon, Mail, Mic, PencilLine } from "lucide-react";
 import { formatMoney, type TransactionSource } from "@/lib/api/money";
 import type { TransactionDetail } from "@/lib/api/transactions";
 import { formatDay, formatDayTime } from "@/lib/dates";
 import { confidenceFactorLabels, evidenceFieldLabel, sourceLabels, sourceSender } from "@/lib/labels";
+
+/** A Google Pay statement row: what the statement printed, its UPI transaction ID and account. */
+function StatementCard({ source, detail }: { source: TransactionSource; detail: TransactionDetail }) {
+  const { bank, page, row, detail: printed } = source.evidence;
+  const received = source.event_type === "credit";
+  return (
+    <li className="rounded-2xl border p-4">
+      <p className="flex items-center gap-2 text-sm font-semibold">
+        <FileText className="size-4 shrink-0 text-ink" aria-hidden="true" />
+        {sourceSender(source)}
+      </p>
+      <p className="mt-1 text-xs text-ink-soft">
+        {sourceLabels[source.source]}
+        {page ? ` · page ${page}${row ? `, row ${row}` : ""}` : ""} · read by a fixed rule
+      </p>
+      <p className="mt-2 text-xs text-ink-soft">
+        The statement shows {formatMoney(source.amount_minor)} {received ? "received from" : "paid to"}{" "}
+        {source.merchant ?? "this payee"}
+        {source.occurred_at ? ` on ${formatDayTime(source.occurred_at)}` : ""}.
+      </p>
+      <dl className="mt-3 grid gap-2 text-xs leading-relaxed sm:grid-cols-2">
+        {printed && (
+          <div className="sm:col-span-2">
+            <dt className="font-semibold text-ink-soft">As printed</dt>
+            <dd className="break-words">&ldquo;{printed}&rdquo;</dd>
+          </div>
+        )}
+        {detail.transaction.reference_id && (
+          <div>
+            <dt className="font-semibold text-ink-soft">UPI transaction ID</dt>
+            <dd className="break-all tabular-nums">{detail.transaction.reference_id}</dd>
+          </div>
+        )}
+        {bank && (
+          <div>
+            <dt className="font-semibold text-ink-soft">{received ? "Paid into" : "Paid from"}</dt>
+            <dd>
+              {bank}
+              {detail.transaction.account_last4 ? ` ••${detail.transaction.account_last4}` : ""}
+            </dd>
+          </div>
+        )}
+      </dl>
+    </li>
+  );
+}
 
 function SourceCard({ source }: { source: TransactionSource }) {
   const entries = Object.entries(source.evidence);
@@ -55,6 +101,7 @@ export function RecordEvidence({ detail }: { detail: TransactionDetail }) {
   const screenshots = only("whatsapp_image");
   const voices = only("whatsapp_voice");
   const typed = only("manual_entry");
+  const statements = only("gpay_statement");
   const whatsapp = detail.sources.some((source) => source.source.startsWith("whatsapp_"));
   const mixed = whatsapp && !screenshots && !voices;
   const noun = screenshots
@@ -63,7 +110,9 @@ export function RecordEvidence({ detail }: { detail: TransactionDetail }) {
       ? "voice note"
       : typed
         ? "entry"
-        : mixed
+        : statements
+          ? "statement row"
+          : mixed
           ? "notification"
           : "email";
   return (
@@ -74,9 +123,13 @@ export function RecordEvidence({ detail }: { detail: TransactionDetail }) {
         corrections never change what the {noun}s {screenshots || mixed ? "showed" : "said"}.
       </p>
       <ul className="mt-3 space-y-3">
-        {detail.sources.map((source) => (
-          <SourceCard key={source.id} source={source} />
-        ))}
+        {detail.sources.map((source) =>
+          source.source === "gpay_statement" ? (
+            <StatementCard key={source.id} source={source} detail={detail} />
+          ) : (
+            <SourceCard key={source.id} source={source} />
+          ),
+        )}
       </ul>
       {factors.length > 0 && (
         <details className="mt-3 rounded-xl border p-3 text-xs">

@@ -20,7 +20,15 @@ class PageQuery(PeriodQuery):
     status: Literal["confirmed", "needs_review", "rejected", "merged", "failed"] | None = None
     category: str | None = Field(default=None, max_length=40)
     source: (
-        Literal["gmail", "eml_upload", "whatsapp_image", "whatsapp_voice", "manual_entry"] | None
+        Literal[
+            "gmail",
+            "eml_upload",
+            "whatsapp_image",
+            "whatsapp_voice",
+            "manual_entry",
+            "gpay_statement",
+        ]
+        | None
     ) = None
     kind: (
         Literal[
@@ -74,7 +82,7 @@ def transaction_page(session: Session, *, user_id: UUID, query: PageQuery) -> Tr
     if query.data_version is not None and query.data_version != version:
         raise TaskError("version_conflict")
     conditions = [Transaction.user_id == user_id, Transaction.dataset == query.dataset]
-    if query.scope == "month" or query.period == "month":
+    if query.scope == "month" or query.period in {"month", "range"}:
         start, end = period_dates(query.to_period(), today_ist())
         conditions += [
             Transaction.occurred_at >= datetime.combine(start, time.min, IST),
@@ -88,7 +96,10 @@ def transaction_page(session: Session, *, user_id: UUID, query: PageQuery) -> Tr
         if value is not None:
             conditions.append(field == value)
     if query.q:
-        conditions.append(Transaction.merchant.icontains(query.q.strip(), autoescape=True))
+        # Spaces don't count: Google Pay prints some names both with and without them.
+        compact = "".join(query.q.split()).lower()
+        merchant = func.replace(func.lower(Transaction.merchant), " ", "")
+        conditions.append(merchant.contains(compact, autoescape=True))
     if query.source:
         conditions.append(
             Transaction.id.in_(

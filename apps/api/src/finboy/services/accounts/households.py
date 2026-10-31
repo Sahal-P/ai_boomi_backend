@@ -23,6 +23,7 @@ from finboy.db.models.ledger import (
 )
 from finboy.db.models.mail import ImportRun, MailConnection, OAuthState
 from finboy.db.models.money import Budget, MerchantCategory
+from finboy.db.models.statements import StatementImport
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt
 
 # Households that started on WhatsApp but have not agreed yet; newer unknown numbers wait.
@@ -133,6 +134,7 @@ def remove_household_data(session: Session, user_id: UUID) -> dict[str, int]:
     )
     remove("transactions", delete(Transaction).where(Transaction.user_id == user_id))
     remove("email_sources", delete(EmailSource).where(EmailSource.user_id == user_id))
+    remove("statement_imports", delete(StatementImport).where(StatementImport.user_id == user_id))
     remove("import_runs", delete(ImportRun).where(ImportRun.user_id == user_id))
     remove("mail_connections", delete(MailConnection).where(MailConnection.user_id == user_id))
     # The shared, regenerable extraction cache is cleared as privacy deletion does.

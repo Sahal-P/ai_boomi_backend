@@ -68,12 +68,14 @@ export const sourceLabels: Record<SourceMode, string> = {
   whatsapp_image: "WhatsApp screenshot",
   whatsapp_voice: "WhatsApp voice note",
   manual_entry: "Added by you",
+  gpay_statement: "Google Pay statement",
 };
 
 const ownMessages: Partial<Record<SourceMode, string>> = {
   whatsapp_image: "Your WhatsApp screenshot",
   whatsapp_voice: "Your WhatsApp voice note",
   manual_entry: "Added by you in FinBoy",
+  gpay_statement: "Your Google Pay statement",
 };
 
 /** WhatsApp sources carry a placeholder sender domain; name the household's own message instead. */
@@ -135,6 +137,11 @@ const screenshotExtractionLabels: Record<Transaction["extraction_quality"], stri
   partial: "Some details were missing from the screenshot",
 };
 
+const statementExtractionLabels: Record<Transaction["extraction_quality"], string> = {
+  complete: "Every detail read from the statement",
+  partial: "Some details were missing from the statement",
+};
+
 const voiceExtractionLabels: Record<Transaction["extraction_quality"], string> = {
   complete: "All key details heard in your voice note",
   partial: "Some details were unclear in your voice note",
@@ -149,6 +156,11 @@ export function screenshotOnly(row: { source_modes?: readonly SourceMode[] }): b
   return onlyFrom(row, "whatsapp_image");
 }
 
+/** Records evidenced only by Google Pay statements. */
+export function statementOnly(row: { source_modes?: readonly SourceMode[] }): boolean {
+  return onlyFrom(row, "gpay_statement");
+}
+
 /** Records the household told FinBoy about itself: a WhatsApp voice note or a quick add. */
 export function voiceOnly(row: { source_modes?: readonly SourceMode[] }): boolean {
   return (
@@ -158,7 +170,13 @@ export function voiceOnly(row: { source_modes?: readonly SourceMode[] }): boolea
 }
 
 export function extractionLabel(row: Pick<Transaction, "extraction_quality" | "source_modes">): string {
-  const labels = screenshotOnly(row) ? screenshotExtractionLabels : voiceOnly(row) ? voiceExtractionLabels : extractionLabels;
+  const labels = screenshotOnly(row)
+    ? screenshotExtractionLabels
+    : voiceOnly(row)
+      ? voiceExtractionLabels
+      : statementOnly(row)
+        ? statementExtractionLabels
+        : extractionLabels;
   return labels[row.extraction_quality];
 }
 
@@ -166,6 +184,7 @@ export function extractionLabel(row: Pick<Transaction, "extraction_quality" | "s
 export function paymentLabel(row: Pick<Transaction, "payment_verification" | "source_modes">): string {
   if (row.payment_verification === "verified" && screenshotOnly(row)) return "Confirmed by you from a payment screenshot";
   if (row.payment_verification === "verified" && voiceOnly(row)) return "Confirmed by you from a voice note";
+  if (row.payment_verification === "verified" && statementOnly(row)) return "Payment listed in your Google Pay statement";
   return paymentLabels[row.payment_verification];
 }
 
@@ -201,12 +220,12 @@ export const issueReasonLabels: Record<ImportIssue["reason"], string> = {
 };
 
 export const confidenceFactorLabels: Record<string, string> = {
-  trusted_sender_template: "Recognised sender format",
+  trusted_sender_template: "Recognised format",
   deterministic_amount_date: "Amount and date read exactly",
   unique_reference: "Unique payment reference",
-  cross_source_agreement: "Other emails agree",
+  cross_source_agreement: "Other sources agree",
   merchant_category_quality: "Clear merchant and category",
-  source_count: "Supporting emails",
+  source_count: "Supporting sources",
 };
 
 const evidenceFieldLabels: Record<string, string> = {

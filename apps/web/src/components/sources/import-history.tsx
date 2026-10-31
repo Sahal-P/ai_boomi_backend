@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useResource } from "@/hooks/use-resource";
 import { getImports, type ImportOutcome } from "@/lib/api/imports";
-import { formatDayTime } from "@/lib/dates";
+import { formatDayTime, formatRange } from "@/lib/dates";
 import { sourceLabels } from "@/lib/labels";
 import { describeProblem } from "@/lib/messages";
 
@@ -25,6 +25,8 @@ export const outcomeBadges: Record<
   interrupted: { label: "Interrupted", variant: "destructive" },
   cancelled: { label: "Cancelled", variant: "outline" },
 };
+
+const REMOVED = { label: "Removed", variant: "outline" } as const;
 
 /** Durable list of active and recent imports, each with a stable status link. */
 export function ImportHistory() {
@@ -42,12 +44,14 @@ export function ImportHistory() {
         />
       )}
       {page && page.items.length === 0 && offset === 0 && (
-        <p className="text-sm text-ink-soft">No imports yet. Scan Gmail or upload emails to start.</p>
+        <p className="text-sm text-ink-soft">No imports yet. Import a statement, scan Gmail or upload emails to start.</p>
       )}
       {page && page.items.length > 0 && (
         <ul className="divide-y">
           {page.items.map((run) => {
-            const badge = outcomeBadges[run.outcome];
+            // A removed statement's records are gone, so it shows neither its count nor "Complete".
+            const removed = Boolean(run.statement?.removed_at);
+            const badge = removed ? REMOVED : outcomeBadges[run.outcome];
             return (
               <li key={run.id}>
                 <Link
@@ -58,7 +62,8 @@ export function ImportHistory() {
                     <p className="text-sm font-semibold">{sourceLabels[run.mode]}</p>
                     <p className="text-xs text-ink-soft">
                       {run.started_at ? formatDayTime(run.started_at) : "Not started yet"}
-                      {run.transactions_created > 0 && ` · ${run.transactions_created} new`}
+                      {run.statement && ` · ${formatRange(run.statement.period_start, run.statement.period_end)}`}
+                      {run.transactions_created > 0 && !removed && ` · ${run.transactions_created} new`}
                       {run.failed > 0 && ` · ${run.failed} unread`}
                     </p>
                   </div>

@@ -119,6 +119,7 @@ extraction. Do not rerecord or invoke costly live evaluation without necessity.
 | pnpm test:system | Actual imports → finance → multilingual assistant → privacy tests |
 | pnpm eval:extraction | Offline strict recorded extraction evaluation |
 | pnpm eval:triage | d1-ultra gate on synthetic messages, questions and photos (`--check` offline) |
+| pnpm eval:gpay &lt;statement.pdf&gt; | Google Pay statement gate on a real statement kept outside the repo; aggregates only |
 | pnpm voice:benchmark | Offline intent and actual fixture-media validation |
 | pnpm demo:render-mailbox --anchor 2026-10-28 | Render synthetic mailbox; does not seed SQL totals |
 | pnpm seed:gmail-demo-inbox | Separate insert-only OAuth seeder; human consent |

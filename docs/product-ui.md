@@ -146,3 +146,29 @@ Specified in the [money manager contract](money-manager-round/contract.md), in t
 - **Empty Home:** **Send it on WhatsApp** opens the chat with the existing link.
 - Data comes from `lib/api/budgets.ts` (`GET /api/v1/money/budgets`, `PATCH .../budgets`, `PATCH
   .../goal`), validated with zod like every other response.
+
+## Google Pay statements and payee reports (statement round)
+
+Specified in the [statement round contract](statement-round/contract.md); shown only while the
+session says `statement_import`:
+- **Sources** has an **Import a Google Pay statement** card (`statement-import.tsx`, anchor
+  `#statement`): how to get the statement from the app, one PDF up to 10 MB checked locally, upload
+  progress with Cancel, then the import's page. Empty Home and empty Reports link to it.
+- **The import's page** (`statement-result.tsx`) reads "Saving your statement…", then "240
+  payments imported": the period and masked account, what happened to the rows (new, linked,
+  already imported, to check), and Paid and Received each marked "Matches Google Pay". A statement
+  that doesn't add up shows what FinBoy found against Google's totals, with nothing saved. Its
+  actions are **See 6 months** (Reports for the statement's months), **Sort payees**, **Check N**
+  (To review) and **Remove this import**. Removal shows the counts in a confirm dialog first and can
+  be followed by importing the same file again.
+- **Periods:** Reports' control adds Last 3, 6 and 12 months, and a statement's months keep their
+  own option (`?from=2026-04&to=2026-09`). Category and payee links carry the range to
+  Transactions, whose period filter shows it. `lib/api/money.ts` owns `Period = Month | MonthRange
+  | null`, `periodFromParams`, `periodSearch` and `periodQuery`; Home reads months only.
+- **Reports** adds Who you pay most, Regular payments, Money with people and Small payments
+  (`insight-sections.tsx`) from `GET /money/insights`, each loading and failing on its own, and a
+  **Sort payees** sheet (`sort-payees.tsx`) when more than 20% of spending is "Other".
+- **Records:** a statement row's evidence shows the name as printed, the UPI transaction ID, the
+  bank and ••last 4, and its page and row; a record only statements back reads "Payment listed in
+  your Google Pay statement" and "Details in the statement". Transactions filters by "Google Pay
+  statements", and search ignores spaces in names.

@@ -577,3 +577,35 @@ and `model`; `whatsapp.processed` gives reply times to compare with the days bef
 
 **Acceptance:** real phone messages, questions and a stray photo in each enabled language, recorded
 separately from these checks.
+
+## Statement import release procedure
+
+`feat/finboy-statement-import` ([contract](statement-round/contract.md)) adds migration
+`0012_statement_imports` and the `pypdfium2` wheel. With `STATEMENT_IMPORT_ENABLED` unset,
+production behaves as before: Sources shows no statement card, `POST /imports/gpay` answers 404
+`statement_import_off` before reading a body, and WhatsApp documents are ignored. Two things change
+regardless: Reports' period control offers Last 3, 6 and 12 months with the four payee sections,
+and the records search ignores spaces.
+
+**Before release:** `pnpm eval:gpay <statement.pdf>` passes on the server's build with a real
+statement kept outside the repository (and deleted after). Done locally 31 October 2026 on the
+human's statement: every row read, both totals matching, under half a second.
+
+**Release.** With approval, deploy as usual (backend first, `alembic upgrade head` for `0012`, then
+push main for the web), add the setting to `/etc/finboy/production.env` and restart
+`finboy.service` only:
+
+```
+STATEMENT_IMPORT_ENABLED=true
+```
+
+**Check:** signed in, the session reports `statement_import: true` and Sources shows **Import a
+Google Pay statement**. The audit log shows `import.completed` (or `import.failed`) with mode
+`gpay_statement`; nothing about the statement's contents is logged.
+
+**Rollback:** set `STATEMENT_IMPORT_ENABLED=false` and restart. Imported records stay, and a
+household can still remove an import from its page in Sources (the operator does it for pilot
+households). Migration `0012` is additive; its downgrade refuses while statement imports exist.
+
+**Acceptance:** a household imports its own statement on the web and on WhatsApp, recorded
+separately from these checks.

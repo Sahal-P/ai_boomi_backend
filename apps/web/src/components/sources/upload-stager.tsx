@@ -55,7 +55,8 @@ export function UploadStager({ retryCount }: { retryCount?: number }) {
         </ul>
         <p className="mt-2 leading-relaxed text-ink-soft">
           An .eml file is the original email, including the sender details FinBoy uses to check
-          where a payment notice came from. Screenshots and PDFs can&apos;t be read.
+          where a payment notice came from. Screenshots can&apos;t be read here; a Google Pay statement PDF has its
+          own import on this page.
         </p>
       </details>
 

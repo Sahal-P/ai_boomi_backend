@@ -26,6 +26,13 @@ class MailError(Exception):
             "invalid_eml",
             "upload_limit",
             "import_busy",
+            # Google Pay statements (docs/statement-round/contract.md).
+            "invalid_statement",
+            "not_gpay_statement",
+            "statement_locked",
+            "statement_unreadable",
+            "statement_already_imported",
+            "statement_import_off",
         }
     )
 

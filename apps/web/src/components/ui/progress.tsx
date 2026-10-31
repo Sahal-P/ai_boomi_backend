@@ -12,6 +12,8 @@ function Progress({
   return (
     <ProgressPrimitive.Root
       data-slot="progress"
+      // Passed on so assistive tech hears the amount, not "indeterminate".
+      value={value}
       className={cn(
         "relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted",
         className

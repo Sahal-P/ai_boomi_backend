@@ -61,7 +61,8 @@ class GoalChange(BaseModel):
 
 
 def _plan(session: Session, user_id: UUID, query: PeriodQuery | None = None) -> BudgetPlan:
-    plan = budgets.month_plan(session, user_id, query.to_period() if query else None)
+    # Limits are monthly, so a range of months shows its last month's budgets.
+    plan = budgets.month_plan(session, user_id, query.last_month() if query else None)
     return BudgetPlan(
         period_start=plan.start,
         period_end=plan.end,

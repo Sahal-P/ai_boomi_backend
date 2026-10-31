@@ -44,6 +44,7 @@ export function useHouseholdSession() {
     required,
     household: view?.household ?? null,
     signIn: view?.sign_in ?? null,
+    statementImport: view?.statement_import ?? false,
     problem,
     retry: () => {
       setState("checking");
