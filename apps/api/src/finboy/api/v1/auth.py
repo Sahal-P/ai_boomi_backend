@@ -34,6 +34,7 @@ from finboy.db.models.whatsapp import WhatsAppBinding
 from finboy.services.accounts import login
 from finboy.services.accounts.google import verify_id_token
 from finboy.services.accounts.households import lock_signups, new_household, signup_open
+from finboy.services.billing.views import PlanView, plan_view
 from finboy.services.mail.security import decrypt
 
 router = APIRouter(prefix="/auth", tags=["household access"])
@@ -75,6 +76,8 @@ class SessionView(BaseModel):
     sign_in: SignInOptions
     # Google Pay statement import (docs/statement-round/contract.md); off until enabled.
     statement_import: bool = False
+    # FinBoy Premium (docs/subscription-round/contract.md); null while billing is off.
+    plan: PlanView | None = None
 
 
 class Started(BaseModel):
@@ -124,9 +127,11 @@ def session_view(request: Request, session: DB) -> SessionView:
     except AccessError, SQLAlchemyError:
         session.rollback()
         user_id = None
+    plan = None
     try:
         open_now = signup_open(session, settings)
         household = _household(session, settings, user_id) if user_id else None
+        plan = plan_view(session, settings, user_id) if user_id else None
     except SQLAlchemyError:
         # The sign-in page still works while the database is briefly unavailable.
         session.rollback()
@@ -150,6 +155,7 @@ def session_view(request: Request, session: DB) -> SessionView:
         household=household,
         sign_in=options,
         statement_import=settings.statement_import_enabled,
+        plan=plan,
     )
 
 

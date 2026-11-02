@@ -462,3 +462,22 @@ a link to Reports for the statement's months. Every other outcome is one plain l
 keep kind `document` and a fixed code (`invalid_document`, `document_unavailable`,
 `capture_busy`); the PDF, its phone number and email are never stored. WhatsApp never removes an
 import or merges records.
+
+## Premium (2 November 2026)
+
+Specified in the [subscription round contract](subscription-round/contract.md). Only while
+`BILLING_ENABLED` is true, and only for self-serve households on the Free plan (pilot households
+and the owner are always included):
+- a voice note, a photo or screenshot, a statement PDF, or a question that needs an AI answer
+  gets one short reply in the household's reply language (`PREMIUM_VOICE`, `PREMIUM_PHOTO`,
+  `PREMIUM_STATEMENT`, `PREMIUM_ASK`) with a 7-day pay link, and for voice how to type it
+  instead. Nothing is downloaded, transcribed or counted against the daily limits first, and the
+  receipt records the fixed code `premium_required`;
+- typed entries, Undo/Amount/Category and the "today / this week / this month" check-ups stay
+  free;
+- inside the 24-hour window, a reply gains one line with the pay link when the trial has 3 days
+  left, on its last day, after it ends, and when an AutoPay renewal fails — once per stage. No
+  message is sent outside the window.
+
+The pay link (`<WEB_APP_URL>/pay#<token>`) opens without sign-in in the same language and returns
+to a result page with **Back to WhatsApp**.

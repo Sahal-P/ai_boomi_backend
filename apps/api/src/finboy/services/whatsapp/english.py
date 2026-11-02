@@ -489,3 +489,33 @@ GOAL_REMOVED = "🎯 Savings goal removed."
 CHECKIN_ASK = "🔔 Want a short summary like this on the 1st of every month?"
 CHECKIN_ON = "🔔 Done. On the 1st of every month I'll send you last month's summary here."
 CHECKIN_OFF = "🔕 OK, no more monthly check-ins."
+
+# FinBoy Premium (docs/subscription-round/contract.md). {link} is the household's own pay link.
+PREMIUM_VOICE = (
+    "🎙️ Voice notes are part of FinBoy Premium (₹299 a month).\n"
+    'Type it instead — like "milk 200" — or get Premium here:\n{link}'
+)
+PREMIUM_PHOTO = (
+    "📷 Reading photos and screenshots is part of FinBoy Premium (₹299 a month).\n"
+    'Type the amount instead — like "medicine 450" — or get Premium here:\n{link}'
+)
+PREMIUM_STATEMENT = (
+    "📄 Importing statements is part of FinBoy Premium (₹299 a month). Get Premium here:\n{link}"
+)
+PREMIUM_ASK = (
+    "💬 Answers to questions are part of FinBoy Premium (₹299 a month).\n"
+    'Send "today", "this week" or "this month" for your totals — they stay free. '
+    "Get Premium here:\n{link}"
+)
+TRIAL_ENDING = (
+    "⭐ Your free Premium ends in {days} days. Keep voice notes, photos and answers "
+    "for ₹299 a month:\n{link}"
+)
+TRIAL_LAST_DAY = "⭐ Your free Premium ends today. Keep it for ₹299 a month:\n{link}"
+TRIAL_OVER = (
+    "Your free Premium has ended. Typed entries and your totals stay free. "
+    "Get Premium back for ₹299 a month:\n{link}"
+)
+RENEWAL_FAILED = (
+    "⚠️ Your FinBoy Premium payment didn't go through. Pay here to keep Premium:\n{link}"
+)

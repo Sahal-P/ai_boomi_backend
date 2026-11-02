@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/legal-page";
+import { BUSINESS } from "@/lib/business";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="27 October 2026">
+    <LegalPage title="Privacy Policy" updated="2 November 2026">
       <p>
         FinBoy helps you keep track of your own money: what came in, what went out and what is due.
         This page says exactly what we keep, what we never keep, and how to delete everything.
@@ -34,6 +35,12 @@ export default function PrivacyPolicyPage() {
           If you connect Gmail: read-only access, an encrypted access token, and short snippets
           (at most 80 characters per field) that show where a figure came from.
         </li>
+        <li>
+          If you pay for Premium: an encrypted copy of the email address and phone number PayU
+          needs for your receipt (with WhatsApp, we use the number you sign in with), your plan
+          dates, and a record of each payment — the amount, the dates it covers, its status, the
+          kind of payment (like UPI or card, never the number) and PayU&apos;s reference.
+        </li>
       </ul>
 
       <h2>What we never keep</h2>
@@ -41,6 +48,7 @@ export default function PrivacyPolicyPage() {
         <li>Your WhatsApp messages, voice notes, photos or screenshots, or their transcripts.</li>
         <li>What you type or say to quick add — only the record you save.</li>
         <li>Full emails, login codes, Google sign-in tokens or passwords.</li>
+        <li>Card numbers, UPI IDs, bank account details, PINs or OTPs. These stay with PayU and your bank.</li>
       </ul>
 
       <h2>Who helps us process it</h2>
@@ -51,13 +59,17 @@ export default function PrivacyPolicyPage() {
         or photo is about, so common ones are answered sooner), Sarvam AI (speech in English, Hindi
         and Malayalam, and spoken Malayalam replies), Groq (speech in English and Hindi), Resemble
         and Google Gemini (spoken replies), Meta (delivering WhatsApp messages) and Google (sign-in
-        and, if you connect it, Gmail). FinBoy never sells your data and never shows ads.
+        and, if you connect it, Gmail). If you pay for Premium, PayU processes the payment and
+        receives your email address and phone number for the receipt. FinBoy never sells your data
+        and never shows ads.
       </p>
 
       <h2>How long we keep it</h2>
       <p>
         As long as you have an account. A WhatsApp sign-up that never says yes is forgotten after
-        seven days. Private server backups are kept for seven days and then overwritten.
+        seven days. Private server backups are kept for seven days and then overwritten. When you
+        delete your account, payment records stay as FinBoy&apos;s sales records, as tax and
+        accounting law requires, without your email address or phone number.
       </p>
 
       <h2>Your choices</h2>
@@ -66,15 +78,20 @@ export default function PrivacyPolicyPage() {
         <li>Send STOP on WhatsApp to stop all messages; send START to turn them back on.</li>
         <li>
           Delete your account from Privacy &amp; data → Delete my account. Your records, dues,
-          sign-ins and Gmail access go at once; only a count of account events remains.
+          sign-ins, Gmail access, receipt contact details and AutoPay go at once; only a count of
+          account events and your payment records remain.
         </li>
       </ul>
 
       <h2>Contact and grievances</h2>
       <p>
-        Under India&apos;s Digital Personal Data Protection Act you can ask what we hold, correct
-        it, or have it erased. Contact our grievance officer: [name and email to be added before
-        sign-up opens].
+        FinBoy is run by {BUSINESS.name}. Under India&apos;s Digital Personal Data Protection Act
+        you can ask what we hold, correct it, or have it erased. Write to our grievance officer,{" "}
+        {BUSINESS.grievanceOfficer}, at{" "}
+        <a href={`mailto:${BUSINESS.email}`} className="font-semibold underline underline-offset-4">
+          {BUSINESS.email}
+        </a>
+        .
       </p>
     </LegalPage>
   );

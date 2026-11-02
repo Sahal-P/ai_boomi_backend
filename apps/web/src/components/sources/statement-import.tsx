@@ -4,6 +4,8 @@ import { FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { useHouseholdAccess } from "@/components/app-shell/household-context";
+import { PremiumPill } from "@/components/billing/premium-pill";
+import { usePremium } from "@/components/billing/premium-provider";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -34,6 +36,7 @@ export function StatementImport() {
   const router = useRouter();
   const { signIn } = useHouseholdAccess();
   const input = useRef<HTMLInputElement>(null);
+  const premium = usePremium();
   const control = useRef<AbortController | null>(null);
   const headingId = useId();
   const [file, setFile] = useState<File | null>(null);
@@ -125,8 +128,9 @@ export function StatementImport() {
         </div>
       ) : (
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button type="button" onClick={() => input.current?.click()}>
+          <Button type="button" onClick={() => premium.guard("statement", () => input.current?.click())}>
             <FileText aria-hidden="true" /> Choose statement PDF
+            {!premium.premium && <PremiumPill />}
           </Button>
           {file && problem && (
             <span className="min-w-0 truncate text-xs text-ink-soft">

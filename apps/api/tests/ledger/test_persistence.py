@@ -44,6 +44,7 @@ def storage(monkeypatch):
         "finboy_capture",
         "finboy_pilot",
         "finboy_signup",
+        "finboy_billing",
     }, "Use a local test database"
     factory = sessionmaker(engine, expire_on_commit=False)
     user_id, run_id = uuid4(), uuid4()

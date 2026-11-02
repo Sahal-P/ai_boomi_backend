@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from finboy.api.deps import CurrentUser
+from finboy.api.deps import CurrentUser, PremiumUser
 from finboy.db.models.mail import ImportRun
 from finboy.db.session import get_session
 from finboy.services.imports.runner import create_run, run_import
@@ -123,7 +123,8 @@ def start_gpay(
     request: Request,
     background: BackgroundTasks,
     session: DB,
-    user_id: CurrentUser,
+    # Premium is checked before the statement is read (docs/subscription-round/contract.md).
+    user_id: PremiumUser,
     data: Annotated[bytes, Depends(statement_upload)],
 ) -> dict | JSONResponse:
     """Read and check a Google Pay statement now; save its rows in the background."""

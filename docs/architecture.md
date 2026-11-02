@@ -29,6 +29,12 @@ usage counters and the counts-only CLI. Quick add (`/api/v1/entries`) reuses the
 statement reader and turns one sentence into a `manual_entry` import line plus the
 ordinary versioned confirm decision. See the [sign-up contract](signup-round/contract.md).
 
+`services/billing` owns FinBoy Premium (off until `BILLING_ENABLED`): the plan each household is
+on (trial, paid, grace, free or included), PayU's signed checkout and its hash-checked results,
+encrypted receipt contact details, pay links and the 15-minute renewal timer. `PremiumUser`
+(`api/deps.py`) gates Ask, voice and statement import; the plan rides on the session. See the
+[subscription contract](subscription-round/contract.md).
+
 ## Sources, ledger and scope
 
 Gmail scans and memory-only `.eml` uploads normalize messages, classify them, extract

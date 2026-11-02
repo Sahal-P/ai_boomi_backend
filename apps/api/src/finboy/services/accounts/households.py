@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.db.models.accounts import LoginRequest, UsageCounter, UserIdentity
+from finboy.db.models.billing import BillingProfile, Subscription
 from finboy.db.models.core import User
 from finboy.db.models.ledger import (
     Commitment,
@@ -149,6 +150,9 @@ def remove_sign_in(session: Session, user_id: UUID) -> None:
     session.execute(delete(UserIdentity).where(UserIdentity.user_id == user_id))
     session.execute(delete(OAuthState).where(OAuthState.user_id == user_id))
     session.execute(delete(UsageCounter).where(UsageCounter.user_id == user_id))
+    # The payer's encrypted contact and the plan go too; payment rows stay as sales records.
+    session.execute(delete(BillingProfile).where(BillingProfile.user_id == user_id))
+    session.execute(delete(Subscription).where(Subscription.user_id == user_id))
 
 
 def discard_pending(session: Session, user_id: UUID) -> None:

@@ -224,3 +224,17 @@ feat/finboy-statement-import, loopback 8061/3061, disposable finboy_signup, migr
 the human approves the release. A statement saves nothing unless every row adds up to Google's own
 totals; the PDF, its phone number and email are never stored or logged; WhatsApp never removes an
 import or merges records. Never commit a real statement or use one as a fixture.
+
+## Subscription round — 2 November 2026
+
+From main 9fe4274 the human chose FinBoy Premium at ₹299 a month through PayU India: 30 days of
+Premium from sign-up (households that signed up earlier get 30 days from launch), then a Free plan
+that keeps typed entries, Home, Transactions, Reports, budgets and check-ups, while voice, Ask
+FinBoy, photo and screenshot reading and statement import need Premium. The owner and the village
+pilot households are always included. Each ₹299 PayU Hosted Checkout payment adds a month; UPI
+AutoPay and card auto-renew turn on with `PAYU_AUTOPAY_ENABLED` once PayU enables Subscriptions.
+`docs/subscription-round/contract.md` supersedes earlier statements only as documented there. One
+agent on feat/finboy-subscriptions, loopback 8071/3071, disposable finboy_billing, migration
+`0013_billing`. `BILLING_ENABLED` stays false until the human releases it with live keys. The PayU
+salt stays on the backend; card numbers, UPI IDs and bank references are never stored or logged;
+the payer's email and phone are kept only encrypted and erased with the account.

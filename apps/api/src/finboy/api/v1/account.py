@@ -14,6 +14,7 @@ from finboy.core.config import LOCAL_USER_ID
 from finboy.core.errors import AccessError
 from finboy.db.models.mail import MailConnection
 from finboy.services.accounts.households import erase_household
+from finboy.services.billing import mandates
 from finboy.services.imports.locking import import_lock
 from finboy.services.mail.oauth import OAuthConfig
 from finboy.services.mail.security import MailError, decrypt
@@ -68,6 +69,8 @@ def delete_account(
         raise AccessError("owner_household")
     with import_lock(request.app.state.engine, user_id):
         _revoke_gmail(request, session, user_id)
+        # Stop any AutoPay at the bank first; best effort, like the Gmail revoke.
+        mandates.revoke_before_erasure(session, request.app.state.settings, user_id)
         try:
             erase_household(session, user_id)
         except ValueError:

@@ -27,7 +27,8 @@ class ProviderUnavailable(Exception):
 
 
 class AccessError(Exception):
-    """Fixed sign-in and household-access outcomes (docs/signup-round/contract.md)."""
+    """Fixed sign-in, household-access and Premium outcomes (docs/signup-round/contract.md,
+    docs/subscription-round/contract.md)."""
 
     MESSAGES = {
         "authentication_required": (401, "Please sign in."),
@@ -42,6 +43,15 @@ class AccessError(Exception):
         "usage_limit": (429, "You've reached today's limit. Try again tomorrow."),
         "owner_household": (403, "The owner's household can't be deleted here."),
         "try_later": (429, "Please try again in a minute."),
+        "premium_required": (402, "This is part of FinBoy Premium."),
+        "already_paid": (409, "Your plan is already paid or renews by itself."),
+        "contact_required": (422, "Add an email and phone number for your receipt."),
+        "invalid_contact": (422, "Check the email and phone number."),
+        "link_expired": (
+            410,
+            "This payment link has expired. Ask FinBoy on WhatsApp for a new one.",
+        ),
+        "billing_unavailable": (503, "Payments aren't available right now. Please try again soon."),
     }
 
     def __init__(self, code: str) -> None:

@@ -39,7 +39,7 @@ def world():
     settings = Settings()
     engine = build_engine(settings)
     assert engine.url.host in {"localhost", "127.0.0.1"} and settings.environment != "production"
-    assert engine.url.database in {"finboy", "finboy_test", "finboy_signup"}, (
+    assert engine.url.database in {"finboy", "finboy_test", "finboy_signup", "finboy_billing"}, (
         "Use a local test database"
     )
     factory = sessionmaker(engine, expire_on_commit=False)

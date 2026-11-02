@@ -56,11 +56,12 @@ function LinkGoogle({ clientId, onLinked }: { clientId: string; onLinked: () => 
  */
 export function AccountSection() {
   const router = useRouter();
-  const { household, signIn } = useHouseholdAccess();
+  const { household, signIn, plan } = useHouseholdAccess();
   const action = useAction();
   const [confirming, setConfirming] = useState(false);
   if (!household || !signIn) return null;
   const selfServe = household.joined_via !== null;
+  const paidAhead = plan?.paid_through != null && new Date(plan.paid_through) > new Date();
   // The household's sign-in methods are read once per visit, so reload to show the new one.
   const refresh = () => window.location.reload();
   return (
@@ -106,7 +107,12 @@ export function AccountSection() {
             <AlertDialogDescription>
               Every record, due, correction and linked sign-in is deleted, Gmail access is revoked,
               and every device is signed out. WhatsApp stops answering this number until it joins
-              again. This can&apos;t be undone — export your records first if you want a copy.
+              again.{" "}
+              {paidAhead &&
+                (plan.renewal === "autopay"
+                  ? "AutoPay is turned off, and the Premium you paid for ends now without a refund. "
+                  : "The Premium you paid for ends now without a refund. ")}
+              This can&apos;t be undone — export your records first if you want a copy.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { emitPremiumRequired } from "../premium-events.ts";
 import { emitSessionEvent } from "../session-events.ts";
 
 /** How a request failed, so each task can explain what happened without internals. */
@@ -14,7 +15,8 @@ export type ApiErrorKind =
   | "network"
   | "timeout"
   | "invalid_response"
-  | "configuration";
+  | "configuration"
+  | "premium";
 
 export class ApiError extends Error {
   readonly status: number | undefined;
@@ -39,6 +41,7 @@ export class ApiError extends Error {
 function kindForStatus(status: number | undefined): ApiErrorKind {
   if (status === undefined) return "network";
   if (status === 401) return "session";
+  if (status === 402) return "premium";
   if (status === 403) return "forbidden";
   if (status === 404) return "not_found";
   if (status === 409) return "conflict";
@@ -153,6 +156,8 @@ export async function failure(response: Response): Promise<ApiError> {
     // Non-JSON failures keep only their status.
   }
   if (response.status === 401 && !(code && notExpiry.has(code))) emitSessionEvent("expired");
+  // A Premium feature on the Free plan: the app shell opens the upgrade sheet.
+  if (response.status === 402 && code === "premium_required") emitPremiumRequired();
   return new ApiError("FinBoy could not complete the request.", response.status, {
     code,
     requestId,

@@ -17,6 +17,7 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { PlanNotice } from "@/components/billing/plan-notice";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { EmptyState, LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
 import { EmptyMonthArt, NoRecordsArt } from "@/components/illustrations/scenes";
@@ -332,6 +333,7 @@ export function OverviewScreen() {
         }
       />
       <RefreshingLabel active={summary.status === "refreshing"}>Refreshing…</RefreshingLabel>
+      <PlanNotice />
       {summary.status === "loading" && <LoadingPanel label="Loading your month…" />}
       {summary.error !== null && (
         <ProblemNotice

@@ -1,0 +1,10 @@
+[Unit]
+Description=FinBoy Premium billing, every 15 minutes (UPI debits skip NPCI's peak hours)
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=false
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

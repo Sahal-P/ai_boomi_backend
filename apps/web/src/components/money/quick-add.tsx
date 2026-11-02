@@ -3,6 +3,8 @@
 import { Check, Mic, Plus, RotateCcw, Square } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
+import { PremiumPill } from "@/components/billing/premium-pill";
+import { usePremium } from "@/components/billing/premium-provider";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { Button } from "@/components/ui/button";
@@ -86,6 +88,7 @@ export function QuickAdd({
   const [saved, setSaved] = useState<{ result: EntrySaved; summary: string } | null>(null);
   const [undone, setUndone] = useState(false);
   const voice = useVoiceRecorder((transcript) => setText(transcript));
+  const premium = usePremium();
   const listening = voice.state.step === "requesting" || voice.state.step === "recording";
   const amount = draft ? inputPaise(draft.amount) : null;
   const today = istDate(new Date());
@@ -383,10 +386,16 @@ export function QuickAdd({
                   type="button"
                   variant="outline"
                   size="lg"
-                  onClick={() => void voice.start()}
+                  onClick={() => {
+                    if (premium.premium) return void voice.start();
+                    // One sheet at a time keeps the blur budget: close this one, then explain Premium.
+                    onOpenChange(false);
+                    premium.open("voice");
+                  }}
                   disabled={action.busy !== null || voice.state.step === "transcribing"}
                 >
                   <Mic aria-hidden="true" /> {voice.state.step === "transcribing" ? "Listening…" : "Say it"}
+                  {!premium.premium && <PremiumPill />}
                 </Button>
               )}
               {(listening || voice.state.step === "transcribing" || action.busy === "read") && (

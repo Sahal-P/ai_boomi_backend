@@ -4,6 +4,8 @@ import { ArrowDown, Calculator, PiggyBank, SquarePen, UtensilsCrossed, Wallet } 
 import { motion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { Composer } from "@/components/assistant/composer";
+import { PremiumPill } from "@/components/billing/premium-pill";
+import { usePremium } from "@/components/billing/premium-provider";
 import { TurnCard } from "@/components/assistant/turn-card";
 import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { Button } from "@/components/ui/button";
@@ -44,6 +46,7 @@ function scrollToEnd() {
  * memory only (lib/conversation.ts).
  */
 export function AssistantScreen() {
+  const premium = usePremium();
   const assistant = useAssistant();
   const speech = useSpeech();
   const [draft, setDraft] = useState("");
@@ -87,6 +90,12 @@ export function AssistantScreen() {
   }, [empty]);
 
   function submit(text = draft) {
+    // On the Free plan the question stays in the box while the upgrade sheet explains Premium.
+    if (!premium.premium) {
+      if (text.trim()) setDraft(text);
+      premium.open("ask");
+      return;
+    }
     if (assistant.ask(text)) {
       setDraft("");
       setFromVoice(false);
@@ -175,7 +184,7 @@ export function AssistantScreen() {
               onStop={assistant.cancel}
               style={assistant.style}
               onStyle={assistant.setStyle}
-              voice={voice}
+              voice={premium.premium ? voice : { ...voice, start: () => premium.open("voice") }}
               fromVoice={fromVoice}
               onDiscardTranscript={() => {
                 setDraft("");
@@ -183,9 +192,19 @@ export function AssistantScreen() {
                 voice.reset();
               }}
             />
-            <p className="mt-2 text-center text-xs text-ink-soft">
-              FinBoy answers from your confirmed records and never picks funds or stocks.
-            </p>
+            {premium.premium ? (
+              <p className="mt-2 text-center text-xs text-ink-soft">
+                FinBoy answers from your confirmed records and never picks funds or stocks.
+              </p>
+            ) : (
+              <p className="mt-2 flex items-center justify-center gap-2 text-center text-xs text-ink-soft">
+                <PremiumPill />
+                Asking FinBoy is part of Premium.
+                <button type="button" className="font-semibold text-ink underline underline-offset-2" onClick={() => premium.open("ask")}>
+                  See Premium
+                </button>
+              </p>
+            )}
           </div>
         </motion.div>
 

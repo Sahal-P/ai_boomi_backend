@@ -609,3 +609,57 @@ households). Migration `0012` is additive; its downgrade refuses while statement
 
 **Acceptance:** a household imports its own statement on the web and on WhatsApp, recorded
 separately from these checks.
+
+## Subscription release procedure
+
+`feat/finboy-subscriptions` ([contract](subscription-round/contract.md)) adds FinBoy Premium
+(₹299 a month through PayU) and migration `0013_billing`. With `BILLING_ENABLED` unset,
+production behaves as before: the session reports `plan: null`, every household keeps every
+feature and no billing screen shows. Two things change regardless: the public pages `/pricing`,
+`/refund-policy` and `/contact` appear (PayU's website check needs them live), and Terms and the
+Privacy Policy describe Premium.
+
+**Before release (the human):**
+1. Replace the bracketed business name, address, phone and grievance officer in
+   `apps/web/src/lib/business.ts`, release the web, then finish PayU's activation and website
+   verification for `https://finboy.io`.
+2. PayU dashboard → Developers → Webhooks → Payments: **Successful** and **Failed** →
+   `https://finboy.io/api/v1/payu/webhook`.
+3. Ask the PayU account manager to whitelist `finboy.io`, and (for AutoPay) to enable
+   Subscriptions and Pay and Subscribe for UPI and cards, with the mandate-cancellation webhook at
+   `https://finboy.io/api/v1/payu/mandate`.
+
+**Release.** Backend first (validated backup, `alembic upgrade head` for `0013`, drift check),
+then the web. Add to `/etc/finboy/production.env` only — never to the web build:
+
+```
+BILLING_LAUNCH_DATE=<release day, YYYY-MM-DD>
+PAYU_ENVIRONMENT=production
+PAYU_MERCHANT_KEY=<live key>
+PAYU_MERCHANT_SALT=<live salt>
+API_PUBLIC_URL=https://finboy.io
+BILLING_ENABLED=true
+```
+
+Startup refuses a production billing configuration without the live key and salt,
+`PAYU_ENVIRONMENT=production`, an HTTPS `API_PUBLIC_URL`, `BILLING_LAUNCH_DATE`, `WEB_APP_URL` and
+`TOKEN_ENCRYPTION_KEY`. Restart `finboy.service` only, then install and enable
+`deploy/finboy-billing.service` and `.timer` (every 15 minutes; it reconciles payments and runs
+AutoPay renewals). `python -m finboy.services.billing.cli status <household>` prints one plan;
+nothing it prints holds contact details.
+
+**Check:**
+- health 200, finance routes 401 without a session, migration head `0013_billing`, no drift;
+- a self-serve household's session shows `plan.state` `trial` with the launch-day trial end; the
+  owner's and pilot households show `included`;
+- `/plan` and the upgrade sheet open, and **Pay ₹299** reaches `secure.payu.in` (stop there unless
+  the human makes a real payment);
+- after the first real payment: PayU's webhook log shows 200 from `/api/v1/payu/webhook`, and the
+  household's history shows the payment as Paid.
+
+**AutoPay:** only once PayU confirms Subscriptions, add `PAYU_AUTOPAY_ENABLED=true` and restart.
+
+**Rollback:** set `BILLING_ENABLED=false` and restart, and stop the timer. Every household gets
+every feature again; paid-through dates and payments are kept and count again when billing
+returns. Migration `0013` is additive; its downgrade refuses while payments exist. Refunds are
+made from PayU's dashboard; `billing.cli grant <household> --days N` adds Premium time by hand.

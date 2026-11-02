@@ -47,6 +47,7 @@ from finboy.services.whatsapp import (
     english,
     hindi,
     malayalam,
+    premium,
     prompts,
     reminders,
     statement,
@@ -176,6 +177,7 @@ def handle(conversation: Conversation) -> str | None:
     error = _handle(conversation)
     if conversation.binding.consented_at is not None:
         _remind(conversation)
+        premium.nudge(conversation)
     return error
 
 
@@ -213,6 +215,9 @@ def _handle(conversation: Conversation) -> str | None:
     if reading.kind == "question" and reading.checkup is not None:
         return cfo.CHECKUPS[reading.checkup](conversation)
     if reading.kind == "question":
+        # AI answers are Premium; the check-ups above stay free (docs/subscription-round).
+        if not premium.allowed(conversation):
+            return premium.refuse(conversation, "PREMIUM_ASK")
         return _answer(conversation, text)
     if reading.kind == "unclear":
         return _say(conversation, conversation.words.UNCLEAR, conversation.words.UNCLEAR_SPEECH)

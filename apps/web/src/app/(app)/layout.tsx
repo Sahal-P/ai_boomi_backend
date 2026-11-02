@@ -6,6 +6,7 @@ import { HouseholdGate } from "@/components/app-shell/household-gate";
 import { KeyboardHelp } from "@/components/app-shell/keyboard-help";
 import { LeaveGuard } from "@/components/app-shell/leave-guard";
 import { OfflineBanner } from "@/components/app-shell/offline-banner";
+import { PremiumProvider } from "@/components/billing/premium-provider";
 import { QuickAddProvider } from "@/components/money/quick-add-provider";
 import { AppMotion } from "@/components/motion/app-motion";
 
@@ -19,6 +20,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <HouseholdGate>
       <AppMotion>
+        <PremiumProvider>
         <QuickAddProvider>
           <div className="app-shell bg-field relative min-h-dvh">
             <a
@@ -42,6 +44,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <KeyboardHelp />
           </div>
         </QuickAddProvider>
+        </PremiumProvider>
       </AppMotion>
     </HouseholdGate>
   );

@@ -48,12 +48,21 @@ export function SiteFooter() {
         Figures are estimates from email-derived and confirmed records. Your actual bank balance may differ.
         FinBoy is not an investment adviser.
       </p>
-      <nav aria-label="Legal" className="flex gap-4 text-xs font-semibold">
+      <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold">
+        <Link href="/pricing" className="hover:text-ink">
+          Pricing
+        </Link>
         <Link href="/privacy-policy" className="hover:text-ink">
           Privacy Policy
         </Link>
         <Link href="/terms" className="hover:text-ink">
           Terms
+        </Link>
+        <Link href="/refund-policy" className="hover:text-ink">
+          Refunds
+        </Link>
+        <Link href="/contact" className="hover:text-ink">
+          Contact
         </Link>
       </nav>
     </footer>

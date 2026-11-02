@@ -12,6 +12,7 @@ from finboy.core.config import LOCAL_USER_ID
 from finboy.core.errors import AccessError
 from finboy.db.models.core import User
 from finboy.db.session import get_session
+from finboy.services.billing.plans import require_premium
 
 DB = Annotated[Session, Depends(get_session)]
 
@@ -38,3 +39,16 @@ def current_user_id(request: Request, session: DB) -> UUID:
 
 
 CurrentUser = Annotated[UUID, Depends(current_user_id)]
+
+
+def premium_user(request: Request, session: DB, user_id: CurrentUser) -> UUID:
+    """The signed-in household, on a plan with Premium (docs/subscription-round/contract.md).
+
+    Checked before any audio or file is read, so the Free plan costs nothing.
+    """
+    require_premium(session, request.app.state.settings, user_id)
+    session.rollback()  # end the read snapshot, as `current_user_id` does
+    return user_id
+
+
+PremiumUser = Annotated[UUID, Depends(premium_user)]

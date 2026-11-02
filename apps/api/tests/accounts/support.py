@@ -61,7 +61,7 @@ def settings_for(**changes) -> Settings:
     if (
         base.environment == "production"
         or url.host not in {"127.0.0.1", "localhost"}
-        or url.database not in {"finboy_signup", "finboy_test"}
+        or url.database not in {"finboy_signup", "finboy_billing", "finboy_test"}
     ):
         pytest.fail("Sign-up integration tests require the disposable local finboy_signup database")
     return Settings(

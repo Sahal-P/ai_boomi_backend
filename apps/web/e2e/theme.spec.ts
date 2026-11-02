@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
-import { ids } from "./support/fake-api.ts";
+import { ids, PLAN_NOW } from "./support/fake-api.ts";
 import { expect, test } from "./support/fixtures.ts";
 
 /**
@@ -154,6 +154,10 @@ const ROUTES = [
   "/demo",
   "/login",
   "/no-such-page",
+  "/plan",
+  "/pricing",
+  "/refund-policy",
+  "/contact",
 ];
 
 for (const path of ROUTES) {
@@ -172,6 +176,31 @@ test("contrast and blur budget: the landing page", async ({ page }) => {
   await settled(page);
   expect(await contrastFailures(page)).toEqual([]);
   expect(await blurredLayersInView(page)).toBeLessThanOrEqual(3);
+});
+
+test.describe("Premium on the Free plan", () => {
+  test.use({ scenario: { authRequired: false, plan: "free" } });
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(new Date(PLAN_NOW));
+  });
+
+  for (const path of ["/plan", "/dashboard", "/assistant", "/pay#en-link"]) {
+    test(`contrast and blur budget: ${path}`, async ({ page }) => {
+      await page.goto(path);
+      await settled(page);
+      expect(await contrastFailures(page)).toEqual([]);
+      expect(await blurredLayersInView(page)).toBeLessThanOrEqual(3);
+    });
+  }
+
+  test("the upgrade sheet keeps contrast and the blur budget", async ({ page }) => {
+    await page.goto("/plan");
+    await page.getByRole("button", { name: "Pay ₹299" }).click();
+    await expect(page.getByRole("dialog", { name: "₹299 / month" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(await contrastFailures(page)).toEqual([]);
+    expect(await blurredLayersInView(page)).toBeLessThanOrEqual(3);
+  });
 });
 
 test.describe("empty ledger", () => {

@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { PageHeader } from "@/components/app-shell/page-header";
+import { usePremium } from "@/components/billing/premium-provider";
 import { ColumnChart, type ColumnGroup, type ColumnSeries } from "@/components/charts/column-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
@@ -283,6 +284,7 @@ export function ReportsScreen() {
   const update = useQueryUpdate();
   const quickAdd = useQuickAdd();
   const { statementImport } = useHouseholdAccess();
+  const premium = usePremium();
   const period = periodFromParams(new URLSearchParams(params.toString()));
   const [current = { year: 2026, month: 1 }] = recentMonths(1);
   const range = isRange(period) ? period : null;
@@ -355,13 +357,19 @@ export function ReportsScreen() {
               <Button onClick={quickAdd.open}>
                 <Plus aria-hidden="true" /> Add an entry
               </Button>
-              {statementImport && (
-                <Button asChild variant="outline">
-                  <Link href="/sources#statement">
+              {statementImport &&
+                (premium.premium ? (
+                  <Button asChild variant="outline">
+                    <Link href="/sources#statement">
+                      <FileText aria-hidden="true" /> Import a Google Pay statement
+                    </Link>
+                  </Button>
+                ) : (
+                  // On the Free plan, explain Premium here rather than after a trip to Sources.
+                  <Button variant="outline" onClick={() => premium.open("statement")}>
                     <FileText aria-hidden="true" /> Import a Google Pay statement
-                  </Link>
-                </Button>
-              )}
+                  </Button>
+                ))}
             </>
           }
         >

@@ -24,7 +24,7 @@ from finboy.services.accounts import households, login, usage
 from finboy.services.assistant import service as assistant
 from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
-from finboy.services.whatsapp import capture, documents, pilot, prompts, receipts, signup
+from finboy.services.whatsapp import capture, documents, pilot, premium, prompts, receipts, signup
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.language import written_language
@@ -265,6 +265,10 @@ def process_question(
                 if diary and binding.consented_at is None:
                     receipts.finish(session, receipt_id, error=pilot.ask_consent(conversation))
                     return
+                if self_serve and not premium.allowed(conversation):
+                    error = premium.refuse(conversation, "PREMIUM_STATEMENT")
+                    receipts.finish(session, receipt_id, error=error)
+                    return
                 # End this read snapshot; the import commits through its own sessions.
                 session.rollback()
                 imported = documents.import_document(
@@ -288,6 +292,16 @@ def process_question(
                     error=documents.RECEIPT_ERRORS.get(imported.outcome)
                     or (None if ok else "provider_unavailable"),
                 )
+                return
+            if (
+                self_serve
+                and household.consented_at is not None
+                and question.kind in premium.REPLIES
+                and not premium.allowed(conversation)
+            ):
+                # Free plan: explain Premium before any audio or photo is downloaded or metered.
+                error = premium.refuse(conversation, premium.REPLIES[question.kind])
+                receipts.finish(session, receipt_id, error=error)
                 return
             if self_serve and household.consented_at is not None and question.kind != "button":
                 try:

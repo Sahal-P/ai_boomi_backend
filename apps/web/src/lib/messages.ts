@@ -58,6 +58,13 @@ const byCode: Record<string, string> = {
     "FinBoy couldn't read every row of this statement, so nothing was imported. Download it again and retry.",
   statement_already_imported: "This statement is already in FinBoy. Nothing was added twice.",
   statement_import_off: "Statement import isn't available yet.",
+  // Subscription round (docs/subscription-round/contract.md).
+  premium_required: "This is part of FinBoy Premium. Nothing changed.",
+  already_paid: "Your plan is already paid ahead or renews by itself, so nothing was charged.",
+  contact_required: "Add an email and phone number for your receipt.",
+  invalid_contact: "Check the email and phone number. PayU accepts letters, numbers, dots, - and _ in an email.",
+  link_expired: "This payment link has expired. Send any message to FinBoy on WhatsApp for a new one.",
+  billing_unavailable: "Payments aren't available right now. Nothing was charged. Try again in a minute.",
 };
 
 const byKind: Record<Problem["kind"], string> = {
@@ -74,6 +81,7 @@ const byKind: Record<Problem["kind"], string> = {
   invalid_response:
     "FinBoy sent something unexpected, so it wasn't shown. Try again; if it repeats, share the reference.",
   configuration: "This app isn't configured correctly. Contact the person who set it up.",
+  premium: "This is part of FinBoy Premium. Nothing changed.",
   unknown: "Something went wrong. Nothing changed. Try again.",
 };
 

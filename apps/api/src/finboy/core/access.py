@@ -47,9 +47,30 @@ PUBLIC = {
     "/api/v1/connections/gmail/callback",
     # A short-lived, single-use capability issued only by authenticated authorization.
     "/api/v1/connections/gmail/handoff",
+    # Billing (docs/subscription-round/contract.md): an unguessable payment ID, a pay-link
+    # capability token, and PayU's own signed results.
+    "/api/v1/billing/receipt",
+    "/api/v1/billing/link",
+    "/api/v1/billing/link/checkout",
+    "/api/v1/payu/return",
+    "/api/v1/payu/webhook",
+    "/api/v1/payu/mandate",
 }
-# Small JSON bodies only; an ID token is about 1-2 KB.
-BODY_LIMITS = {"/api/v1/auth/login": 4096, "/api/v1/auth/google": 8192}
+# Posted by Meta or PayU rather than the web app; their own signatures replace the Origin check.
+ORIGIN_EXEMPT = {
+    "/api/v1/whatsapp/webhook",
+    "/api/v1/payu/return",
+    "/api/v1/payu/webhook",
+    "/api/v1/payu/mandate",
+}
+# Small JSON bodies only; an ID token is about 1-2 KB. PayU's posts are capped while being read.
+BODY_LIMITS = {
+    "/api/v1/auth/login": 4096,
+    "/api/v1/auth/google": 8192,
+    "/api/v1/billing/link": 2048,
+    "/api/v1/billing/link/checkout": 2048,
+    "/api/v1/billing/receipt": 1024,
+}
 
 
 @dataclass(frozen=True)
@@ -247,7 +268,7 @@ class HouseholdAccessMiddleware(BaseHTTPMiddleware):
             return error_response(request, 401, "authentication_required", "Please sign in.")
         if (
             request.method in {"POST", "PATCH", "DELETE", "PUT"}
-            and path != "/api/v1/whatsapp/webhook"
+            and path not in ORIGIN_EXEMPT
             and request.headers.get("origin") not in request.app.state.settings.allowed_origins
         ):
             return error_response(

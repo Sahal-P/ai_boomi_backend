@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getSession, type SessionView, signIn, signOut } from "@/lib/api/auth";
+import type { Plan } from "@/lib/api/billing";
 import { isAbort } from "@/lib/api/http";
 import { describeProblem, type Problem } from "@/lib/messages";
 import { emitSessionEvent } from "@/lib/session-events";
@@ -39,12 +40,27 @@ export function useHouseholdSession() {
     );
     return () => controller.abort();
   }, [router, attempt]);
+  // After a payment or a plan change: fetch the session again without leaving the screen.
+  const refresh = useCallback(async () => {
+    try {
+      const session = await getSession();
+      if (session.authenticated) setView(session);
+    } catch {
+      // Keep what is shown; the next visit checks again.
+    }
+  }, []);
+  const updatePlan = useCallback((plan: Plan) => {
+    setView((current) => (current ? { ...current, plan } : current));
+  }, []);
   return {
     state,
     required,
     household: view?.household ?? null,
     signIn: view?.sign_in ?? null,
     statementImport: view?.statement_import ?? false,
+    plan: view?.plan ?? null,
+    refresh,
+    updatePlan,
     problem,
     retry: () => {
       setState("checking");

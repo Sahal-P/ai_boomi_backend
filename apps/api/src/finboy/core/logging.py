@@ -28,6 +28,9 @@ class JsonFormatter(logging.Formatter):
             "outcome",
             "model",
             "latency_ms",
+            # Billing: FinBoy's own payment ID and PayU's short outcome code, never its message.
+            "payment_id",
+            "code",
         ):
             if hasattr(record, field):
                 payload[field] = getattr(record, field)

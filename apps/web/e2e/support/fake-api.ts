@@ -89,6 +89,50 @@ const envelope = (status: number, code: string): FakeResponse => ({
   body: { error: { code, message: "The requested task could not be completed.", request_id: uuid("40000000", status) } },
 });
 
+/** Subscription round: synthetic plans as of 25 Nov 2026 (billing specs fix the browser clock there). */
+export const PLAN_NOW = "2026-11-25T10:00:00+05:30";
+export type PlanName = "trial" | "trial-ending" | "free" | "grace" | "autopay" | "included";
+const PAY_AHEAD_MS = 35 * 86_400_000;
+const PREMIUM_ROUTES = new Set(["/api/v1/assistant/ask", "/api/v1/assistant/speak", "/api/v1/assistant/transcribe", "/api/v1/imports/gpay"]);
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const masked = (email: string) => `${email[0]}•••@${email.split("@")[1]}`;
+const LINKS: Record<string, "en" | "hi" | "ml"> = { "en-link": "en", "hi-link": "hi", "ml-link": "ml" };
+
+function planFixture(name: PlanName): Json {
+  const base = {
+    state: "trial",
+    premium: true,
+    trial_ends_at: "2026-12-15T00:00:00+05:30",
+    paid_through: null,
+    renewal: null,
+    next_charge_on: null,
+    grace_until: null,
+    price_minor: 29900,
+    can_pay: true,
+    autopay_available: false,
+    checkout_origin: "https://test.payu.in",
+    contact: { email: null, phone: "•••• 0071", phone_from_whatsapp: true },
+  };
+  const paid = { trial_ends_at: "2026-10-01T00:00:00+05:30", autopay_available: true, contact: { ...base.contact, email: "s•••@example.test" } };
+  if (name === "trial-ending") return { ...base, trial_ends_at: "2026-11-28T00:00:00+05:30" };
+  if (name === "free") return { ...base, state: "free", premium: false, trial_ends_at: "2026-11-01T00:00:00+05:30" };
+  if (name === "grace") {
+    return { ...base, ...paid, state: "grace", paid_through: "2026-11-24T00:00:00+05:30", renewal: "autopay", grace_until: "2026-11-27T23:59:59+05:30" };
+  }
+  if (name === "autopay") {
+    return { ...base, ...paid, state: "active", paid_through: "2026-12-24T00:00:00+05:30", renewal: "autopay", next_charge_on: "2026-12-24", can_pay: false };
+  }
+  if (name === "included") return { ...base, state: "included", trial_ends_at: null, can_pay: false };
+  return base;
+}
+
+/** One calendar month on, on an ISO instant's own clock. */
+function addMonth(iso: string): string {
+  const year = Number(iso.slice(0, 4));
+  const month = Number(iso.slice(5, 7));
+  return `${month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, "0")}`}${iso.slice(7)}`;
+}
+
 function tx(index: number, values: Partial<Tx>): Tx {
   return {
     id: uuid("10000000", index),
@@ -131,6 +175,8 @@ export type Scenario = {
   selfServe?: boolean;
   /** Statement round: Google Pay statements can be imported (STATEMENT_IMPORT_ENABLED). */
   statementImport?: boolean;
+  /** Subscription round: the household's plan; unset means billing is off (`plan: null`). */
+  plan?: PlanName;
 };
 
 /** One synthetic statement row: invented payees, a made-up bank and UPI IDs. */
@@ -190,6 +236,10 @@ export class FakeFinBoyApi {
   statementImport: boolean;
   /** What the next uploaded statement turns out to be; errors use failNext on /imports/gpay. */
   statementOutcome: "imported" | "mismatch" = "imported";
+  plan: Json | null;
+  /** What PayU's answer is when the app next asks about a payment. */
+  receipt: "paid" | "pending" | "failed" = "paid";
+  payments: Json[] = [];
   private statements = new Map<string, { rows: Tx[]; polls: number }>();
   private polls = 0;
   private counter = 900;
@@ -201,6 +251,7 @@ export class FakeFinBoyApi {
     this.signupOpen = scenario.signupOpen ?? true;
     this.selfServe = scenario.selfServe ?? false;
     this.statementImport = scenario.statementImport ?? false;
+    this.plan = scenario.plan ? planFixture(scenario.plan) : null;
     const status = scenario.connection ?? "active";
     this.connection =
       status === "none"
@@ -296,6 +347,90 @@ export class FakeFinBoyApi {
   get unresolved() {
     return this.transactions.filter((item) => item.status === "needs_review" && item.dataset === "household");
   }
+  /** A checkout the app started, as if the person were now on PayU's page; returns its payment ID. */
+  newPayment(): string {
+    const id = uuid("50000000", this.payments.length + 1);
+    this.payments.push({ id, kind: "checkout", status: "started", amount_minor: 29900, mode: null, autopay: false, covers_from: null, covers_to: null, created_at: PLAN_NOW });
+    return id;
+  }
+
+  // ── Billing (subscription round) ───────────────────────────────────────────
+  private billing(method: string, path: string, body: Json): FakeResponse {
+    const ok = (value: unknown): FakeResponse => ({ status: 200, body: value });
+    const plan = this.plan;
+    if (!plan) return envelope(503, "billing_unavailable");
+    if (path === "/api/v1/billing/link" || path === "/api/v1/billing/link/checkout") {
+      const language = LINKS[String(body.token ?? "")];
+      if (!language) return envelope(410, "link_expired");
+      return path.endsWith("/checkout") ? this.checkout(plan, body) : ok({ language, plan, whatsapp_number: "919000000099" });
+    }
+    if (path === "/api/v1/billing/checkout" && method === "POST") return this.checkout(plan, body);
+    if (path === "/api/v1/billing/receipt" && method === "POST") {
+      const payment = this.payments.find((item) => item.id === body.payment_id);
+      if (!payment) return envelope(404, "not_found");
+      if (this.receipt === "paid" && payment.status !== "paid") this.settle(plan, payment);
+      if (this.receipt !== "paid") payment.status = this.receipt;
+      return ok({ status: payment.status, covers_to: payment.covers_to, autopay: false });
+    }
+    if (path === "/api/v1/billing/payments") {
+      return ok({ payments: this.payments.filter((item) => ["pending", "paid", "failed"].includes(String(item.status))) });
+    }
+    if (path === "/api/v1/billing/contact" && method === "PATCH") {
+      const email = String(body.email ?? "");
+      if (!EMAIL.test(email)) return envelope(422, "invalid_contact");
+      const contact = plan.contact as Json;
+      contact.email = masked(email);
+      return ok(contact);
+    }
+    if (path === "/api/v1/billing/autopay/cancel" && method === "POST") {
+      Object.assign(plan, { renewal: "off", next_charge_on: null });
+      plan.can_pay = this.canPay(plan);
+      return ok(plan);
+    }
+    return envelope(404, "not_found");
+  }
+
+  private checkout(plan: Json, body: Json): FakeResponse {
+    if (!plan.can_pay) return envelope(409, "already_paid");
+    const contact = plan.contact as Json;
+    const email = typeof body.email === "string" ? body.email : null;
+    if (email !== null && !EMAIL.test(email)) return envelope(422, "invalid_contact");
+    if (!email && !contact.email) return envelope(422, "contact_required");
+    if (email) contact.email = masked(email);
+    const id = this.newPayment();
+    const back = "http://127.0.0.1:8071/api/v1/payu/return";
+    const fields = {
+      key: "tEsTkY",
+      txnid: `fb${this.payments.length.toString(16).padStart(23, "0")}`,
+      amount: "299.00",
+      productinfo: "FinBoy Premium 1 month",
+      firstname: "FinBoy",
+      email: email ?? "synthetic@example.test",
+      phone: "9000000071",
+      surl: back,
+      furl: back,
+      curl: back,
+      hash: "ab".repeat(64),
+    };
+    return { status: 200, body: { payment_id: id, action: `${String(plan.checkout_origin)}/_payment`, fields } };
+  }
+
+  /** PayU says paid: the month starts when the trial or the paid time ends, as the real API does. */
+  private settle(plan: Json, payment: Json) {
+    const starts = [PLAN_NOW, plan.trial_ends_at, plan.paid_through]
+      .filter((value): value is string => typeof value === "string")
+      .reduce((latest, value) => (Date.parse(value) > Date.parse(latest) ? value : latest));
+    Object.assign(payment, { status: "paid", mode: "UPI", covers_from: starts, covers_to: addMonth(starts) });
+    Object.assign(plan, { paid_through: payment.covers_to, premium: true, grace_until: null });
+    if (plan.state === "free" || plan.state === "grace") plan.state = "active";
+    plan.can_pay = this.canPay(plan);
+  }
+
+  private canPay(plan: Json): boolean {
+    if (plan.state === "included" || plan.renewal === "autopay") return false;
+    const ends = [PLAN_NOW, plan.trial_ends_at, plan.paid_through].filter((value): value is string => typeof value === "string");
+    return Math.max(...ends.map((value) => Date.parse(value))) - Date.parse(PLAN_NOW) <= PAY_AHEAD_MS;
+  }
 
   // ── Dispatcher ─────────────────────────────────────────────────────────────
   async handle(request: FakeRequest, appOrigin: string): Promise<FakeResponse> {
@@ -315,6 +450,9 @@ export class FakeFinBoyApi {
       "/api/v1/auth/whatsapp/status",
       "/api/v1/auth/whatsapp/complete",
       "/api/v1/demo",
+      "/api/v1/billing/receipt",
+      "/api/v1/billing/link",
+      "/api/v1/billing/link/checkout",
     ].includes(path);
     if (this.authRequired && !open && !this.signedIn) return envelope(401, "authentication_required");
     if (["POST", "PATCH", "DELETE"].includes(method) && request.origin !== appOrigin) return envelope(403, "origin_not_allowed");
@@ -325,6 +463,8 @@ export class FakeFinBoyApi {
     const ok = (value: unknown, status = 200): FakeResponse => ({ status, body: value });
     let match: RegExpMatchArray | null;
     if (path === "/api/v1/health") return ok({ service: "finboy-api", version: "0.1.0", status: "ok", database: "connected" });
+    if (this.plan?.premium === false && PREMIUM_ROUTES.has(path)) return envelope(402, "premium_required");
+    if (path.startsWith("/api/v1/billing/")) return this.billing(method, path, body);
     if (path === "/api/v1/auth/session") {
       const authenticated = !this.authRequired || this.signedIn;
       return ok({
@@ -344,6 +484,7 @@ export class FakeFinBoyApi {
           gmail: !this.selfServe,
         },
         statement_import: this.statementImport,
+        plan: this.plan,
       });
     }
     if (path === "/api/v1/auth/whatsapp/start" && method === "POST" && this.whatsapp) {

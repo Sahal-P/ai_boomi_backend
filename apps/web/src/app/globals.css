@@ -645,3 +645,23 @@ html:has(.ask-page) {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Payment success (docs/subscription-round/contract.md): the ring, then the tick, draw themselves
+   once. Under reduced motion the global rule above makes them appear at once. */
+.check-ring,
+.check-tick {
+  stroke-dasharray: 1;
+  animation: check-draw 0.6s var(--ease-out-expo) both;
+}
+.check-tick {
+  animation-duration: 0.35s;
+  animation-delay: 0.45s;
+}
+@keyframes check-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}

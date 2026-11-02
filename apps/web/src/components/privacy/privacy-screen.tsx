@@ -30,7 +30,7 @@ export function PrivacyScreen() {
   const connections = useResource("connections", (signal) => getConnections(signal));
   const isolation = useResource("isolation", (signal) => getIsolation(signal));
   const events = useResource("audit", (signal) => getAuditEvents(signal));
-  const { signIn } = useHouseholdAccess();
+  const { signIn, plan } = useHouseholdAccess();
   const [target, setTarget] = useState<Target>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const live = (connections.data ?? []).filter((item) => item.status !== "revoked");
@@ -178,6 +178,16 @@ export function PrivacyScreen() {
             Raw email bodies, uploaded .eml files, WhatsApp screenshots, full email addresses, OAuth
             codes, access tokens, your questions and voice recordings.
           </p>
+          {plan && (
+            <>
+              <h3 className="mt-5 font-semibold">Premium payments</h3>
+              <p className="mt-1 text-ink-soft">
+                The email and phone number PayU needs for receipts are kept encrypted and erased
+                with your account. Each payment&apos;s amount, dates and PayU reference are kept as
+                sales records. Card, UPI and bank details stay with PayU and your bank.
+              </p>
+            </>
+          )}
           <h3 className="mt-5 font-semibold">Backups</h3>
           <p className="mt-1 text-ink-soft">
             On the hosted app, private server backups may keep structured records for up to seven

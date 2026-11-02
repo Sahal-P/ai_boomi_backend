@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException
 from starlette.responses import Response
 
-from finboy.core.errors import error_response
+from finboy.core.errors import AccessError, error_response
 from finboy.services.mail.security import MailError
 from finboy.services.ux.state import TaskError
 
@@ -68,6 +68,9 @@ class MailRoute(APIRoute):
             except MailError as exc:
                 response = failure(request, exc)
             except TaskError as exc:
+                response = error_response(request, exc.status, exc.code, exc.message)
+            except AccessError as exc:
+                # Sign-in and Premium outcomes keep their fixed codes (premium_required, …).
                 response = error_response(request, exc.status, exc.code, exc.message)
             except HTTPException as exc:
                 response = error_response(

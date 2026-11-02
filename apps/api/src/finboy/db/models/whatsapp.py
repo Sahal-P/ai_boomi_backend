@@ -65,7 +65,7 @@ class WhatsAppReceipt(Base):
             "'invalid_image','capture_unavailable','capture_busy','prompt_expired',"
             "'record_changed','amount_unclear','statement_unavailable','signup_full',"
             "'login_expired','usage_limit','web_not_available','invalid_document',"
-            "'document_unavailable')",
+            "'document_unavailable','premium_required')",
             name="error_code",
         ),
         Index("ix_whatsapp_receipts_state_received_at", "state", "received_at"),

@@ -1,3 +1,4 @@
+import re
 from datetime import date
 from pathlib import Path
 from typing import Literal
@@ -126,6 +127,21 @@ class Settings(BaseSettings):
     whatsapp_public_number: str | None = Field(default=None, pattern=r"^[0-9]{7,20}$")
     gmail_for_new_accounts: bool = False
 
+    # Subscription round (docs/subscription-round/contract.md). Off until the human releases it;
+    # while off every household has every feature. The PayU salt never leaves the backend.
+    billing_enabled: bool = False
+    # Households that signed up before this IST date get their 30-day trial from it instead.
+    billing_launch_date: date | None = None
+    # False only to test billing locally as the owner (loopback development acts as the owner).
+    billing_owner_included: bool = True
+    payu_environment: Literal["test", "production"] = "test"
+    payu_merchant_key: str | None = Field(default=None, pattern=r"^[A-Za-z0-9]{4,32}$")
+    payu_merchant_salt: SecretStr | None = None
+    # UPI AutoPay and card auto-renew ("Pay and Subscribe"), once PayU enables Subscriptions.
+    payu_autopay_enabled: bool = False
+    # The API's public origin; PayU returns the browser to <origin>/api/v1/payu/return.
+    api_public_url: AnyHttpUrl | None = None
+
     @field_validator(
         "resemble_api_key",
         "resemble_project_uuid",
@@ -170,6 +186,10 @@ class Settings(BaseSettings):
         "web_session_key",
         "google_signin_client_id",
         "whatsapp_public_number",
+        "billing_launch_date",
+        "payu_merchant_key",
+        "payu_merchant_salt",
+        "api_public_url",
         mode="before",
     )
     @classmethod
@@ -230,6 +250,41 @@ class Settings(BaseSettings):
             except ValueError, UnicodeError:
                 raise ValueError("Production requires valid household access settings") from None
         return self
+
+    @field_validator("payu_merchant_salt")
+    @classmethod
+    def require_salt(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not re.fullmatch(r"[\x21-\x7e]{8,128}", value.get_secret_value()):
+            raise ValueError("PAYU_MERCHANT_SALT must be the salt copied from PayU")
+        return value
+
+    @model_validator(mode="after")
+    def require_billing(self) -> Settings:
+        if not self.billing_enabled:
+            return self
+        if not self.payu_merchant_key or not self.payu_merchant_salt or not self.api_public_url:
+            raise ValueError("Billing requires PayU credentials and API_PUBLIC_URL")
+        if not self.web_app_url or not self.token_encryption_key:
+            raise ValueError("Billing requires WEB_APP_URL and TOKEN_ENCRYPTION_KEY")
+        url = self.api_public_url
+        if url.username or url.password or url.query or url.fragment or url.path not in {None, "/"}:
+            raise ValueError("API_PUBLIC_URL must be an origin without a path")
+        # PayU accepts at most 50 characters for surl, furl and curl.
+        if len(self.payu_return_url) > 50:
+            raise ValueError("API_PUBLIC_URL is too long for PayU's return URL")
+        if self.environment == "production" and (
+            self.payu_environment != "production"
+            or url.scheme != "https"
+            or self.billing_launch_date is None
+        ):
+            raise ValueError(
+                "Production billing requires live PayU, an HTTPS API_PUBLIC_URL and a launch date"
+            )
+        return self
+
+    @property
+    def payu_return_url(self) -> str:
+        return str(self.api_public_url).rstrip("/") + "/api/v1/payu/return"
 
     @field_validator("database_url")
     @classmethod

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown, CircleUserRound, Inbox, Keyboard, LogOut, ShieldCheck } from "lucide-react";
+import { ChevronsUpDown, CircleUserRound, Inbox, Keyboard, LogOut, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { GuardedLink } from "@/components/app-shell/guarded-link";
@@ -27,6 +27,7 @@ import {
 import { useHealth } from "@/hooks/use-health";
 import type { Household } from "@/lib/api/auth";
 import { useSignOut } from "@/hooks/use-household";
+import { statusLine } from "@/lib/plan";
 import { discardUnsavedWork, hasUnsavedWork } from "@/lib/unsaved-work";
 import { cn } from "@/lib/utils";
 
@@ -113,7 +114,7 @@ function SignOutConfirm({ state }: { state: ReturnType<typeof useGuardedSignOut>
 
 /** Sources, Privacy & data, shortcuts and sign-out: the same menu on phones and desktop. */
 function AccountItems({ signOut }: { signOut: ReturnType<typeof useGuardedSignOut> }) {
-  const { required, household } = useHouseholdAccess();
+  const { required, household, plan } = useHouseholdAccess();
   return (
     <>
       <DropdownMenuLabel className="px-2 py-1.5">
@@ -124,6 +125,17 @@ function AccountItems({ signOut }: { signOut: ReturnType<typeof useGuardedSignOu
         <ServiceStatus className="mt-1 font-normal" />
       </DropdownMenuLabel>
       <DropdownMenuSeparator />
+      {plan && (
+        <DropdownMenuItem asChild className="min-h-11 px-2">
+          <GuardedLink href="/plan">
+            <Sparkles aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block">Plan</span>
+              <span className="block text-xs text-ink-soft">{statusLine(plan)}</span>
+            </span>
+          </GuardedLink>
+        </DropdownMenuItem>
+      )}
       <DropdownMenuItem asChild className="min-h-11 px-2">
         <GuardedLink href="/sources">
           <Inbox aria-hidden="true" /> Sources

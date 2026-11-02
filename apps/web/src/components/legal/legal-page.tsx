@@ -2,6 +2,15 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Brand } from "@/components/brand";
 
+const PAGES = [
+  { href: "/pricing", label: "Pricing" },
+  { href: "/terms", label: "Terms" },
+  { href: "/privacy-policy", label: "Privacy Policy" },
+  { href: "/refund-policy", label: "Refunds" },
+  { href: "/contact", label: "Contact" },
+  { href: "/login", label: "Sign in" },
+] as const;
+
 /** Public legal pages: plain words, one column, readable at 320 px. */
 export function LegalPage({
   title,
@@ -19,19 +28,16 @@ export function LegalPage({
         <h1 className="mt-8 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">{title}</h1>
         <p className="text-sm text-ink-soft">Last updated {updated}. Draft for legal review.</p>
         {children}
-        <p className="mt-10 border-t border-ink/10 pt-6 text-sm text-ink-soft">
-          <Link href="/privacy-policy" className="font-semibold underline underline-offset-4">
-            Privacy Policy
-          </Link>{" "}
-          ·{" "}
-          <Link href="/terms" className="font-semibold underline underline-offset-4">
-            Terms
-          </Link>{" "}
-          ·{" "}
-          <Link href="/login" className="font-semibold underline underline-offset-4">
-            Sign in
-          </Link>
-        </p>
+        <nav
+          aria-label="FinBoy pages"
+          className="mt-10 flex flex-wrap gap-x-5 gap-y-2 border-t border-ink/10 pt-6 text-sm text-ink-soft"
+        >
+          {PAGES.map((page) => (
+            <Link key={page.href} href={page.href} className="font-semibold underline underline-offset-4">
+              {page.label}
+            </Link>
+          ))}
+        </nav>
       </article>
     </main>
   );

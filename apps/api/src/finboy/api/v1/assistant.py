@@ -7,7 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from finboy.api.deps import DB, CurrentUser
+from finboy.api.deps import DB, PremiumUser
 from finboy.core.errors import error_response
 from finboy.db.session import get_session
 from finboy.services.accounts import usage
@@ -28,7 +28,7 @@ def ask(
     request: Request,
     response: Response,
     session: Annotated[Session, Depends(get_session)],
-    user_id: CurrentUser,
+    user_id: PremiumUser,
 ) -> AssistantAnswer:
     response.headers["Cache-Control"] = "no-store"
     usage.use(session, request.app.state.settings, user_id, "ai")
@@ -72,7 +72,7 @@ def ask(
     },
 )
 async def transcribe(
-    request: Request, response: Response, session: DB, user_id: CurrentUser
+    request: Request, response: Response, session: DB, user_id: PremiumUser
 ) -> Transcript | JSONResponse:
     response.headers["Cache-Control"] = "no-store"
     settings = request.app.state.settings
@@ -96,7 +96,7 @@ async def transcribe(
 
 
 @router.post("/speak", response_class=Response, responses={200: {"content": {"audio/mpeg": {}}}})
-def speak(body: SpeakRequest, request: Request, session: DB, user_id: CurrentUser) -> Response:
+def speak(body: SpeakRequest, request: Request, session: DB, user_id: PremiumUser) -> Response:
     usage.use(session, request.app.state.settings, user_id, "voice")
     try:
         audio = synthesize_speech(

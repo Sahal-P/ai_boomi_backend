@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { planSchema } from "./billing.ts";
 import { jsonBody, requestJson } from "./http.ts";
 
 const householdSchema = z.object({
@@ -31,6 +32,8 @@ export const sessionSchema = z.object({
   sign_in: signInSchema,
   /** Google Pay statement import; older servers don't send it. */
   statement_import: z.boolean().default(false),
+  /** FinBoy Premium; null while billing is off, when every household has everything. */
+  plan: planSchema.nullable().default(null),
 });
 export type SessionView = z.infer<typeof sessionSchema>;
 export type Household = z.infer<typeof householdSchema>;
