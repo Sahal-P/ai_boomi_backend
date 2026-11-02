@@ -1,7 +1,6 @@
 import { BrainCircuit, EyeOff, Lock, Unplug } from "lucide-react";
 
 import { Reveal } from "@/components/motion/reveal";
-import { SceneSlot } from "@/components/three/scene-slot";
 
 import { SectionHeading } from "./section-heading";
 
@@ -30,46 +29,27 @@ const PROMISES = [
 
 export function TrustSection() {
   return (
-    <section
-      id="trust"
-      aria-labelledby="trust-title"
-      className="scroll-mt-24 py-24 sm:py-28"
-    >
-      <div className="mx-auto grid max-w-[1360px] items-center gap-12 px-6 sm:px-10 lg:grid-cols-2 lg:px-16">
-        <Reveal className="relative order-last lg:order-first">
-          <div className="surface overflow-hidden rounded-[2.25rem] bg-[radial-gradient(circle_at_50%_38%,rgb(255_255_255/0.9),transparent_68%)]">
-            <SceneSlot
-              spec={{ name: "privacy-vault" }}
-              className="h-[460px] w-full"
-            />
-          </div>
-        </Reveal>
-        <div>
-          <SectionHeading
-            id="trust-title"
-            eyebrow="Privacy by design"
-            title="FinBoy doesn’t need your inbox. Just the money in it."
-            description="The minimum evidence required to understand your money — and controls that are as easy as connecting."
-          />
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2">
-            {PROMISES.map(({ icon: Icon, title, body }, index) => (
-              <li key={title}>
-                <Reveal
-                  delay={0.08 * index}
-                  className="surface h-full rounded-2xl p-5"
-                >
-                  <span className="grid size-10 place-items-center rounded-xl bg-white/80 text-ink ring-1 ring-ink/[0.06]">
-                    <Icon className="size-5" aria-hidden="true" />
-                  </span>
-                  <h3 className="mt-4 font-semibold text-ink">{title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-                    {body}
-                  </p>
-                </Reveal>
-              </li>
-            ))}
-          </ul>
-        </div>
+    <section id="trust" aria-labelledby="trust-title" className="scroll-mt-24 py-24 sm:py-28">
+      <div className="mx-auto max-w-[1360px] px-6 sm:px-10 lg:px-16">
+        <SectionHeading
+          id="trust-title"
+          eyebrow="Privacy by design"
+          title="FinBoy doesn’t need your inbox. Just the money in it."
+          description="The minimum evidence required to understand your money — and controls that are as easy as connecting."
+        />
+        <ul className="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {PROMISES.map(({ icon: Icon, title, body }, index) => (
+            <li key={title}>
+              <Reveal delay={0.08 * index} className="surface h-full rounded-2xl p-6">
+                <span className="grid size-10 place-items-center rounded-xl bg-white/80 text-ink ring-1 ring-ink/[0.06]">
+                  <Icon className="size-5" aria-hidden="true" />
+                </span>
+                <h3 className="mt-4 font-semibold text-ink">{title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{body}</p>
+              </Reveal>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

@@ -8,7 +8,6 @@ import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js"
 /** Sculpted in Blender by scripts/3d/build_assets.py; rebuild with `pnpm assets:3d`. */
 const MODELS = {
   coin: "/models/coin.glb",
-  dome: "/models/check-dome.glb",
 } as const;
 
 // three's own loader + decoder (both r186) — drei's bundled decoder predates gltfpack 1.x.
@@ -33,13 +32,7 @@ export function useCoinGeometry(detail: CoinDetail): THREE.BufferGeometry {
   return geometryOf(useLoader(GLTFLoader, MODELS.coin, withMeshopt), detail === "full" ? "Coin" : "CoinLite");
 }
 
-/** Verification dome, radius 1, check face toward +Z. Cached and shared — never dispose it. */
-export function useDomeGeometry(): THREE.BufferGeometry {
-  return geometryOf(useLoader(GLTFLoader, MODELS.dome, withMeshopt), "CheckDome");
-}
-
-/** Starts both downloads as soon as the 3D bundle loads. */
+/** Starts the coin download as soon as the 3D bundle loads. */
 export function preloadModels(): void {
   useLoader.preload(GLTFLoader, MODELS.coin, withMeshopt);
-  useLoader.preload(GLTFLoader, MODELS.dome, withMeshopt);
 }

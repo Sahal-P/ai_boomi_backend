@@ -34,15 +34,13 @@ type SceneSlotProps = {
 
 /**
  * Reserves layout space for a 3D illustration; the scene mounts into the shared
- * SceneLayer when the slot first nears the viewport, and its reveal choreography starts
- * once 40% of the slot is actually visible. Size the slot with `className`.
+ * SceneLayer when the slot first nears the viewport. Size the slot with `className`.
  * DOM that must sit above 3D (buttons over a scene) needs `relative z-20`.
  */
 export function SceneSlot({ spec, className }: SceneSlotProps) {
   const slot = useRef<HTMLDivElement>(null);
   const webgl = useWebGLSupport();
   const near = useInView(slot, { once: true, margin: "400px 0px" }) && webgl;
-  const revealed = useInView(slot, { once: true, amount: 0.4 });
 
   useEffect(() => {
     if (!near) return;
@@ -52,7 +50,7 @@ export function SceneSlot({ spec, className }: SceneSlotProps) {
 
   return (
     <div ref={slot} aria-hidden="true" className={cn("relative", className)}>
-      {near ? <SceneView spec={spec} revealed={revealed} className="absolute inset-0" /> : null}
+      {near ? <SceneView spec={spec} className="absolute inset-0" /> : null}
     </div>
   );
 }

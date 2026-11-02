@@ -14,11 +14,7 @@ export type SceneSpec =
       /** Continuously demo the merge (3 emails → 1 transaction). */
       loop?: boolean;
     }
-  | { name: "check-orb" }
   | { name: "voice-orb"; state?: VoiceOrbState; /** Live 0–1 audio level (mic or speech). */ level?: RefObject<number> }
-  | { name: "coin-stack"; /** Relative column heights, 0–1. */ values: readonly number[] }
-  | { name: "privacy-vault" }
-  | { name: "ribbon" }
-  | { name: "inbox-slab" };
+  | { name: "ribbon" };
 
 export type SceneName = SceneSpec["name"];
