@@ -4,10 +4,10 @@
  * before billing opens; `docs/production.md` lists this as a release step.
  */
 export const BUSINESS = {
-  name: "[Legal business name]",
-  address: "[Registered business address]",
-  phone: "[Support phone number]",
-  grievanceOfficer: "[Grievance officer's name]",
+  name: "Business details pending",
+  address: "Address pending verification",
+  phone: "Phone number pending",
+  grievanceOfficer: "Grievance officer pending",
   email: "support@finboy.io",
 } as const;
 
