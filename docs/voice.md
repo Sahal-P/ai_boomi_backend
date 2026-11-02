@@ -84,8 +84,11 @@ OpenAI Structured Outputs for understanding and contextual wording. The closed
 intent, category, period, education-topic and positive paise schema covers spending,
 income, estimated unallocated, obligations, merchant evidence,
 affordability/simulation, consumer purchase planning, education, advice decline and scope.
-A current calendar month is the default; explicit `YYYY-MM` is supported. Other
-relative periods clarify rather than silently querying a different month. Simulations
+A current calendar month is the default; explicit `YYYY-MM` and a named month are supported
+("September", "सितंबर", "സെപ്റ്റംബറിൽ", "September 2025"). A month named without a year is its
+latest occurrence up to the current month; the current month reads as `current_month` however
+it is named. "Next" or "last" with a month name, a day of a month and other relative periods
+clarify rather than silently querying a different month. Simulations
 use the engine's current-month interface and clarify an explicit historical period.
 Amounts must be positive explicit rupee literals in the question. Negative or
 ambiguous proposals and non-INR requests clarify; an LLM cannot invent a proposal.
@@ -96,7 +99,10 @@ configuration returns `configuration_missing`; a configured provider's timeout,
 authentication/quota failure, refusal, malformed output or missing contextual reply
 returns redacted `assistant_unavailable` instead of silently pretending to answer.
 Model amounts and merchants must match the question, record-query periods must
-match deterministic resolution, and explicit security picks still decline.
+match deterministic resolution, and explicit security picks still decline. The model's period is
+read leniently: a month without its year takes the named month's latest occurrence, and any other
+incomplete or different period asks which period, rather than reporting the assistant unavailable
+(2 November 2026). A spending question on which the model names a payee is a merchant lookup.
 
 Consumer purchase planning returns `purchase_planning` with policy `clarify`, no
 money-engine call, no period and no financial facts. For example, buying a GT 650
@@ -264,7 +270,7 @@ Bookkeeping answers include opaque data version, resolved IST period, exact evid
 IDs, total evidence count and an explicit sampling flag. Merchant arithmetic uses the
 entire matching confirmed non-transfer scope, separating gross outflows, refunds and
 net spending before selecting up to ten records. Income evidence is selected before
-capping. Today/yesterday/current month/previous month/YYYY-MM are deterministic;
+capping. Today/yesterday/current month/previous month/named months/YYYY-MM are deterministic;
 unsupported periods receive period-specific clarification. Localized fact/warning labels
 and separate display-script/spoken-language metadata support native and romanized styles.
 Providers, refusal boundaries, backend-only keys and independent speech/text fallback

@@ -2,7 +2,7 @@
 
 import re
 import unicodedata
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Literal, get_args
 
@@ -67,6 +67,24 @@ class ParsedIntent(BaseModel):
     merchant: str | None = Field(default=None, min_length=1, max_length=80)
     topic: Topic | None = None
     reply: AssistantReply | None = None
+
+
+class ModelPeriod(BaseModel):
+    """The period as the model reads it. Unlike PeriodSpec it may be incomplete (a month without
+    its year), so a missing field is checked against the question instead of failing the answer."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["current_month", "month", "range"] = "current_month"
+    year: int | None = None
+    month: int | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+
+
+class ModelReading(ParsedIntent):
+    """The model's structured output; its period is checked before it becomes a ParsedIntent."""
+
+    period: ModelPeriod = Field(default_factory=ModelPeriod)
 
 
 CATEGORIES: dict[Category, tuple[str, ...]] = {
@@ -200,6 +218,24 @@ PAST = (
     "ഇന്ന്",
     "kazhinja",
 )
+# Month names. Malayalam ones are stems, so suffixed forms such as സെപ്റ്റംബറിൽ match too.
+MONTHS: dict[int, tuple[str, ...]] = {
+    1: ("january", "jan", "जनवरी", "ജനുവരി"),
+    2: ("february", "feb", "फरवरी", "फ़रवरी", "ഫെബ്രുവരി"),
+    3: ("march", "mar", "मार्च", "മാർച്ച"),
+    4: ("april", "apr", "अप्रैल", "ഏപ്രി"),
+    5: ("may", "मई", "മേയ", "മെയ്"),
+    6: ("june", "jun", "जून", "ജൂൺ", "ജൂണിൽ"),
+    7: ("july", "jul", "जुलाई", "ജൂലൈ"),
+    8: ("august", "aug", "अगस्त", "ഓഗസ്റ്റ", "ആഗസ്റ്റ"),
+    9: ("september", "sept", "sep", "सितंबर", "सितम्बर", "സെപ്റ്റംബ"),
+    10: ("october", "oct", "अक्टूबर", "ഒക്ടോബ"),
+    11: ("november", "nov", "नवंबर", "नवम्बर", "നവംബ"),
+    12: ("december", "dec", "दिसंबर", "दिसम्बर", "ഡിസംബ"),
+}
+# Beside a named month these make it still to come ("next March") or ambiguous ("last September"
+# could be either year), so record queries ask for the period instead.
+RELATIVE = ("अगले", "पिछले", "അടുത്ത", "കഴിഞ്ഞ", "agle", "pichle", "adutha", "kazhinja")
 
 
 def normalized(text: str) -> str:
@@ -211,10 +247,57 @@ def contains(text: str, terms: tuple[str, ...]) -> bool:
     return any(term in text for term in terms)
 
 
+MONTH_NUMBERS = {normalized(name): number for number, names in MONTHS.items() for name in names}
+LATIN_MONTHS = "|".join(sorted((name for name in MONTH_NUMBERS if name.isascii()), key=len)[::-1])
+NATIVE_MONTHS = "|".join(sorted((n for n in MONTH_NUMBERS if not n.isascii()), key=len)[::-1])
+# A named month and the year that may follow it ("sept 2025", "सितंबर 2025"). Latin names are
+# whole words; native stems may carry a suffix.
+MONTH_NAME = re.compile(
+    rf"(?:(?<![a-z])(?P<latin>{LATIN_MONTHS})\.?(?![a-z])|(?P<native>{NATIVE_MONTHS})\S*)"
+    r"(?:,?\s+(?P<year>20\d{2})\b)?"
+)
+# A day of a named month ("20 september", "sep 20th") is a date, which record queries do not take.
+DAY_OF_MONTH = re.compile(
+    rf"(?<!\d)\d{{1,2}}(?:st|nd|rd|th)?\s+(?:of\s+)?(?:{LATIN_MONTHS}|{NATIVE_MONTHS})"
+    rf"|(?<![a-z])(?:{LATIN_MONTHS})\.?\s+\d{{1,2}}(?:st|nd|rd|th)?(?!\d)"
+)
+
+
+def latest_year(month: int) -> int:
+    """The year of a month named without one: its latest occurrence up to the current month."""
+    today = today_ist()
+    return today.year if month <= today.month else today.year - 1
+
+
+def month_period(year: int, month: int) -> PeriodSpec:
+    """One calendar month. The current one is `current_month`, however it is named, so "this
+    month", "November" and 2026-11 read alike on both the model's side and the code's."""
+    today = today_ist()
+    if (year, month) == (today.year, today.month):
+        return PeriodSpec()
+    return PeriodSpec(kind="month", year=year, month=month)
+
+
+def named_months(q: str) -> list[PeriodSpec]:
+    """Each month a normalized question names. "May" counts only as "in May" or with a year, so
+    "may I know…" stays a question."""
+    periods = []
+    for match in MONTH_NAME.finditer(q):
+        name = match["latin"] or match["native"]
+        if name == "may" and not (
+            match["year"] or re.search(r"\b(?:in|during|on|for|of)\s+$", q[: match.start()])
+        ):
+            continue
+        month = MONTH_NUMBERS[name]
+        periods.append(month_period(int(match["year"] or latest_year(month)), month))
+    return periods
+
+
 def amounts_in_question(text: str) -> set[int]:
     """Parse explicit rupee literals; conversion to paise is not ledger arithmetic."""
     values: set[int] = set()
     question = re.sub(r"\b20\d{2}-(?:0[1-9]|1[0-2])\b", " ", normalized(text))
+    question = MONTH_NAME.sub(" ", question)  # "September 2025" names a year, not ₹2025
     if re.search(r"[-−]\s+(?:₹\s*)?\d", question):
         return values
     # A full stop that ends the sentence ("…₹7860.", as Sarvam transcribes) still ends the number.
@@ -238,7 +321,7 @@ def resolve_period(q: str) -> tuple[PeriodSpec, bool]:
         return PeriodSpec(), True
     if explicit:
         year, month = explicit[0]
-        choices.append(PeriodSpec(kind="month", year=int(year), month=int(month)))
+        choices.append(month_period(int(year), int(month)))
     if contains(q, ("yesterday", "बीते कल", "ഇന്നലെ", "innale")):
         day = today - timedelta(days=1)
         choices.append(PeriodSpec(kind="range", start_date=day, end_date=day))
@@ -262,11 +345,17 @@ def resolve_period(q: str) -> tuple[PeriodSpec, bool]:
         q, ("this month", "current month", "इस महीने", "इस माह", "ഈ മാസം", "ee masam", "is mahine")
     ):
         choices.append(PeriodSpec())
+    months = named_months(q)
+    choices.extend(months)
     if (
         re.search(r"\b(?:weeks?|years?|tomorrow)\b|\bnext month\b", q)
-        or re.search(
-            r"\b(?:in|during|last|next)\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)\b",
-            q,
+        or (
+            months
+            and (
+                re.search(r"\b(?:next|coming|last|previous)\b", q)
+                or contains(q, RELATIVE)
+                or DAY_OF_MONTH.search(q)
+            )
         )
         or len(choices) > 1
         or (
@@ -365,12 +454,14 @@ def rule_intent(text: str) -> ParsedIntent:
     if merchant is None and contains(q, SPEND):
         # A literal merchant phrase is a parameter, never model-generated arithmetic/SQL.
         stop = (
-            r"(?=\s+(?:(?:this|last|previous|current)\s+month|today|yesterday|"
-            r"20\d{2}-\d{2})|[?!]|$)"
+            r"(?=\s+(?:(?:this|last|previous|current)\s+month|today|yesterday|20\d{2}-\d{2}|"
+            rf"(?:(?:in|during|for|on)\s+)?(?:{LATIN_MONTHS})\b)|[?!]|$)"
         )
         match = re.search(r"\b(?:spend(?:ing)?|spent|paid)\s+(?:on|at|with|to)\s+(.+?)" + stop, q)
         if match:
             candidate = re.sub(r"\s+(?:in|during|for)$", "", match[1]).strip(" .\"'")
+            if MONTH_NAME.fullmatch(candidate):
+                candidate = ""  # "spent on September" names the period, not a payee
             alias = re.sub(r"^(?:my|the)\s+", "", candidate)
             category_alias = next((c for c, terms in CATEGORIES.items() if alias in terms), None)
             if alias in {"food and dining", "food & dining"}:
@@ -477,7 +568,7 @@ def _model_intent(
                 model=settings.openai_assistant_model,
                 store=False,
                 max_output_tokens=2400,
-                text_format=ParsedIntent,
+                text_format=ModelReading,
                 input=[
                     {
                         "role": "system",
@@ -498,12 +589,14 @@ def _model_intent(
                             "Affordability/savings simulations model only a stated MONTHLY "
                             "commitment, not a one-off purchase price. With no monthly amount, "
                             "ask for it; never infer an EMI. For record queries, only today, "
-                            "yesterday, this/current month, last/previous month and YYYY-MM "
-                            "are supported; unsupported/ambiguous dates require clarification "
-                            "with reason=period. Use the default current_month when unstated. "
+                            "yesterday, this/current month, last/previous month, a named month "
+                            "(September, or September 2025) and YYYY-MM are supported; "
+                            "unsupported/ambiguous dates require clarification with "
+                            "reason=period. Use the default current_month when unstated. "
                             f"Current IST date is {today_ist().isoformat()}. For today/yesterday "
-                            "use kind=range with matching start_date/end_date; for last month "
-                            "use kind=month with its year/month. "
+                            "use kind=range with matching start_date/end_date; for last month or "
+                            "a named month use kind=month with its year and month. A month named "
+                            "without a year is its latest occurrence up to the current month. "
                             "Convert only stated rupee amounts to amount_minor paise. Merchant "
                             "must be a literal substring. Use only closed topics/categories. "
                             "Set absent optional slots to null. reply is required for supported "
@@ -538,16 +631,42 @@ def _model_intent(
         if parsed.intent == "purchase_planning":
             if parsed.reply is None:
                 raise ProviderUnavailable("assistant_unavailable")
-            return parsed.model_copy(update={"amount_minor": None, "period": PeriodSpec()})
+            return _checked(parsed, PeriodSpec(), amount_minor=None)
         if parsed.amount_minor is not None and parsed.amount_minor not in amounts_in_question(text):
             return ParsedIntent(intent="clarification")
         if parsed.merchant and normalized(parsed.merchant) not in normalized(text):
             return ParsedIntent(intent="clarification")
         deterministic_period, unsupported = resolve_period(normalized(text))
-        if unsupported or parsed.period != deterministic_period:
+        if unsupported or _model_period(parsed.period) != deterministic_period:
             return ParsedIntent(intent="clarification", clarification_reason="period")
         if parsed.intent not in {"regulated_advice", "out_of_scope"} and parsed.reply is None:
             raise ProviderUnavailable("assistant_unavailable")
-        return parsed
+        if parsed.intent == "spending_query" and parsed.merchant:
+            # The model sometimes keeps the payee on a plain spending question; only a merchant
+            # lookup totals that payee, as the rules read it.
+            return _checked(parsed, deterministic_period, intent="merchant_lookup")
+        return _checked(parsed, deterministic_period)
     except OpenAIError, ValidationError, ValueError:
         raise ProviderUnavailable("assistant_unavailable") from None
+
+
+def _model_period(period: BaseModel) -> PeriodSpec | None:
+    """The model's period as the engine takes it. A named month may come without its year, which
+    is then its latest occurrence, as `resolve_period` reads it; other gaps give None."""
+    values = period.model_dump()
+    if values["kind"] == "month" and values["year"] is None and values["month"] in range(1, 13):
+        values["year"] = latest_year(values["month"])
+    try:
+        spec = PeriodSpec.model_validate(values)
+    except ValidationError:
+        return None
+    if spec.kind == "month" and spec.year is not None and spec.month is not None:
+        return month_period(spec.year, spec.month)
+    return spec
+
+
+def _checked(reading: ParsedIntent, period: PeriodSpec, **update: object) -> ParsedIntent:
+    """The model's reading as a ParsedIntent, with the period the question was checked against."""
+    return ParsedIntent.model_validate(
+        reading.model_dump(exclude={"period"}) | {"period": period} | update
+    )

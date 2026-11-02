@@ -289,28 +289,30 @@ for style, merchant, period in [
         "en",
         "Confirmed gross spending: {gross}. Refunds and reversals: {refunds}. "
         "Net spending: {value}.",
-        "Which period should I use? Choose today, yesterday, this month, last month, or YYYY-MM.",
+        "Which period should I use? Choose today, yesterday, this month, last month, "
+        "or a month like September.",
     ),
     (
         "hi",
         "पुष्टि किया गया कुल खर्च: {gross}। वापसी और उलटे भुगतान: {refunds}। शुद्ध खर्च: {value}।",
-        "कौन सी अवधि चाहिए? आज, बीते कल, इस महीने, पिछले महीने या YYYY-MM चुनें।",
+        "कौन सी अवधि चाहिए? आज, बीते कल, इस महीने, पिछले महीने या सितंबर जैसा कोई महीना चुनें।",
     ),
     (
         "ml",
         "സ്ഥിരീകരിച്ച ആകെ ചെലവ്: {gross}. മടക്കങ്ങളും തിരിച്ചിടലുകളും: {refunds}. അറ്റ ചെലവ്: {value}.",
-        "ഏത് കാലയളവ് വേണം? ഇന്ന്, ഇന്നലെ, ഈ മാസം, കഴിഞ്ഞ മാസം അല്ലെങ്കിൽ YYYY-MM തിരഞ്ഞെടുക്കുക.",
+        "ഏത് കാലയളവ് വേണം? ഇന്ന്, ഇന്നലെ, ഈ മാസം, കഴിഞ്ഞ മാസം അല്ലെങ്കിൽ സെപ്റ്റംബർ പോലെ ഒരു മാസം തിരഞ്ഞെടുക്കുക.",
     ),
     (
         "hinglish",
         "Confirmed kul kharch: {gross}. Refunds aur reversals: {refunds}. Net kharch: {value}.",
-        "Kaunsa period chahiye? Aaj, beeta kal, is mahine, pichle mahine ya YYYY-MM chunein.",
+        "Kaunsa period chahiye? Aaj, beeta kal, is mahine, pichle mahine "
+        "ya September jaisa koi mahina chunein.",
     ),
     (
         "manglish",
         "Confirmed aake chelavu: {gross}. Thirike kittiyathu: {refunds}. Net chelavu: {value}.",
         "Ethu period venam? Innu, innale, ee masam, kazhinja masam "
-        "allenkil YYYY-MM thiranjedukkuka.",
+        "allenkil September pole oru masam thiranjedukkuka.",
     ),
 ]:
     COPY[style]["merchant_total"] = merchant

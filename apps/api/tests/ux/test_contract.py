@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 from finboy.core.clock import IST
+from finboy.services.assistant import intent
 from finboy.services.assistant.intent import rule_intent
 from finboy.services.money.engine import (
     CommitmentView,
@@ -184,13 +185,17 @@ def test_literal_merchant_questions_cannot_silently_become_all_spending():
     assert combined.merchant == "amazon" and combined.category == "shopping"
 
 
-def test_category_words_inside_merchant_names_do_not_add_silent_filters():
+def test_category_words_inside_merchant_names_do_not_add_silent_filters(monkeypatch):
     merchant = rule_intent("How much did I spend at Acme Food Market today?")
     assert merchant.merchant == "acme food market" and merchant.category is None
     for phrase in ["my food", "food and dining"]:
         category = rule_intent("How much did I spend on " + phrase + " today?")
         assert category.intent == "spending_query" and category.category == "food_dining"
-    assert rule_intent("How much did I spend in September?").clarification_reason == "period"
+    monkeypatch.setattr(intent, "today_ist", lambda: date(2026, 11, 2))
+    september = rule_intent("How much did I spend in September?")
+    assert september.intent == "spending_query"
+    assert september.period == PeriodSpec(kind="month", year=2026, month=9)
+    assert rule_intent("How much did I spend next September?").clarification_reason == "period"
 
 
 def test_published_response_examples_match_the_concrete_contracts():
