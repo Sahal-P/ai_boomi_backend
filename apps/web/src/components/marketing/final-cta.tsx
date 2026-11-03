@@ -49,6 +49,8 @@ export function SiteFooter() {
         FinBoy is not an investment adviser.
       </p>
       <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold">
+        <Link href="/about" className="hover:text-ink">About</Link>
+        <Link href="/press" className="hover:text-ink">Press</Link>
         <Link href="/guides" className="hover:text-ink">
           Guides
         </Link>
