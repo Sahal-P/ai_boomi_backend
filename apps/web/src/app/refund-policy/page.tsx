@@ -4,6 +4,8 @@ import { LegalPage } from "@/components/legal/legal-page";
 import { BUSINESS, PREMIUM_PRICE } from "@/lib/business";
 
 export const metadata: Metadata = {
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/refund-policy" },
   title: "Cancellation and refund policy",
   description: "How to stop FinBoy Premium, and when money paid for it comes back.",
 };

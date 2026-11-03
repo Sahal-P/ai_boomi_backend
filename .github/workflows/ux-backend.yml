@@ -46,9 +46,10 @@ jobs:
           sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Static checks and unit contracts
         run: |
-          uv run ruff check apps/api
-          uv run ruff format --check apps/api
+          uv run ruff check apps/api scripts/seo
+          uv run ruff format --check apps/api scripts/seo
           uv run pytest deploy/test_web_release.py
+          uv run python -m pytest scripts/seo/test_engine.py
           env -u WEB_APP_URL uv run pytest apps/api/tests -m 'not integration'
       - name: Disposable schema and real persistence journeys
         run: |

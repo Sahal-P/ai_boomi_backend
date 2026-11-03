@@ -10,13 +10,13 @@ import {
 } from "lucide-react";
 
 const sources = [
-  { label: "Bank alerts", icon: Landmark },
-  { label: "UPI receipts", icon: Smartphone },
-  { label: "Card alerts", icon: CreditCard },
-  { label: "Bills & invoices", icon: ReceiptText },
-  { label: "EMI notices", icon: CalendarClock },
-  { label: "Salary credits", icon: BadgeIndianRupee },
-  { label: "Merchant receipts", icon: ShoppingBag },
+  { label: "Text entries", icon: Landmark },
+  { label: "UPI screenshots", icon: Smartphone },
+  { label: "Voice notes", icon: CreditCard },
+  { label: "Bill photos", icon: ReceiptText },
+  { label: "Statement imports", icon: CalendarClock },
+  { label: "Income entries", icon: BadgeIndianRupee },
+  { label: "Cash purchases", icon: ShoppingBag },
   { label: "Refunds", icon: Undo2 },
 ] as const;
 
@@ -39,9 +39,9 @@ function Row({ hidden = false }: { hidden?: boolean }) {
 /** Infinite, edge-faded marquee of the money mail FinBoy understands. */
 export function SourcesMarquee() {
   return (
-    <section aria-label="Emails FinBoy understands" className="relative overflow-hidden border-y border-white/70 bg-white/40 py-6">
+    <section aria-label="Ways to record your money" className="relative overflow-hidden border-y border-white/70 bg-white/40 py-6">
       <div className="mx-auto flex max-w-[1360px] flex-col gap-5 px-6 sm:px-10 md:flex-row md:items-center lg:px-16">
-        <p className="shrink-0 text-sm font-semibold text-ink-soft md:w-56">Reads the money mail you already get</p>
+        <p className="shrink-0 text-sm font-semibold text-ink-soft md:w-56">Record money in a way that fits your day</p>
         <div className="flex overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_10%,#000_90%,transparent)]">
           <div className="flex animate-[marquee_42s_linear_infinite] motion-reduce:animate-none">
             <Row />

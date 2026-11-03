@@ -71,6 +71,7 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: /
           FINBOY_API_ORIGIN: ''
+          GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
         run: pnpm build
       - name: Package immutable release
         run: python3 scripts/web-release.py "$GITHUB_SHA" /tmp/finboy-artifact

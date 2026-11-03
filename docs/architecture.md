@@ -122,3 +122,15 @@ the Backend owner takes integration ownership only after its explicit handoff.
 assembled browser and human acceptance. Unit tests require no PostgreSQL; schema and
 high-risk journeys use only a loopback, non-production disposable database. Real consent,
 phone playback, microphone permission and observed comprehension are separate evidence.
+
+## Public discovery and operator research
+
+Public marketing pages are statically generated from a typed content registry, with
+explicit canonical/indexing metadata, a public-only sitemap and structured Article/
+BreadcrumbList data. Product routes remain noindex and retain existing authentication.
+The optional Search Console verification tag comes from a public build variable.
+
+`pnpm seo` runs an operator-only research CLI in `scripts/seo`. It imports public keyword
+and search evidence, calls Liquid's decision API under a per-invocation cost reservation,
+and renders private local reports. It exposes no HTTP route and accesses no household
+data or database. See [SEO research](seo/research.md) for commands and evidence limits.

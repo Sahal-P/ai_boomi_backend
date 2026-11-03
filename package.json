@@ -17,9 +17,9 @@
     "db:check": "uv run --package finboy-api alembic -c apps/api/alembic.ini check",
     "lint:api": "uv run ruff check apps/api && uv run ruff format --check apps/api",
     "lint:web": "pnpm --filter @finboy/web lint",
-    "lint": "pnpm lint:api && pnpm lint:web",
+    "lint": "pnpm lint:api && pnpm lint:web && pnpm lint:seo",
     "format:api": "uv run ruff format apps/api",
-    "test": "pnpm test:api && pnpm test:web",
+    "test": "pnpm test:api && pnpm test:web && pnpm test:seo",
     "test:integration": "uv run pytest apps/api/tests -m integration",
     "typecheck": "pnpm --filter @finboy/web typecheck",
     "check": "pnpm lint && pnpm test && pnpm typecheck",
@@ -42,7 +42,10 @@
     "dev:final-api": "uv run --package finboy-api python -m finboy.core.final_runtime api",
     "build:final-web": "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000 pnpm build",
     "start:final-web": "WEB_PORT=3000 pnpm start:web",
-    "test:e2e": "pnpm --filter @finboy/web test:e2e"
+    "test:e2e": "pnpm --filter @finboy/web test:e2e",
+    "seo": "uv run --package finboy-api python -m scripts.seo",
+    "lint:seo": "uv run ruff check scripts/seo && uv run ruff format --check scripts/seo",
+    "test:seo": "uv run python -m pytest scripts/seo/test_engine.py"
   },
   "devDependencies": {
     "concurrently": "10.0.6"

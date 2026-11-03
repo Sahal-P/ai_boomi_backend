@@ -7,18 +7,18 @@ import { SectionHeading } from "./section-heading";
 const steps = [
   {
     number: "01",
-    title: "Connect Gmail, read-only",
-    body: "FinBoy uses sender and keyword filters to scan recent likely financial mail — bank alerts, receipts and bills.",
+    title: "Send an entry your way",
+    body: "Add an expense by text or voice, share a payment screenshot, or import a supported Google Pay statement.",
   },
   {
     number: "02",
-    title: "Three alerts, one transaction",
-    body: "A bank alert, an order email and an invoice for the same ₹799 become one entry — with all three kept as evidence.",
+    title: "Check and correct",
+    body: "Read the saved entry and fix its amount or category. Use Undo for a mistake; FinBoy asks when it is unsure.",
   },
   {
     number: "03",
-    title: "You approve what’s uncertain",
-    body: "Low-confidence items wait for one tap. Nothing guessed slips silently into your totals.",
+    title: "See your spending clearly",
+    body: "Review recorded purchases, spending categories and budgets on the web, or ask for a summary in your diary.",
   },
 ] as const;
 
@@ -32,11 +32,11 @@ export function HowItWorks() {
             eyebrow="How it works"
             title={
               <>
-                From inbox to insight,
+                From an entry to insight,
                 <br className="hidden sm:block" /> in three quiet steps.
               </>
             }
-            description="No spreadsheets, no manual logging. FinBoy reads the trail your money already leaves and asks you only when it isn’t sure."
+            description="Keep a diary in a way that fits your day. Check what was recorded, then use your history to understand where the money went."
           />
           {/* Three sources merge into one stack: step 02, the heart of FinBoy. */}
           <Reveal delay={0.12} className="surface overflow-hidden rounded-[2rem]">
