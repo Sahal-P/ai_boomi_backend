@@ -340,8 +340,10 @@ document.querySelector('#filter').addEventListener('input',e=>{
 });
 for(const button of document.querySelectorAll('[data-column]'))button.addEventListener('click',()=>{
  const i=Number(button.dataset.column);direction*=-1;
- const rows=Array.from(body.rows).sort((a,b)=>direction*a.cells[i].textContent.localeCompare(
- b.cells[i].textContent,undefined,{numeric:true}));body.append(...rows);
+ const rows=Array.from(body.rows).sort((a,b)=>{
+ const av=a.cells[i].textContent,bv=b.cells[i].textContent;
+ return direction*(i===3 ? Number(av)-Number(bv) : av.localeCompare(bv));
+ });body.append(...rows);
 });
 </script></body>""",
     )
