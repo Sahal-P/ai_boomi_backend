@@ -3,6 +3,8 @@ import { LegalPage } from "@/components/legal/legal-page";
 import { BUSINESS } from "@/lib/business";
 
 export const metadata: Metadata = {
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/privacy-policy" },
   title: "Privacy Policy",
   description: "What FinBoy keeps, what it never keeps, who processes it, and how to delete it.",
 };

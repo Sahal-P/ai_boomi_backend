@@ -38,3 +38,6 @@ test-results/
 .turbo/
 .vercel
 .env*
+
+# Private operator SEO evidence and reports
+output/seo/

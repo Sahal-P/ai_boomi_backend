@@ -7,23 +7,23 @@ import { SectionHeading } from "./section-heading";
 const PROMISES = [
   {
     icon: Lock,
-    title: "Read-only Gmail access",
-    body: "FinBoy can’t send, delete or change a single email.",
+    title: "A private account",
+    body: "Your household records sit behind sign-in. Share only the entries and documents you want to record.",
   },
   {
     icon: EyeOff,
-    title: "Raw emails are never stored",
-    body: "We retain structured records, short evidence snippets and minimal metadata. Raw email bodies are processed in memory.",
+    title: "Original media is not kept",
+    body: "FinBoy keeps structured records rather than your original audio, images or statement PDFs.",
   },
   {
     icon: BrainCircuit,
-    title: "Never used for training",
-    body: "Your financial emails don’t train any model, ours or anyone’s.",
+    title: "Processing explained",
+    body: "The Privacy Policy explains which providers process your entries and the controls available for your data.",
   },
   {
     icon: Unplug,
-    title: "Disconnect means disconnect",
-    body: "Revoke Gmail access and choose whether to keep or delete imported records.",
+    title: "Controls for your records",
+    body: "Review your records, export your data and use Privacy & data to manage what is retained.",
   },
 ] as const;
 
@@ -34,8 +34,8 @@ export function TrustSection() {
         <SectionHeading
           id="trust-title"
           eyebrow="Privacy by design"
-          title="FinBoy doesn’t need your inbox. Just the money in it."
-          description="The minimum evidence required to understand your money — and controls that are as easy as connecting."
+          title="Your records. Your controls."
+          description="Know what you share, how it is processed and how to manage the records in your account."
         />
         <ul className="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {PROMISES.map(({ icon: Icon, title, body }, index) => (

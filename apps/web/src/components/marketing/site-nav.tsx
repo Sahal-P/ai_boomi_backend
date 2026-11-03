@@ -11,6 +11,7 @@ const links = [
   { label: "Voice", href: "#voice" },
   { label: "Simulator", href: "#simulator" },
   { label: "Trust", href: "#trust" },
+  { label: "Guides", href: "/guides" },
 ] as const;
 
 export function SiteNav() {

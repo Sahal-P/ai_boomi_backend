@@ -3,6 +3,8 @@ import { LegalPage } from "@/components/legal/legal-page";
 import { BUSINESS } from "@/lib/business";
 
 export const metadata: Metadata = {
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/contact" },
   title: "Contact",
   description: "How to reach FinBoy about your account, a payment or your data.",
 };

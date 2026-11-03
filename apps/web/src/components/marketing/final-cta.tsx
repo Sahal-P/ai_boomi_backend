@@ -45,10 +45,13 @@ export function SiteFooter() {
         <p>© {new Date().getFullYear()} FinBoy. Made in Kerala.</p>
       </div>
       <p className="max-w-md text-xs leading-relaxed text-ink-subtle">
-        Figures are estimates from email-derived and confirmed records. Your actual bank balance may differ.
+        Figures are estimates from your recorded entries and imports. Your actual bank balance may differ.
         FinBoy is not an investment adviser.
       </p>
       <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold">
+        <Link href="/guides" className="hover:text-ink">
+          Guides
+        </Link>
         <Link href="/pricing" className="hover:text-ink">
           Pricing
         </Link>

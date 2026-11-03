@@ -5,6 +5,8 @@ import { LegalPage } from "@/components/legal/legal-page";
 import { BUSINESS, PREMIUM_PRICE } from "@/lib/business";
 
 export const metadata: Metadata = {
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/pricing" },
   title: "Pricing",
   description: `FinBoy is free to use. Premium adds voice, Ask FinBoy, photo reading and statement import for ${PREMIUM_PRICE} a month, with the first 30 days free.`,
 };

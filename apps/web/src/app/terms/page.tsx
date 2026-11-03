@@ -4,6 +4,8 @@ import { LegalPage } from "@/components/legal/legal-page";
 import { BUSINESS, PREMIUM_PRICE } from "@/lib/business";
 
 export const metadata: Metadata = {
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/terms" },
   title: "Terms",
   description: "The plain-language terms for using FinBoy.",
 };
