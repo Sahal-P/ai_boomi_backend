@@ -21,7 +21,7 @@ export function SeoPage({ title, children }: { title: string; children: ReactNod
   );
 }
 
-export function ContentPage({ item, path, guide = false }: { item: Content; path: string; guide?: boolean }) {
+export function ContentPage({ item, path, guide = false, children }: { item: Content; path: string; guide?: boolean; children?: ReactNode }) {
   const breadcrumbs = [{ "@type": "ListItem", position: 1, name: "FinBoy", item: SITE_URL }];
   if (guide) breadcrumbs.push({ "@type": "ListItem", position: 2, name: "Money guides", item: `${SITE_URL}/guides` });
   breadcrumbs.push({ "@type": "ListItem", position: breadcrumbs.length + 1, name: item.title, item: `${SITE_URL}${path}` });
@@ -36,6 +36,7 @@ export function ContentPage({ item, path, guide = false }: { item: Content; path
       {section.steps && <ol className="list-decimal space-y-3 pl-6">{section.steps.map(step => <li key={step}>{step}</li>)}</ol>}
     </section>)}
     {item.source && <p className="text-base"><a className="font-semibold underline underline-offset-4" href={item.source.href}>{item.source.label}</a></p>}
+    {children}
     <aside className="rounded-2xl border border-ink/10 bg-white/60 p-6"><h2 className="mb-4 text-xl font-semibold">Keep exploring</h2><ul className="space-y-3">{item.related.map(link => <li key={link.href}><Link className="font-semibold underline underline-offset-4" href={link.href}>{link.label}</Link></li>)}</ul></aside>
   </SeoPage>;
 }
