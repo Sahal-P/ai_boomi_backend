@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { ViewTransition, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { AppNav } from "@/components/app-shell/app-nav";
 import { HouseholdGate } from "@/components/app-shell/household-gate";
@@ -7,6 +7,7 @@ import { KeyboardHelp } from "@/components/app-shell/keyboard-help";
 import { LeaveGuard } from "@/components/app-shell/leave-guard";
 import { OfflineBanner } from "@/components/app-shell/offline-banner";
 import { PremiumProvider } from "@/components/billing/premium-provider";
+import { RouteTransition } from "@/components/app-shell/route-transition";
 import { QuickAddProvider } from "@/components/money/quick-add-provider";
 import { AppMotion } from "@/components/motion/app-motion";
 
@@ -37,7 +38,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             >
               <div className="mx-auto max-w-6xl">
                 <OfflineBanner />
-                <ViewTransition default="page">{children}</ViewTransition>
+                <RouteTransition>{children}</RouteTransition>
               </div>
             </main>
             <LeaveGuard />

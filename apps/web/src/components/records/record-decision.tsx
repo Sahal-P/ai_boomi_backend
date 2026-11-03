@@ -4,13 +4,13 @@ import { BadgeCheck, CircleAlert, GitMerge, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
-import { LoadingPanel } from "@/components/feedback/states";
 import { CorrectionForm, type FormSubmit } from "@/components/records/correction-form";
 import { MergePanel } from "@/components/records/merge-panel";
 import { RecordAmount, SourceTags } from "@/components/records/record-bits";
 import { RecordEvidence } from "@/components/records/record-evidence";
 import { RecordHistory } from "@/components/records/record-history";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useRecord, type DecisionOutcome } from "@/hooks/use-record";
 import type { DecisionRequest } from "@/lib/api/transactions";
 import { formatDayTime } from "@/lib/dates";
@@ -37,6 +37,41 @@ const doneCopy: Record<DecisionRequest["action"], string> = {
   merge: "Merged. The match now carries both source notifications.",
   "keep-separate": "Kept as its own record.",
 };
+
+/** A record's shape while it loads, so the dialog opens at about its final size. */
+function RecordSkeleton() {
+  return (
+    <div role="status" className="space-y-5">
+      <span className="sr-only">Loading the record and its evidence…</span>
+      <div className="space-y-2.5" aria-hidden="true">
+        <div className="flex gap-2">
+          <Skeleton className="h-5 w-24 rounded-full" />
+          <Skeleton className="h-5 w-14 rounded-full" />
+        </div>
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-9 w-52" />
+        <Skeleton className="h-4 w-64 max-w-full" />
+      </div>
+      <Skeleton className="h-24 rounded-2xl" aria-hidden="true" />
+      <div className="grid gap-2 sm:grid-cols-2" aria-hidden="true">
+        <Skeleton className="h-16 rounded-2xl" />
+        <Skeleton className="h-16 rounded-2xl" />
+      </div>
+      <div className="space-y-3" aria-hidden="true">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-11 rounded-lg" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-11 rounded-lg" />
+          <Skeleton className="h-11 rounded-lg" />
+        </div>
+      </div>
+      <div className="space-y-3" aria-hidden="true">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-36 rounded-2xl" />
+      </div>
+    </div>
+  );
+}
 
 /**
  * The decision surface for one record: why it needs attention, the decisive evidence, the
@@ -107,7 +142,7 @@ export function RecordDecision({
         />
       );
     }
-    return <LoadingPanel className="shadow-none" label="Loading the record and its evidence…" />;
+    return <RecordSkeleton />;
   }
 
   const tx = detail.transaction;

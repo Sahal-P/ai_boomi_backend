@@ -172,7 +172,7 @@ export function QuickAdd({
     >
       <SheetContent
         side={wide ? "right" : "bottom"}
-        className="max-h-[92dvh] gap-0 overflow-y-auto p-5 sm:max-w-md sm:p-6"
+        className="gap-0 overflow-y-auto p-5 data-[side=bottom]:max-h-[92dvh] sm:max-w-md sm:p-6"
         aria-describedby={`${ids}-description`}
       >
         <SheetHeader className="p-0">

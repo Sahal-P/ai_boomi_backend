@@ -1,8 +1,7 @@
 """Closed, read-only intent interpretation. Model output never selects SQL or tools."""
 
 import re
-import unicodedata
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Literal, get_args
 
@@ -14,6 +13,7 @@ from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
 from finboy.db.models.ledger import Category
+from finboy.services.assistant.periods import normalized, read_period
 from finboy.services.money.engine import PeriodSpec
 from finboy.services.triage import service as triage
 
@@ -238,11 +238,6 @@ MONTHS: dict[int, tuple[str, ...]] = {
 RELATIVE = ("अगले", "पिछले", "അടുത്ത", "കഴിഞ്ഞ", "agle", "pichle", "adutha", "kazhinja")
 
 
-def normalized(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text).casefold()
-    return "".join(str(unicodedata.decimal(c)) if c.isdecimal() else c for c in text)
-
-
 def contains(text: str, terms: tuple[str, ...]) -> bool:
     return any(term in text for term in terms)
 
@@ -293,6 +288,35 @@ def named_months(q: str) -> list[PeriodSpec]:
     return periods
 
 
+SCALES = {
+    "lakh": 100_000,
+    "lakhs": 100_000,
+    "lac": 100_000,
+    "lacs": 100_000,
+    "l": 100_000,
+    "लाख": 100_000,
+    "ലക്ഷം": 100_000,
+    "crore": 10_000_000,
+    "crores": 10_000_000,
+    "cr": 10_000_000,
+    "करोड़": 10_000_000,
+    "करोड": 10_000_000,
+    "കോടി": 10_000_000,
+    "thousand": 1_000,
+    "k": 1_000,
+    "hazar": 1_000,
+    "hazaar": 1_000,
+    "हज़ार": 1_000,
+    "हजार": 1_000,
+    "ആയിരം": 1_000,
+}
+SCALED = re.compile(
+    r"(?<![\w.])(\d+(?:\.\d{1,2})?)\s*("
+    + "|".join(sorted((re.escape(word) for word in SCALES), key=len, reverse=True))
+    + r")(?![a-z])"
+)
+
+
 def amounts_in_question(text: str) -> set[int]:
     """Parse explicit rupee literals; conversion to paise is not ledger arithmetic."""
     values: set[int] = set()
@@ -314,79 +338,9 @@ def amounts_in_question(text: str) -> set[int]:
 
 
 def resolve_period(q: str) -> tuple[PeriodSpec, bool]:
-    today = today_ist()
-    explicit = re.findall(r"(?<!\d)(20\d{2})-(0[1-9]|1[0-2])(?![-\d])", q)
-    choices = []
-    if len(explicit) > 1:
-        return PeriodSpec(), True
-    if explicit:
-        year, month = explicit[0]
-        choices.append(month_period(int(year), int(month)))
-    if contains(q, ("yesterday", "बीते कल", "ഇന്നലെ", "innale")):
-        day = today - timedelta(days=1)
-        choices.append(PeriodSpec(kind="range", start_date=day, end_date=day))
-    elif contains(q, ("today", "आज", "ഇന്ന്", "aaj", "innu")):
-        choices.append(PeriodSpec(kind="range", start_date=today, end_date=today))
-    if contains(
-        q,
-        (
-            "last month",
-            "previous month",
-            "पिछले महीने",
-            "पिछले माह",
-            "കഴിഞ്ഞ മാസം",
-            "kazhinja masam",
-            "pichle mahine",
-        ),
-    ):
-        day = today.replace(day=1) - timedelta(days=1)
-        choices.append(PeriodSpec(kind="month", year=day.year, month=day.month))
-    elif contains(
-        q, ("this month", "current month", "इस महीने", "इस माह", "ഈ മാസം", "ee masam", "is mahine")
-    ):
-        choices.append(PeriodSpec())
-    months = named_months(q)
-    choices.extend(months)
-    if (
-        re.search(r"\b(?:weeks?|years?|tomorrow)\b|\bnext month\b", q)
-        or (
-            months
-            and (
-                re.search(r"\b(?:next|coming|last|previous)\b", q)
-                or contains(q, RELATIVE)
-                or DAY_OF_MONTH.search(q)
-            )
-        )
-        or len(choices) > 1
-        or (
-            not choices
-            and (
-                contains(
-                    q,
-                    PAST
-                    + (
-                        "week",
-                        "year",
-                        "tomorrow",
-                        "कल",
-                        "अगले",
-                        "നാളെ",
-                        "next month",
-                    ),
-                )
-                or re.search(r"\b20\d{2}-\d{1,2}\b", q)
-                or (
-                    re.search(r"\b20\d{2}\b", q)
-                    and not (
-                        contains(q, SIMULATION + AFFORD)
-                        or re.search(r"₹|\bmonthly\b|\bsip\b|\brupees?\b", q)
-                    )
-                )
-            )
-        )
-    ):
-        return PeriodSpec(), True
-    return (choices[0] if choices else PeriodSpec()), False
+    """Resolve named periods deterministically; unsupported dates ask for clarification."""
+    read = read_period(q, today_ist())
+    return (read.period or PeriodSpec(), read.problem is not None)
 
 
 def rule_intent(text: str) -> ParsedIntent:

@@ -94,7 +94,10 @@ def test_relative_periods_resolve_against_ist_across_year_boundary(monkeypatch):
     )
     assert rule_intent("food spending yesterday").period.start_date == date(2026, 12, 31)
     assert rule_intent("food spending today").period.end_date == date(2027, 1, 1)
-    assert rule_intent("food spending this week").clarification_reason == "period"
+    week = rule_intent("food spending this week")
+    assert week.period == PeriodSpec(
+        kind="range", start_date=date(2026, 12, 28), end_date=date(2027, 1, 1)
+    )
     assert rule_intent("food spending 2026-13").clarification_reason == "period"
     assert rule_intent("food spending 2026-10").period == PeriodSpec(
         kind="month", year=2026, month=10
