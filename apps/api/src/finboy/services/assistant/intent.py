@@ -13,7 +13,7 @@ from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
 from finboy.db.models.ledger import Category
-from finboy.services.assistant.periods import normalized, read_period
+from finboy.services.assistant.periods import LAST_WEEK, THIS_WEEK, normalized, read_period
 from finboy.services.money.engine import PeriodSpec
 from finboy.services.triage import service as triage
 
@@ -339,6 +339,12 @@ def amounts_in_question(text: str) -> set[int]:
 
 def resolve_period(q: str) -> tuple[PeriodSpec, bool]:
     """Resolve named periods deterministically; unsupported dates ask for clarification."""
+    # Ask's established contract leaves relative week/year periods to clarification. Keep those
+    # questions out of the fast path until their boundaries are explicitly specified.
+    if contains(q, THIS_WEEK + LAST_WEEK) or re.search(
+        r"\b(?:this|last|previous|next)\s+(?:week|year)\b", q
+    ):
+        return PeriodSpec(), True
     read = read_period(q, today_ist())
     return (read.period or PeriodSpec(), read.problem is not None)
 
