@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { FakeAdminApi, type AdminScenario } from "./fake-admin-api.ts";
 
 /**
  * TEST-ONLY in-memory double of the FinBoy API contract v1.1 (docs/ux-round/api-contract.md).
@@ -177,6 +178,8 @@ export type Scenario = {
   statementImport?: boolean;
   /** Subscription round: the household's plan; unset means billing is off (`plan: null`). */
   plan?: PlanName;
+  /** Admin round: the admin panel's own double (e2e/support/fake-admin-api.ts). */
+  admin?: AdminScenario;
 };
 
 /** One synthetic statement row: invented payees, a made-up bank and UPI IDs. */
@@ -240,11 +243,13 @@ export class FakeFinBoyApi {
   /** What PayU's answer is when the app next asks about a payment. */
   receipt: "paid" | "pending" | "failed" = "paid";
   payments: Json[] = [];
+  admin: FakeAdminApi;
   private statements = new Map<string, { rows: Tx[]; polls: number }>();
   private polls = 0;
   private counter = 900;
 
   constructor(scenario: Scenario = {}) {
+    this.admin = new FakeAdminApi(scenario.admin);
     this.authRequired = scenario.authRequired ?? true;
     this.signedIn = scenario.signedIn ?? true;
     this.whatsapp = scenario.whatsapp ?? false;
@@ -442,6 +447,8 @@ export class FakeFinBoyApi {
       failure.times -= 1;
       return failure.response;
     }
+    // Admin routes never use the household session (docs/admin-round/contract.md).
+    if (path.startsWith("/api/v1/admin/")) return this.admin.handle(request, appOrigin);
     const open = [
       "/api/v1/health",
       "/api/v1/auth/session",

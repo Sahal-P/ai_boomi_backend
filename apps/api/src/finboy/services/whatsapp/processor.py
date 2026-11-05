@@ -167,11 +167,16 @@ def process_question(
                 return
             preferred = language(binding.language)
             household = session.execute(
-                select(User.pilot, User.joined_via, User.consented_at, User.deleted_at).where(
-                    User.id == binding.user_id
-                )
+                select(
+                    User.pilot,
+                    User.joined_via,
+                    User.consented_at,
+                    User.deleted_at,
+                    User.suspended_at,
+                ).where(User.id == binding.user_id)
             ).one_or_none()
-            if household is None or household.deleted_at is not None:
+            # A suspended household is treated like a deleted one: recorded, never answered.
+            if household is None or not households.active(household):
                 receipts.finish(session, receipt_id, error="disabled")
                 return
             # Only an explicit database true enables the village pilot flows (contract);

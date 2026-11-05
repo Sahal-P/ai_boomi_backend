@@ -93,9 +93,29 @@ def plan_for(
         return Plan("free")
     if included(settings, user_id, row.pilot):
         return INCLUDED
-    now = now or datetime.now(UTC)
-    subscription = session.get(Subscription, user_id)
-    trial = trial_end(settings, row.consented_at or row.created_at)
+    return plan_from(
+        settings,
+        user_id,
+        pilot=row.pilot,
+        joined=row.consented_at or row.created_at,
+        subscription=session.get(Subscription, user_id),
+        now=now or datetime.now(UTC),
+    )
+
+
+def plan_from(
+    settings: Settings,
+    user_id: UUID,
+    *,
+    pilot: bool,
+    joined: datetime,
+    subscription: Subscription | None,
+    now: datetime,
+) -> Plan:
+    """The plan from rows already loaded, so a list of households needs no query per row."""
+    if included(settings, user_id, pilot):
+        return INCLUDED
+    trial = trial_end(settings, joined)
     paid = subscription.paid_through if subscription else None
     grace = subscription.grace_until if subscription else None
     if now < trial:

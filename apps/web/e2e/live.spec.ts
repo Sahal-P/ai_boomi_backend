@@ -205,3 +205,27 @@ test("real history: record 201 is reachable across five imported source batches"
   await expect(page).toHaveURL(new RegExp(`selected=${id}`));
   await expect(page.getByRole("dialog").getByRole("heading", { name: "Evidence" })).toBeVisible();
 });
+
+test("admin: the CI test admin signs in through the proxy and sees activity, never records", async ({ page }) => {
+  test.skip(!process.env.E2E_ADMIN_PASSWORD, "needs the throwaway admin the CI live job creates");
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/login\?next=%2Fadmin$/);
+  await page.getByLabel("Email").fill("ci-admin@example.test");
+  await page.getByLabel("Password").fill(process.env.E2E_ADMIN_PASSWORD ?? "");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
+  await page.goto("/admin/households?kind=owner");
+  const owner = page.getByRole("list", { name: "Households" }).getByRole("link");
+  await expect(owner).toHaveCount(1);
+  await expect(owner).toContainText("00000000");
+  await page.goto("/admin/system");
+  await expect(page.getByRole("region", { name: "Service" })).toContainText("0014_admin");
+  await page.goto("/admin/audit");
+  await expect(page.getByRole("list", { name: "Audit entries" })).toContainText("Signed in");
+  await page.getByRole("button", { name: /^Admin account/ }).first().click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/admin\/login$/);
+  // The household app on this disposable API is unaffected by the admin session.
+  await page.goto("/dashboard");
+  await expect(page.getByRole("region", { name: /Left this month/ })).toBeVisible();
+});

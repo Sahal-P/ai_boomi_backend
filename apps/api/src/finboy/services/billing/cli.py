@@ -23,6 +23,7 @@ from finboy.core.config import Settings
 from finboy.db.models.billing import BillingPayment
 from finboy.db.models.core import User
 from finboy.db.session import build_engine
+from finboy.services.accounts import households
 from finboy.services.billing import checkout, links, payu, plans, renewals
 
 
@@ -84,7 +85,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Premium until {until.astimezone(IST):%d %b %Y %H:%M} IST")
             elif args.command == "link":
                 user = session.get(User, args.household)
-                if user is None or user.deleted_at is not None or user.pilot:
+                if user is None or not households.active(user) or user.pilot:
                     print("No such self-serve household.", file=sys.stderr)
                     return 2
                 print(links.link(settings, user.id, user.session_epoch, args.language))

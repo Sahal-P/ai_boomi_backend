@@ -4,6 +4,7 @@ A household has no personal name. Sign-in identities are digests and masked labe
 """
 
 from datetime import UTC, datetime, timedelta
+from typing import Protocol
 from uuid import UUID, uuid4
 
 from sqlalchemy import delete, func, select, text, update
@@ -31,6 +32,17 @@ from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt
 PENDING_LIMIT = 200
 STALE_PENDING = timedelta(days=7)
 SIGNUP_LOCK = 0x46424F59534E55  # serializes "is there room?" with the agreement that fills it
+
+
+class Standing(Protocol):
+    deleted_at: datetime | None
+    suspended_at: datetime | None
+
+
+def active(row: Standing) -> bool:
+    """Neither deleted nor suspended by an admin (docs/admin-round/contract.md). Every place that
+    signs a household in, answers it on WhatsApp, sends to it or charges it checks this."""
+    return row.deleted_at is None and row.suspended_at is None
 
 
 def agreed_count(session: Session) -> int:

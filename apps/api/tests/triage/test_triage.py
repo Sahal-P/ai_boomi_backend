@@ -8,10 +8,10 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from finboy.api.v1.readiness import _triage
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.logging import JsonFormatter
+from finboy.services.providers import triage as _triage
 from finboy.services.triage import evaluate, provider, service
 from finboy.services.triage.provider import Choice, Noul
 from finboy.services.triage.service import Sorted

@@ -18,6 +18,7 @@ from finboy.core.config import Settings
 from finboy.core.errors import AccessError
 from finboy.core.languages import Language
 from finboy.db.models.core import User
+from finboy.services.accounts.households import active
 
 PREFIX = "finboy:pay:v1:"
 SECONDS = 7 * 24 * 60 * 60
@@ -54,8 +55,10 @@ def read(session: Session, settings: Settings, value: str) -> Holder:
     except InvalidToken, ValueError, UnicodeError:
         raise AccessError("link_expired") from None
     row = session.execute(
-        select(User.session_epoch, User.deleted_at, User.pilot).where(User.id == user_id)
+        select(User.session_epoch, User.deleted_at, User.suspended_at, User.pilot).where(
+            User.id == user_id
+        )
     ).one_or_none()
-    if row is None or row.deleted_at is not None or row.pilot or row.session_epoch != epoch_number:
+    if row is None or not active(row) or row.pilot or row.session_epoch != epoch_number:
         raise AccessError("link_expired")
     return Holder(user_id, language if language in LANGUAGES else "en")  # type: ignore[arg-type]

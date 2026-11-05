@@ -663,3 +663,48 @@ nothing it prints holds contact details.
 every feature again; paid-through dates and payments are kept and count again when billing
 returns. Migration `0013` is additive; its downgrade refuses while payments exist. Refunds are
 made from PayU's dashboard; `billing.cli grant <household> --days N` adds Premium time by hand.
+
+## Admin release procedure
+
+`feat/finboy-admin` ([contract](admin-round/contract.md)) adds the admin panel at
+`https://finboy.io/admin` and migration `0014_admin` (admin accounts, admin sessions, the admin
+audit log and `users.suspended_at`). Nothing changes for households until an admin acts: no
+admin account exists after the migration, so every admin route answers 401.
+
+**Release.** Backend first, as in [Releases and recovery](#releases-and-recovery): validated
+backup, no import running, `alembic upgrade head` for `0014`, `alembic check`, switch `current`,
+restart `finboy.service` only. Then nginx, then the web:
+- `finboy.io` (`deploy/nginx-finboy-web.conf`): the `finboy_admin_login` zone and the
+  `location = /api/v1/admin/login` block (10 requests a minute per address, burst 5, 8 KB).
+- `finboy-api.antlegs.in` (`deploy/nginx-finboy.conf`, kept for the Gmail and Meta callbacks):
+  `location ^~ /api/v1/admin/ { return 404; }`.
+- `nginx -t`, then reload. Other host applications are untouched.
+- Push `main`; CI releases the web once the API digest matches.
+
+Nothing goes into `/etc/finboy/production.env`; `ADMIN_SESSION_HOURS` (default 8) is optional.
+
+**The first admin (the human, in their own terminal on voxpay).** Nobody else types or receives
+a production admin password:
+
+```
+systemd-run --quiet --pty --wait --collect -p User=finboy -p Group=finboy \
+  -p EnvironmentFile=/etc/finboy/production.env -p WorkingDirectory=/opt/finboy/current \
+  /opt/finboy/current/.venv/bin/python -m finboy.services.admin.cli create --email <you>
+```
+
+It asks for the password twice without echo (12-256 characters, not the email). The same CLI
+lists admins, disables or re-enables one, and resets a forgotten or locked password (which also
+ends that admin's sessions). Further admins can be added from the panel's Admins page; they get a
+temporary password shown once and must change it at first sign-in.
+
+**Check:**
+- `/admin` redirects to `/admin/login`; the page is `noindex`, framed nowhere
+  (`X-Frame-Options: DENY`) and `no-store`; `robots.txt` disallows `/admin`;
+- `/api/v1/admin/overview` answers 401 `admin_required` without a session, also with a household
+  cookie; `https://finboy-api.antlegs.in/api/v1/admin/session` answers 404;
+- a burst of wrong admin sign-ins ends in 429 from nginx;
+- the human signs in, and their sign-in is the first entry on the Audit log page.
+
+**Rollback:** switch `current` back and restart `finboy.service`; the older API ignores the new
+tables. Migration `0014` is additive and its downgrade refuses while any admin account or
+suspended household remains, so the audit trail and a suspension never vanish silently.

@@ -159,6 +159,11 @@ jobs:
         run: |
           pnpm db:migrate
           pnpm db:check
+          # A throwaway admin for the real-API admin journey (docs/admin-round/contract.md).
+          E2E_ADMIN_PASSWORD="$(openssl rand -hex 24)"
+          echo "::add-mask::$E2E_ADMIN_PASSWORD"
+          echo "E2E_ADMIN_PASSWORD=$E2E_ADMIN_PASSWORD" >> "$GITHUB_ENV"
+          printf '%s\n' "$E2E_ADMIN_PASSWORD" | uv run --package finboy-api python -m finboy.services.admin.cli create --email ci-admin@example.test --password-stdin
           DEMO_TODAY=2026-10-24 uv run --package finboy-api uvicorn finboy.main:create_app --factory --host 127.0.0.1 --port 8031 --no-access-log --log-config apps/api/logging.json >/dev/null 2>&1 &
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:8031/api/v1/health >/dev/null; then exit 0; fi

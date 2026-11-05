@@ -35,6 +35,16 @@ encrypted receipt contact details, pay links and the 15-minute renewal timer. `P
 (`api/deps.py`) gates Ask, voice and statement import; the plan rides on the session. See the
 [subscription contract](subscription-round/contract.md).
 
+`services/admin` owns the admin panel (`/admin` on the web, `/api/v1/admin/*` on the API):
+admin accounts (scrypt passwords, lockout, a server CLI), server-side admin sessions (only a
+token digest is stored; never signed with `WEB_SESSION_KEY`), the admin audit log, and household
+actions that reuse the household's own services (`services/accounts/erasure.py`, billing grants,
+mandates and pay links). `CurrentAdmin` (`api/deps.py`) guards every admin route in every
+environment; the household cookie never opens them. Responses are the models in
+`services/admin/views.py`: activity only, never a household's records or contact details. A
+suspended household (`users.suspended_at`) is refused by `CurrentUser`, sign-in, WhatsApp
+replies, reminders, pay links and renewals. See the [admin contract](admin-round/contract.md).
+
 ## Sources, ledger and scope
 
 Gmail scans and memory-only `.eml` uploads normalize messages, classify them, extract

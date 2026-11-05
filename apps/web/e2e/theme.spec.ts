@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { adminIds } from "./support/fake-admin-api.ts";
 import { ids, PLAN_NOW } from "./support/fake-api.ts";
 import { expect, test } from "./support/fixtures.ts";
 
@@ -168,6 +169,37 @@ for (const path of ROUTES) {
     expect(await blurredLayersInView(page)).toBeLessThanOrEqual(3);
   });
 }
+
+test.describe("the admin panel", () => {
+  for (const path of [
+    "/admin/login",
+    "/admin",
+    "/admin/households",
+    `/admin/households?selected=${adminIds.family}`,
+    "/admin/payments",
+    "/admin/signups",
+    "/admin/system",
+    "/admin/admins",
+    "/admin/audit",
+    "/admin/password",
+  ]) {
+    test(`contrast and blur budget: ${path}`, async ({ page }) => {
+      await page.goto(path);
+      await settled(page);
+      expect(await contrastFailures(page)).toEqual([]);
+      expect(await blurredLayersInView(page)).toBeLessThanOrEqual(3);
+    });
+  }
+
+  test("the erase confirmation keeps contrast and the blur budget", async ({ page }) => {
+    await page.goto(`/admin/households?selected=${adminIds.family}`);
+    await page.getByRole("button", { name: "Erase", exact: true }).click();
+    await expect(page.getByRole("alertdialog", { name: "Erase this household?" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(await contrastFailures(page)).toEqual([]);
+    expect(await blurredLayersInView(page)).toBeLessThanOrEqual(3);
+  });
+});
 
 test("contrast and blur budget: the landing page", async ({ page }) => {
   // Reduced motion shows every scroll reveal, so every text is measured.

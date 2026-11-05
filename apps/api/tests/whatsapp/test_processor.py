@@ -25,6 +25,7 @@ def household(*, pilot: bool = False, joined_via: str | None = None, agreed: boo
         joined_via=joined_via,
         consented_at=datetime.now(UTC) if agreed else None,
         deleted_at=None,
+        suspended_at=None,
     )
 
 
@@ -261,3 +262,22 @@ def test_image_replies_follow_the_language_preference(
     assert any(low <= character <= high for character in send.call_args.kwargs["text"])
     # A saved capture whose reply could not be sent is a transport failure, not a capture one.
     assert finish.call_args.kwargs["error"] == "provider_unavailable"
+
+
+@pytest.mark.parametrize("stopped", ["deleted_at", "suspended_at"])
+def test_deleted_or_suspended_households_are_recorded_but_never_answered(
+    monkeypatch: pytest.MonkeyPatch, config: ChannelConfig, wa_settings: Settings, stopped: str
+) -> None:
+    factory, receipt, _, _meta, send, ask, transcribe, _speak, finish = harness(monkeypatch)
+    session = factory.return_value.__enter__.return_value
+    row = household(joined_via="whatsapp")
+    setattr(row, stopped, datetime.now(UTC))
+    session.execute.return_value.one_or_none.return_value = row
+    question = InboundQuestion(
+        "wamid.synthetic", "919000000001", datetime.now(UTC), "text", text="synthetic question"
+    )
+    processor.process_question(factory, wa_settings, config, receipt.id, question)
+    assert finish.call_args.kwargs["error"] == "disabled"
+    send.assert_not_called()
+    ask.assert_not_called()
+    transcribe.assert_not_called()

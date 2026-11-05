@@ -238,3 +238,18 @@ agent on feat/finboy-subscriptions, loopback 8071/3071, disposable finboy_billin
 `0013_billing`. `BILLING_ENABLED` stays false until the human releases it with live keys. The PayU
 salt stays on the backend; card numbers, UPI IDs and bank references are never stored or logged;
 the payer's email and phone are kept only encrypted and erased with the account.
+
+## Admin round — 5 November 2026
+
+From main 1eadf04 the human asked for an admin panel at `/admin`, signed in with an admin email and
+password and built from FinBoy's existing design, with full operator control: overview counts,
+households (search by ID or exact phone number), Premium grants, AutoPay cancel, pay links,
+sign-out, suspend and restore, erase, payments and PayU re-checks, sign-up tidying, system status,
+admin accounts and an audit log. `docs/admin-round/contract.md` records it. Admins see activity,
+never a household's money: no record amounts, payees, categories, messages, phone numbers, names,
+hashes or keys; FinBoy's own ₹299 payments are the only money shown. Flags stay in
+`/etc/finboy/production.env`; the panel only shows them. Admin accounts live in the
+database and are created on the server with `python -m finboy.services.admin.cli`; no admin
+password goes into an env file, Git or the browser. Admin sessions are server-side and never
+reuse `WEB_SESSION_KEY`. One agent on feat/finboy-admin, loopback 8081/3081, disposable
+finboy_admin, migration `0014_admin`.

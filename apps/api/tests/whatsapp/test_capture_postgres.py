@@ -63,6 +63,7 @@ def household(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Engine, UUID]]:
         "finboy_pilot",
         "finboy_signup",
         "finboy_billing",
+        "finboy_admin",
     }
     user = uuid4()
     for name in USER_MODULES:

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from finboy.core.clock import IST
 from finboy.core.config import Settings
 from finboy.db.models.billing import BillingPayment, Subscription
+from finboy.db.models.core import User
 from finboy.services.billing import checkout, mandates, payu, plans
 
 logger = logging.getLogger(__name__)
@@ -137,10 +138,13 @@ def notify(session: Session, settings: Settings, client: payu.PayUClient, now: d
     summary = Summary()
     horizon = now.astimezone(IST).date() + timedelta(days=NOTIFY_AHEAD)
     due = session.scalars(
-        select(Subscription.user_id).where(
+        select(Subscription.user_id)
+        .join(User, User.id == Subscription.user_id)
+        .where(
             Subscription.renewal == "autopay",
             Subscription.next_charge_on.is_not(None),
             Subscription.next_charge_on <= horizon,
+            User.suspended_at.is_(None),  # an admin's suspension stops every charge
         )
     ).all()
     session.rollback()
@@ -224,11 +228,14 @@ def charge(session: Session, settings: Settings, client: payu.PayUClient, now: d
         return summary
     today = now.astimezone(IST).date()
     ready = session.scalars(
-        select(BillingPayment.id).where(
+        select(BillingPayment.id)
+        .join(User, User.id == BillingPayment.user_id)
+        .where(
             BillingPayment.kind == "renewal",
             BillingPayment.status == "scheduled",
             BillingPayment.debit_on <= today,
             BillingPayment.predebit_at <= now - NOTICE,
+            User.suspended_at.is_(None),
         )
     ).all()
     session.rollback()

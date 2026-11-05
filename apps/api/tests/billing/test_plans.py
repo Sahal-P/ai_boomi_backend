@@ -176,7 +176,7 @@ def test_saving_rejects_bad_contact_before_touching_the_database() -> None:
 
 
 def link_session(epoch: int = 3, **changes: object) -> MagicMock:
-    row = SimpleNamespace(session_epoch=epoch, deleted_at=None, pilot=False)
+    row = SimpleNamespace(session_epoch=epoch, deleted_at=None, suspended_at=None, pilot=False)
     for name, value in changes.items():
         setattr(row, name, value)
     session = MagicMock()
@@ -201,6 +201,7 @@ def test_pay_links_name_one_household_while_fresh() -> None:
         link_session(epoch=4),  # signed out everywhere since
         link_session(pilot=True),
         link_session(deleted_at=datetime(2026, 12, 1, tzinfo=UTC)),
+        link_session(suspended_at=datetime(2026, 12, 1, tzinfo=UTC)),  # paused by an admin
     ],
 )
 def test_pay_links_die_with_the_session_epoch(session: MagicMock) -> None:

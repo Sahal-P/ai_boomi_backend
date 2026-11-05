@@ -142,6 +142,10 @@ class Settings(BaseSettings):
     # The API's public origin; PayU returns the browser to <origin>/api/v1/payu/return.
     api_public_url: AnyHttpUrl | None = None
 
+    # Admin round (docs/admin-round/contract.md): how long an admin session lasts. Admin accounts
+    # live in the database, so no admin secret is configured here.
+    admin_session_hours: int = Field(default=8, ge=1, le=24)
+
     @field_validator(
         "resemble_api_key",
         "resemble_project_uuid",

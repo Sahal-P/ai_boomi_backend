@@ -17,6 +17,7 @@ http {{
   client_body_temp_path {folder}/body;
   proxy_temp_path {folder}/proxy;
   limit_req_zone $binary_remote_addr zone=finboy_login:1m rate=10r/m;
+  limit_req_zone $binary_remote_addr zone=finboy_admin_login:1m rate=10r/m;
   server {{
     listen 127.0.0.1:3031;
     client_max_body_size 103m;
@@ -24,6 +25,13 @@ http {{
       limit_req zone=finboy_login burst=5 nodelay;
       limit_req_status 429;
       client_max_body_size 4k;
+      add_header Cache-Control no-store always;
+      {snippet}
+    }}
+    location = /api/v1/admin/login {{
+      limit_req zone=finboy_admin_login burst=5 nodelay;
+      limit_req_status 429;
+      client_max_body_size 8k;
       add_header Cache-Control no-store always;
       {snippet}
     }}

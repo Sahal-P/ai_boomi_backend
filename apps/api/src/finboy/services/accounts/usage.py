@@ -6,6 +6,7 @@ Counts only (docs/signup-round/contract.md). The owner's household is not limite
 from typing import Literal
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -34,3 +35,15 @@ def use(session: Session, settings: Settings, user_id: UUID, kind: Kind) -> None
     limit = settings.daily_ai_limit if kind == "ai" else settings.daily_voice_limit
     if isinstance(count, int) and count > limit:
         raise AccessError("usage_limit")
+
+
+def today(session: Session, user_id: UUID) -> dict[Kind, int]:
+    """Today's counts for the admin panel (docs/admin-round/contract.md); reading never counts."""
+    counts: dict[Kind, int] = {"ai": 0, "voice": 0}
+    for kind, count in session.execute(
+        select(UsageCounter.kind, UsageCounter.count).where(
+            UsageCounter.user_id == user_id, UsageCounter.day == today_ist()
+        )
+    ):
+        counts[kind] = count
+    return counts

@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from finboy.api.v1.account import router as account_router
+from finboy.api.v1.admin import router as admin_router
 from finboy.api.v1.assistant import router as assistant_router
 from finboy.api.v1.auth import router as auth_router
 from finboy.api.v1.billing import router as billing_router
@@ -29,6 +30,7 @@ api_router.include_router(transactions_router)
 api_router.include_router(entries_router)
 api_router.include_router(account_router)
 api_router.include_router(billing_router)
+api_router.include_router(admin_router)
 
 api_router.include_router(whatsapp_router)
 

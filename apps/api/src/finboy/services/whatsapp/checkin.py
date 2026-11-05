@@ -37,6 +37,7 @@ def due(session: Session, month: date) -> list[tuple[WhatsAppBinding, bool]]:
         .join(User, User.id == WhatsAppBinding.user_id)
         .where(
             User.deleted_at.is_(None),
+            User.suspended_at.is_(None),
             or_(User.pilot.is_(True), User.joined_via.is_not(None)),
             WhatsAppBinding.enabled.is_(True),
             WhatsAppBinding.consented_at.is_not(None),

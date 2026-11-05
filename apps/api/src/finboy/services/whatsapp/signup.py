@@ -35,7 +35,7 @@ def handle_code(conversation: Conversation, code: str) -> str | None:
     words = conversation.words
     request = login.for_code(session, settings, code)
     user = session.get(User, binding.user_id)
-    if request is None or user is None or user.deleted_at is not None:
+    if request is None or user is None or not households.active(user):
         session.rollback()
         return conversation.done(conversation.send(words.LOGIN_EXPIRED), "login_expired")
     if user.pilot and user.id != LOCAL_USER_ID:
@@ -92,7 +92,7 @@ def tap(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> str 
         session.commit()
         return conversation.done(conversation.send(words.LOGIN_EXPIRED), "login_expired")
     user = session.get(User, binding.user_id, with_for_update=True)
-    if user is None or user.deleted_at is not None:
+    if user is None or not households.active(user):
         session.commit()
         return conversation.done(conversation.send(words.LOGIN_EXPIRED), "login_expired")
     pending = _pending(user)
@@ -106,7 +106,7 @@ def tap(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> str 
         return conversation.done(sent)
     if prompt.purpose == "link":
         target = session.get(User, request.user_id, with_for_update=True)
-        if target is None or target.deleted_at is not None or not (pending or user.id == target.id):
+        if target is None or not households.active(target) or not (pending or user.id == target.id):
             login.decline(request)
             session.commit()
             return conversation.done(conversation.send(words.ALREADY_LINKED))

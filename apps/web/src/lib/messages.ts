@@ -65,6 +65,18 @@ const byCode: Record<string, string> = {
   invalid_contact: "Check the email and phone number. PayU accepts letters, numbers, dots, - and _ in an email.",
   link_expired: "This payment link has expired. Send any message to FinBoy on WhatsApp for a new one.",
   billing_unavailable: "Payments aren't available right now. Nothing was charged. Try again in a minute.",
+  // Admin round (docs/admin-round/contract.md).
+  account_suspended: "This household is paused. Contact FinBoy support.",
+  admin_required: "Your admin session ended. Sign in again to continue.",
+  admin_login_failed:
+    "That email and password didn't work. After 5 wrong tries the account waits 15 minutes.",
+  admin_password_change_required: "Choose a new password first. Your temporary one only opens this page.",
+  weak_password: "Use 12 to 256 characters, different from the email. Nothing changed.",
+  admin_exists: "An admin with that email already exists. Nothing changed.",
+  last_admin: "FinBoy needs at least one active admin, so nobody was disabled.",
+  action_not_allowed: "That isn't available for this household. Nothing changed. Refresh to see what is.",
+  confirmation_mismatch: "The short ID didn't match, so nothing changed.",
+  not_found: "It may have been removed or never existed. Nothing changed.",
 };
 
 const byKind: Record<Problem["kind"], string> = {

@@ -29,5 +29,7 @@ class User(Base):
     # Every session carries this number; bumping it signs the household out everywhere.
     session_epoch: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set by an admin (docs/admin-round/contract.md): no sign-in, replies, sends or charges.
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # How much the household wants to keep each month (docs/money-manager-round/contract.md).
     monthly_savings_goal_minor: Mapped[int | None] = mapped_column(BigInteger)

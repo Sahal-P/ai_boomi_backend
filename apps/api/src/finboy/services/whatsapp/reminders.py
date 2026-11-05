@@ -51,6 +51,7 @@ def due_now(
         .join(Commitment, Commitment.user_id == WhatsAppBinding.user_id)
         .where(
             User.pilot.is_(True),
+            User.suspended_at.is_(None),
             WhatsAppBinding.enabled.is_(True),
             WhatsAppBinding.consented_at.is_not(None),
             WhatsAppBinding.reminders_opt_in_at.is_not(None),

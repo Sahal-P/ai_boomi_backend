@@ -33,7 +33,12 @@ from finboy.db.models.core import User
 from finboy.db.models.whatsapp import WhatsAppBinding
 from finboy.services.accounts import login
 from finboy.services.accounts.google import verify_id_token
-from finboy.services.accounts.households import lock_signups, new_household, signup_open
+from finboy.services.accounts.households import (
+    active,
+    lock_signups,
+    new_household,
+    signup_open,
+)
 from finboy.services.billing.views import PlanView, plan_view
 from finboy.services.mail.security import decrypt
 
@@ -203,6 +208,8 @@ def _signed_in(request: Request, user: User) -> JSONResponse:
 def _usable(user: User | None) -> User:
     if user is None or user.deleted_at is not None:
         raise AccessError("invalid_sign_in")
+    if not active(user):
+        raise AccessError("account_suspended")
     if user.pilot and user.id != LOCAL_USER_ID:
         raise AccessError("web_not_available")
     return user

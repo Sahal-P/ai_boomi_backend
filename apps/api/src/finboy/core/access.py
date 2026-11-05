@@ -8,7 +8,7 @@ import hashlib
 import hmac
 import secrets
 import time
-from collections import deque
+from collections import OrderedDict, deque
 from dataclasses import dataclass
 from threading import Lock
 from time import monotonic
@@ -63,6 +63,10 @@ ORIGIN_EXEMPT = {
     "/api/v1/payu/webhook",
     "/api/v1/payu/mandate",
 }
+# The admin panel (docs/admin-round/contract.md) has its own server-side session, checked by the
+# `AdminUser` dependency on every route; the household cookie is not required there.
+ADMIN_PREFIX = "/api/v1/admin/"
+ADMIN_BODY_LIMIT = 8192
 # Small JSON bodies only; an ID token is about 1-2 KB. PayU's posts are capped while being read.
 BODY_LIMITS = {
     "/api/v1/auth/login": 4096,
@@ -254,17 +258,48 @@ class Throttle:
 LoginThrottle = Throttle
 
 
+class KeyedThrottle:
+    """Per-key limit (an address or an email digest), so one source can't use up everyone's
+    attempts. Bounded in memory; production intentionally runs a single worker."""
+
+    def __init__(self, limit: int = 10, seconds: float = 60, keys: int = 4096) -> None:
+        self.windows: OrderedDict[str, deque[float]] = OrderedDict()
+        self.limit, self.seconds, self.keys = limit, seconds, keys
+        self.lock = Lock()
+
+    def admit(self, key: str) -> bool:
+        with self.lock:
+            now = monotonic()
+            window = self.windows.pop(key, None) or deque(maxlen=self.limit)
+            while window and now - window[0] >= self.seconds:
+                window.popleft()
+            admitted = len(window) < self.limit
+            if admitted:
+                window.append(now)
+            self.windows[key] = window
+            while len(self.windows) > self.keys:
+                self.windows.popitem(last=False)
+            return admitted
+
+
 class HouseholdAccessMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request.state.claim = read_claim(request)
         if not production(request.app.state.settings):
             return await call_next(request)
         path = request.url.path
-        if path in BODY_LIMITS:
+        admin = path.startswith(ADMIN_PREFIX)
+        writes = request.method in {"POST", "PATCH", "DELETE", "PUT"}
+        if path in BODY_LIMITS or (admin and writes):
             length = request.headers.get("content-length", "")
-            if not length.isdigit() or int(length) > BODY_LIMITS[path]:
+            if not length.isdigit() or int(length) > BODY_LIMITS.get(path, ADMIN_BODY_LIMIT):
                 return error_response(request, 413, "invalid_request", "Request is too large.")
-        if path not in PUBLIC and request.method != "OPTIONS" and request.state.claim is None:
+        if (
+            path not in PUBLIC
+            and not admin
+            and request.method != "OPTIONS"
+            and request.state.claim is None
+        ):
             return error_response(request, 401, "authentication_required", "Please sign in.")
         if (
             request.method in {"POST", "PATCH", "DELETE", "PUT"}

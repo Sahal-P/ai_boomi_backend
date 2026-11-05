@@ -7,9 +7,10 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from finboy.api.v1.readiness import _malayalam_tts, _transcription
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
+from finboy.services.providers import malayalam_tts as _malayalam_tts
+from finboy.services.providers import transcription as _transcription
 from finboy.services.speech import providers, service
 from finboy.services.speech.media import pcm_to_wav
 from finboy.services.speech.models import Transcript

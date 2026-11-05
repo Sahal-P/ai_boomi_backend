@@ -26,7 +26,7 @@ def local_settings(**changes: object) -> Settings:
     if (
         base.environment == "production"
         or url.host not in {"127.0.0.1", "localhost"}
-        or url.database not in {"finboy_billing", "finboy_signup", "finboy_test"}
+        or url.database not in {"finboy_billing", "finboy_signup", "finboy_admin", "finboy_test"}
     ):
         pytest.fail("Billing tests require a disposable local database")
     return Settings(

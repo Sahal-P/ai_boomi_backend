@@ -44,6 +44,7 @@ def ux(monkeypatch):
         "finboy_pilot",
         "finboy_signup",
         "finboy_billing",
+        "finboy_admin",
     }
     factory = sessionmaker(engine, expire_on_commit=False)
     uid = uuid4()

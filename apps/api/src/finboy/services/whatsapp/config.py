@@ -34,8 +34,14 @@ class ChannelConfig:
     statements: bool = False
 
     def digest(self, purpose: str, value: str | bytes) -> str:
-        data = value.encode() if isinstance(value, str) else value
-        return hmac.new(self.hash_key, purpose.encode() + b"\0" + data, hashlib.sha256).hexdigest()
+        return keyed_digest(self.hash_key, purpose, value)
+
+
+def keyed_digest(key: bytes, purpose: str, value: str | bytes) -> str:
+    """How FinBoy recognises a sender without keeping the number; the admin panel's exact-number
+    search uses the same function (docs/admin-round/contract.md)."""
+    data = value.encode() if isinstance(value, str) else value
+    return hmac.new(key, purpose.encode() + b"\0" + data, hashlib.sha256).hexdigest()
 
 
 def channel_config(settings: Settings) -> ChannelConfig:

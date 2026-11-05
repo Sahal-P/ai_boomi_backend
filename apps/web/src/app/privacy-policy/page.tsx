@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="2 November 2026">
+    <LegalPage title="Privacy Policy" updated="5 November 2026">
       <p>
         FinBoy helps you keep track of your own money: what came in, what went out and what is due.
         This page says exactly what we keep, what we never keep, and how to delete everything.
@@ -64,6 +64,15 @@ export default function PrivacyPolicyPage() {
         and, if you connect it, Gmail). If you pay for Premium, PayU processes the payment and
         receives your email address and phone number for the receipt. FinBoy never sells your data
         and never shows ads.
+      </p>
+
+      <h2>What FinBoy&apos;s team can see</h2>
+      <p>
+        The few people who run FinBoy can see account activity, to keep the service working and to
+        help you: when you joined and last used FinBoy, your plan and Premium payments, daily usage
+        counts, whether messages were delivered, and whether WhatsApp or Google is linked. They
+        never see your records, amounts, who you paid, your messages or your phone number. They can
+        pause or erase an account, for example when you ask, and every such step is recorded.
       </p>
 
       <h2>How long we keep it</h2>

@@ -27,8 +27,8 @@ class ProviderUnavailable(Exception):
 
 
 class AccessError(Exception):
-    """Fixed sign-in, household-access and Premium outcomes (docs/signup-round/contract.md,
-    docs/subscription-round/contract.md)."""
+    """Fixed sign-in, household-access, Premium and admin outcomes (docs/signup-round/contract.md,
+    docs/subscription-round/contract.md, docs/admin-round/contract.md)."""
 
     MESSAGES = {
         "authentication_required": (401, "Please sign in."),
@@ -52,6 +52,16 @@ class AccessError(Exception):
             "This payment link has expired. Ask FinBoy on WhatsApp for a new one.",
         ),
         "billing_unavailable": (503, "Payments aren't available right now. Please try again soon."),
+        "account_suspended": (403, "This household is paused. Contact FinBoy support."),
+        "admin_required": (401, "Please sign in to the admin panel."),
+        "admin_login_failed": (401, "That email and password didn't work."),
+        "admin_password_change_required": (403, "Choose a new password to continue."),
+        "weak_password": (422, "Use 12 to 256 characters, different from the email."),
+        "admin_exists": (409, "An admin with that email already exists."),
+        "last_admin": (409, "FinBoy needs at least one active admin."),
+        "action_not_allowed": (409, "That action isn't available for this household."),
+        "confirmation_mismatch": (422, "The confirmation doesn't match. Nothing changed."),
+        "not_found": (404, "That wasn't found."),
     }
 
     def __init__(self, code: str) -> None:

@@ -18,9 +18,17 @@ export function BrandMark({ className }: { className?: string }) {
   );
 }
 
-export function Brand({ href = "/", className }: { href?: string; className?: string }) {
+export function Brand({
+  href = "/",
+  label = "FinBoy home",
+  className,
+}: {
+  href?: string;
+  label?: string;
+  className?: string;
+}) {
   return (
-    <Link href={href} aria-label="FinBoy home" className={cn("inline-flex shrink-0 items-center", className)}>
+    <Link href={href} aria-label={label} className={cn("inline-flex shrink-0 items-center", className)}>
       <Image
         src="/brand/finboy-logo.svg"
         alt=""

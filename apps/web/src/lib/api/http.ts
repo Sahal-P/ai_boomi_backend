@@ -61,8 +61,8 @@ const envelopeSchema = z.object({
       .optional(),
   }),
 });
-// Wrong-password and throttled sign-in attempts are not an expired session.
-const notExpiry = new Set(["invalid_credentials", "try_later", "invalid_sign_in"]);
+// Wrong-password and throttled sign-in attempts are not an expired session (household or admin).
+const notExpiry = new Set(["invalid_credentials", "try_later", "invalid_sign_in", "admin_login_failed"]);
 
 export function apiBaseUrl(): string {
   const value = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";

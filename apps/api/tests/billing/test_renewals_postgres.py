@@ -9,6 +9,7 @@ import httpx
 import pytest
 from finboy.core.clock import IST
 from finboy.db.models.billing import BillingPayment, Subscription
+from finboy.db.models.core import User
 from finboy.services.billing import plans, renewals
 from finboy.services.billing.payu import PayUClient, new_txnid
 from sqlalchemy import select
@@ -112,6 +113,27 @@ def test_an_autopay_month_renews_itself(world) -> None:
         assert subscription.next_charge_on == plans.add_month(paid_through).astimezone(IST).date()
         assert subscription.grace_until is None and subscription.renewal == "autopay"
     assert payu.commands() == ["upi_mandate_status", "pre_debit_SI", "si_transaction"]
+
+
+def test_a_suspended_household_is_never_notified_or_charged(world) -> None:
+    settings, pg = world
+    due = date.today() + timedelta(days=30)
+    paid_through = ist(due, 9, 30)
+    early, late = autopay_household(pg, paid_through), autopay_household(pg, paid_through)
+    payu = PayU(upi_mandate_status=[{"status": "active"}], pre_debit_SI=[{"status": 1}])
+    with pg() as session:
+        session.get(User, early).suspended_at = datetime.now(UTC)  # before the notice
+        session.commit()
+        notice = ist(due - timedelta(days=3), 8)
+        assert renewals.notify(session, settings, client(payu), notice).notified == 1
+        session.get(User, late).suspended_at = datetime.now(UTC)  # after it, before the charge
+        session.commit()
+        assert renewals.charge(session, settings, client(payu), ist(due, 7)).charged == 0
+        scheduled = session.scalars(
+            select(BillingPayment.user_id).where(BillingPayment.status == "scheduled")
+        ).all()
+    assert early not in scheduled and late in scheduled
+    assert payu.commands() == ["upi_mandate_status", "pre_debit_SI"]
 
 
 def test_a_failing_renewal_is_retried_once_then_autopay_stops(world) -> None:

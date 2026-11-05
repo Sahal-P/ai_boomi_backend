@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from finboy import __version__
 from finboy.api.router import api_router
-from finboy.core.access import HouseholdAccessMiddleware, LoginThrottle, Throttle
+from finboy.core.access import HouseholdAccessMiddleware, KeyedThrottle, LoginThrottle, Throttle
 from finboy.core.clock import now_ist
 from finboy.core.config import Settings
 from finboy.core.errors import register_error_handlers
@@ -57,6 +57,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.login_throttle = LoginThrottle()
     # Sign-in starts are public; sized for an event crowd joining at once.
     app.state.signin_throttle = Throttle(limit=120, seconds=60)
+    # Admin sign-in and password checks, per address and per account (docs/admin-round).
+    app.state.admin_throttle = KeyedThrottle(limit=10, seconds=60)
     app.state.google_certs = GoogleCerts()
     register_error_handlers(app)
     app.add_middleware(HouseholdAccessMiddleware)

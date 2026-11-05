@@ -25,6 +25,7 @@ def test_additive_upgrade_preserves_values_revisions_and_mixed_provenance():
         "finboy_pilot",
         "finboy_signup",
         "finboy_billing",
+        "finboy_admin",
     }
     migrations = Path(__file__).parents[2] / "alembic" / "versions"
 
