@@ -96,9 +96,10 @@ export default function PrivacyPolicyPage() {
 
       <h2>Contact and grievances</h2>
       <p>
-        FinBoy is run by {BUSINESS.name}. Under India&apos;s Digital Personal Data Protection Act
-        you can ask what we hold, correct it, or have it erased. Write to our grievance officer,{" "}
-        {BUSINESS.grievanceOfficer}, at{" "}
+        {BUSINESS.name ? `FinBoy is run by ${BUSINESS.name}. ` : null}Under India&apos;s Digital
+        Personal Data Protection Act you can ask what we hold, correct it, or have it erased. Write
+        to{" "}
+        {BUSINESS.grievanceOfficer ? `our grievance officer, ${BUSINESS.grievanceOfficer}, at ` : "us at "}
         <a href={`mailto:${BUSINESS.email}`} className="font-semibold underline underline-offset-4">
           {BUSINESS.email}
         </a>

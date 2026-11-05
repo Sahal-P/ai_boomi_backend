@@ -1,10 +1,9 @@
 "use client";
 
 import { KeyRound, LoaderCircle, MessageCircle, QrCode, RotateCcw } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
-import QRCode from "qrcode";
 import { useEffect, useId, useState } from "react";
+import { LinkCode } from "@/components/app-shell/link-code";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -44,39 +43,6 @@ function useSignInOptions() {
       setAttempt((value) => value + 1);
     },
   };
-}
-
-/** Shown size in CSS pixels: big enough for a phone camera held at arm's length. */
-const QR_SIZE = 256;
-
-/** The scannable twin of the WhatsApp link, for people signing in on a computer. */
-function LinkCode({ link }: { link: string }) {
-  const [image, setImage] = useState<string | null>(null);
-  useEffect(() => {
-    let current = true;
-    // Drawn at twice the shown size so the modules stay sharp on high-density screens.
-    QRCode.toDataURL(link, { margin: 1, width: QR_SIZE * 2, errorCorrectionLevel: "M" }).then(
-      (url) => {
-        if (current) setImage(url);
-      },
-      () => undefined,
-    );
-    return () => {
-      current = false;
-    };
-  }, [link]);
-  if (!image) return <div className="size-64 rounded-2xl bg-white/60" aria-hidden="true" />;
-  // Drawn locally as a data URL: nothing to optimise and nothing fetched.
-  return (
-    <Image
-      src={image}
-      unoptimized
-      width={QR_SIZE}
-      height={QR_SIZE}
-      alt="QR code that opens FinBoy's WhatsApp chat"
-      className="rounded-2xl bg-white p-3"
-    />
-  );
 }
 
 function WhatsAppSignIn({ phase, onOpened, onRestart, purpose }: {

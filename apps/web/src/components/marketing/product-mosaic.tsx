@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, ArrowDownLeft, ArrowUpRight, Check, Mail, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Check, FileText, Sparkles } from "lucide-react";
 import { motion, useScroll, useTransform } from "motion/react";
 import { useRef, type ReactNode } from "react";
 
@@ -8,15 +8,17 @@ import { cn } from "@/lib/utils";
 
 import { SectionHeading } from "./section-heading";
 
+// Synthetic tiles in the web app's own wording (Home, Transactions, Reports, Ask, Sources).
+
 function Tile({ children, className = "surface" }: { children: ReactNode; className?: string }) {
   return <div className={cn("w-[300px] shrink-0 rounded-[1.6rem] p-5", className)}>{children}</div>;
 }
 
-/** The overview's money number, on sunflower as in the app. */
+/** Home's money number, on sunflower as in the app. */
 function SummaryTile() {
   return (
     <Tile className="solid-hero">
-      <p className="text-xs font-semibold text-sunflower-ink">Estimated unallocated</p>
+      <p className="text-xs font-semibold text-sunflower-ink">Left this month</p>
       <p className="tabular mt-1 text-3xl font-semibold tracking-[-0.03em]">₹14,780</p>
       <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/55">
         <div className="h-full w-[62%] rounded-full bg-ink" />
@@ -33,8 +35,8 @@ function TransactionsTile() {
   const rows = [
     { name: "Salary · Acme Labs", amount: "+₹62,000", icon: ArrowDownLeft, tone: "text-positive", glyph: "bg-emerald-50 text-positive" },
     { name: "Rent · UPI", amount: "−₹15,000", icon: ArrowUpRight, tone: "text-ink", glyph: OUT },
-    { name: "Swiggy", amount: "−₹842", icon: ArrowUpRight, tone: "text-ink", glyph: OUT },
-    { name: "Amazon · 3 sources", amount: "−₹799", icon: ArrowUpRight, tone: "text-ink", glyph: OUT },
+    { name: "Groceries · milkman", amount: "−₹500", icon: ArrowUpRight, tone: "text-ink", glyph: OUT },
+    { name: "Food & dining", amount: "−₹190", icon: ArrowUpRight, tone: "text-ink", glyph: OUT },
   ];
   return (
     <Tile>
@@ -54,18 +56,17 @@ function TransactionsTile() {
   );
 }
 
-function ReviewTile() {
+/** FinBoy's ask-first card for a big amount (english.py ASK_BIG and the confirm buttons). */
+function CheckFirstTile() {
   return (
     <Tile>
-      <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-800">
-        <AlertCircle className="size-3.5" aria-hidden="true" /> Needs your help
-      </p>
-      <p className="mt-2 font-semibold text-ink">₹1,840 · Possible Amazon order</p>
-      <p className="text-xs text-ink-soft">No payment proof found yet</p>
-      <div className="mt-4 flex gap-2 text-xs font-semibold">
-        <span className="rounded-full bg-ink px-3 py-1.5 text-white">Confirm</span>
-        <span className="rounded-full bg-white px-3 py-1.5 text-ink ring-1 ring-ink/10">Edit</span>
-        <span className="rounded-full bg-muted px-3 py-1.5 text-ink-soft">Not mine</span>
+      <p className="text-xs font-semibold text-amber-800">💡 That’s a big amount, so please check it first.</p>
+      <p className="mt-2 font-semibold text-ink">💸 ₹52,000 paid · Rent</p>
+      <p className="text-xs text-ink-soft">Is this right?</p>
+      <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
+        <span className="rounded-full bg-ink px-3 py-1.5 text-white">✅ Yes, correct</span>
+        <span className="rounded-full bg-white px-3 py-1.5 text-ink ring-1 ring-ink/10">✏️ Change amount</span>
+        <span className="rounded-full bg-muted px-3 py-1.5 text-ink-soft">❌ No</span>
       </div>
     </Tile>
   );
@@ -80,17 +81,17 @@ function AssistantTile() {
       <p lang="ml" className="mt-2 text-[0.95rem] leading-relaxed text-ink">
         ഈ മാസം ഇതുവരെ ഭക്ഷണത്തിനായി 7,860 രൂപ ചെലവായിട്ടുണ്ട്.
       </p>
-      <p className="mt-3 text-xs text-ink-subtle">12 confirmed transactions · Tap for sources</p>
+      <p className="mt-3 text-xs text-ink-subtle">12 transactions · Tap for sources</p>
     </Tile>
   );
 }
 
-function ImportTile() {
-  const steps = ["126 email headers checked", "38 money emails found", "31 transactions extracted", "4 duplicates merged"];
+function StatementTile() {
+  const steps = ["142 rows read", "Money in and out match Google’s totals", "142 entries saved"];
   return (
     <Tile>
       <p className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
-        <Mail className="size-3.5" aria-hidden="true" /> Understanding your money…
+        <FileText className="size-3.5" aria-hidden="true" /> Google Pay statement · Sep–Oct
       </p>
       <ul className="mt-3 space-y-1.5 text-sm text-ink">
         {steps.map((step) => (
@@ -104,23 +105,37 @@ function ImportTile() {
   );
 }
 
-function PrivacyTile() {
+function BudgetsTile() {
+  const rows = [
+    { name: "Food & dining", spent: "₹3,600", limit: "₹5,000", share: "72%", mark: "🟢" },
+    { name: "Transport", spent: "₹1,700", limit: "₹2,000", share: "85%", mark: "🟡" },
+    { name: "Shopping", spent: "₹2,450", limit: "₹2,000", share: "100%", mark: "🔴" },
+  ];
   return (
     <Tile>
-      <p className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
-        <ShieldCheck className="size-3.5 text-ink" aria-hidden="true" /> Connected accounts
-      </p>
-      <p className="mt-2 font-semibold text-ink">arun••••@gmail.com</p>
-      <p className="text-xs text-ink-soft">Read-only · Last scan 2 min ago</p>
-      <div className="mt-4 flex gap-2 text-xs font-semibold">
-        <span className="rounded-full bg-muted px-3 py-1.5 text-ink">Pause</span>
-        <span className="rounded-full bg-[#fdecef] px-3 py-1.5 text-negative">Disconnect</span>
-      </div>
+      <p className="text-xs font-semibold text-ink-soft">Budgets this month</p>
+      <ul className="mt-3 space-y-2.5 text-sm text-ink">
+        {rows.map((row) => (
+          <li key={row.name}>
+            <p className="flex justify-between gap-3">
+              <span>
+                {row.mark} {row.name}
+              </span>
+              <span className="tabular text-ink-soft">
+                {row.spent} of {row.limit}
+              </span>
+            </p>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink/[0.08]">
+              <div className="h-full rounded-full bg-ink" style={{ width: row.share }} />
+            </div>
+          </li>
+        ))}
+      </ul>
     </Tile>
   );
 }
 
-const TILES = [SummaryTile, TransactionsTile, ReviewTile, AssistantTile, ImportTile, PrivacyTile];
+const TILES = [SummaryTile, TransactionsTile, CheckFirstTile, AssistantTile, StatementTile, BudgetsTile];
 
 /** Reference-3 style: a tilted wall of live product cards drifting diagonally as you scroll. */
 export function ProductMosaic() {
@@ -132,17 +147,17 @@ export function ProductMosaic() {
   const rows = [0, 1, 2, 3];
 
   return (
-    <section ref={section} aria-labelledby="mosaic-title" className="relative overflow-hidden py-24 sm:py-28">
+    <section ref={section} aria-labelledby="mosaic-title" className="relative overflow-hidden py-16 sm:py-28">
       <div className="mx-auto max-w-[1360px] px-6 sm:px-10 lg:px-16">
         <SectionHeading
           id="mosaic-title"
           eyebrow="Inside FinBoy"
           align="center"
           title="A calmer way to see your money."
-          description="Every number shows where it came from. Every guess waits for you."
+          description="The web app shows the same diary as charts: where the money went, your budgets and what is left this month."
         />
       </div>
-      <div aria-hidden="true" className="relative mt-14 h-[560px] [perspective:2200px] [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,#000_45%,transparent_100%)] sm:h-[640px]">
+      <div aria-hidden="true" className="relative mt-10 h-[440px] [perspective:2200px] sm:mt-14 [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,#000_45%,transparent_100%)] sm:h-[640px]">
         <div className="absolute top-1/2 left-1/2 flex [transform-style:preserve-3d] [transform:translate(-50%,-50%)_rotateX(48deg)_rotateZ(-34deg)]">
           <div className="flex flex-col gap-6">
             {rows.map((row) => (

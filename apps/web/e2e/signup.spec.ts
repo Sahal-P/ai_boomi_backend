@@ -47,7 +47,7 @@ test.describe("one-tap sign-in with WhatsApp", () => {
 
   test("the landing page opens FinBoy's WhatsApp chat in one tap", async ({ page }) => {
     await page.goto("/?graphics=off");
-    const chat = page.getByRole("link", { name: "Say hi to FinBoy" });
+    const chat = page.getByRole("region", { name: /Keep track/ }).getByRole("link", { name: "Start on WhatsApp" });
     await expect(chat).toBeVisible();
     await expect(chat).toHaveAttribute("href", "https://wa.me/919000000099?text=Hi%20FinBoy");
     await expect(chat).toHaveAttribute("target", "_blank");
@@ -76,8 +76,9 @@ test.describe("when FinBoy is full", () => {
   test("the landing page keeps only Get started", async ({ page, api }) => {
     await page.goto("/?graphics=off");
     await expect.poll(() => api.requests.some((item) => item.path === "/api/v1/auth/session")).toBe(true);
-    await expect(page.getByRole("link", { name: "Get started free" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Say hi to FinBoy" })).toHaveCount(0);
+    const hero = page.getByRole("region", { name: /Keep track/ });
+    await expect(hero.getByRole("link", { name: "Get started" })).toHaveAttribute("href", "/login");
+    await expect(page.getByRole("link", { name: "Start on WhatsApp" })).toHaveCount(0);
   });
 });
 

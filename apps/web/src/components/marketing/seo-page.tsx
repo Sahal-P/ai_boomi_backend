@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { StartLink, WhatsAppEntryProvider } from "@/components/marketing/start-link";
 import { CONTENT_UPDATED_AT, type Content } from "@/lib/seo/content";
 import { SITE_URL } from "@/lib/seo/metadata";
 
@@ -15,7 +16,12 @@ export function SeoPage({ title, children }: { title: string; children: ReactNod
       </nav>
       <h1 className="mb-7 text-[clamp(2rem,6vw,3.25rem)] leading-tight font-bold tracking-tight">{title}</h1>
       <div className="space-y-7 text-base leading-relaxed sm:text-lg">{children}</div>
-      <div className="mt-12 flex flex-wrap gap-4"><Link className="rounded-full bg-ink px-6 py-3 font-semibold text-white" href="/login">Get started</Link><Link className="rounded-full border border-ink px-6 py-3 font-semibold" href="/pricing">See pricing</Link></div>
+      <div className="mt-12 flex flex-wrap gap-4">
+        <WhatsAppEntryProvider>
+          <StartLink className="rounded-full bg-ink px-6 py-3 font-semibold text-white" />
+        </WhatsAppEntryProvider>
+        <Link className="rounded-full border border-ink px-6 py-3 font-semibold" href="/pricing">See pricing</Link>
+      </div>
       <footer className="mt-12 flex flex-wrap gap-5 border-t border-ink/15 pt-6 text-sm"><Link href="/privacy-policy">Privacy Policy</Link><Link href="/terms">Terms</Link><Link href="/contact">Contact</Link></footer>
     </main>
   );

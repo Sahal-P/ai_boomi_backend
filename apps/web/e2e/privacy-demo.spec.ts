@@ -56,8 +56,10 @@ test("the sample is read-only, clearly labelled and never touches household endp
 
 test("landing CTAs keep the visitor's intent: sample vs. one-tap sign-up", async ({ page }) => {
   await page.goto("/?graphics=off");
-  await expect(page.getByRole("link", { name: "Explore sample data" }).first()).toHaveAttribute("href", "/demo");
-  await expect(page.getByRole("link", { name: "Get started free" }).first()).toHaveAttribute("href", "/login");
-  await expect(page.getByRole("link", { name: "Get started", exact: true })).toHaveAttribute("href", "/login");
+  await expect(page.getByRole("link", { name: "See a sample account" }).first()).toHaveAttribute("href", "/demo");
+  // Without WhatsApp sign-up, the main action leads to every way in.
+  const hero = page.getByRole("region", { name: /Keep track/ });
+  await expect(hero.getByRole("link", { name: "Get started" })).toHaveAttribute("href", "/login");
+  await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", "/dashboard");
   await expect(page.getByRole("link", { name: /Connect Gmail/ })).toHaveCount(0);
 });

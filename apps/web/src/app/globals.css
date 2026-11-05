@@ -604,12 +604,26 @@ html:has(.ask-page) {
   }
 }
 
-@keyframes marquee {
-  from {
-    transform: translate3d(0, 0, 0);
+/* Landing reveal (components/motion/reveal.tsx): the server HTML is already visible; where view
+   timelines exist and motion is welcome, content rises into place as it scrolls in. Longhands
+   only, so the minifier cannot fold the timeline into an `animation` shorthand. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation-name: reveal-rise;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: view();
+      animation-range-start: entry calc(5% + var(--reveal-stagger, 0%));
+      animation-range-end: cover calc(25% + var(--reveal-stagger, 0%));
+    }
   }
-  to {
-    transform: translate3d(-50%, 0, 0);
+}
+
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--reveal-distance, 28px), 0);
   }
 }
 

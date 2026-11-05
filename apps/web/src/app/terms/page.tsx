@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage } from "@/components/legal/legal-page";
 import { BUSINESS, PREMIUM_PRICE } from "@/lib/business";
+import { TRIAL_DAYS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   robots: { index: true, follow: true },
@@ -14,9 +15,10 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms" updated="2 November 2026">
       <p>
-        FinBoy helps you track your own money by WhatsApp, voice or the web. It is run by{" "}
-        {BUSINESS.name} and is still in beta. FinBoy is free to use, and Premium costs{" "}
-        {PREMIUM_PRICE} a month after a free first month. By creating an account or using FinBoy
+        FinBoy helps you track your own money by WhatsApp, voice or the web.{" "}
+        {BUSINESS.name ? `It is run by ${BUSINESS.name} and is still in beta.` : "It is still in beta."}{" "}
+        FinBoy is free to use, and Premium costs{" "}
+        {PREMIUM_PRICE} a month after the first {TRIAL_DAYS} days free. By creating an account or using FinBoy
         you agree to these terms.
       </p>
 
@@ -54,7 +56,7 @@ export default function TermsPage() {
           .
         </li>
         <li>
-          Every new household gets 30 days of Premium free from the day it joins. When the trial
+          Every new household gets {TRIAL_DAYS} days of Premium free from the day it joins. When the trial
           ends you move to Free; nothing is charged unless you choose Premium.
         </li>
         <li>

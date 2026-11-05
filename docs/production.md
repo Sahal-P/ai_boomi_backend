@@ -620,9 +620,10 @@ feature and no billing screen shows. Two things change regardless: the public pa
 Privacy Policy describe Premium.
 
 **Before release (the human):**
-1. Replace the bracketed business name, address, phone and grievance officer in
-   `apps/web/src/lib/business.ts`, release the web, then finish PayU's activation and website
-   verification for `https://finboy.io`.
+1. Set the verified business name, address, phone and grievance officer in
+   `apps/web/src/lib/business.ts` (each is `null` until then, and the Contact, Terms and Privacy
+   pages leave out whatever is unset rather than show a placeholder), release the web, then
+   finish PayU's activation and website verification for `https://finboy.io`.
 2. PayU dashboard → Developers → Webhooks → Payments: **Successful** and **Failed** →
    `https://finboy.io/api/v1/payu/webhook`.
 3. Ask the PayU account manager to whitelist `finboy.io`, and (for AutoPay) to enable

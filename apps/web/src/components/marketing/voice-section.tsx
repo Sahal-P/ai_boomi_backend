@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import type { OrbState } from "thinking-orbs";
 
+import { PremiumPill } from "@/components/billing/premium-pill";
 import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { AnimatedAmount } from "@/components/motion/animated-amount";
 import { EASE_OUT_EXPO, Reveal } from "@/components/motion/reveal";
@@ -149,12 +150,15 @@ export function VoiceSection() {
       ref={root}
       id="voice"
       aria-labelledby="voice-title"
-      className="relative scroll-mt-24 overflow-hidden py-24 sm:py-28"
+      className="relative scroll-mt-24 overflow-hidden py-16 sm:py-28"
     >
       <div className="mx-auto grid max-w-[1360px] items-center gap-14 px-6 sm:px-10 lg:grid-cols-[1.05fr_1fr] lg:px-16">
         <div>
           <Reveal>
-            <p className="eyebrow text-ink-soft">English · हिन्दी · മലയാളം</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="eyebrow text-ink-soft">Ask FinBoy · English · हिन्दी · മലയാളം</p>
+              <PremiumPill />
+            </div>
             <h2
               id="voice-title"
               className="mt-4 text-[clamp(2.1rem,4.2vw,3.6rem)] leading-[1.05] font-semibold tracking-[-0.04em] text-ink"
@@ -291,8 +295,8 @@ export function VoiceSection() {
                 </summary>
                 <p className="mt-2 leading-relaxed">
                   Sum of 12 confirmed food &amp; dining transactions, 1–28
-                  October. Two items still awaiting your confirmation are
-                  excluded until you approve them.
+                  October. Two entries still waiting for your check are left
+                  out until you approve them.
                 </p>
               </details>
             </div>

@@ -157,6 +157,6 @@ test("daily screens load no WebGL, and the landing page works without it", async
   expect(await webgl.count()).toBe(0);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?graphics=off");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Your money,");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Keep track");
   await expect(webgl).toHaveCount(0);
 });

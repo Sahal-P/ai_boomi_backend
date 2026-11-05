@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const SITE_URL = "https://finboy.io";
 export const SITE_TITLE = "AI Expense Tracker for India | FinBoy";
 export const SITE_DESCRIPTION = "Track expenses on WhatsApp or the web with FinBoy. Add voice entries, capture UPI screenshots and import supported Google Pay statements.";
-export const SOCIAL_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: "FinBoy — your money, made easier to track" };
+export const SOCIAL_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: "FinBoy — keep track of your money on WhatsApp" };
 
 export function publicMetadata(path: string, title: string, description: string): Metadata {
   return {

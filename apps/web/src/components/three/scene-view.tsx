@@ -4,7 +4,6 @@ import { PerspectiveCamera, View } from "@react-three/drei";
 import { Suspense, useRef, type ReactNode, type RefObject } from "react";
 
 import type { SceneSpec } from "./scene-spec";
-import { CoinSwirlScene } from "./scenes/coin-swirl";
 import { RibbonScene } from "./scenes/ribbon";
 import { VoiceOrbScene } from "./scenes/voice-orb";
 import { ProductStudioEnvironment } from "./studio-environment";
@@ -13,15 +12,12 @@ type Vec3 = [number, number, number];
 
 /** Camera and studio per scene: metals want the dark cove, pastels and glass the light one. */
 const STAGES: Record<SceneSpec["name"], { position: Vec3; fov: number; tone: "dark" | "light" }> = {
-  "coin-swirl": { position: [0, 0, 7], fov: 30, tone: "dark" },
   "voice-orb": { position: [0, 0, 4.6], fov: 32, tone: "light" },
   ribbon: { position: [0, 0.2, 7.4], fov: 34, tone: "light" },
 };
 
 function renderScene(spec: SceneSpec, track: RefObject<HTMLElement | null>): ReactNode {
   switch (spec.name) {
-    case "coin-swirl":
-      return <CoinSwirlScene merge={spec.merge ?? 0} loop={spec.loop ?? false} />;
     case "voice-orb":
       return <VoiceOrbScene state={spec.state ?? "idle"} level={spec.level} track={track} />;
     case "ribbon":

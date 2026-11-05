@@ -3,28 +3,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage } from "@/components/legal/legal-page";
 import { BUSINESS, PREMIUM_PRICE } from "@/lib/business";
+import { FREE_FEATURES, PREMIUM_FEATURES, TRIAL_DAYS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   robots: { index: true, follow: true },
   alternates: { canonical: "/pricing" },
   title: "Pricing",
-  description: `FinBoy is free to use. Premium adds voice, Ask FinBoy, photo reading and statement import for ${PREMIUM_PRICE} a month, with the first 30 days free.`,
+  description: `FinBoy is free to use. Premium adds voice, Ask FinBoy, photo reading and statement import for ${PREMIUM_PRICE} a month, with the first ${TRIAL_DAYS} days free.`,
 };
-
-const FREE = [
-  "Typed entries on WhatsApp and the web",
-  "Home, Transactions and Reports",
-  "Budgets and a savings goal",
-  "“Today”, “this week” and “this month” check-ups on WhatsApp",
-] as const;
-
-const PREMIUM = [
-  "Everything in Free",
-  "Voice notes and spoken replies, in English, Hindi and Malayalam",
-  "Ask FinBoy anything about your money",
-  "Photos of bills and UPI screenshots, read for you",
-  "Months of history from a Google Pay statement",
-] as const;
 
 function Features({ items }: { items: readonly string[] }) {
   return (
@@ -44,7 +30,8 @@ export default function PricingPage() {
     <LegalPage title="Pricing" updated="2 November 2026">
       <p>
         FinBoy is free to use. Premium adds the parts that listen, read and answer, for{" "}
-        {PREMIUM_PRICE} a month — and every new household gets its first 30 days of Premium free.
+        {PREMIUM_PRICE} a month — and every new household gets its first {TRIAL_DAYS} days of
+        Premium free.
       </p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -54,7 +41,7 @@ export default function PricingPage() {
           </h2>
           <p className="text-4xl font-extrabold tracking-[-0.04em] tabular-nums">₹0</p>
           <p className="text-sm text-ink-soft">For as long as you like.</p>
-          <Features items={FREE} />
+          <Features items={FREE_FEATURES} />
         </section>
         <section aria-labelledby="premium-plan" className="moment rounded-3xl p-6">
           <h2 id="premium-plan" className="mt-0!">
@@ -64,16 +51,16 @@ export default function PricingPage() {
             {PREMIUM_PRICE}
             <span className="text-base font-semibold tracking-normal"> a month</span>
           </p>
-          <p className="text-sm font-semibold">First 30 days free. No card needed to start.</p>
-          <Features items={PREMIUM} />
+          <p className="text-sm font-semibold">First {TRIAL_DAYS} days free. No card needed to start.</p>
+          <Features items={PREMIUM_FEATURES} />
         </section>
       </div>
 
       <h2>Your free month</h2>
       <ul>
         <li>
-          Your 30 days of Premium start when you join FinBoy, the moment you agree to the terms.
-          Households that joined before Premium launched get their 30 days from launch day.
+          Your {TRIAL_DAYS} days of Premium start when you join FinBoy, the moment you agree to the terms.
+          Households that joined before Premium launched get their {TRIAL_DAYS} days from launch day.
         </li>
         <li>
           When the trial ends you move to Free. Nothing is charged unless you choose Premium, and

@@ -1,11 +1,13 @@
-import { ChevronsRight, Play, ShieldCheck } from "lucide-react";
+import { Check, ChevronsRight, Play } from "lucide-react";
 import Link from "next/link";
 
 import { MoneyScene } from "@/components/illustrations/scenes";
-import { WhatsAppStart } from "@/components/marketing/whatsapp-start";
+import { StartLink } from "@/components/marketing/start-link";
+import { PREMIUM_PRICE } from "@/lib/business";
+import { TRIAL_DAYS } from "@/lib/pricing";
 
-const lines = ["Your money,", "made easier", "to track."] as const;
-const assurances = ["WhatsApp and web", "English, Hindi and Malayalam", "Review and undo"] as const;
+const lines = ["Keep track", "of your money", "on WhatsApp."] as const;
+const assurances = ["No app to install", "No bank login or SMS access", "Undo on every saved entry"] as const;
 
 /** The landing hero is a yellow moment: flat sunflower, ink and the drawn money scene. */
 export function Hero() {
@@ -13,57 +15,54 @@ export function Hero() {
     <section data-hero aria-labelledby="hero-title" className="moment relative isolate overflow-hidden">
       <div className="relative mx-auto grid min-h-[100svh] max-w-[1360px] content-center items-center gap-x-12 gap-y-10 px-6 pt-28 pb-20 sm:px-10 md:pt-24 lg:grid-cols-[1.05fr_1fr] lg:px-16">
         <div>
-          <p
-            className="eyebrow inline-flex w-fit items-center gap-2 rounded-full border-2 border-ink bg-white px-3.5 py-1.5 text-ink"
-          >
+          <p className="eyebrow inline-flex w-fit items-center gap-2 rounded-full border-2 border-ink bg-white px-3.5 py-1.5 text-ink">
             <span className="size-1.5 rounded-full bg-ink" />
-            AI expense tracker for India
+            Expense diary on WhatsApp
           </p>
+          {/* Below 360 px the longest line ("on WhatsApp.", 6.45 em) needs the smaller size to stay whole. */}
           <h1
             id="hero-title"
-            className="mt-7 max-w-[13ch] text-[clamp(2.85rem,6.4vw,5.6rem)] leading-[1.0] font-extrabold tracking-[-0.05em] text-ink"
+            className="mt-7 max-w-[13ch] text-[2.5rem] leading-[1.0] font-extrabold tracking-[-0.05em] text-ink min-[360px]:text-[clamp(2.85rem,6.4vw,5.6rem)]"
           >
             {lines.map((line) => (
               <span key={line} className="line-mask">
-                <span>
-                  {line}
-                </span>{" "}
+                <span>{line}</span>{" "}
               </span>
             ))}
           </h1>
-          <p
-            className="mt-7 max-w-[30rem] text-[1.0625rem] leading-relaxed text-sunflower-ink"
-          >
-            Track everyday spending on WhatsApp or the web. Add expenses by voice, share UPI
-            screenshots and import supported Google Pay statements.
+          <p className="mt-7 max-w-[30rem] text-[1.0625rem] leading-relaxed text-sunflower-ink">
+            Send “chai 20, auto 50” the way you’d text a friend. FinBoy saves each entry, sorts it
+            into a category and replies with Undo in case anything is wrong.
           </p>
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <Link
-              href="/login"
+          <p className="mt-3 text-sm font-semibold text-ink">
+            <span lang="en">English</span> · <span lang="hi">हिंदी</span> · <span lang="ml">മലയാളം</span>
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <StartLink
               className="group inline-flex h-14 items-center gap-3 rounded-full bg-ink p-1 pr-7 text-sm font-semibold text-white shadow-lift transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
-            >
-              {/* The reference's chevron capsule, as decoration on an ordinary link. */}
-              <span className="grid h-12 w-16 place-items-center rounded-full bg-white text-ink transition-transform duration-300 ease-out-expo group-hover:translate-x-0.5">
-                <ChevronsRight className="size-5" aria-hidden="true" />
-              </span>
-              Get started free
-            </Link>
+              before={
+                // The reference's chevron capsule, as decoration on an ordinary link.
+                <span className="grid h-12 w-16 place-items-center rounded-full bg-white text-ink transition-transform duration-300 ease-out-expo group-hover:translate-x-0.5">
+                  <ChevronsRight className="size-5" aria-hidden="true" />
+                </span>
+              }
+            />
             <Link
               href="/demo"
               className="inline-flex h-14 items-center gap-2.5 rounded-full border-2 border-ink bg-white/70 px-6 text-sm font-semibold text-ink transition-transform duration-300 ease-out-expo hover:-translate-y-0.5 hover:bg-white"
             >
               <Play className="size-3.5 fill-current" aria-hidden="true" />
-              Explore sample data
+              See a sample account
             </Link>
           </div>
-          {/* Appears once the sign-in options load, so its delay counts from then. */}
-          <WhatsAppStart className="mt-5 text-sm leading-relaxed text-sunflower-ink" />
-          <ul
-            className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-[13px] font-semibold text-sunflower-ink"
-          >
+          <p className="mt-5 max-w-[30rem] text-sm leading-relaxed text-sunflower-ink">
+            Free to start. Voice, photo reading and Ask are Premium: {PREMIUM_PRICE} a month after{" "}
+            {TRIAL_DAYS} free days. No card needed.
+          </p>
+          <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[13px] font-semibold text-sunflower-ink">
             {assurances.map((item) => (
               <li key={item} className="flex items-center gap-2">
-                <ShieldCheck className="size-4 text-ink" aria-hidden="true" />
+                <Check className="size-4 text-ink" aria-hidden="true" />
                 {item}
               </li>
             ))}
