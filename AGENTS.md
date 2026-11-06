@@ -253,3 +253,17 @@ database and are created on the server with `python -m finboy.services.admin.cli
 password goes into an env file, Git or the browser. Admin sessions are server-side and never
 reuse `WEB_SESSION_KEY`. One agent on feat/finboy-admin, loopback 8081/3081, disposable
 finboy_admin, migration `0014_admin`.
+
+## Liquid Glass round — 6 November 2026
+
+From main 47f37fc the human asked for Apple's latest Liquid Glass "as exactly as possible" across
+the signed-in app, the landing and public pages and sign-in: refracting glass for the navigation
+layer (bars, the sidebar, menus, sheets, dialogs, Ask's composer), Apple's selection platter and
+drag lens, a fixed tab bar, and a Clear · Tinted choice in the account menu.
+`docs/liquid-glass-round/contract.md` supersedes the header capsule, black active capsule,
+floating-glass and "never glass over yellow" statements only as documented there. One agent on
+feat/finboy-liquid-glass, loopback web 3091 with the contract double on 8091 (Playwright 3092);
+web only, no API, migration or dependency change. Refraction is a Chromium enhancement over a
+frosted fallback (never send `url()` to other engines' backdrop filters); text ≥ 4.5:1, control
+boundaries ≥ 3:1, ≤ 3 blurred layers in view, no frosted glass over yellow and every
+accessibility fallback still hold.

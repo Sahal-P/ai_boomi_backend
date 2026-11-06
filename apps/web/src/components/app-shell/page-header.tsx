@@ -27,7 +27,8 @@ export function PageHeader({
           <Link
             href={back.href}
             aria-label={back.label}
-            className="surface mb-4 grid size-11 place-items-center rounded-[14px] text-ink transition-colors hover:bg-white/80"
+            data-glass-press=""
+            className="lg-static mb-4 grid size-11 place-items-center rounded-full text-ink hover:[--lg-static-tint:0.8]"
           >
             <ArrowLeft className="size-5" aria-hidden="true" />
           </Link>

@@ -50,12 +50,19 @@ function contrastFailures(page: Page): Promise<Failure[]> {
     // header and tab bar, the darkest content that can scroll beneath them.
     const fieldDarkest = [232, 211, 176];
     const ink = [14, 16, 19];
+    // Liquid Glass bars ([data-scroll-edge]) float over content that the scroll edge dissolves
+    // into the field: the worst case beneath them is ink under that much of the field.
+    const edgeBase = (edge: string) => {
+      const cover = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(`--edge-cover-${edge}`));
+      return over([...fieldDarkest, Number.isFinite(cover) ? cover : 0], ink);
+    };
 
     function backdrop(element: Element): number[] {
       const box = element.getBoundingClientRect();
       const [x, y] = [box.left + box.width / 2, box.top + box.height / 2];
       const layers: number[][] = [];
       let floating = false;
+      const edgeHost = element.closest("[data-scroll-edge]");
       for (let node: Element | null = element; node; node = node.parentElement) {
         const style = getComputedStyle(node);
         const background = rgba(style.backgroundColor);
@@ -73,8 +80,17 @@ function contrastFailures(page: Page): Promise<Failure[]> {
           covered = (fill[3] ?? 0) >= 0.999;
         }
         if (covered) break;
+        // What lies under floating glass is content, not its ancestors' fills.
+        if (node === edgeHost) break;
       }
-      let base = floating ? ink : element.closest(".bg-field") ? fieldDarkest : rgba(getComputedStyle(document.body).backgroundColor);
+      const edge = edgeHost?.getAttribute("data-scroll-edge");
+      let base = edge
+        ? edgeBase(edge)
+        : floating
+          ? ink
+          : element.closest(".bg-field")
+            ? fieldDarkest
+            : rgba(getComputedStyle(document.body).backgroundColor);
       for (const layer of layers.reverse()) base = over(layer, base);
       return base;
     }
@@ -247,12 +263,47 @@ test.describe("empty ledger", () => {
   }
 });
 
-test("floating glass really blurs in Chromium", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === "desktop", "the floating header is phone chrome");
-  // With literal values the CSS minifier kept only -webkit-backdrop-filter, which Chrome ignores.
+/** The app's floating Liquid Glass: the phone tab pill, or the desktop sidebar. */
+function floatingGlass(page: Page, project: string) {
+  return page.locator(project === "desktop" ? "aside.lg-thick" : 'nav.lg[aria-label="App navigation"]');
+}
+
+test("Liquid Glass refracts in Chromium: a displacement filter that materializes", async ({ page }, testInfo) => {
   await page.goto("/dashboard");
   await settled(page);
-  expect(await page.locator("header.glass").evaluate((element) => getComputedStyle(element).backdropFilter)).toContain("blur(24px)");
+  const glass = floatingGlass(page, testInfo.project.name);
+  await expect(glass).toHaveAttribute("data-lg-refract", "");
+  const backdrop = await glass.evaluate((element) => getComputedStyle(element).backdropFilter);
+  // url() first, then the frost, through variables (literal values lost the unprefixed form once).
+  expect(backdrop).toMatch(/^url\("#lg-[\w-]+"\) blur\(/);
+  const id = backdrop.match(/#(lg-[\w-]+)/)?.[1] ?? "";
+  // The lensing ramps in (materialize), then holds at the map's full scale.
+  await expect
+    .poll(() => page.evaluate((filter) => Number(document.getElementById(filter)?.querySelector("feDisplacementMap")?.getAttribute("scale") ?? 0), id))
+    .toBeGreaterThan(4);
+  expect(await page.evaluate(() => document.documentElement.dataset.glassTier)).toBe("refract");
+});
+
+test("?glass=frost keeps the blur but never sends url() to the backdrop", async ({ page }, testInfo) => {
+  await page.goto("/dashboard?glass=frost");
+  await settled(page);
+  const glass = floatingGlass(page, testInfo.project.name);
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.glassTier)).toBe("frost");
+  const backdrop = await glass.evaluate((element) => getComputedStyle(element).backdropFilter);
+  expect(backdrop).toContain("blur(");
+  expect(backdrop).not.toContain("url(");
+  expect(await contrastFailures(page)).toEqual([]);
+});
+
+test("the Tinted look is frostier and still passes", async ({ page }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem("finboy.glass-look", "tinted"));
+  await page.goto("/transactions");
+  await settled(page);
+  expect(await page.evaluate(() => document.documentElement.dataset.glassLook)).toBe("tinted");
+  const alpha = await floatingGlass(page, testInfo.project.name).evaluate((element) => Number(getComputedStyle(element).backgroundColor.match(/[\d.]+\)$/)?.[0].slice(0, -1) ?? 1));
+  expect(alpha).toBeGreaterThanOrEqual(0.6);
+  expect(await contrastFailures(page)).toEqual([]);
+  expect(await blurredLayersInView(page)).toBeLessThanOrEqual(3);
 });
 
 test("Reduce Transparency removes every blur and makes glass opaque", async ({ page }) => {
@@ -261,24 +312,28 @@ test("Reduce Transparency removes every blur and makes glass opaque", async ({ p
   await page.goto(`/transactions?selected=${ids.salary}`);
   await settled(page);
   expect(await page.evaluate(() => matchMedia("(prefers-reduced-transparency: reduce)").matches)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.dataset.glassTier)).toBe("solid");
   expect(await blurredLayersInView(page)).toBe(0);
   expect(await page.locator(".surface").first().evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(236, 236, 238)");
+  expect(await page.locator("[data-lg-refract]").count()).toBe(0);
   expect(await contrastFailures(page)).toEqual([]);
 });
 
-test("Increase Contrast darkens secondary ink and still passes", async ({ page }) => {
+test("Increase Contrast darkens secondary ink, turns glass solid and still passes", async ({ page }, testInfo) => {
   await page.emulateMedia({ contrast: "more" });
   await page.goto("/dashboard");
   await settled(page);
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--ink-soft").trim())).toBe("#2e3136");
+  expect(await floatingGlass(page, testInfo.project.name).evaluate((element) => getComputedStyle(element).backdropFilter)).toBe("none");
   expect(await contrastFailures(page)).toEqual([]);
 });
 
-test("forced colours keep every glass and yellow surface outlined", async ({ page }) => {
+test("forced colours keep every glass and yellow surface outlined", async ({ page }, testInfo) => {
   await page.emulateMedia({ forcedColors: "active" });
   await page.goto("/dashboard");
   await settled(page);
-  for (const selector of [".surface", ".solid-hero"]) {
+  const glass = testInfo.project.name === "desktop" ? "aside.lg-thick" : 'nav.lg[aria-label="App navigation"]';
+  for (const selector of [".surface", ".solid-hero", glass]) {
     const border = await page.locator(selector).first().evaluate((element) => `${getComputedStyle(element).borderTopStyle} ${getComputedStyle(element).borderTopWidth}`);
     expect(border, selector).toBe("solid 1px");
   }

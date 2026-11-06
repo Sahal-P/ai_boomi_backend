@@ -9,7 +9,10 @@ test.skip(!process.env.E2E_PERF, "set E2E_PERF=1 to measure scroll frame times")
 test.use({ scenario: { authRequired: false, bulk: 230 } });
 
 test("scrolling the records list", async ({ page }, testInfo) => {
-  await page.goto("/transactions?scope=all");
+  // E2E_GLASS=refract|frost|solid pins the Liquid Glass tier (refract also bypasses the jank guard,
+  // so its own cost is what gets measured).
+  const glass = process.env.E2E_GLASS ? `&glass=${process.env.E2E_GLASS}` : "";
+  await page.goto(`/transactions?scope=all${glass}`);
   await expect(page.locator("[data-record-id]").first()).toBeVisible();
   await page.waitForLoadState("networkidle");
   const cdp = await page.context().newCDPSession(page);

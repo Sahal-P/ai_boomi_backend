@@ -12,6 +12,7 @@ import type { OrbState } from "thinking-orbs";
 
 import { PremiumPill } from "@/components/billing/premium-pill";
 import { ThinkingOrb } from "@/components/feedback/thinking-orb";
+import { useLiquidGlass } from "@/components/liquid-glass/use-liquid-glass";
 import { AnimatedAmount } from "@/components/motion/animated-amount";
 import { EASE_OUT_EXPO, Reveal } from "@/components/motion/reveal";
 import { SceneSlot } from "@/components/three/scene-slot";
@@ -83,6 +84,7 @@ const ORB: Record<VoiceOrbState, OrbState | null> = {
 };
 
 export function VoiceSection() {
+  const { attach: attachStatus, filter: statusFilter } = useLiquidGlass<HTMLDivElement>({ bezel: 12, thickness: 14 });
   const [language, setLanguage] = useState<Language>("manglish");
   const [phase, setPhase] = useState(0);
   const [typed, setTyped] = useState(0);
@@ -176,7 +178,7 @@ export function VoiceSection() {
             <div
               role="group"
               aria-label="Answer language"
-              className="glass inline-flex max-w-full flex-wrap gap-1 rounded-2xl p-1"
+              className="lg-static inline-flex max-w-full flex-wrap gap-1 rounded-2xl p-1"
             >
               {(Object.keys(SCRIPT) as Language[]).map((key) => (
                 <button
@@ -188,14 +190,14 @@ export function VoiceSection() {
                   className={cn(
                     "relative rounded-full px-4 py-2 text-sm font-semibold transition-colors",
                     language === key
-                      ? "text-white"
+                      ? "text-ink"
                       : "text-ink-soft hover:text-ink",
                   )}
                 >
                   {language === key ? (
                     <motion.span
                       layoutId="voice-language"
-                      className="absolute inset-0 rounded-full bg-ink"
+                      className="lg-knob absolute inset-0 rounded-full"
                       transition={{
                         type: "spring",
                         stiffness: 380,
@@ -308,9 +310,13 @@ export function VoiceSection() {
             spec={{ name: "voice-orb", state, level }}
             className="mx-auto aspect-square w-full max-w-[560px]"
           />
+          {statusFilter}
+          {/* Refracting glass over the 3D orb; the thicker menu glass keeps the words clear over
+              its darkest state (and turns opaque under Reduce Transparency). */}
           <div
+            ref={attachStatus}
             aria-live="polite"
-            className="glass absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2.5 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap text-ink"
+            className="lg-menu absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2.5 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap text-ink"
           >
             {ORB[state] ? (
               <ThinkingOrb state={ORB[state]} size={20} />

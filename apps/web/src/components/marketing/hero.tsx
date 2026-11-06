@@ -39,17 +39,17 @@ export function Hero() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <StartLink
-              className="group inline-flex h-14 items-center gap-3 rounded-full bg-ink p-1 pr-7 text-sm font-semibold text-white shadow-lift transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
+              className="group lg-prominent inline-flex h-14 items-center gap-3 rounded-full p-1 pr-7 text-sm font-semibold hover:-translate-y-0.5"
               before={
-                // The reference's chevron capsule, as decoration on an ordinary link.
-                <span className="grid h-12 w-16 place-items-center rounded-full bg-white text-ink transition-transform duration-300 ease-out-expo group-hover:translate-x-0.5">
+                // The reference's chevron capsule, as decoration on an ordinary link: a glass knob.
+                <span className="lg-knob grid h-12 w-16 place-items-center rounded-full text-ink transition-transform duration-300 ease-out-expo group-hover:translate-x-0.5">
                   <ChevronsRight className="size-5" aria-hidden="true" />
                 </span>
               }
             />
             <Link
               href="/demo"
-              className="inline-flex h-14 items-center gap-2.5 rounded-full border-2 border-ink bg-white/70 px-6 text-sm font-semibold text-ink transition-transform duration-300 ease-out-expo hover:-translate-y-0.5 hover:bg-white"
+              className="lg-on-color inline-flex h-14 items-center gap-2.5 rounded-full bg-white/70 px-6 text-sm font-semibold text-ink hover:-translate-y-0.5 hover:bg-white/85"
             >
               <Play className="size-3.5 fill-current" aria-hidden="true" />
               See a sample account

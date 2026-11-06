@@ -59,7 +59,7 @@ function WhatsAppSignIn({ phase, onOpened, onRestart, purpose }: {
   }
   if (phase.step === "declined") {
     return (
-      <div role="status" className="rounded-2xl bg-white/70 p-4 text-sm leading-relaxed">
+      <div role="status" className="lg-on-color rounded-2xl bg-white/70 p-4 text-sm leading-relaxed">
         <p className="font-semibold">
           {phase.full ? "FinBoy is full for now" : "You tapped No on WhatsApp"}
         </p>
@@ -91,7 +91,7 @@ function WhatsAppSignIn({ phase, onOpened, onRestart, purpose }: {
         </a>
       ) : null}
       {opened ? (
-        <p role="status" className="flex items-center gap-3 rounded-2xl bg-white/70 p-3 text-sm leading-relaxed">
+        <p role="status" className="lg-on-color flex items-center gap-3 rounded-2xl bg-white/70 p-3 text-sm leading-relaxed">
           <ThinkingOrb state="connecting" size={20} />
           <span>
             Waiting for you on WhatsApp. Tap <strong>Send</strong>, then tap <strong>✅ Yes</strong> — this
@@ -105,7 +105,7 @@ function WhatsAppSignIn({ phase, onOpened, onRestart, purpose }: {
         </p>
       )}
       {start.link ? (
-        <details className="hidden rounded-2xl bg-white/55 p-3 text-sm sm:block" open={!opened}>
+        <details className="lg-on-color hidden rounded-2xl bg-white/55 p-3 text-sm sm:block" open={!opened}>
           <summary className="flex cursor-pointer items-center gap-2 font-semibold">
             <QrCode className="size-4" aria-hidden="true" /> On a computer? Scan with your phone
           </summary>
@@ -133,7 +133,7 @@ function PasswordSignIn({ onSignedIn, only }: { onSignedIn: () => void; only: bo
   const inputId = useId();
   const login = useSignIn(onSignedIn);
   return (
-    <details className="rounded-2xl bg-white/45 p-3 text-sm" open={only || undefined}>
+    <details className="lg-on-color rounded-2xl bg-white/45 p-3 text-sm" open={only || undefined}>
       <summary className="flex cursor-pointer items-center gap-2 font-semibold">
         <KeyRound className="size-4" aria-hidden="true" /> Household password
       </summary>
@@ -193,7 +193,7 @@ export function SignInOptions({ onSignedIn }: { onSignedIn: () => void }) {
   return (
     <div className="space-y-4">
       {!options.signup_open && (options.whatsapp || options.google_client_id) ? (
-        <p className="rounded-2xl bg-white/70 p-3 text-xs leading-relaxed">
+        <p className="lg-on-color rounded-2xl bg-white/70 p-3 text-xs leading-relaxed">
           New accounts are full for now. Already have one? Sign in as usual.
         </p>
       ) : null}
@@ -218,7 +218,7 @@ export function SignInOptions({ onSignedIn }: { onSignedIn: () => void }) {
         <PasswordSignIn onSignedIn={onSignedIn} only={!options.whatsapp && !options.google_client_id} />
       ) : null}
       {!anyWay ? (
-        <p className="rounded-2xl bg-white/70 p-3 text-sm">Sign-in isn&apos;t set up on this server yet.</p>
+        <p className="lg-on-color rounded-2xl bg-white/70 p-3 text-sm">Sign-in isn&apos;t set up on this server yet.</p>
       ) : null}
       {options.whatsapp && options.whatsapp_number && options.signup_open ? (
         <p className="text-xs leading-relaxed text-sunflower-ink">

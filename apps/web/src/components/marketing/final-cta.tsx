@@ -20,14 +20,14 @@ export function FinalCta() {
             </h2>
             <div className="mt-9 flex flex-wrap justify-center gap-3">
               <StartLink
-                className="group inline-flex h-12 items-center gap-3 rounded-full bg-ink pr-2 pl-6 text-sm font-semibold text-white shadow-lift transition-transform duration-300 ease-out-expo hover:-translate-y-0.5"
+                className="group lg-prominent inline-flex h-12 items-center gap-3 rounded-full pr-2 pl-6 text-sm font-semibold hover:-translate-y-0.5"
                 after={
                   <span className="grid size-8 place-items-center rounded-full bg-white/15 transition-transform group-hover:translate-x-0.5">
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </span>
                 }
               />
-              <Link href="/demo" className="glass inline-flex h-12 items-center rounded-full px-6 text-sm font-semibold text-ink">
+              <Link href="/demo" className="lg-static inline-flex h-12 items-center rounded-full px-6 text-sm font-semibold text-ink hover:-translate-y-0.5">
                 See a sample account
               </Link>
             </div>

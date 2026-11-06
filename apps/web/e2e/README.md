@@ -25,12 +25,17 @@ UI-to-API part; record human-only checks separately.
 
 ## Theme checks and review tools
 
-`theme.spec.ts` checks the glass theme on rendered pages: every visible text, placeholder and
-form-control boundary against its composited background (ancestors, the nav's positioned ink
-capsule, the field's darkest point, ink under floating chrome) on every route and empty state;
-at most three blurred layers in view; real blur in Chromium; Reduce Transparency (via CDP),
+`theme.spec.ts` checks the Liquid Glass theme on rendered pages: every visible text, placeholder
+and form-control boundary against its composited background (ancestors, positioned platters,
+the field's darkest point, and — under a `[data-scroll-edge]` bar — the darkest ink dissolved
+by that scroll edge's `--edge-cover-*`) on every route and empty state; at most three blurred
+or refracting layers in view; real refraction in Chromium (an `feDisplacementMap` that has
+materialized), `?glass=frost` without `url()`, the Tinted look; Reduce Transparency (via CDP),
 Increase Contrast and forced-colours fallbacks; and the thinking orbs' dark-ink pin, hidden
-status for assistive tech and resting behaviour. Two opt-in tools run only when asked:
+status for assistive tech and resting behaviour. `layout.spec.ts` adds the navigation labels'
+contrast on glass and platter, the drag lens and the remembered Clear · Tinted choice. Two
+opt-in tools run only when asked (`E2E_GLASS=refract|frost|solid` pins the glass tier for
+`perf.spec.ts`):
 
 ```sh
 cd apps/web

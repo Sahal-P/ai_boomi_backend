@@ -150,10 +150,12 @@ Export (`POST /privacy/export`) runs only on click and saves the validated JSON.
 
 ## Accessibility contract
 
-Text plus icons everywhere (the tab bar keeps every label; the active one is white on its ink
-capsule); WCAG AA contrast measured on rendered, composited surfaces for every text,
-placeholder and form-control boundary (`theme.spec.ts`; tab labels 11 px `ink-soft` on ≥ 90%
-white); Reduce Transparency, Increase Contrast and forced colours each have a legible
+Text plus icons everywhere (the tab bar keeps every label; the active one is ink on its
+platter); WCAG AA contrast measured on rendered, composited surfaces for every text,
+placeholder and form-control boundary (`theme.spec.ts`, `layout.spec.ts`; tab labels 11 px
+`ink-soft` on the Liquid Glass pill over the darkest ink dissolved by the scroll edge — see
+[the Liquid Glass round](../liquid-glass-round/contract.md)); Reduce Transparency, Increase
+Contrast and forced colours each have a legible
 fallback; thinking orbs are `aria-hidden` beside text that says what is happening, and
 decorative ones stop moving after five seconds; 44 px targets; field errors linked with `aria-describedby` and
 `aria-invalid`; dialogs trap and return focus; outcome and decision messages use polite live

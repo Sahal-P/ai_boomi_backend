@@ -365,7 +365,7 @@ export function HouseholdsScreen() {
               }}
               // Opaque (the float panel's reduced-transparency colour): its overlay isn't blurred, so a
               // translucent sheet would let the page behind show through.
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[94dvh] overflow-y-auto rounded-t-3xl float-panel bg-[#fcfcfd] p-5 pb-8 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-8"
+              className="fixed inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-50 max-h-[94dvh] overflow-y-auto rounded-[32px] lg-thick bg-[#fcfcfd] p-5 pb-8 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:p-8"
             >
               <Dialog.Title className="sr-only">Household details</Dialog.Title>
               <Announcement text={announcement} onDismiss={() => setAnnouncement("")} />

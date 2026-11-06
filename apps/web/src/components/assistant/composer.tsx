@@ -1,9 +1,11 @@
 "use client";
 
 import { ArrowUp, Check, Languages, Mic, Square, X } from "lucide-react";
-import type { RefObject } from "react";
+import { useMemo, type RefObject } from "react";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { ThinkingOrb } from "@/components/feedback/thinking-orb";
+import { mergeRefs } from "@/components/liquid-glass/merge-refs";
+import { useLiquidGlass } from "@/components/liquid-glass/use-liquid-glass";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -164,8 +166,11 @@ export function Composer({
 }) {
   const { state } = voice;
   const voiceBusy = state.step === "requesting" || state.step === "recording" || state.step === "transcribing";
+  const { attach, filter } = useLiquidGlass<HTMLTextAreaElement>({ bezel: 16, thickness: 16 });
+  const attachInput = useMemo(() => mergeRefs(inputRef, attach), [inputRef, attach]);
   return (
     <div>
+      {filter}
       <form
         className="relative"
         onSubmit={(event) => {
@@ -178,7 +183,7 @@ export function Composer({
         </label>
         <textarea
           id={id}
-          ref={inputRef}
+          ref={attachInput}
           value={value}
           rows={1}
           maxLength={2000}
@@ -193,7 +198,7 @@ export function Composer({
             event.preventDefault();
             if (!pending && value.trim()) onSubmit();
           }}
-          className="composer block max-h-60 min-h-[6.5rem] w-full resize-none rounded-xl px-4 pt-4 pb-[3.75rem] text-base leading-relaxed field-sizing-content disabled:cursor-default"
+          className="lg composer block max-h-60 min-h-[6.5rem] w-full resize-none rounded-[20px] px-4 pt-4 pb-[3.75rem] text-base leading-relaxed field-sizing-content disabled:cursor-default"
         />
         {voiceBusy && <VoiceStrip voice={voice} />}
         <div className="absolute inset-x-2 bottom-2 flex items-center gap-1">

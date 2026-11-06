@@ -20,8 +20,11 @@ Phase-1 integration history (design snapshot, package provenance) stays in
 - Quick add is one sheet for the whole app (`components/money/quick-add-provider.tsx`): the
   desktop sidebar's **Add entry** and the round **+** beside the phone tab bar open it from any
   screen, and a save or undo emits `lib/record-events.ts` so Home, Transactions, Review and
-  Reports reload. Phones have a compact header and the floating tab pill (black active capsule,
-  every tab labelled); the pill and the + step aside while a text field is focused.
+  Reports reload. Phones have the wordmark over the top scroll edge, a glass account button and
+  the floating Liquid Glass tab pill (the selected tab on a light platter, every tab labelled;
+  press and slide for the magnifying lens); the pill and the + step aside while a text field is
+  focused. Sources, Privacy & data, shortcuts, the Glass look (Clear · Tinted) and sign-out
+  are in the account menu.
 - Every page has one task title (`<title>` "Task · FinBoy") and one heading; Import results adds
   the glass back button to Sources.
 - The theme (`docs/design-system.md`): glass cards on a fixed field; Home's sunflower hero

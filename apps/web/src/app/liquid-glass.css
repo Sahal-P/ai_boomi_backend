@@ -1,0 +1,412 @@
+/*
+ * Liquid Glass — docs/liquid-glass-round/contract.md and the design system's "Materials".
+ *
+ * Glass is the navigation layer that floats over content: bars, the sidebar, menus, sheets,
+ * dialogs and the Ask composer. Content keeps the standard `surface` material. Three tiers
+ * (lib/liquid-glass/tier.ts) draw the same look:
+ *   refract — Chromium: an SVG displacement filter bends what is behind at the rim
+ *             (`data-lg-refract` + `--lg-refract`, set by useLiquidGlass), then a light frost;
+ *   frost   — Safari, Firefox, low-memory phones: more blur stands in for the lensing;
+ *   solid   — Reduce Transparency, Increase Contrast, forced colours: near-opaque.
+ * Backdrop filters stay behind variables: with literal values the minifier keeps only the
+ * -webkit- form, which Chrome and Firefox ignore.
+ */
+
+@property --edge-top {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+:root {
+  /* White fill of each material (Clear look). Every value is measured by e2e/theme.spec.ts
+     against the darkest content that can sit beneath it. */
+  --lg-tint: 0.38;
+  --lg-menu-tint: 0.78;
+  --lg-thick-tint: 0.84;
+  --lg-sidebar-tint: 0.36;
+  --lg-static-tint: 0.55;
+  --lg-composer-tint: 0.62;
+  --lg-prominent: 0.86;
+  /* Frost after refraction, and the stronger frost that replaces it in the frost tier. */
+  --lg-frost: 2px;
+  --lg-frost-fallback: 10px;
+  --lg-menu-frost: 12px;
+  --lg-menu-frost-fallback: 20px;
+  --lg-thick-frost: 16px;
+  --lg-thick-frost-fallback: 26px;
+  /* Regular glass lifts and enriches what is behind it ("adjusts luminosity"). */
+  --lg-saturate: 1.8;
+  --lg-brightness: 1.07;
+  /* iOS 27: a darker edge for separation and brighter specular highlights for depth. */
+  --lg-edge: rgb(14 16 19 / 0.16);
+  --lg-rim: rgb(255 255 255 / 0.6);
+  --lg-spec: rgb(255 255 255 / 0.96);
+  --lg-spec-soft: rgb(255 255 255 / 0.5);
+  --lg-dispersion: 0.14;
+  --lg-shadow: 0 1px 2px rgb(16 18 24 / 0.07), 0 10px 28px -12px rgb(16 18 24 / 0.3);
+  --lg-shadow-deep: 0 2px 6px rgb(16 18 24 / 0.08), 0 36px 80px -32px rgb(16 18 24 / 0.5);
+  /* Scroll edge: how much of the field covers content under the floating bars. The top is iOS 27's
+     uniform bar (the wordmark sits on it without glass); the bottom lets content show through the
+     tab bar's clear glass. */
+  --edge-cover-top: 0.94;
+  --edge-cover-bottom: 0.7;
+}
+
+/* Tinted (account menu → Glass): frostier and more opaque, as iOS 26.1's Tinted setting. */
+:root[data-glass-look="tinted"] {
+  --lg-tint: 0.7;
+  --lg-menu-tint: 0.92;
+  --lg-thick-tint: 0.95;
+  --lg-sidebar-tint: 0.64;
+  --lg-static-tint: 0.72;
+  --lg-composer-tint: 0.86;
+  --lg-prominent: 0.94;
+  --lg-frost: 10px;
+  --lg-frost-fallback: 18px;
+  --lg-menu-frost: 20px;
+  --lg-thick-frost: 24px;
+  --lg-saturate: 1.5;
+  --lg-spec: rgb(255 255 255 / 0.8);
+  --lg-dispersion: 0.06;
+  --edge-cover-bottom: 0.86;
+}
+
+@layer components {
+  .lg,
+  .lg-menu,
+  .lg-thick,
+  .lg-static,
+  .lg-on-color,
+  .lg-prominent {
+    position: relative;
+    isolation: isolate;
+    --lg-fill: rgb(255 255 255 / var(--lg-tint));
+    background-color: var(--lg-fill);
+    box-shadow:
+      0 0 0 0.5px var(--lg-edge),
+      inset 0 0 0 1px var(--lg-rim),
+      inset 0 1px 0.5px rgb(255 255 255 / 0.75),
+      inset 0 -12px 20px -16px rgb(255 255 255 / 0.8),
+      var(--lg-shadow);
+  }
+
+  /* Floating glass: content scrolls beneath it. */
+  .lg {
+    --lg-backdrop: blur(var(--lg-frost-fallback)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness));
+    -webkit-backdrop-filter: var(--lg-backdrop);
+    backdrop-filter: var(--lg-backdrop);
+  }
+  .lg[data-lg-refract] {
+    --lg-backdrop: var(--lg-refract) blur(var(--lg-frost)) saturate(var(--lg-saturate)) brightness(var(--lg-brightness));
+  }
+
+  /* Menus and popovers: thicker glass for dense text. */
+  .lg-menu {
+    --lg-fill: rgb(255 255 255 / var(--lg-menu-tint));
+    --lg-backdrop: blur(var(--lg-menu-frost-fallback)) saturate(1.6) brightness(1.05);
+    -webkit-backdrop-filter: var(--lg-backdrop);
+    backdrop-filter: var(--lg-backdrop);
+  }
+  .lg-menu[data-lg-refract] {
+    --lg-backdrop: var(--lg-refract) blur(var(--lg-menu-frost)) saturate(1.6) brightness(1.05);
+  }
+
+  /* Large glass (dialogs, sheets, the desktop sidebar): deeper shadow, softer scattering, and no
+     light/dark flip — Apple keeps big surfaces steady. */
+  .lg-thick {
+    --lg-fill: rgb(255 255 255 / var(--lg-thick-tint));
+    --lg-backdrop: blur(var(--lg-thick-frost-fallback)) saturate(1.5) brightness(1.04);
+    -webkit-backdrop-filter: var(--lg-backdrop);
+    backdrop-filter: var(--lg-backdrop);
+    box-shadow:
+      0 0 0 0.5px var(--lg-edge),
+      inset 0 0 0 1px var(--lg-rim),
+      inset 0 1px 1px rgb(255 255 255 / 0.85),
+      var(--lg-shadow-deep);
+  }
+  .lg-thick[data-lg-refract] {
+    --lg-backdrop: var(--lg-refract) blur(var(--lg-thick-frost)) saturate(1.5) brightness(1.04);
+  }
+  .lg-sidebar {
+    --lg-fill: rgb(255 255 255 / var(--lg-sidebar-tint));
+  }
+
+  /* Glass in the content layer (buttons, segmented tracks, chips): the look without a backdrop
+     filter — it sits on the soft field, where a blur would only cost GPU. */
+  .lg-static {
+    --lg-fill: rgb(255 255 255 / var(--lg-static-tint));
+    box-shadow:
+      0 0 0 0.5px var(--lg-edge),
+      inset 0 0 0 1px var(--lg-rim),
+      inset 0 1px 0.5px rgb(255 255 255 / 0.85),
+      0 1px 2px rgb(16 18 24 / 0.05),
+      0 8px 20px -14px rgb(16 18 24 / 0.32);
+  }
+
+  /* Clear glass on a yellow moment: never frosted (blurred yellow turns muddy), warm shadow. */
+  .lg-on-color {
+    --lg-fill: rgb(255 255 255 / 0.55);
+    box-shadow:
+      0 0 0 0.5px rgb(122 92 0 / 0.2),
+      inset 0 0 0 1px rgb(255 255 255 / 0.6),
+      inset 0 1px 0.5px rgb(255 255 255 / 0.9),
+      inset 0 -12px 20px -16px rgb(255 255 255 / 0.7),
+      0 12px 26px -16px rgb(122 92 0 / 0.5);
+  }
+
+  /* Tinted glass for the primary action ("+", Add entry, Save): ink, lit from within. */
+  .lg-prominent {
+    --lg-fill: rgb(14 16 19 / var(--lg-prominent));
+    --lg-spec: rgb(255 255 255 / 0.55);
+    --lg-spec-soft: rgb(255 255 255 / 0.22);
+    color: #ffffff;
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.17), rgb(255 255 255 / 0) 62%);
+    box-shadow:
+      0 0 0 0.5px rgb(14 16 19 / 0.45),
+      inset 0 0 0 1px rgb(255 255 255 / 0.12),
+      inset 0 1px 0.5px rgb(255 255 255 / 0.32),
+      inset 0 -10px 18px -14px rgb(255 255 255 / 0.28),
+      0 10px 24px -12px rgb(14 16 19 / 0.55);
+  }
+
+  /* Specular rim: bright arcs where the light lands (top-left, then bottom-right) over a faint
+     prism of colour, masked to a 1.25 px ring. Behind the content (z-index -1, isolated). */
+  :is(.lg, .lg-menu, .lg-thick, .lg-static, .lg-on-color, .lg-prominent)::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1.25px;
+    background:
+      conic-gradient(
+        from -45deg,
+        var(--lg-spec) 0deg,
+        transparent 58deg 122deg,
+        var(--lg-spec-soft) 180deg,
+        transparent 238deg 302deg,
+        var(--lg-spec) 360deg
+      ),
+      conic-gradient(
+        from 200deg,
+        rgb(255 110 150 / var(--lg-dispersion)),
+        rgb(255 214 90 / var(--lg-dispersion)),
+        rgb(90 230 170 / var(--lg-dispersion)),
+        rgb(90 170 255 / var(--lg-dispersion)),
+        rgb(190 120 255 / var(--lg-dispersion)),
+        rgb(255 110 150 / var(--lg-dispersion))
+      );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
+
+  /* Interactive glass flexes and lights up from the point it is pressed (GlassProvider writes
+     --lg-x/--lg-y and data-pressed on anything matching GLASS_PRESSABLE). Scale, not transform, so
+     translate utilities still apply. */
+  :is([data-glass-press], :is(a, button):is(.lg-prominent, .lg-static, .lg-on-color)) {
+    transition-property: scale, translate, background-color, box-shadow, color;
+    transition-duration: 0.5s, 0.3s, 0.2s, 0.3s, 0.2s;
+    transition-timing-function: var(--ease-spring), var(--ease-out-expo), ease-out, ease-out, ease-out;
+  }
+  [data-pressed] {
+    scale: var(--lg-press-scale, 1.06);
+    transition-duration: 0.25s, 0.3s, 0.2s, 0.3s, 0.2s;
+  }
+  :is(.lg, .lg-static, .lg-on-color, .lg-prominent):is([data-glass-press], a, button)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(circle at var(--lg-x, 50%) var(--lg-y, 50%), rgb(255 255 255 / 0.65), transparent 68%);
+    mix-blend-mode: plus-lighter;
+    opacity: 0;
+    transition: opacity 0.6s ease-out;
+    pointer-events: none;
+  }
+  [data-pressed]::after {
+    opacity: 1;
+    transition-duration: 0.12s;
+  }
+
+  /* Apple's selection platter (tab bar, sidebar, segmented controls): the selected item sits in a
+     soft inset well under ink; the bar's glass stays clear around it. */
+  .lg-platter {
+    background: rgb(14 16 19 / 0.075);
+    box-shadow:
+      inset 0 0 0 0.5px rgb(14 16 19 / 0.05),
+      inset 0 1px 1px rgb(14 16 19 / 0.06),
+      0 1px 0 rgb(255 255 255 / 0.6);
+  }
+
+  /* A segmented control's selected knob: a raised, brighter glass pill (Apple's segmented style). */
+  .lg-knob {
+    background: rgb(255 255 255 / 0.92);
+    box-shadow:
+      0 0 0 0.5px rgb(14 16 19 / 0.08),
+      inset 0 1px 0.5px #ffffff,
+      0 1px 2px rgb(16 18 24 / 0.08),
+      0 6px 14px -6px rgb(16 18 24 / 0.28);
+  }
+
+  /* The drag lens: a clear droplet that magnifies what it passes over (refract tier) or a bright
+     bubble (frost tier). Decoration only — the links underneath stay the controls. */
+  .lg-lens {
+    --lg-tint: 0.14;
+    --lg-frost: 0px;
+    --lg-frost-fallback: 2px;
+    --lg-saturate: 1.15;
+    --lg-brightness: 1.1;
+    --lg-spec: rgb(255 255 255 / 1);
+    --lg-dispersion: 0.3;
+    --lg-shadow: 0 2px 4px rgb(16 18 24 / 0.08), 0 14px 30px -12px rgb(16 18 24 / 0.38);
+  }
+}
+
+/* Scroll edge (Apple's scroll edge effect): content dissolves into the field under floating
+   bars. A fixed copy of the field's paint masked to the edges — unblurred, so it is not a blurred
+   layer, and full-height, so the fixed-layer obstruction checks skip it. The top band is iOS 27's
+   uniform bar and appears once content scrolls beneath; the bottom band sits under the tab bar. */
+.scroll-edge {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background: var(--field-paint);
+  --edge-bottom: 0;
+  --edge-top-solid: 4.5rem;
+  --edge-top-end: 6.75rem;
+  --edge-bottom-solid: 5.25rem;
+  --edge-bottom-end: 8.5rem;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / var(--edge-top)) 0,
+    rgb(0 0 0 / var(--edge-top)) var(--edge-top-solid),
+    transparent var(--edge-top-end),
+    transparent calc(100% - var(--edge-bottom-end)),
+    rgb(0 0 0 / var(--edge-bottom)) calc(100% - var(--edge-bottom-solid)),
+    rgb(0 0 0 / var(--edge-bottom)) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / var(--edge-top)) 0,
+    rgb(0 0 0 / var(--edge-top)) var(--edge-top-solid),
+    transparent var(--edge-top-end),
+    transparent calc(100% - var(--edge-bottom-end)),
+    rgb(0 0 0 / var(--edge-bottom)) calc(100% - var(--edge-bottom-solid)),
+    rgb(0 0 0 / var(--edge-bottom)) 100%
+  );
+  transition: --edge-top 0.35s ease-out;
+}
+.scroll-edge[data-top="on"] {
+  --edge-top: var(--edge-cover-top);
+}
+.scroll-edge[data-bottom="on"] {
+  --edge-bottom: var(--edge-cover-bottom);
+}
+
+/* An open menu, dialog or sheet holds the focus: the floating chrome recedes to solid glass, as
+   Apple's does, so an overlay never becomes a fourth blurred layer in view. Matched by role, so
+   custom Radix dialogs and the admin panel's frosted chrome count too. */
+body:has(:is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"])[data-state="open"])
+  :is(.lg, .lg-sidebar, .glass):not([data-selection-lens]) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: rgb(250 250 251 / 0.96);
+}
+
+/* Fallbacks (unlayered, so they win over the materials and utilities). */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --lg-tint: 0.95;
+    --lg-menu-tint: 0.98;
+    --lg-thick-tint: 0.98;
+    --lg-sidebar-tint: 0.92;
+  }
+}
+/* Reduce Transparency (and ?glass=solid): frostier until opaque, no blur, no refraction. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --lg-tint: 0.97;
+    --lg-menu-tint: 0.99;
+    --lg-thick-tint: 0.99;
+    --lg-sidebar-tint: 0.96;
+    --lg-static-tint: 0.9;
+    --lg-composer-tint: 0.96;
+    --lg-prominent: 1;
+    --lg-dispersion: 0;
+    --edge-cover-top: 1;
+    --edge-cover-bottom: 1;
+  }
+  .lg,
+  .lg-menu,
+  .lg-thick {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+:root[data-glass-tier="solid"] {
+  --lg-tint: 0.97;
+  --lg-menu-tint: 0.99;
+  --lg-thick-tint: 0.99;
+  --lg-sidebar-tint: 0.96;
+  --lg-static-tint: 0.9;
+  --lg-composer-tint: 0.96;
+  --lg-prominent: 1;
+  --lg-dispersion: 0;
+  --edge-cover-top: 1;
+  --edge-cover-bottom: 1;
+}
+:root[data-glass-tier="solid"] :is(.lg, .lg-menu, .lg-thick) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+/* Increase Contrast: predominantly white glass with a contrasting edge. */
+@media (prefers-contrast: more) {
+  :root {
+    --lg-tint: 0.94;
+    --lg-menu-tint: 0.98;
+    --lg-thick-tint: 0.98;
+    --lg-sidebar-tint: 0.92;
+    --lg-static-tint: 0.9;
+    --lg-composer-tint: 0.96;
+    --lg-prominent: 1;
+    --lg-edge: rgb(14 16 19 / 0.6);
+    --lg-dispersion: 0;
+  }
+  .lg,
+  .lg-menu,
+  .lg-thick {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .lg-platter {
+    background: rgb(14 16 19 / 0.14);
+  }
+}
+@media (forced-colors: active) {
+  :is(.lg, .lg-menu, .lg-thick, .lg-static, .lg-on-color, .lg-prominent) {
+    border: 1px solid CanvasText;
+  }
+  :is(.lg, .lg-menu, .lg-thick, .lg-static, .lg-on-color, .lg-prominent)::before,
+  :is(.lg, .lg-menu, .lg-thick, .lg-static, .lg-on-color, .lg-prominent)::after {
+    display: none;
+  }
+  .lg-platter,
+  .lg-knob {
+    border: 2px solid Highlight;
+  }
+}
+/* Reduced motion: no flex, no spring — glass stays where it is. */
+@media (prefers-reduced-motion: reduce) {
+  [data-pressed] {
+    scale: none;
+  }
+}

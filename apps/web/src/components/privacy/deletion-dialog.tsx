@@ -136,8 +136,8 @@ export function DeletionDialog({
   return (
     <Dialog.Root open={target !== null} onOpenChange={(open) => !open && close()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/20 backdrop-blur-sm" />
-        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[94dvh] overflow-y-auto rounded-t-3xl float-panel p-5 pb-8 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-7">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/25" />
+        <Dialog.Content className="fixed inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-50 max-h-[94dvh] overflow-y-auto rounded-[32px] lg-thick p-5 pb-8 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[90dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:p-7">
           <div className="flex items-start justify-between gap-3">
             <Dialog.Title className="text-xl font-semibold">{title}</Dialog.Title>
             <Dialog.Close asChild>

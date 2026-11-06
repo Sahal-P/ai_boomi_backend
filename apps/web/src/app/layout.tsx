@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { GlassProvider } from "@/components/liquid-glass/glass-provider";
+import { GLASS_LOOK_SCRIPT } from "@/lib/liquid-glass/look";
 import { SITE_URL } from "@/lib/seo/metadata";
 import "./globals.css";
 
@@ -16,9 +18,17 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  // Liquid Glass: the saved Clear · Tinted look is applied before first paint (the inline script
+  // edits <html>, hence suppressHydrationWarning); GlassProvider picks the rendering tier after.
   return (
-    <html lang="en-IN">
-      <body>{children}</body>
+    <html lang="en-IN" data-glass-look="clear" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: GLASS_LOOK_SCRIPT }} />
+      </head>
+      <body>
+        <GlassProvider />
+        {children}
+      </body>
     </html>
   );
 }

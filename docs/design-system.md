@@ -1,13 +1,16 @@
-# FinBoy design system — glass, sunflower moments, line art
+# FinBoy design system — Liquid Glass, sunflower moments, line art
 
 Daily screens follow a glass reference: a soft neutral field with a cool and a warm glow,
-frosted cards, near-black type and black pill actions. The one money number per screen sits on
-solid **sunflower** yellow, and the screens people pass through — sign-in, empty and all-done
-states, the landing hero — are flat yellow **moments** with drawn line-art illustrations. When
-FinBoy's AI is working, a dotted **thinking orb** shows it. Everything is light theme, and
-violet is retired everywhere, the logo included. Real-time WebGL remains only in the landing
-page's lower sections, on the same field as the app (see *3D on the landing page*); the hero is
-a yellow moment.
+frosted cards, near-black type and ink actions. Since the Liquid Glass round
+([contract](liquid-glass-round/contract.md)) the navigation layer floating above them — bars,
+the sidebar, menus, sheets, dialogs, the Ask composer — is Apple's **Liquid Glass**: glass that
+bends what is behind it at its rim, lights up and flexes when pressed, and springs from the
+control that opened it. The one money number per screen sits on solid **sunflower** yellow, and
+the screens people pass through — sign-in, empty and all-done states, the landing hero — are
+flat yellow **moments** with drawn line-art illustrations. When FinBoy's AI is working, a dotted
+**thinking orb** shows it. Everything is light theme, and violet is retired everywhere, the
+logo included. Real-time WebGL remains only in the landing page's lower sections, on the same
+field as the app (see *3D on the landing page*); the hero is a yellow moment.
 
 The values below were measured from the reference images, not eyeballed; the measurements,
 contrast findings and verification are recorded in
@@ -17,18 +20,23 @@ specified in [`docs/ux-round/ui-spec.md`](ux-round/ui-spec.md).
 ## Principles
 
 1. **Calm glass for the work, sunflower for the moments.** Glass and ink carry the money
-   screens; yellow appears only as the hero number's card and as moments. Never put glass over
-   yellow: blurred yellow over the blue field turns muddy.
-2. **Blur only where content moves underneath.** In-flow cards are frosted tint without
-   `backdrop-filter` (the field behind them is already soft); real blur is for the phone header
-   and tab bar, menus and dialog scrims — at most three blurred layers in view.
+   screens; yellow appears only as the hero number's card and as moments. Never put *frosted*
+   glass over yellow: blurred yellow over the blue field turns muddy. Clear glass without blur
+   (`lg-on-color`) may sit on a moment.
+2. **Liquid Glass is the navigation layer.** It floats above content: the tab pill, the
+   account button, the sidebar, menus, sheets, dialogs and Ask's composer. Content stays on the
+   standard `surface` material (no `backdrop-filter`: the field behind it is already soft);
+   content-layer controls look like glass (`lg-static`) and become real glass only while dragged
+   (the lens). At most three blurred or refracting layers in view, in every state.
 3. **Measured contrast.** Every text is ≥ 4.5:1 (large ≥ 3:1) and every form-control boundary
    ≥ 3:1 against its composited background, at the field's darkest point. The reference's own
    greys (3.97–4.29:1) and placeholder (2.68:1) fail; ours are darker.
 4. **Numbers are sacred.** Tabular figures, `₹` with Indian grouping, never "bank balance".
 5. **The orb means FinBoy's AI is working.** Data loading keeps the plain spinner.
-6. **Everything degrades gracefully.** No `backdrop-filter`, Reduce Transparency, Increase
-   Contrast, forced colours and reduced motion each give a legible screen.
+6. **Everything degrades gracefully.** Refraction is Chromium-only (`refract` tier); Safari and
+   Firefox get the same glass frosted (`frost`); no `backdrop-filter`, Reduce Transparency,
+   Increase Contrast and forced colours get near-opaque glass (`solid`); reduced motion keeps
+   every effect but its flex, stretch and overshoot. Each gives a legible screen.
 
 ## Tokens (`apps/web/src/app/globals.css`)
 
@@ -41,6 +49,12 @@ specified in [`docs/ux-round/ui-spec.md`](ux-round/ui-spec.md).
 | `float-fill` · `glass-blur` | `rgb(250 250 251 / .74)` · `blur(24px) saturate(140%)` | Floating glass; the blur goes through the variable (see below) |
 | `sunflower` / `sunflower-ink` | `#fed234` / `#3a2c00` | Hero and moment fill / secondary text on it (9.4:1). A fill under ink only: 1.18:1 as a line or text on glass |
 | `positive` · `negative` · `warning` | `#065f46` · `#a8201a` · `#d97706` | Verified/income, destructive, attention (`warning` for icons/dots; attention text uses `amber-800/900`) |
+| `lg-tint` · `lg-menu-tint` · `lg-thick-tint` · `lg-sidebar-tint` · `lg-static-tint` · `lg-composer-tint` | Clear .38 · .78 · .84 · .36 · .55 · .62; Tinted .70 · .92 · .95 · .64 · .72 · .86 | White fill of each Liquid Glass material (`app/liquid-glass.css`); Reduce Transparency .96–.99, Increase Contrast .9–.98 |
+| `lg-prominent` | ink .86 (Tinted .94) | Tinted glass for primary actions |
+| `lg-frost` · `lg-frost-fallback` | 2 px · 10 px (Tinted 10 · 18) | Frost after refraction, and the stronger frost that stands in for it in the `frost` tier (menus 12 · 20, thick 16 · 26) |
+| `lg-edge` · `lg-rim` · `lg-spec` | ink 16% · white 60% · white 96% | iOS 27's darker outer edge, the inner bright ring and the specular arcs |
+| `edge-cover-top` · `edge-cover-bottom` | .94 · .70 (Tinted bottom .86) | How much of the field covers content under the floating bars (scroll edge); the contrast checks read them |
+| `ease-spring` | `linear(…)` spring, ≈ 4.6% overshoot over 0.5 s | Liquid Glass's gel: press flex, menus and sheets opening |
 
 Shadcn variables map onto these: `--primary` is ink (black pills), `--card` is glass,
 `--popover` is 90% white, `--secondary`/`--muted`/`--accent` are faint ink tints, `--input`
@@ -59,26 +73,53 @@ colour, so the `bg-field` material never also paints a flat background.
 
 **Keep `-webkit-backdrop-filter` and `backdrop-filter` behind a variable.** With literal values
 the CSS minifier merges the pair into the `-webkit-` form only, which Chrome and Firefox ignore
-— the previous `.glass` never blurred outside Safari. `theme.spec.ts` asserts the header blurs.
+— the previous `.glass` never blurred outside Safari. `theme.spec.ts` asserts the tab pill and
+sidebar refract in Chromium and still blur with `?glass=frost`.
 
 ## Materials
 
 | Class | What it is | Where |
 | --- | --- | --- |
 | `bg-field` | Fixed pseudo-element field + grain (never repaints on scroll; iOS ignores `background-attachment: fixed`) | App shell, session check, demo, 404, landing below the hero (with `isolation-auto`, so DOM marked `z-20` stays above the 3D layer) |
-| `surface` | In-flow frosted glass: tint, 1 px white edge, inset top-left rim, soft shadow; **no blur** | Cards, panels, rows, the desktop sidebar (nothing scrolls under it) |
-| `glass` | Floating glass: `float-fill` + `--glass-blur` | Phone header and tab bar (near-opaque), menus, selects, landing nav after the hero |
-| `float-panel` | Crisp near-opaque panel; its frosted scrim (`bg-ink/20 backdrop-blur-sm`) is the blurred layer | Dialogs, sheets, alert dialogs |
+| `surface` | The content layer's standard material: in-flow frosted tint, 1 px white edge, inset top-left rim, Liquid Glass's faint dark edge, soft shadow; **no blur** | Cards, panels, rows |
+| `glass` | Frosted floating glass: `float-fill` + `--glass-blur` (pre–Liquid Glass) | The admin panel's header and tab bar, chart tooltips |
+| `float-panel` | Retired: dialogs and sheets are `lg-thick` over an unblurred dimming layer | — |
 | `solid-hero` | Sunflower with ink and a soft warm shadow | The one money number per screen (Home's "Left this month", the demo, the landing simulator's estimate and the mosaic's overview tile) |
 | `moment` | Flat sunflower with ink | Sign-in, empty and all-done states, landing hero |
 | `field` | Glass field: 74% white with a soft top sheen, white inner rim, soft drop, 1 px `--input` edge (≥ 3:1); focus turns the edge ink with a soft ink halo | Every input, textarea and select |
-| `composer` | Floating glass bubble: `field`'s look plus `--glass-blur`, a deeper shadow and, on focus, an ink edge with a sunflower halo; 16 px radius | Ask's composer (the textarea carries the edge, so the boundary check still measures it) |
+| `composer` | `lg` refracting bubble with `field`'s 1 px ink edge, a deeper shadow and, on focus, an ink edge with a sunflower halo; 20 px radius | Ask's composer (the textarea carries the edge, so the boundary check still measures it) |
+| `lg` | Liquid Glass (regular): clear white fill, specular rim, darker edge, lift shadow; refracts (Chromium) or frosts | Phone tab pill and account button, landing nav after the hero, Ask's composer, the drag lens |
+| `lg-menu` | Thicker glass for dense text | Dropdown and Select menus, the landing voice demo's status pill |
+| `lg-thick` (+ `lg-sidebar`) | Large glass: deeper shadow, softer scattering, no light/dark flip | Dialogs, alert dialogs, sheets (inset 8 px, 32 px corners on phones), the desktop sidebar |
+| `lg-prominent` | Ink-tinted glass, lit from within | Primary buttons, the phone +, Add entry, the landing's Start links |
+| `lg-static` | The glass look without a backdrop filter | Content-layer glass: `glass`/`outline` buttons, segmented tracks, the back button, landing chips |
+| `lg-on-color` | Clear glass on yellow (never blurred), warm shadow | Sign-in panels, the hero's secondary action, the landing nav over the hero |
+| `lg-platter` · `lg-knob` | The selected item's inset well · a raised glass knob | Tab bar and sidebar selection · segmented controls and the hero's chevron capsule |
+| `scroll-edge` | Fixed, unblurred copy of the field masked to the screen's edges | Under the phone bars and the landing nav (Apple's scroll edge effect) |
 
-Inside yellow, use white tints (`bg-white/55`), never glass. Fallbacks (unlayered, so they win
-over utilities): no `backdrop-filter` → near-opaque `.glass`; **Reduce Transparency** →
-`--glass-blur: none` (also on `backdrop-blur-*` scrims), opaque surfaces, flat field;
-**Increase Contrast** → darker secondary ink, 45% ink edges, 75% ink control boundaries;
-**forced colours** → `CanvasText` borders on every material.
+Inside yellow, use white tints (`bg-white/55`) or `lg-on-color`, never frosted glass. Fallbacks
+(unlayered, so they win over utilities): no `backdrop-filter` → near-opaque glass; **Reduce
+Transparency** → `--glass-blur: none` (also on `backdrop-blur-*`), no Liquid Glass backdrop,
+opaque surfaces, flat field and edges; **Increase Contrast** → darker secondary ink, 45% ink
+edges, 75% ink control boundaries, solid Liquid Glass with a 60% ink edge; **forced colours** →
+`CanvasText` borders on every material and `Highlight` on the selection.
+
+### How Liquid Glass is drawn (`components/liquid-glass`, `lib/liquid-glass`)
+
+- `useLiquidGlass()` measures its element, builds a displacement map for its size and corner
+  radius (`maps.ts`: a rounded-box SDF, a convex-squircle bezel and Snell's law at n = 1.5;
+  offsets always point inward, so the filter never samples outside the element), caches it as a
+  PNG data URL and sets `--lg-refract: url(#…)` and `data-lg-refract`. The material puts the
+  filter ahead of its frost, saturation and brightness. Lenses add magnification and a
+  three-pass colour split. Chromium measures filters in CSS pixels at every DPR.
+- `GlassProvider` (root layout) picks the tier after hydration (`tier.ts`), follows the
+  accessibility media queries, drops to `frost` for the session if scrolling stays janky, and
+  writes `--lg-x/--lg-y` and `data-pressed` for the press glow. The saved Clear · Tinted look is
+  applied before first paint by an inline `<head>` script.
+- Glass with a backdrop filter is its children's *backdrop root*: render a lens or any other
+  glass **beside** it, never inside, or it will only see its parent's own layer.
+- Pass the hook's `attach` as the element's ref and render its `filter` anywhere; destructure
+  the result (the React Compiler treats an object whose member is a ref as a ref).
 
 ## Type
 
@@ -94,13 +135,17 @@ reference's welcome screen). Mark language on text: `lang="ml"`/`"hi"` for nativ
 - **One page header** (`components/app-shell/page-header.tsx`): direct task title, one sentence
   of support, actions on the right. Screens reached from another one (Import results) pass
   `back` for the reference's glass square back button; top-level tabs never do.
-- **Navigation:** four tabs — Home, Transactions, Reports, Ask. Desktop: glass sidebar (in-flow,
-  no blur) with the ink **Add entry** pill, the tabs (black active capsule) and an account button
-  at its foot. Phones: a compact blurred header (wordmark, white account button) and a floating
-  tab pill — black active capsule with white icon and label, every other tab labelled in
-  secondary ink — with a round ink **+** beside it. Content-sized cells keep "Transactions"
-  readable at 320 px. Sources, Privacy & data, shortcuts and sign-out are in the account menu.
-  Phone page margins are 24 px from 390 px up, 16 px below.
+- **Navigation:** four tabs — Home, Transactions, Reports, Ask. Desktop: an inset Liquid Glass
+  sidebar (`lg-thick`) with the tinted-glass **Add entry** pill, the tabs (the selected one in
+  ink on a light platter) and an account button at its foot. Phones: no bar behind the
+  wordmark — content dissolves under the top scroll edge once scrolled — and a 44 px glass
+  account circle; at the bottom a floating clear-glass tab pill (ink icon and label on the
+  platter for the selected tab, every other tab labelled in secondary ink) with a round
+  tinted-glass **+** beside it. Press and slide across the pill and a magnifying lens follows
+  the finger; releasing on a tab opens it (through its link, so unsaved-work guards still ask).
+  Content-sized cells keep "Transactions" readable at 320 px. Sources, Privacy & data,
+  shortcuts, the **Glass** look (Clear · Tinted) and sign-out are in the account menu. Phone page
+  margins are 24 px from 390 px up, 16 px below.
 - **Home:** the sunflower hero — "Left this month", then Money in, Money out and Bills due on
   white tints, and "How is this worked out?" folding the calculation away — then one row of
   amber attention chips (only when something needs a look), Bills due and a budgets snapshot.
@@ -170,15 +215,20 @@ defaults where they conflict.
 
 ## Primitives (`components/ui`)
 
-- **Button** — `default` (ink pill, primary action), `glass` (in-flow glass), `outline`
-  (white pill, faint ink border), `secondary` (ink tint), `ghost`, `destructive`, `link`.
-  Sizes `sm` 36 px, `default` 44 px, `lg` 48 px, `icon*`. Pills everywhere.
+- **Button** — `default` (tinted ink glass, `lg-prominent`, primary action), `glass` and
+  `outline` (clear glass in the content layer, `lg-static`), `secondary` (ink tint), `ghost`,
+  `destructive`, `link`. The three glass variants carry `data-glass-press`: they flex (scale
+  1.06 on a spring) and light up from the press point. Sizes `sm` 36 px, `default` 44 px, `lg`
+  48 px, `icon*`. Pills everywhere.
 - **Card** — `surface`, 24 px radius. **Badge** — `default` (ink tint), `solid`, `positive`,
   `warning`, `outline`, `destructive`. **Input / Textarea / Select** — the `field` material
   (below), 12 px radius; native selects add `field-select` (a drawn chevron; forced colours get
   the platform arrow back).
-- **Dialog / AlertDialog / Sheet** — `float-panel` over a frosted ink scrim; **DropdownMenu /
-  Select content** — `glass` with the 90% popover fill. **Switch** — ink track, white thumb.
+- **Dialog / AlertDialog / Sheet** — refracting `lg-thick` glass (28 px corners; sheets inset
+  8 px with 32 px corners on phones) over an unblurred ink 25% dimming layer, springing in;
+  custom Radix dialogs use the same classes. **DropdownMenu / Select content** — refracting
+  `lg-menu` glass that pops open from its control. While any of them is open, floating chrome
+  turns solid. **Switch** (unused) — ink track, white thumb.
 
 ## Charts (`components/charts`, `lib/charts.ts`)
 
@@ -219,6 +269,11 @@ validated with its `validate_palette.js` against glass at the field's warmest po
 | `<ViewTransition default="page">` | App route crossfade (in `(app)/layout.tsx`; disabled under reduced motion). |
 | `AppMotion` | `MotionConfig reducedMotion="user"` around the app shell, so springs and layout moves (the nav capsule, the Transactions tabs, Ask's composer gliding to its dock) honour reduced motion. |
 | `.word-in`, `.shimmer-text` | An answer arriving word by word (≤ about 0.9 s), and the light sweeping through "Thinking…" (its colour stays ink-soft for contrast). |
+| Liquid Glass materialize | Refraction ramps in (displacement scale 0 → full over 420 ms) when glass appears or the landing nav leaves the hero; reduced motion sets it at once. |
+| Press (`data-glass-press`, glass links and buttons) | Scale 1.06 on `--ease-spring` and a glow from the press point; reduced motion keeps the glow only. |
+| Selection platter, segmented knob | `layoutId` spring (stiffness 420, damping 30) between items. |
+| Drag lens (`selection-lens.tsx`) | Follows the finger on a spring (650/40), stretches with its speed (scaleX ≤ 1.22), magnifies 1.28×; under reduced motion it moves straight and never stretches. |
+| Menus, dialogs, sheets | Open on `--ease-spring` (300 ms menus and dialogs, 500 ms sheets) from their source; close in 150–200 ms. |
 
 Rules: durations 0.6–1.3 s for reveals, 0.2–0.35 s for UI feedback; springs
 (`stiffness≈380–420, damping≈32–36`) for the nav capsule. **Never branch rendered output on
@@ -296,8 +351,9 @@ estimate on `solid-hero`, and no violet. Its scenes are re-toned to the same wor
 
 | Item | Budget / measurement |
 | --- | --- |
-| Blurred layers | ≤ 3 in view on every route and state (`theme.spec.ts`) |
-| Scroll frame time | 230-record list, CPU 4×: p95 16.7–16.8 ms, max 16.8 ms on desktop and phone-390 — same as before the theme (`perf.spec.ts`, 27 Oct 2026) |
+| Blurred layers | ≤ 3 blurred or refracting layers in view on every route and state (`theme.spec.ts`); an open overlay makes floating chrome solid |
+| Refraction | Chromium only; maps cached per size (≤ 40), half resolution above 120 000 px²; the jank guard drops to `frost` when p90 frame time stays above 22 ms while scrolling |
+| Scroll frame time | 230-record list, CPU 4×: p95 16.7–16.8 ms, max 16.8 ms on desktop and phones — unchanged by Liquid Glass in every tier (one 33 ms frame with refraction pinned at 390 px) (`perf.spec.ts`, 6 Nov 2026) |
 | Initial JS, gzip | ≤ 280 KB, no three.js; thinking orbs add ≈ 7.4 KB |
 | Lazy 3D JS | three + R3F/drei/scenes, after first paint; the hero canvas and `postprocessing` (≈ 89 KB) are gone |
 | Device pixel ratio | adapts within 1–1.75 (high), 0.9–1.5 (medium), 0.75–1.25 (low), capped by the screen |
@@ -307,9 +363,15 @@ capped and kept off in-flow cards. Real-device checks are listed in the handoff.
 
 ## Verification
 
-`pnpm check`, `pnpm build`, `pnpm test:e2e` (1440×1000, 390×844, 320×740), which includes
-`theme.spec.ts`: rendered contrast for text, placeholders and form-control boundaries on every
-route and moment, the blur budget, real blur in Chromium, Reduce Transparency / Increase
-Contrast / forced-colours fallbacks, and the orbs' theme pin, accessibility and resting.
-Opt-in: `E2E_CAPTURE_DIR=<dir>` (`capture.spec.ts`) screenshots every route and state for a
-before/after review; `E2E_PERF=1` (`perf.spec.ts`) measures scroll frame times.
+`pnpm check` (including the Liquid Glass unit tests in `lib/liquid-glass/*.test.ts`),
+`pnpm build`, `pnpm test:e2e` (1440×1000, 390×844, 320×740), which includes `theme.spec.ts`:
+rendered contrast for text, placeholders and form-control boundaries on every route and moment
+(under floating bars, against ink dissolved by the scroll edge), the blur budget, real
+refraction in Chromium (materialized), `?glass=frost` without `url()`, the Tinted look,
+Reduce Transparency / Increase Contrast / forced-colours fallbacks, and the orbs' theme pin,
+accessibility and resting; and `layout.spec.ts`: navigation-label contrast on the glass and
+platter, the drag lens and the remembered Glass choice. Opt-in: `E2E_CAPTURE_DIR=<dir>`
+(`capture.spec.ts`) screenshots every route and state for a before/after review; `E2E_PERF=1`
+(`perf.spec.ts`, `E2E_GLASS=refract|frost|solid` to pin a tier) measures scroll frame times.
+QA in a browser: `?glass=refract|frost|solid` holds a tier for the tab's session, `?glass=auto`
+clears it.

@@ -57,29 +57,77 @@ test("Add entry opens quick add from every screen", async ({ page }) => {
 test("navigation labels meet WCAG AA contrast as rendered", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page.getByRole("link", { name: "Home", exact: true })).toBeVisible();
-  const samples = await page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('nav[aria-label="App navigation"] a')]
+  const samples = await page.evaluate(() => {
+    const parse = (value: string) => {
+      const [r = 0, g = 0, b = 0, a = 1] = (value.match(/[\d.]+/g) ?? []).map(Number);
+      return [r, g, b, a];
+    };
+    const over = (top: number[], bottom: number[]) => [0, 1, 2].map((i) => (top[i] ?? 0) * (top[3] ?? 1) + (bottom[i] ?? 0) * (1 - (top[3] ?? 1)));
+    // Liquid Glass: the darkest ink scrolled under the bar, dissolved by the scroll edge, then the
+    // bar's own glass, then (for the selected item) Apple's platter.
+    const ink = [14, 16, 19];
+    const fieldDarkest = [232, 211, 176];
+    return [...document.querySelectorAll<HTMLElement>('nav[aria-label="App navigation"] a')]
       .filter((link) => link.checkVisibility())
       .map((link) => {
         const label = link.querySelector<HTMLElement>("span:last-child") ?? link;
-        const parse = (value: string) => (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const bar = link.closest("nav") as HTMLElement;
+        const edge = bar.getAttribute("data-scroll-edge");
+        const cover = edge ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue(`--edge-cover-${edge}`)) : 1;
+        let surface = over(parse(getComputedStyle(bar).backgroundColor), over([...fieldDarkest, cover], ink));
+        const platter = link.querySelector<HTMLElement>(".lg-platter");
+        if (platter) surface = over(parse(getComputedStyle(platter).backgroundColor), surface);
         return {
           text: label.textContent,
-          active: link.getAttribute("aria-current") === "page",
           color: parse(getComputedStyle(label).color),
+          surface,
           size: parseFloat(getComputedStyle(label).fontSize),
         };
-      }),
-  );
+      });
+  });
   expect(samples.length).toBeGreaterThan(0);
-  // The active label sits on the solid ink capsule (#0e1013). Every other label sits on the bar:
-  // worst case 90% white (the lighter of the header and tab bar) over the darkest ink.
-  const ink = [14, 16, 19];
-  const worstSurface = ink.map((channel) => 0.9 * 255 + 0.1 * channel);
   for (const sample of samples) {
     expect(sample.size).toBeGreaterThanOrEqual(11);
-    expect(contrast(sample.color, sample.active ? ink : worstSurface), `${sample.text}`).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(sample.color.slice(0, 3), sample.surface), `${sample.text}`).toBeGreaterThanOrEqual(4.5);
   }
+});
+
+test("dragging across the tab bar lenses the tabs and opens the one released on", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop", "the tab bar is phone chrome");
+  await page.goto("/dashboard");
+  const bar = page.locator('nav.lg[aria-label="App navigation"]');
+  const from = await bar.getByRole("link", { name: "Home", exact: true }).boundingBox();
+  const to = await bar.getByRole("link", { name: "Reports", exact: true }).boundingBox();
+  if (!from || !to) throw new Error("no tab boxes");
+  const y = from.y + from.height / 2;
+  await page.mouse.move(from.x + from.width / 2, y);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, y, { steps: 10 });
+  // The lens is decoration: hidden from assistive tech, gone once released.
+  const lens = page.locator("[data-selection-lens]");
+  await expect(lens).toBeVisible();
+  await expect(lens).toHaveAttribute("aria-hidden", "true");
+  await page.mouse.up();
+  await expect(page).toHaveURL(/\/reports$/);
+  await expect(lens).toHaveCount(0);
+  await expect(bar.getByRole("link", { name: "Reports", exact: true })).toHaveAttribute("aria-current", "page");
+});
+
+test("the Clear · Tinted glass choice applies at once and is remembered", async ({ page }, testInfo) => {
+  await page.goto("/dashboard");
+  const account = testInfo.project.name === "desktop"
+    ? page.getByRole("button", { name: /Your household/ })
+    : page.getByRole("button", { name: "Account and settings" });
+  await account.click();
+  await page.getByRole("menuitemradio", { name: /Tinted/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-glass-look", "tinted");
+  // The menu stays open so the change can be seen.
+  await expect(page.getByRole("menuitemradio", { name: /Tinted/ })).toHaveAttribute("aria-checked", "true");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-glass-look", "tinted");
+  await account.click();
+  await page.getByRole("menuitemradio", { name: /Clear/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-glass-look", "clear");
 });
 
 test("keyboard users can skip to content and see focus", async ({ page }, testInfo) => {

@@ -4,6 +4,8 @@ import * as React from "react"
 import { cn } from "cn"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
+import { mergeRefs } from "@/components/liquid-glass/merge-refs"
+import { useLiquidGlass } from "@/components/liquid-glass/use-liquid-glass"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
@@ -39,7 +41,9 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-ink/20 duration-100 supports-backdrop-filter:backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        // A dimming layer, not a blur: Apple pairs modal glass with dimming, and the glass panel is
+        // the one blurred layer.
+        "fixed inset-0 isolate z-50 bg-ink/25 duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}
@@ -51,21 +55,26 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  ref,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  const { attach, filter } = useLiquidGlass<HTMLDivElement>({ bezel: 18, thickness: 18 })
+  const attachContent = React.useMemo(() => mergeRefs(attach, ref), [attach, ref])
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
+        ref={attachContent}
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 float-panel rounded-3xl p-4 text-sm text-popover-foreground duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "lg-thick fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-[28px] p-4 text-sm text-popover-foreground outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-90 data-open:duration-300 data-open:ease-spring data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 data-closed:duration-150",
           className
         )}
         {...props}
       >
+        {filter}
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
@@ -107,7 +116,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-3xl border-t bg-white/40 p-4 sm:flex-row sm:justify-end",
+        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-[28px] border-t bg-white/40 p-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

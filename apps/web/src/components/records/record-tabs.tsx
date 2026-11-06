@@ -2,19 +2,22 @@
 
 import { motion } from "motion/react";
 import { GuardedLink } from "@/components/app-shell/guarded-link";
+import { useSelectionLens } from "@/components/liquid-glass/selection-lens";
 import { cn } from "@/lib/utils";
 
 /**
- * Transactions and Review as two tabs of one place. Each tab is still its own route, so deep
- * links (`?selected=`), Back and the review queue's shortcuts keep working.
+ * Transactions and Review as two tabs of one place: a Liquid Glass segmented control whose raised
+ * knob glides between segments, and turns into a magnifying lens while dragged. Each tab is still
+ * its own route, so deep links (`?selected=`), Back and the review queue's shortcuts keep working.
  */
 export function RecordTabs({ current, toReview }: { current: "all" | "review"; toReview: number | null }) {
+  const { attach, handlers, lens } = useSelectionLens<HTMLElement>();
   const tabs = [
     { key: "all", label: "All", href: "/transactions", count: null },
     { key: "review", label: "To review", href: "/review", count: toReview },
   ] as const;
   return (
-    <nav aria-label="Transactions" className="surface mt-4 inline-flex rounded-full p-1">
+    <nav ref={attach} aria-label="Transactions" className="lg-static mt-4 inline-flex touch-none rounded-full p-1 select-none" {...handlers}>
       <ul className="flex">
         {tabs.map((tab) => {
           const active = tab.key === current;
@@ -23,26 +26,22 @@ export function RecordTabs({ current, toReview }: { current: "all" | "review"; t
               <GuardedLink
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
+                draggable={false}
                 className={cn(
                   "relative flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors",
-                  active ? "text-white" : "text-ink-soft hover:text-ink",
+                  active ? "text-ink" : "text-ink-soft hover:text-ink",
                 )}
               >
                 {active && (
                   <motion.span
                     layoutId="record-tab-active"
-                    className="absolute inset-0 rounded-full bg-ink shadow-lift"
-                    transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                    className="lg-knob absolute inset-0 rounded-full"
+                    transition={{ type: "spring", stiffness: 420, damping: 30 }}
                   />
                 )}
                 <span className="relative">{tab.label}</span>
                 {tab.count ? (
-                  <span
-                    className={cn(
-                      "relative grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] tabular-nums",
-                      active ? "bg-white text-ink" : "bg-ink text-white",
-                    )}
-                  >
+                  <span className="relative grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1.5 text-[11px] text-white tabular-nums">
                     {tab.count}
                   </span>
                 ) : null}
@@ -51,6 +50,7 @@ export function RecordTabs({ current, toReview }: { current: "all" | "review"; t
           );
         })}
       </ul>
+      {lens}
     </nav>
   );
 }
