@@ -58,7 +58,7 @@ test.describe("one-tap sign-in with WhatsApp", () => {
     await page.goto("/login");
     await page.getByRole("link", { name: "Privacy Policy" }).click();
     await expect(page.getByRole("heading", { name: "Privacy Policy", level: 1 })).toBeVisible();
-    await expect(page.getByText("Your WhatsApp messages, voice notes, photos or screenshots")).toBeVisible();
+    await expect(page.getByText("Your voice notes, photos or screenshots")).toBeVisible();
     await page.goto("/terms");
     await expect(page.getByRole("heading", { name: "Terms", level: 1 })).toBeVisible();
   });
