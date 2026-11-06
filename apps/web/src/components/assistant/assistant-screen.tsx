@@ -1,17 +1,24 @@
 "use client";
 
-import { ArrowDown, Calculator, PiggyBank, SquarePen, UtensilsCrossed, Wallet } from "lucide-react";
+import { ArrowDown, Calculator, History, MessageCircle, PiggyBank, SquarePen, UtensilsCrossed, Wallet } from "lucide-react";
 import { motion } from "motion/react";
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { Composer } from "@/components/assistant/composer";
 import { PremiumPill } from "@/components/billing/premium-pill";
 import { usePremium } from "@/components/billing/premium-provider";
 import { TurnCard } from "@/components/assistant/turn-card";
 import { ThinkingOrb } from "@/components/feedback/thinking-orb";
+import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAssistant } from "@/hooks/use-assistant";
 import { useSpeech } from "@/hooks/use-speech";
+import { useResource } from "@/hooks/use-resource";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
+import { getSuggestions, listThreads, type ChatThread } from "@/lib/api/assistant";
+import { describeProblem, type Problem } from "@/lib/messages";
 import { cn } from "@/lib/utils";
 
 const SUGGESTIONS: { text: string; lang?: string; icon?: typeof Wallet }[] = [
@@ -34,6 +41,64 @@ function greeting(now: Date) {
   return "Hello";
 }
 
+const chatDay = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+
+/** Earlier chats with FinBoy, on the web and WhatsApp; opening one continues it. */
+function RecentChats({
+  open,
+  generation,
+  onOpenChange,
+  onPick,
+}: {
+  open: boolean;
+  /** Changes each time the sheet opens, so the list is fetched fresh. */
+  generation: number;
+  onOpenChange: (open: boolean) => void;
+  onPick: (thread: ChatThread) => void;
+}) {
+  const chats = useResource(open ? `chats-${generation}` : null, (signal) => listThreads(signal));
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="p-5">
+        <SheetHeader className="p-0">
+          <SheetTitle className="text-xl">Recent chats</SheetTitle>
+          <SheetDescription>Pick up where you left off, here or on WhatsApp.</SheetDescription>
+        </SheetHeader>
+        {chats.status === "loading" && <p className="text-sm text-ink-soft">Loading your chats…</p>}
+        {chats.error !== null && (
+          <ProblemNotice problem={describeProblem(chats.error, "FinBoy couldn't load your chats")} onRetry={chats.reload} />
+        )}
+        {chats.data?.length === 0 && (
+          <p className="text-sm text-ink-soft">No chats yet. Ask anything about your money to start one.</p>
+        )}
+        {chats.data && chats.data.length > 0 && (
+          <ul className="-mx-2 flex-1 space-y-1 overflow-y-auto">
+            {chats.data.map((thread) => (
+              <li key={thread.id}>
+                <button
+                  type="button"
+                  onClick={() => onPick(thread)}
+                  className="flex min-h-11 w-full items-start gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-white/60"
+                >
+                  <MessageCircle className="mt-0.5 size-4 shrink-0 text-ink-soft" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold break-words text-ink">{thread.title || "Chat"}</span>
+                    <span className="block text-xs text-ink-soft">
+                      {chatDay.format(new Date(thread.last_at))}
+                      {thread.channel === "whatsapp" ? " · WhatsApp" : ""} · {Math.ceil(thread.messages / 2)}{" "}
+                      {thread.messages > 2 ? "questions" : "question"}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 /** To the bottom of the page, where the conversation's end always sits clear of the docked composer. */
 function scrollToEnd() {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -47,7 +112,14 @@ function scrollToEnd() {
  */
 export function AssistantScreen() {
   const premium = usePremium();
+  const { advisor } = useHouseholdAccess();
+  // With the advisor on, every household can ask by typing; voice stays part of Premium.
+  const canAsk = premium.premium || advisor;
   const assistant = useAssistant();
+  const [chatsOpen, setChatsOpen] = useState(false);
+  const [chatsGeneration, setChatsGeneration] = useState(0);
+  const [openProblem, setOpenProblem] = useState<Problem | null>(null);
+  const [personal, setPersonal] = useState<string[] | null>(null);
   const speech = useSpeech();
   const [draft, setDraft] = useState("");
   const [fromVoice, setFromVoice] = useState(false);
@@ -62,6 +134,20 @@ export function AssistantScreen() {
   const [hello] = useState(() => greeting(new Date()));
   const turns = [...assistant.turns].reverse();
   const empty = turns.length === 0;
+
+  // Starter questions from the household's own figures, when the advisor is on.
+  useEffect(() => {
+    if (!advisor || !empty) return;
+    const controller = new AbortController();
+    getSuggestions(controller.signal).then(
+      (found) => setPersonal(found),
+      () => undefined, // the fixed suggestions stay
+    );
+    return () => controller.abort();
+  }, [advisor, empty]);
+  const suggestions: typeof SUGGESTIONS = personal?.length
+    ? [...personal.map((text) => ({ text })), ...SUGGESTIONS.filter((item) => item.lang)]
+    : SUGGESTIONS;
   const latest = assistant.turns[0];
   const latestId = latest?.id ?? null;
   const latestState = latest?.state ?? null;
@@ -91,7 +177,7 @@ export function AssistantScreen() {
 
   function submit(text = draft) {
     // On the Free plan the question stays in the box while the upgrade sheet explains Premium.
-    if (!premium.premium) {
+    if (!canAsk) {
       if (text.trim()) setDraft(text);
       premium.open("ask");
       return;
@@ -103,7 +189,18 @@ export function AssistantScreen() {
     }
   }
 
+  async function openChat(thread: ChatThread) {
+    setChatsOpen(false);
+    setOpenProblem(null);
+    try {
+      await assistant.open(thread.id);
+    } catch (error) {
+      setOpenProblem(describeProblem(error, "FinBoy couldn't open that chat"));
+    }
+  }
+
   function newChat() {
+    setOpenProblem(null);
     assistant.clear();
     setDraft("");
     setFromVoice(false);
@@ -115,12 +212,35 @@ export function AssistantScreen() {
     <div className="ask-page mx-auto flex min-h-[calc(100dvh-10.75rem)] max-w-3xl flex-col lg:min-h-[calc(100dvh-4rem)]">
       <header className="flex min-h-11 items-center justify-between gap-3">
         <h1 className="text-lg font-semibold tracking-[-0.01em]">Ask FinBoy</h1>
-        {!empty && (
-          <Button variant="ghost" size="sm" onClick={newChat}>
-            <SquarePen aria-hidden="true" /> New chat
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {advisor && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setChatsGeneration((value) => value + 1);
+                setChatsOpen(true);
+              }}
+            >
+              <History aria-hidden="true" /> Recent chats
+            </Button>
+          )}
+          {!empty && (
+            <Button variant="ghost" size="sm" onClick={newChat}>
+              <SquarePen aria-hidden="true" /> New chat
+            </Button>
+          )}
+        </div>
       </header>
+      {advisor && (
+        <RecentChats
+          open={chatsOpen}
+          generation={chatsGeneration}
+          onOpenChange={setChatsOpen}
+          onPick={(thread) => void openChat(thread)}
+        />
+      )}
+      {openProblem && <ProblemNotice problem={openProblem} className="mt-3" />}
 
       <div className={cn("flex flex-1 flex-col", empty && "justify-center")}>
         {empty ? (
@@ -135,7 +255,8 @@ export function AssistantScreen() {
           </section>
         ) : (
           <section role="log" aria-label="Conversation" className="flex flex-1 flex-col gap-10 pt-6 pb-10">
-            {turns.map((turn) => {
+            {turns.map((turn, index) => {
+              const last = index === turns.length - 1;
               return (
                 <TurnCard
                   key={turn.id}
@@ -151,6 +272,8 @@ export function AssistantScreen() {
                   onRetry={() => assistant.retry(turn.id)}
                   onCancel={assistant.cancel}
                   onAskAgain={() => assistant.ask(turn.question)}
+                  followUps={last && turn.state === "answered" ? (turn.answer?.follow_ups ?? []) : []}
+                  onFollowUp={(question) => submit(question)}
                 />
               );
             })}
@@ -192,7 +315,15 @@ export function AssistantScreen() {
                 voice.reset();
               }}
             />
-            {premium.premium ? (
+            {advisor ? (
+              <p className="mt-2 text-center text-xs text-ink-soft">
+                FinBoy answers from your records, remembers what you tell it (
+                <Link href="/memory" className="font-semibold text-ink underline underline-offset-2">
+                  Memory
+                </Link>
+                ) and never picks funds or stocks.
+              </p>
+            ) : premium.premium ? (
               <p className="mt-2 text-center text-xs text-ink-soft">
                 FinBoy answers from your confirmed records and never picks funds or stocks.
               </p>
@@ -210,7 +341,7 @@ export function AssistantScreen() {
 
         {empty && (
           <ul aria-label="Suggested questions" className="mt-6 flex flex-wrap justify-center gap-2">
-            {SUGGESTIONS.map((suggestion, index) => (
+            {suggestions.map((suggestion, index) => (
               <li key={suggestion.text} className="rise-in" style={{ animationDelay: `${200 + index * 60}ms` }}>
                 <button
                   type="button"

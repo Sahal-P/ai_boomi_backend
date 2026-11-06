@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown, CircleUserRound, Inbox, Keyboard, LogOut, ShieldCheck, Sparkles } from "lucide-react";
+import { Brain, ChevronsUpDown, CircleUserRound, Inbox, Keyboard, LogOut, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { GuardedLink } from "@/components/app-shell/guarded-link";
@@ -150,7 +150,7 @@ function GlassLookChoice() {
 
 /** Sources, Privacy & data, shortcuts, the glass look and sign-out: one menu on phones and desktop. */
 function AccountItems({ signOut }: { signOut: ReturnType<typeof useGuardedSignOut> }) {
-  const { required, household, plan } = useHouseholdAccess();
+  const { required, household, plan, advisor } = useHouseholdAccess();
   return (
     <>
       <DropdownMenuLabel className="px-2 py-1.5">
@@ -177,6 +177,13 @@ function AccountItems({ signOut }: { signOut: ReturnType<typeof useGuardedSignOu
           <Inbox aria-hidden="true" /> Sources
         </GuardedLink>
       </DropdownMenuItem>
+      {advisor && (
+        <DropdownMenuItem asChild className="min-h-11 px-2">
+          <GuardedLink href="/memory">
+            <Brain aria-hidden="true" /> Memory
+          </GuardedLink>
+        </DropdownMenuItem>
+      )}
       <DropdownMenuItem asChild className="min-h-11 px-2">
         <GuardedLink href="/privacy">
           <ShieldCheck aria-hidden="true" /> Privacy &amp; data

@@ -28,6 +28,9 @@ class JsonFormatter(logging.Formatter):
             "outcome",
             "model",
             "latency_ms",
+            # Advisor: tool names it called and how many memories changed, never their content.
+            "tools",
+            "memory_changes",
             # Billing: FinBoy's own payment ID and PayU's short outcome code, never its message.
             "payment_id",
             "code",

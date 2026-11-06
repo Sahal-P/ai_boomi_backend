@@ -180,7 +180,13 @@ export type Scenario = {
   plan?: PlanName;
   /** Admin round: the admin panel's own double (e2e/support/fake-admin-api.ts). */
   admin?: AdminScenario;
+  /** Advisor round: Ask for everyone, kept chats and the Memory page (ADVISOR_ENABLED). */
+  advisor?: boolean;
 };
+
+type ChatMessage = { id: string; role: "user" | "assistant"; text: string; language: "en" | "hi" | "ml"; created_at: string };
+type Chat = { id: string; channel: "web" | "whatsapp"; title: string; started_at: string; last_at: string; messages: ChatMessage[] };
+type MemoryRow = { id: string; kind: string; text: string; source: "web" | "whatsapp" | "user"; created_at: string; updated_at: string };
 
 /** One synthetic statement row: invented payees, a made-up bank and UPI IDs. */
 type StatementRow = { name: string; rupees: number; day: string; direction?: Direction; category?: string };
@@ -237,6 +243,11 @@ export class FakeFinBoyApi {
   selfServe: boolean;
   login: { state: "pending" | "confirmed" | "declined" | "used"; purpose: string } | null = null;
   statementImport: boolean;
+  advisor: boolean;
+  chats: Chat[] = [];
+  memories: MemoryRow[] = [];
+  memoryEnabled = true;
+  private advisorIds = 0;
   /** What the next uploaded statement turns out to be; errors use failNext on /imports/gpay. */
   statementOutcome: "imported" | "mismatch" = "imported";
   plan: Json | null;
@@ -256,6 +267,7 @@ export class FakeFinBoyApi {
     this.signupOpen = scenario.signupOpen ?? true;
     this.selfServe = scenario.selfServe ?? false;
     this.statementImport = scenario.statementImport ?? false;
+    this.advisor = scenario.advisor ?? false;
     this.plan = scenario.plan ? planFixture(scenario.plan) : null;
     const status = scenario.connection ?? "active";
     this.connection =
@@ -470,7 +482,9 @@ export class FakeFinBoyApi {
     const ok = (value: unknown, status = 200): FakeResponse => ({ status, body: value });
     let match: RegExpMatchArray | null;
     if (path === "/api/v1/health") return ok({ service: "finboy-api", version: "0.1.0", status: "ok", database: "connected" });
-    if (this.plan?.premium === false && PREMIUM_ROUTES.has(path)) return envelope(402, "premium_required");
+    // With the advisor on, typed questions are for every household (docs/advisor-round).
+    const premiumOnly = PREMIUM_ROUTES.has(path) && !(this.advisor && path === "/api/v1/assistant/ask");
+    if (this.plan?.premium === false && premiumOnly) return envelope(402, "premium_required");
     if (path.startsWith("/api/v1/billing/")) return this.billing(method, path, body);
     if (path === "/api/v1/auth/session") {
       const authenticated = !this.authRequired || this.signedIn;
@@ -492,6 +506,7 @@ export class FakeFinBoyApi {
         },
         statement_import: this.statementImport,
         plan: this.plan,
+        advisor: this.advisor,
       });
     }
     if (path === "/api/v1/auth/whatsapp/start" && method === "POST" && this.whatsapp) {
@@ -621,6 +636,10 @@ export class FakeFinBoyApi {
     if (path === "/api/v1/privacy/task-outcomes") {
       this.requests.push({ method: "OUTCOME", path, body });
       return ok({ status: "ok" });
+    }
+    if (this.advisor && (path.startsWith("/api/v1/assistant/") || path.startsWith("/api/v1/memory"))) {
+      const advised = this.advisorRoute(method, path, body);
+      if (advised) return advised;
     }
     if (path === "/api/v1/assistant/ask") return this.ask(body);
     if (path === "/api/v1/assistant/speak") return this.speak();
@@ -1325,6 +1344,126 @@ export class FakeFinBoyApi {
         data_version: String(this.version),
         dataset: "household",
         resolved_period: { start: "2026-10-01", end: "2026-10-31", label: "2026-10-01 – 2026-10-31" },
+      },
+    };
+  }
+
+  // ── Advisor (docs/advisor-round/contract.md) ───────────────────────────────
+  private nextAdvisorId(prefix: string) {
+    this.advisorIds += 1;
+    return `${prefix}-0000-4000-8000-${String(this.advisorIds).padStart(12, "0")}`;
+  }
+
+  private advisorRoute(method: string, path: string, body: Json): FakeResponse | null {
+    const ok = (value: unknown, status = 200): FakeResponse => ({ status, body: value });
+    const summary = (chat: Chat) => ({
+      id: chat.id,
+      channel: chat.channel,
+      title: chat.title,
+      started_at: chat.started_at,
+      last_at: chat.last_at,
+      messages: chat.messages.length,
+    });
+    let match: RegExpMatchArray | null;
+    if (path === "/api/v1/assistant/ask" && method === "POST") return this.advise(body);
+    if (path === "/api/v1/assistant/suggestions") {
+      return ok({ suggestions: ["How much is left in my food and dining budget?", "Who do I pay the most?"] });
+    }
+    if (path === "/api/v1/assistant/threads" && method === "GET") return ok({ threads: this.chats.map(summary) });
+    if (path === "/api/v1/assistant/threads" && method === "DELETE") {
+      const deleted = this.chats.length;
+      this.chats = [];
+      return ok({ deleted });
+    }
+    if ((match = path.match(/^\/api\/v1\/assistant\/threads\/([^/]+)$/))) {
+      const chat = this.chats.find((item) => item.id === match?.[1]);
+      if (!chat) return envelope(404, "thread_not_found");
+      if (method === "DELETE") {
+        this.chats = this.chats.filter((item) => item !== chat);
+        return { status: 204 };
+      }
+      return ok({ thread: summary(chat), messages: chat.messages });
+    }
+    if (path === "/api/v1/memory" && method === "GET") {
+      return ok({ enabled: this.memoryEnabled, limit: 80, memories: this.memories, chats: this.chats.length });
+    }
+    if (path === "/api/v1/memory" && method === "DELETE") {
+      const deleted = this.memories.length;
+      this.memories = [];
+      return ok({ deleted });
+    }
+    if (path === "/api/v1/memory/settings" && method === "PUT") {
+      if (typeof body.enabled !== "boolean") return envelope(422, "validation_error");
+      this.memoryEnabled = body.enabled;
+      return ok({ enabled: this.memoryEnabled });
+    }
+    if ((match = path.match(/^\/api\/v1\/memory\/([^/]+)$/))) {
+      const row = this.memories.find((item) => item.id === match?.[1]);
+      if (!row) return envelope(404, "memory_not_found");
+      if (method === "DELETE") {
+        this.memories = this.memories.filter((item) => item !== row);
+        return { status: 204 };
+      }
+      if (method === "PATCH") {
+        const text = String(body.text ?? "").trim();
+        if (!text || /\bpin\b|\botp\b/i.test(text)) return envelope(422, "invalid_memory");
+        Object.assign(row, { text, updated_at: NOW });
+        return ok(row);
+      }
+    }
+    return null;
+  }
+
+  /** A synthetic advisor: answers in the chat it is given, remembers on "remember". */
+  private advise(body: Json): FakeResponse {
+    const text = String(body.text ?? "");
+    if (text.includes("unavailable")) return envelope(503, "provider_unavailable");
+    let chat = this.chats.find((item) => item.id === body.thread_id);
+    if (body.thread_id && !chat) return envelope(404, "thread_not_found");
+    if (!chat) {
+      chat = { id: this.nextAdvisorId("a0000000"), channel: "web", title: text.slice(0, 80), started_at: NOW, last_at: NOW, messages: [] };
+      this.chats.unshift(chat);
+    }
+    const followUp = chat.messages.length > 0;
+    const remember = /remember/i.test(text) && this.memoryEnabled;
+    const reply = remember
+      ? "Got it — I'll remember that you're saving ₹40,000 for a bike."
+      : followUp
+        ? "Last month you spent ₹3,000 on food and dining."
+        : "You spent ₹4,200 on food and dining this month, ₹800 under your budget.";
+    const memory_changes = [];
+    if (remember) {
+      const row: MemoryRow = { id: this.nextAdvisorId("b0000000"), kind: "goal", text: "Saving ₹40,000 for a bike", source: "web", created_at: NOW, updated_at: NOW };
+      this.memories.unshift(row);
+      memory_changes.push({ action: "saved", text: row.text, id: row.id });
+    }
+    chat.messages.push(
+      { id: this.nextAdvisorId("c0000000"), role: "user", text, language: "en", created_at: NOW },
+      { id: this.nextAdvisorId("c0000000"), role: "assistant", text: reply, language: "en", created_at: NOW },
+    );
+    return {
+      status: 200,
+      body: {
+        intent: "advisor",
+        policy: "answer",
+        display_text: reply,
+        speech_text: reply,
+        speech_language: "en",
+        display_language: "en",
+        display_script: "Latn",
+        facts: [],
+        simulation: null,
+        evidence_transactions: [],
+        evidence_total: 0,
+        evidence_sampled: false,
+        warnings: [],
+        warning_labels: {},
+        data_version: String(this.version),
+        dataset: "household",
+        resolved_period: null,
+        thread_id: chat.id,
+        memory_changes,
+        follow_ups: followUp || remember ? [] : ["And last month?"],
       },
     };
   }

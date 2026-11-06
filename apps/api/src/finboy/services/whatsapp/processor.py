@@ -21,6 +21,7 @@ from finboy.db.models.whatsapp import (
     WhatsAppReceipt,
 )
 from finboy.services.accounts import households, login, usage
+from finboy.services.advisor import service as advisor
 from finboy.services.assistant import service as assistant
 from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
@@ -363,12 +364,23 @@ def process_question(
                     text = transcript.transcript
                 if not 1 <= len(text.strip()) <= 2000:
                     raise ProviderUnavailable("invalid_audio")
-                answer = assistant.answer_question(
-                    session,
-                    user_id=binding.user_id,
-                    text=text,
-                    display_style=preferred or "auto",
-                    settings=settings,
+                answer = (
+                    advisor.advise(
+                        session,
+                        user_id=binding.user_id,
+                        text=text,
+                        display_style=preferred or "auto",
+                        channel="whatsapp",
+                        settings=settings,
+                    )
+                    if settings.advisor_enabled
+                    else assistant.answer_question(
+                        session,
+                        user_id=binding.user_id,
+                        text=text,
+                        display_style=preferred or "auto",
+                        settings=settings,
+                    )
                 )
             except (ProviderUnavailable, MetaUnavailable, InvalidAudio) as exc:
                 code = (

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.db.models.accounts import LoginRequest, UsageCounter, UserIdentity
+from finboy.db.models.advisor import AdvisorMessage, AdvisorThread, HouseholdMemory
 from finboy.db.models.billing import BillingProfile, Subscription
 from finboy.db.models.core import User
 from finboy.db.models.ledger import (
@@ -119,7 +120,8 @@ def mask_number(number: str) -> str:
 
 
 def remove_household_data(session: Session, user_id: UUID) -> dict[str, int]:
-    """Delete one household's records, sources, dues and WhatsApp state. Audit history stays."""
+    """Delete one household's records, sources, dues, chats, memories and WhatsApp state. Audit
+    history stays."""
     transactions = select(Transaction.id).where(Transaction.user_id == user_id)
     counts: dict[str, int] = {}
 
@@ -128,6 +130,10 @@ def remove_household_data(session: Session, user_id: UUID) -> dict[str, int]:
 
     # Bindings cascade to prompts, reminders, check-ins, receipts and deliveries.
     remove("whatsapp_bindings", delete(WhatsAppBinding).where(WhatsAppBinding.user_id == user_id))
+    # Chats with the advisor and its memories (docs/advisor-round/contract.md).
+    remove("advisor_messages", delete(AdvisorMessage).where(AdvisorMessage.user_id == user_id))
+    remove("advisor_threads", delete(AdvisorThread).where(AdvisorThread.user_id == user_id))
+    remove("household_memories", delete(HouseholdMemory).where(HouseholdMemory.user_id == user_id))
     remove("budgets", delete(Budget).where(Budget.user_id == user_id))
     remove(
         "merchant_categories", delete(MerchantCategory).where(MerchantCategory.user_id == user_id)

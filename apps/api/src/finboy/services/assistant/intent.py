@@ -353,7 +353,7 @@ def rule_intent(text: str) -> ParsedIntent:
     q = normalized(text)
     if re.search(r"[$€£]|\b(usd|eur|dollars?|pounds?)\b", q):
         return ParsedIntent(intent="clarification")
-    security_request = re.search(r"\b(stock|fund|share|portfolio)\b", q) and re.search(
+    security_request = re.search(r"\b(stocks?|funds?|shares?|portfolios?)\b", q) and re.search(
         r"\b(buy|sell|recommend|choose|pick|allocate|best)\b", q
     )
     if contains(q, ADVICE) or security_request:
@@ -455,8 +455,11 @@ def parse_intent(
     *,
     display_style: str = "en",
     speech_language: Language = "en",
+    rules_only: bool = False,
 ) -> ParsedIntent:
     fallback = rule_intent(text)
+    if rules_only:
+        return fallback
     if not settings.openai_api_key or not settings.openai_assistant_model:
         if settings.environment == "production":
             raise ProviderUnavailable("configuration_missing")

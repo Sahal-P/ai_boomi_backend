@@ -33,3 +33,5 @@ class User(Base):
     suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # How much the household wants to keep each month (docs/money-manager-round/contract.md).
     monthly_savings_goal_minor: Mapped[int | None] = mapped_column(BigInteger)
+    # The advisor reads and writes its memory only while this is on (docs/advisor-round).
+    memory_enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))

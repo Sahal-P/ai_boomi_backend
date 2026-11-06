@@ -122,6 +122,15 @@ snapshots derived from deleted evidence are removed; operational audit is preser
 outcomes use fixed allowlisted events and IDs in the existing audit table, with no
 question text, merchant, amount, mail content, credential URL or external analytics.
 
+### Advisor (advisor round)
+
+`services/advisor` is the money coach behind Ask on the web and WhatsApp
+([contract](advisor-round/contract.md)): an OpenAI tool loop over read-only money-engine tools
+(`tools.py`), a preloaded household snapshot (`snapshot.py`), long-term memory (`memory.py`),
+kept chats with background summaries (`history.py`, `summaries.py`), a figure check against
+FinBoy's own numbers (`grounding.py`) and the keyword rules as fallback. `ADVISOR_ENABLED` turns it
+on; without it Ask answers as before.
+
 ## Frontend and verification ownership
 
 Presentational components consume runtime-validated domain clients under `src/lib/api`

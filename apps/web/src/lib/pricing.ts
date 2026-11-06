@@ -7,12 +7,14 @@ export const FREE_FEATURES = [
   "Home, Transactions and Reports",
   "Budgets and a savings goal",
   "“Today”, “this week” and “this month” check-ups on WhatsApp",
+  // Advisor round (docs/advisor-round/contract.md): asking is for every household.
+  "Ask FinBoy about your money, with answers from your own records",
+  "FinBoy remembers your goals and plans, and you can see or delete what it keeps",
 ] as const;
 
 export const PREMIUM_FEATURES = [
   "Everything in Free",
   "Voice notes and spoken replies, in English, Hindi and Malayalam",
-  "Ask FinBoy about your money, with answers from your own records",
   "Photos of bills and UPI screenshots, read for you",
   "Months of history from a Google Pay statement",
 ] as const;

@@ -33,6 +33,7 @@ export function HouseholdGate({ children }: { children: ReactNode }) {
         household: session.household,
         signIn: session.signIn,
         statementImport: session.statementImport,
+        advisor: session.advisor,
         plan: session.plan,
         refresh: session.refresh,
         updatePlan: session.updatePlan,

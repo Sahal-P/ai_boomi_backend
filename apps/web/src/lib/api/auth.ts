@@ -32,6 +32,8 @@ export const sessionSchema = z.object({
   sign_in: signInSchema,
   /** Google Pay statement import; older servers don't send it. */
   statement_import: z.boolean().default(false),
+  // The advisor with chats and memory (docs/advisor-round/contract.md); off until released.
+  advisor: z.boolean().default(false),
   /** FinBoy Premium; null while billing is off, when every household has everything. */
   plan: planSchema.nullable().default(null),
 });

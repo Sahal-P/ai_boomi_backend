@@ -270,3 +270,19 @@ accessibility fallback still hold. After "it doesn't feel like Liquid Glass", a 
 the app a wallpaper with colour and shape (`bg-wallpaper`; the landing keeps its field), widget-glass
 cards without backdrop filters, a floating desktop toolbar for page actions, a gliding sidebar
 highlight and pointer light, as the contract's *Second pass* records.
+
+## Advisor round — 7 November 2026
+
+From main 42b1a53 the human asked for the best AI advisor with a personalised experience and
+long-term memory like ChatGPT's, said privacy is not a blocker, chose a money coach (never a fund,
+stock or other product pick) and made the advisor and memory free for every household. Ask reads
+the household's records through read-only money-engine tools, every figure it writes is checked
+against FinBoy's own numbers, and the keyword rules answer when the model fails. Chats with FinBoy
+and saved memories are kept until the household deletes them (Memory page, WhatsApp commands,
+erasure); the privacy policy says so. `docs/advisor-round/contract.md` supersedes "Ask stores
+nothing", "never store messages/transcripts" (for advisor questions and answers only), "model
+output never selects tools", "no generated figures", the Premium gate on Ask and the template
+fast path for questions, only as documented there. One agent on feat/finboy-advisor, loopback
+8101/3101, disposable finboy_advisor, migration `0015_advisor`. `ADVISOR_ENABLED` stays false
+until `pnpm eval:advisor` passes live and the human approves the release. Audio, photos,
+screenshots and diary messages are still never stored; admins never see chats or memories.

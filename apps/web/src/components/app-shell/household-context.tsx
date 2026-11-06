@@ -9,13 +9,15 @@ import type { Plan } from "@/lib/api/billing";
  * household signs in (masked); `signIn` is the server's public sign-in configuration;
  * `statementImport` says whether Google Pay statements can be imported. `plan` is FinBoy Premium
  * (null while billing is off, when every household has everything); `refresh` re-reads the session
- * after a payment and `updatePlan` applies a plan the API just returned.
+ * after a payment and `updatePlan` applies a plan the API just returned. `advisor` turns on the
+ * advisor round: Ask for every household, its chats and the Memory page.
  */
 export const HouseholdContext = createContext<{
   required: boolean;
   household: Household | null;
   signIn: SessionView["sign_in"] | null;
   statementImport: boolean;
+  advisor: boolean;
   plan: Plan | null;
   refresh: () => Promise<void>;
   updatePlan: (plan: Plan) => void;
@@ -24,6 +26,7 @@ export const HouseholdContext = createContext<{
   household: null,
   signIn: null,
   statementImport: false,
+  advisor: false,
   plan: null,
   refresh: async () => {},
   updatePlan: () => {},

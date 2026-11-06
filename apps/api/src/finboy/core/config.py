@@ -109,6 +109,20 @@ class Settings(BaseSettings):
     # monthly check-in (name only). Unset means it is neither offered nor sent.
     whatsapp_checkin_template: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,64}$")
 
+    # Advisor round (docs/advisor-round/contract.md): one money coach on the web and WhatsApp that
+    # reads the household's records through read-only tools, keeps its chats and remembers what
+    # matters. Off until the human releases it; Ask then answers as before.
+    advisor_enabled: bool = False
+    # Defaults to OPENAI_ASSISTANT_MODEL; set only after a live capability check.
+    openai_advisor_model: str | None = None
+    advisor_reasoning_effort: Literal["none", "minimal", "low", "medium", "high"] = "low"
+    advisor_timeout_seconds: float = Field(default=20, ge=1, le=60)
+    advisor_max_tool_rounds: int = Field(default=4, ge=1, le=8)
+    advisor_history_turns: int = Field(default=8, ge=0, le=30)
+    # Kept per household; the most relevant `advisor_memory_prompt` of them reach each answer.
+    advisor_memory_limit: int = Field(default=80, ge=1, le=1000)
+    advisor_memory_prompt: int = Field(default=40, ge=5, le=200)
+
     # Statement round (docs/statement-round/contract.md): Google Pay statement imports on the web
     # and by WhatsApp document. Off until the human enables it; the web reads it from the session.
     statement_import_enabled: bool = False
@@ -171,6 +185,7 @@ class Settings(BaseSettings):
         "openai_assistant_model",
         "openai_transcribe_model",
         "openai_vision_model",
+        "openai_advisor_model",
         "groq_api_key",
         "groq_transcribe_model",
         "sarvam_api_key",
@@ -314,6 +329,10 @@ class Settings(BaseSettings):
             ):
                 raise ValueError("CORS_ORIGINS must contain origins without paths or credentials")
         return values
+
+    @property
+    def advisor_model(self) -> str | None:
+        return self.openai_advisor_model or self.openai_assistant_model
 
     @property
     def allowed_origins(self) -> list[str]:

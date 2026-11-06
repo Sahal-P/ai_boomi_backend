@@ -2,6 +2,7 @@
 
 from datetime import date
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,6 +25,15 @@ class ResolvedPeriod(BaseModel):
     label: str
 
 
+class MemoryChange(BaseModel):
+    """A memory the advisor saved, updated or forgot while answering (docs/advisor-round)."""
+
+    model_config = ConfigDict(extra="forbid")
+    action: Literal["saved", "updated", "forgotten"]
+    text: str
+    id: UUID | None = None
+
+
 class AssistantAnswer(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     data_version: str = "0"
@@ -43,6 +53,10 @@ class AssistantAnswer(BaseModel):
     simulation: CashFlowSimulation | None
     evidence_transactions: list[TransactionView]
     warnings: list[str]
+    # Advisor round (additive): the chat this answer belongs to, memory changes and follow-ups.
+    thread_id: UUID | None = None
+    memory_changes: list[MemoryChange] = Field(default_factory=list)
+    follow_ups: list[str] = Field(default_factory=list)
 
 
 class AskRequest(BaseModel):
@@ -50,6 +64,8 @@ class AskRequest(BaseModel):
     include_overdue_line: bool = Field(default=False, strict=True)
     text: str = Field(min_length=1, max_length=2000)
     display_style: DisplayStyle = "auto"
+    # Continue this chat (advisor round); omitted starts a new one on the web.
+    thread_id: UUID | None = None
 
 
 class SpeakRequest(BaseModel):

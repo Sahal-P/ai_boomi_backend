@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Copy, Pause, Play, RotateCcw, Square, Volume2 } from "lucide-react";
+import { Brain, Check, ChevronDown, Copy, Pause, Play, RotateCcw, Square, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { RevealText } from "@/components/assistant/reveal-text";
@@ -11,7 +11,7 @@ import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { RecordAmount } from "@/components/records/record-bits";
 import { Button } from "@/components/ui/button";
 import type { Playback } from "@/hooks/use-speech";
-import { displayLang, SPEECH_LIMITS, type DisplayStyle } from "@/lib/api/assistant";
+import { displayLang, SPEECH_LIMITS, type DisplayStyle, type MemoryChange } from "@/lib/api/assistant";
 import { formatMoney } from "@/lib/api/money";
 import { recordOutcome } from "@/lib/api/privacy";
 import type { Turn } from "@/lib/conversation";
@@ -68,6 +68,31 @@ function Thinking({ askedAt, onCancel }: { askedAt: number; onCancel: () => void
   );
 }
 
+const memoryVerb: Record<MemoryChange["action"], string> = {
+  saved: "Saved to memory",
+  updated: "Memory updated",
+  forgotten: "Forgotten",
+};
+
+/** What the advisor saved or forgot while answering, with a way to manage it. */
+function MemoryNote({ changes }: { changes: MemoryChange[] }) {
+  return (
+    <div className="flex flex-wrap items-start gap-2 rounded-2xl bg-white/45 px-3 py-2 text-sm ring-1 ring-ink/5" lang="en">
+      <Brain className="mt-0.5 size-4 shrink-0 text-ink-soft" aria-hidden="true" />
+      <ul className="min-w-0 flex-1 space-y-0.5">
+        {changes.map((change, index) => (
+          <li key={`${change.action}-${index}`} className="break-words">
+            <span className="font-semibold">{memoryVerb[change.action]}:</span> {change.text}
+          </li>
+        ))}
+      </ul>
+      <Link href="/memory" className="shrink-0 font-semibold text-ink underline underline-offset-2">
+        Manage
+      </Link>
+    </div>
+  );
+}
+
 /** One exchange: your question as a bubble, FinBoy's answer beside its mark. */
 export function TurnCard({
   turn,
@@ -80,6 +105,8 @@ export function TurnCard({
   onCancel,
   onAskAgain,
   busy,
+  followUps = [],
+  onFollowUp,
 }: {
   turn: Turn;
   currentStyle: DisplayStyle;
@@ -91,6 +118,9 @@ export function TurnCard({
   onCancel: () => void;
   onAskAgain: () => void;
   busy: boolean;
+  /** Suggested next questions, shown under the latest answer only. */
+  followUps?: string[];
+  onFollowUp?: (question: string) => void;
 }) {
   const answer = turn.answer;
   // Reveal word by word only an answer that arrives while you watch, not one you come back to.
@@ -195,8 +225,10 @@ export function TurnCard({
                 </details>
               )}
 
+              {answer.memory_changes.length > 0 && <MemoryNote changes={answer.memory_changes} />}
+
               <div className="-ml-2 flex flex-wrap items-center gap-1">
-                {answer.speech_text.length > SPEECH_LIMITS.characters ? (
+                {!answer.speech_text ? null : answer.speech_text.length > SPEECH_LIMITS.characters ? (
                   <p className="px-2 text-xs text-ink-soft">{copy.tooLong}</p>
                 ) : mine && playback.step === "preparing" ? (
                   <>
@@ -235,6 +267,22 @@ export function TurnCard({
                 )}
               </div>
               {mine && playback.step === "failed" && <ProblemNotice problem={playback.problem} />}
+              {followUps.length > 0 && onFollowUp && (
+                <ul aria-label="Ask next" className="flex flex-wrap gap-2">
+                  {followUps.map((question) => (
+                    <li key={question}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => onFollowUp(question)}
+                        className="surface inline-flex min-h-11 items-center rounded-full px-4 py-2 text-left text-sm text-ink transition-[transform,background-color] duration-300 ease-out-expo hover:-translate-y-px hover:bg-white/80 disabled:opacity-50"
+                      >
+                        {question}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </div>

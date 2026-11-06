@@ -11,6 +11,7 @@ from finboy.api.v1.demo import router as demo_router
 from finboy.api.v1.entries import router as entries_router
 from finboy.api.v1.health import router as health_router
 from finboy.api.v1.imports import router as imports_router
+from finboy.api.v1.memory import router as memory_router
 from finboy.api.v1.money import router as money_router
 from finboy.api.v1.privacy import router as privacy_router
 from finboy.api.v1.readiness import router as readiness_router
@@ -24,6 +25,7 @@ api_router.include_router(connections_router)
 api_router.include_router(imports_router)
 api_router.include_router(privacy_router)
 api_router.include_router(assistant_router)
+api_router.include_router(memory_router)
 api_router.include_router(money_router)
 api_router.include_router(budgets_router)
 api_router.include_router(transactions_router)

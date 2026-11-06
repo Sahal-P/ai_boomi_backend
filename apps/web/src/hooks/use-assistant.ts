@@ -1,9 +1,20 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { askQuestion, styles, type DisplayStyle } from "@/lib/api/assistant";
+import { askQuestion, getThread, styles, type DisplayStyle } from "@/lib/api/assistant";
 import { isAbort } from "@/lib/api/http";
-import { addTurn, clearTurns, getServerTurns, getTurns, subscribeTurns, updateTurn } from "@/lib/conversation";
+import { historyTurns } from "@/lib/chat-history";
+import {
+  addTurn,
+  clearTurns,
+  getServerTurns,
+  getThreadId,
+  getTurns,
+  replaceTurns,
+  setThreadId,
+  subscribeTurns,
+  updateTurn,
+} from "@/lib/conversation";
 import { describeProblem } from "@/lib/messages";
 
 // The request in flight is module-scoped so an answer still arrives if you open its evidence
@@ -43,7 +54,9 @@ async function run(id: string, question: string, style: DisplayStyle) {
   const controller = new AbortController();
   inflight = { id, controller };
   try {
-    const answer = await askQuestion(question, style, controller.signal);
+    const answer = await askQuestion(question, style, controller.signal, getThreadId());
+    // The advisor keeps the chat on the server; the next question continues it.
+    if (answer.thread_id) setThreadId(answer.thread_id);
     updateTurn(id, { state: "answered", answer, problem: null });
   } catch (error) {
     if (isAbort(error) || controller.signal.aborted) updateTurn(id, { state: "cancelled" });
@@ -80,6 +93,12 @@ export function useAssistant() {
     clear() {
       inflight?.controller.abort();
       clearTurns();
+    },
+    /** Reopens an earlier chat from the server; the next question continues it. */
+    async open(threadId: string) {
+      inflight?.controller.abort();
+      const chat = await getThread(threadId);
+      replaceTurns(historyTurns(chat.messages, chat.thread.id), chat.thread.id);
     },
   };
 }

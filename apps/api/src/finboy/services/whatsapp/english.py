@@ -519,3 +519,16 @@ TRIAL_OVER = (
 RENEWAL_FAILED = (
     "⚠️ Your FinBoy Premium payment didn't go through. Pay here to keep Premium:\n{link}"
 )
+
+# Advisor round (docs/advisor-round/contract.md): memory and chat commands.
+MEMORY_UPDATED = "📝 Saved to memory"
+MEMORY_OFF = (
+    "🧠 Memory is off. I won't use or save anything about you.\n"
+    'Send "memory on" to turn it back on.'
+)
+MEMORY_ON = (
+    "🧠 Memory is on. I'll remember what helps, like your goals and plans.\n"
+    'Send "memory off" to stop.'
+)
+MEMORY_FORGOTTEN = "🗑️ Done. I've forgotten everything I remembered about you."
+CHATS_CLEARED = "🗑️ Done. Your chat history with FinBoy is cleared."

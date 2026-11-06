@@ -46,6 +46,7 @@ def assembled_app(monkeypatch):
         "finboy_signup",
         "finboy_billing",
         "finboy_admin",
+        "finboy_advisor",
         "finboy_test",
     }, "Use integration disposable DB"
     user = uuid4()

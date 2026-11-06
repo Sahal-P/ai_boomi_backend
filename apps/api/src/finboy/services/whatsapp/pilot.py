@@ -29,6 +29,7 @@ from finboy.db.models.core import User
 from finboy.db.models.ledger import Commitment, EmailSource, SourceEvent, Transaction
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt, WhatsAppReceipt
 from finboy.services.accounts import households
+from finboy.services.advisor import service as advisor
 from finboy.services.assistant import service as assistant
 from finboy.services.assistant.language import money
 from finboy.services.ingestion.hindi_numbers import parse_amount
@@ -52,6 +53,7 @@ from finboy.services.whatsapp import (
     reminders,
     statement,
 )
+from finboy.services.whatsapp import memory as memory_commands
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
 from finboy.services.whatsapp.meta import InvalidMedia, Listing, MetaClient, MetaUnavailable
@@ -198,6 +200,10 @@ def _handle(conversation: Conversation) -> str | None:
     summary = cfo.asked(text)
     if summary is not None:
         return summary(conversation)
+    advising = conversation.settings.advisor_enabled
+    command = memory_commands.command(text) if advising else None
+    if command is not None:
+        return command(conversation)
     change = prompts.pending_change(conversation.session, binding)
     if change is not None:
         return _changed_amount(conversation, change, text)
@@ -214,6 +220,10 @@ def _handle(conversation: Conversation) -> str | None:
     reading = readings[0]
     if reading.kind == "question" and reading.checkup is not None:
         return cfo.CHECKUPS[reading.checkup](conversation)
+    if advising and reading.kind in {"question", "unclear"}:
+        # The advisor answers questions and everyday chat for every household, and remembers
+        # what matters ("I'm saving for a bike"); see docs/advisor-round/contract.md.
+        return _advise(conversation, text)
     if reading.kind == "question":
         # AI answers are Premium; the check-ups above stay free (docs/subscription-round).
         if not premium.allowed(conversation):
@@ -907,6 +917,35 @@ def _answer(conversation: Conversation, text: str) -> str | None:
         )
     conversation.heard = answer.speech_language
     response = phone_text(answer.display_text)
+    sent = conversation.send(response if len(response) <= 4096 else conversation.words.UNAVAILABLE)
+    if sent and 1 <= len(answer.speech_text) <= 600:
+        conversation.speak(answer.speech_text, answer.speech_language)
+    return conversation.done(sent)
+
+
+def _advise(conversation: Conversation, text: str) -> str | None:
+    """The advisor: the household's own figures, its memories and this chat, in its language."""
+    from finboy.services.whatsapp.processor import phone_text
+
+    session, binding = conversation.session, conversation.binding
+    try:
+        answer = advisor.advise(
+            session,
+            user_id=binding.user_id,
+            text=text,
+            display_style=binding.language or "auto",  # type: ignore[arg-type]
+            channel="whatsapp",
+            settings=conversation.settings,
+        )
+    except ProviderUnavailable, ValueError:
+        session.rollback()
+        return conversation.done(
+            conversation.send(conversation.words.UNAVAILABLE), "assistant_unavailable"
+        )
+    conversation.heard = answer.speech_language
+    response = phone_text(answer.display_text)
+    if any(change.action != "forgotten" for change in answer.memory_changes):
+        response += "\n\n" + conversation.words.MEMORY_UPDATED
     sent = conversation.send(response if len(response) <= 4096 else conversation.words.UNAVAILABLE)
     if sent and 1 <= len(answer.speech_text) <= 600:
         conversation.speak(answer.speech_text, answer.speech_language)

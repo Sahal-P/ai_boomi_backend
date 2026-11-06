@@ -204,6 +204,7 @@ def system(session: Session, settings: Settings) -> SystemStatus:
             "gmail": configured(providers.gmail(settings)),
             "whatsapp": providers.whatsapp(settings),
             "fast_decisions": providers.triage(settings),
+            "advisor": providers.advisor(settings),
             "payu": configured(bool(settings.payu_merchant_key and settings.payu_merchant_salt)),
             "email": configured(settings.resend_api_key is not None),
         },

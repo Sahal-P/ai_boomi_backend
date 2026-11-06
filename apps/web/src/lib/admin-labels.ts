@@ -113,6 +113,7 @@ export const providerLabels: Record<string, string> = {
   gmail: "Gmail",
   whatsapp: "WhatsApp",
   fast_decisions: "Fast decisions",
+  advisor: "Advisor and memory",
   payu: "PayU",
   email: "Email",
 };

@@ -31,6 +31,7 @@ class Readiness(BaseModel):
     malayalam_tts_configuration: Literal["configured", "missing"]
     whatsapp_configuration: Literal["disabled", "configured", "missing"]
     triage_configuration: Literal["off", "configured", "missing"]
+    advisor_configuration: Literal["off", "configured", "missing"] = "off"
     import_worker: Literal["in_process_not_durable"] = "in_process_not_durable"
     recorded_active_imports: int | None
     live_provider_acceptance: Literal["not_checked_by_readiness"] = "not_checked_by_readiness"
@@ -76,6 +77,7 @@ def readiness(
         else "missing",
         whatsapp_configuration=providers.whatsapp(settings),
         triage_configuration=providers.triage(settings),
+        advisor_configuration=providers.advisor(settings),
         recorded_active_imports=active,
     )
     response.status_code = 200 if result.status == "ready" else 503

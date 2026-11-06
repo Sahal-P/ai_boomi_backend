@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="5 November 2026">
+    <LegalPage title="Privacy Policy" updated="7 November 2026">
       <p>
         FinBoy helps you keep track of your own money: what came in, what went out and what is due.
         This page says exactly what we keep, what we never keep, and how to delete everything.
@@ -27,6 +27,16 @@ export default function PrivacyPolicyPage() {
           How you sign in: an encrypted copy of your WhatsApp number (shown to you masked, and used
           only for messages you ask for, like a place opening up or a reminder), or a one-way code that identifies your Google account plus a
           masked email like &ldquo;s***@***.com&rdquo;. We don&apos;t keep your name or photo.
+        </li>
+        <li>
+          Your chats with FinBoy, typed or spoken: the words of each question (a voice question is
+          kept as its text, never as audio) and FinBoy&apos;s answer, so you can pick up where you
+          left off on the website or WhatsApp.
+        </li>
+        <li>
+          What FinBoy remembers about you to give more personal answers, like your goals, who
+          people are to you or how your income comes. You can see, edit or delete each memory,
+          or turn memory off, on the Memory page.
         </li>
         <li>
           Records of your choices (confirm, change, undo), consent and reminder settings, daily
@@ -47,7 +57,10 @@ export default function PrivacyPolicyPage() {
 
       <h2>What we never keep</h2>
       <ul>
-        <li>Your WhatsApp messages, voice notes, photos or screenshots, or their transcripts.</li>
+        <li>
+          Your voice notes, photos or screenshots. Diary messages like &ldquo;chai 20&rdquo; are
+          kept only as the record you save, not as messages.
+        </li>
         <li>What you type or say to quick add — only the record you save.</li>
         <li>Full emails, login codes, Google sign-in tokens or passwords.</li>
         <li>Card numbers, UPI IDs, bank account details, PINs or OTPs. These stay with PayU and your bank.</li>
@@ -57,7 +70,8 @@ export default function PrivacyPolicyPage() {
       <p>
         To understand what you say or send, FinBoy uses these services, only for that request and
         without letting them keep or train on your data where they offer that choice: OpenAI
-        (reading text, screenshots and speech), Liquid AI (quickly telling what a message, question
+        (reading text, screenshots and speech, and answering your questions with the figures from
+        your records, the memories and the recent chat that each answer needs), Liquid AI (quickly telling what a message, question
         or photo is about, so common ones are answered sooner), Sarvam AI (speech in English, Hindi
         and Malayalam, and spoken Malayalam replies), Groq (speech in English and Hindi), Resemble
         and Google Gemini (spoken replies), Meta (delivering WhatsApp messages) and Google (sign-in
@@ -71,7 +85,8 @@ export default function PrivacyPolicyPage() {
         The few people who run FinBoy can see account activity, to keep the service working and to
         help you: when you joined and last used FinBoy, your plan and Premium payments, daily usage
         counts, whether messages were delivered, and whether WhatsApp or Google is linked. They
-        never see your records, amounts, who you paid, your messages or your phone number. They can
+        never see your records, amounts, who you paid, your messages, your chats with FinBoy, what
+        it remembers about you or your phone number. They can
         pause or erase an account, for example when you ask, and every such step is recorded.
       </p>
 
@@ -85,11 +100,16 @@ export default function PrivacyPolicyPage() {
 
       <h2>Your choices</h2>
       <ul>
-        <li>Export your records any time from Privacy &amp; data.</li>
+        <li>Export your records, chats and memories any time from Privacy &amp; data.</li>
+        <li>
+          On the Memory page, edit or delete what FinBoy remembers, turn memory off, or clear your
+          chat history. On WhatsApp, send &ldquo;memory off&rdquo;, &ldquo;forget everything&rdquo;
+          or &ldquo;clear chat history&rdquo;.
+        </li>
         <li>Send STOP on WhatsApp to stop all messages; send START to turn them back on.</li>
         <li>
           Delete your account from Privacy &amp; data → Delete my account. Your records, dues,
-          sign-ins, Gmail access, receipt contact details and AutoPay go at once; only a count of
+          chats, memories, sign-ins, Gmail access, receipt contact details and AutoPay go at once; only a count of
           account events and your payment records remain.
         </li>
       </ul>

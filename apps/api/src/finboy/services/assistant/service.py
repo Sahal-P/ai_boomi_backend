@@ -23,13 +23,27 @@ from finboy.services.ux.state import data_version
 
 
 def answer_question(
-    session: Session, *, user_id: UUID, text: str, display_style: DisplayStyle, settings: Settings
+    session: Session,
+    *,
+    user_id: UUID,
+    text: str,
+    display_style: DisplayStyle,
+    settings: Settings,
+    rules_only: bool = False,
 ) -> AssistantAnswer:
+    """`rules_only` answers from the keyword rules and templates with no model call: the
+    advisor's fallback when its model is unavailable (docs/advisor-round/contract.md)."""
     request = AskRequest(text=text, display_style=display_style)
     if not request.text.strip():
         raise ValueError("A question is required")
     style, language = resolve_style(request.text, request.display_style)
-    parsed = parse_intent(request.text, settings, display_style=style, speech_language=language)
+    parsed = parse_intent(
+        request.text,
+        settings,
+        display_style=style,
+        speech_language=language,
+        rules_only=rules_only,
+    )
     evidence_total = 0
     facts: list[AssistantFact] = []
     evidence: list[engine.TransactionView] = []

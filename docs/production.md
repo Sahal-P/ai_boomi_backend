@@ -709,3 +709,40 @@ temporary password shown once and must change it at first sign-in.
 **Rollback:** switch `current` back and restart `finboy.service`; the older API ignores the new
 tables. Migration `0014` is additive and its downgrade refuses while any admin account or
 suspended household remains, so the audit trail and a suspension never vanish silently.
+
+## Advisor release procedure
+
+`feat/finboy-advisor` ([contract](advisor-round/contract.md)) adds migration `0015_advisor` and no
+dependency. With `ADVISOR_ENABLED` unset, production behaves as before: Ask stays Premium and keeps
+nothing, WhatsApp questions use the earlier path, and no Memory page shows. Three things change
+regardless: an explicit pick of shares or stocks (plural too) is declined by the rules, readiness
+and the admin panel report `advisor`, and the public Free plan lists asking and memory. So release
+the web only together with `ADVISOR_ENABLED=true`.
+
+**Before release:**
+- `pnpm eval:advisor` passes live (three runs) with the production model on the development
+  machine, with its output recorded in the contract.
+- The human approves the release, and the Hindi and Malayalam copy has had a native read.
+
+**Release.** Backend first (validated backup, `alembic upgrade head` for `0015`, drift check),
+then add to `/etc/finboy/production.env` and restart `finboy.service` only, then push main:
+
+```
+ADVISOR_ENABLED=true
+```
+
+`OPENAI_ADVISOR_MODEL` stays unset (the assistant model answers) unless another model passes a
+live capability check and the gate.
+
+**Check:** signed in, `/api/v1/readiness` reports `advisor_configuration` as `configured`; the
+session reports `advisor: true`; the account menu shows Memory. The log shows `advisor.answered`
+with outcomes `answered`, `repaired` or `fallback` and its latency; nothing about questions,
+answers or figures is logged.
+
+**Rollback:** set `ADVISOR_ENABLED=false` and restart, then release the previous web. Chats and
+memories stay (export and erasure include them); migration `0015` refuses to downgrade while any
+remain.
+
+**Acceptance:** real questions, a follow-up, a remembered fact recalled in a later chat, and
+"forget everything" on the web and on WhatsApp in each language, recorded separately from these
+checks.

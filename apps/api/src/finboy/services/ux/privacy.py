@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from finboy.core.clock import now_ist
+from finboy.db.models.advisor import AdvisorMessage, AdvisorThread
 from finboy.db.models.ledger import (
     Commitment,
     EmailSource,
@@ -16,6 +17,7 @@ from finboy.db.models.ledger import (
     TransactionRevision,
 )
 from finboy.db.models.mail import MailConnection
+from finboy.services.advisor import memory
 from finboy.services.money.engine import commitment_view, transaction_views
 from finboy.services.money.models import RevisionView
 from finboy.services.privacy.audit import audit
@@ -112,6 +114,39 @@ def deletion_preview(session: Session, *, user_id: UUID, connection_id: UUID | N
     }
 
 
+def _chats(session: Session, user_id: UUID) -> list[dict]:
+    threads = session.scalars(
+        select(AdvisorThread)
+        .where(AdvisorThread.user_id == user_id)
+        .order_by(AdvisorThread.started_at, AdvisorThread.id)
+    )
+    chats = []
+    for thread in threads:
+        messages = session.scalars(
+            select(AdvisorMessage)
+            .where(AdvisorMessage.thread_id == thread.id)
+            .order_by(AdvisorMessage.created_at, AdvisorMessage.id)
+        )
+        chats.append(
+            {
+                "id": str(thread.id),
+                "channel": thread.channel,
+                "title": thread.title,
+                "started_at": thread.started_at.isoformat(),
+                "messages": [
+                    {
+                        "role": row.role,
+                        "text": row.text,
+                        "language": row.language,
+                        "created_at": row.created_at.isoformat(),
+                    }
+                    for row in messages
+                ],
+            }
+        )
+    return chats
+
+
 def export_records(session: Session, *, user_id: UUID) -> dict:
     rows = list(
         session.scalars(
@@ -169,6 +204,11 @@ def export_records(session: Session, *, user_id: UUID) -> dict:
             )
         ],
         "revisions": revisions,
+        # Advisor round: what FinBoy remembers and the household's chats with it.
+        "memories": [
+            memory.view(row).model_dump(mode="json") for row in memory.listed(session, user_id)
+        ],
+        "chats": _chats(session, user_id),
     }
     audit(session, "data.exported", "user", user_id, user_id=user_id)
     session.commit()

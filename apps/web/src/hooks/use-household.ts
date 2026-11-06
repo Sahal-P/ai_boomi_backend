@@ -58,6 +58,7 @@ export function useHouseholdSession() {
     household: view?.household ?? null,
     signIn: view?.sign_in ?? null,
     statementImport: view?.statement_import ?? false,
+    advisor: view?.advisor ?? false,
     plan: view?.plan ?? null,
     refresh,
     updatePlan,

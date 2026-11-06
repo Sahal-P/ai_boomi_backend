@@ -83,6 +83,8 @@ class SessionView(BaseModel):
     statement_import: bool = False
     # FinBoy Premium (docs/subscription-round/contract.md); null while billing is off.
     plan: PlanView | None = None
+    # The advisor with chats and memory (docs/advisor-round/contract.md); off until released.
+    advisor: bool = False
 
 
 class Started(BaseModel):
@@ -161,6 +163,7 @@ def session_view(request: Request, session: DB) -> SessionView:
         sign_in=options,
         statement_import=settings.statement_import_enabled,
         plan=plan,
+        advisor=settings.advisor_enabled,
     )
 
 

@@ -481,3 +481,15 @@ and the owner are always included):
 
 The pay link (`<WEB_APP_URL>/pay#<token>`) opens without sign-in in the same language and returns
 to a result page with **Back to WhatsApp**.
+
+## Advisor (7 November 2026)
+
+With `ADVISOR_ENABLED` ([contract](advisor-round/contract.md)), questions and everyday chat go to
+the advisor for every household, in the household's language: it answers from the household's own
+figures, keeps the conversation going for six quiet hours and remembers lasting facts ("I'm saving
+for a bike", "Ramesh is the milkman"). A reply adds "📝 Saved to memory" when it saved something.
+Money entries, dues, budgets, goals and the today / week / month check-ups work as before; voice
+notes, photos and statements stay Premium. Commands that need no model, in English, Hindi and
+Malayalam: "memory off" / "memory on" (मेमोरी बंद / चालू, മെമ്മറി ഓഫ് / ഓൺ), "forget everything"
+(सब भूल जाओ, എല്ലാം മറക്കൂ) and "clear chat history". The question's words and the answer are kept
+as the household's chat; audio and diary messages are not.

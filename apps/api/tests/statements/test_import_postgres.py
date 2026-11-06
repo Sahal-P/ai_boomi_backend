@@ -45,6 +45,7 @@ def world():
         "finboy_signup",
         "finboy_billing",
         "finboy_admin",
+        "finboy_advisor",
     }, "Use a local test database"
     factory = sessionmaker(engine, expire_on_commit=False)
     households = [uuid4(), uuid4()]

@@ -39,6 +39,7 @@ def factory(config: ChannelConfig) -> Iterator[sessionmaker[Session]]:
             "finboy_signup",
             "finboy_billing",
             "finboy_admin",
+            "finboy_advisor",
             "finboy_test",
         }
     ):

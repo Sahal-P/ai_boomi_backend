@@ -60,3 +60,10 @@ def triage(settings: Settings) -> Literal["off", "configured", "missing"]:
     if settings.liquid_api_key and settings.liquid_decision_model in DECISION_MODELS:
         return "configured"
     return "missing"
+
+
+def advisor(settings: Settings) -> Literal["off", "configured", "missing"]:
+    """The advisor round (docs/advisor-round/contract.md): its flag and model key."""
+    if not settings.advisor_enabled:
+        return "off"
+    return "configured" if settings.openai_api_key and settings.advisor_model else "missing"
