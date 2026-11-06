@@ -21,7 +21,7 @@ export function AdminLogin({ next }: { next: string }) {
   });
   const failed = login.problem?.code === "admin_login_failed";
   return (
-    <main className="bg-field grid min-h-dvh place-items-center px-4 py-10 sm:px-6">
+    <main className="bg-field bg-wallpaper grid min-h-dvh place-items-center px-4 py-10 sm:px-6">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-2">
           <Brand href="/" />

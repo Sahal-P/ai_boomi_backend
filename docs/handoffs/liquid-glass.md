@@ -89,6 +89,84 @@ Decisions and scope: [contract](../liquid-glass-round/contract.md); how it is dr
   Reduce Transparency, Increase Contrast and forced colours were checked by Playwright
   emulation only (the browser pane cannot emulate them).
 
+## Second pass — "it doesn't feel like Liquid Glass"
+
+The first pass was committed as `d736e60`. Shown desktop Reports, the human said it did not feel
+like Liquid Glass. The diagnosis: refraction was on (Chromium tier), but nothing had colour or
+shape behind any glass.
+
+- The sidebar bent a nearly flat grey field.
+- Nothing scrolled under glass on desktop.
+- The cards were opaque grey.
+
+The glass Apple shows reads as glass for two reasons: the wallpaper behind it (macOS Tahoe's
+Control Center modules are almost clear over wavy colour), and controls floating over content.
+Prototyped with injected CSS and full-resolution Chrome screenshots, then built:
+
+- **Wallpaper** (`bg-wallpaper`, `--wallpaper-*` in `globals.css`): sky and apricot bands and a
+  sunflower sun. The sun sits further out on phones, so the account button stays clear glass.
+  - The app, the admin console and its sign-in, the session checks, the demo and the 404 use it.
+  - The landing and the legal pages keep the field, whose 3D mirror (`three/lib/field.ts`) would
+    otherwise drift.
+  - Its darkest point measures luminance 0.676, where the bands meet at 390 px. That is lighter
+    than the field's warm glow (0.669), so the existing contrast reference covers it; the colours
+    were lifted once to get that margin.
+- **Widget-glass cards**: `.bg-wallpaper .surface` is white .5 (Tinted .72), with a light-drawn
+  edge and a deep shadow. It has no backdrop filter, so the blur budget is unchanged.
+- **Desktop toolbar**: `PageActions` floats a page's actions in a refracting `lg` capsule at the
+  content column's top right, and the page scrolls beneath it.
+  - The title, and the offline banner that shares its row, keep clear of it through the measured
+    `--page-actions-width` on `main`.
+  - A desktop top scroll edge fades out under the capsule's lower half.
+  - The edge keeps cover .94: at .55 the period select's boundary fell to 2.9:1 in the contrast
+    model.
+  - Desktop `scroll-padding-top` is 6 rem, so focus clears the toolbar.
+- **Sidebar**: white .26 with an 8 px frost (18 px in the `frost` tier), saturation 1.35. A
+  bright `lg-hover` pill glides under the mouse.
+- **Pointer light**: under a mouse, GlassProvider lights the card or sidebar beneath the pointer
+  (`--lg-x/--lg-y`, registered `--lg-lit`, once per frame). It fades on scroll and is off for
+  touch and reduced motion.
+- **Fixed in passing** (both from the first pass):
+  - under Reduce Transparency the scroll edges painted the gradient over a flat field; they are now
+    flat too;
+  - with the Tinted look saved, the Reduce Transparency, Increase Contrast and no-backdrop-filter
+    tokens lost to Tinted's more specific `:root[data-glass-look="tinted"]`. Increase Contrast's
+    glass then kept Tinted's .70 instead of .94. The fallbacks now also match
+    `:root[data-glass-look]` (new theme test).
+- **Tests** (`layout.spec.ts`, desktop):
+  - the toolbar is glass, refracts, stays put while the page scrolls, keeps clear of the title at
+    1024 px and still works;
+  - the offline banner keeps clear of the toolbar;
+  - the sidebar highlight appears on the hovered item and fades when the mouse leaves;
+  - a card's `--lg-lit` follows the mouse.
+- **Found while checking**: after a dev-server restart, the app's browser pane failed its HMR
+  socket and never hydrated, so its page stayed server-rendered (no tier, no refraction). The same
+  server in Chrome hydrated and refracted, and the visual pass used Chrome screenshots.
+
+### Second-pass verification (commands and outcomes)
+
+- `pnpm check` → exit 0 on the final code: Ruff clean, 1419 API unit tests (110 integration
+  deselected), the web unit tests, 13 more, typecheck.
+- **Full suites** `E2E_PORT=3092 pnpm test:e2e`, each on a fresh build:
+  - before the Tinted-fallback fix: 483 passed, 0 failed, 129 skipped (the 3 new desktop tests
+    included);
+  - after it: 483 passed and 3 failed, all the new fallback test. It compared `"0.94"` with the
+    minified `.94`; it now compares numbers.
+- **On the final build** (`next build` + `next start`, then `E2E_EXTERNAL_SERVER=1`):
+  `theme.spec.ts` and `layout.spec.ts` at all three widths → 175 passed, 0 failed, 11 skipped.
+  This covers the fixed test, the offline banner beside the toolbar, and contrast and the blur
+  budget on every route.
+- **Scroll performance** on that build (230 records, CPU 4×, p95 / max in ms): default glass
+  16.7 / 16.8 at desktop, 16.8 / 16.8 at phone-390 and 16.7 / 16.8 at phone-320.
+  `E2E_GLASS=refract` 16.8 / 16.8, 16.7 / 16.8 and 16.7 / 16.8. That is unchanged from the
+  47f37fc baseline, and the first pass's single 33 ms frame did not recur.
+- **Visual pass** in Chrome against the dev server:
+  - Reports, Home, Transactions (also at 1024 px), Ask, the account menu, quick add, a record,
+    the demo, offline Home, the Tinted look, and `?glass=frost` and `?glass=solid`, at
+    1440 / 1280 / 1024 / 390 px;
+  - a 13 s screencast of the sidebar highlight, the pointer light and scrolling under the toolbar;
+  - the wallpaper's darkest point, measured at seven viewport sizes.
+
 ## Not verified — do not claim
 
 - **Safari (WebKit) and Firefox**, which get the `frost` tier by design. The iPhone 17

@@ -18,13 +18,21 @@
   initial-value: 0;
 }
 
+/* How lit a glass surface is by the pointer over it (0–1, GlassProvider). Not inherited, so glass
+   nested inside lit glass stays unlit until the pointer reaches it. */
+@property --lg-lit {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
 :root {
   /* White fill of each material (Clear look). Every value is measured by e2e/theme.spec.ts
      against the darkest content that can sit beneath it. */
   --lg-tint: 0.38;
   --lg-menu-tint: 0.78;
   --lg-thick-tint: 0.84;
-  --lg-sidebar-tint: 0.36;
+  --lg-sidebar-tint: 0.26;
   --lg-static-tint: 0.55;
   --lg-composer-tint: 0.62;
   --lg-prominent: 0.86;
@@ -35,6 +43,10 @@
   --lg-menu-frost-fallback: 20px;
   --lg-thick-frost: 16px;
   --lg-thick-frost-fallback: 26px;
+  /* The sidebar is clearer than other large glass: nothing scrolls under it, so it shows the
+     wallpaper's colour like a macOS 26 sidebar shows the desktop. */
+  --lg-sidebar-frost: 8px;
+  --lg-sidebar-frost-fallback: 18px;
   /* Regular glass lifts and enriches what is behind it ("adjusts luminosity"). */
   --lg-saturate: 1.8;
   --lg-brightness: 1.07;
@@ -66,6 +78,9 @@
   --lg-frost-fallback: 18px;
   --lg-menu-frost: 20px;
   --lg-thick-frost: 24px;
+  --lg-sidebar-frost: 16px;
+  --lg-sidebar-frost-fallback: 24px;
+  --surface-tint: 0.72;
   --lg-saturate: 1.5;
   --lg-spec: rgb(255 255 255 / 0.8);
   --lg-dispersion: 0.06;
@@ -130,6 +145,17 @@
   }
   .lg-sidebar {
     --lg-fill: rgb(255 255 255 / var(--lg-sidebar-tint));
+    --lg-backdrop: blur(var(--lg-sidebar-frost-fallback)) saturate(1.35) brightness(1.06);
+    /* Under a mouse it catches the light where the pointer is, like the cards. */
+    background-image: radial-gradient(
+      circle 16rem at var(--lg-x, 50%) var(--lg-y, 50%),
+      rgb(255 255 255 / calc(var(--lg-lit) * 0.38)),
+      transparent 72%
+    );
+    transition: --lg-lit 0.5s ease-out;
+  }
+  .lg-sidebar[data-lg-refract] {
+    --lg-backdrop: var(--lg-refract) blur(var(--lg-sidebar-frost)) saturate(1.35) brightness(1.06);
   }
 
   /* Glass in the content layer (buttons, segmented tracks, chips): the look without a backdrop
@@ -246,6 +272,17 @@
       0 1px 0 rgb(255 255 255 / 0.6);
   }
 
+  /* The pointer's highlight in the desktop sidebar: a bright glass pill that glides from item to
+     item on the gel spring (iPadOS's pointer highlight in Liquid Glass). Decoration only. */
+  .lg-hover {
+    background: rgb(255 255 255 / 0.5);
+    box-shadow:
+      inset 0 0 0 0.5px rgb(255 255 255 / 0.85),
+      inset 0 1px 0.5px #ffffff,
+      0 1px 2px rgb(16 18 24 / 0.06),
+      0 6px 16px -8px rgb(16 18 24 / 0.22);
+  }
+
   /* A segmented control's selected knob: a raised, brighter glass pill (Apple's segmented style). */
   .lg-knob {
     background: rgb(255 255 255 / 0.92);
@@ -312,6 +349,47 @@
   --edge-bottom: var(--edge-cover-bottom);
 }
 
+@media (min-width: 64rem) {
+  /* No tab bar on desktop. The top band fades out under the floating toolbar's lower half, so what
+     scrolls beneath it still shows through its glass and bends at its rim. */
+  .scroll-edge {
+    --edge-top-solid: 3.75rem;
+    --edge-top-end: 7.5rem;
+  }
+  .scroll-edge[data-bottom="on"] {
+    --edge-bottom: 0;
+  }
+  /* A page's actions float in a glass toolbar capsule at the content column's top right, as toolbar
+     items do in iPadOS and macOS 26, and the page scrolls beneath them. Its right edge is the
+     column's: main's 2.5 rem gutter, or the centred 72 rem column beside the 300 px sidebar gutter
+     — keep in step with (app)/layout.tsx and admin/(console)/layout.tsx. */
+  .page-actions {
+    position: fixed;
+    top: 2.125rem;
+    right: max(2.5rem, calc(50% - 706px));
+    z-index: 40;
+    flex-wrap: nowrap;
+    padding: 0.375rem;
+    border-radius: 9999px;
+  }
+  /* Inside the capsule, glass buttons are part of its glass rather than glass of their own. */
+  .page-actions .lg-static {
+    background-color: transparent;
+    box-shadow: none;
+  }
+  .page-actions .lg-static::before {
+    display: none;
+  }
+  /* The title, and the offline banner above it, keep clear of the capsule (PageActions measures
+     it on `main`). */
+  .page-header:has(> .page-actions) > .page-title {
+    padding-right: calc(var(--page-actions-width, 14rem) + 1.5rem);
+  }
+  main:has(.page-actions) .offline-banner {
+    margin-right: calc(var(--page-actions-width, 14rem) + 1.5rem);
+  }
+}
+
 /* An open menu, dialog or sheet holds the focus: the floating chrome recedes to solid glass, as
    Apple's does, so an overlay never becomes a fourth blurred layer in view. Matched by role, so
    custom Radix dialogs and the admin panel's frosted chrome count too. */
@@ -322,9 +400,11 @@ body:has(:is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbo
   background-color: rgb(250 250 251 / 0.96);
 }
 
-/* Fallbacks (unlayered, so they win over the materials and utilities). */
+/* Fallbacks (unlayered, so they win over the materials and utilities). Their tokens also match
+   `:root[data-glass-look]`, so they beat the Tinted look's more specific selector. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  :root {
+  :root,
+  :root[data-glass-look] {
     --lg-tint: 0.95;
     --lg-menu-tint: 0.98;
     --lg-thick-tint: 0.98;
@@ -333,7 +413,8 @@ body:has(:is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbo
 }
 /* Reduce Transparency (and ?glass=solid): frostier until opaque, no blur, no refraction. */
 @media (prefers-reduced-transparency: reduce) {
-  :root {
+  :root,
+  :root[data-glass-look] {
     --lg-tint: 0.97;
     --lg-menu-tint: 0.99;
     --lg-thick-tint: 0.99;
@@ -359,6 +440,7 @@ body:has(:is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbo
   --lg-sidebar-tint: 0.96;
   --lg-static-tint: 0.9;
   --lg-composer-tint: 0.96;
+  --surface-tint: 0.9;
   --lg-prominent: 1;
   --lg-dispersion: 0;
   --edge-cover-top: 1;
@@ -370,13 +452,15 @@ body:has(:is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbo
 }
 /* Increase Contrast: predominantly white glass with a contrasting edge. */
 @media (prefers-contrast: more) {
-  :root {
+  :root,
+  :root[data-glass-look] {
     --lg-tint: 0.94;
     --lg-menu-tint: 0.98;
     --lg-thick-tint: 0.98;
     --lg-sidebar-tint: 0.92;
     --lg-static-tint: 0.9;
     --lg-composer-tint: 0.96;
+    --surface-tint: 0.9;
     --lg-prominent: 1;
     --lg-edge: rgb(14 16 19 / 0.6);
     --lg-dispersion: 0;
@@ -402,6 +486,9 @@ body:has(:is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbo
   .lg-platter,
   .lg-knob {
     border: 2px solid Highlight;
+  }
+  .lg-hover {
+    display: none;
   }
 }
 /* Reduced motion: no flex, no spring — glass stays where it is. */

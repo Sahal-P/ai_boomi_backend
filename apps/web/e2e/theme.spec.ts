@@ -47,7 +47,9 @@ function contrastFailures(page: Page): Promise<Failure[]> {
       return (light + 0.05) / (dark + 0.05);
     };
     // Worst cases: the field's darkest point (its warm glow) and, under the floating phone
-    // header and tab bar, the darkest content that can scroll beneath them.
+    // header and tab bar, the darkest content that can scroll beneath them. The app's wallpaper
+    // is lighter still at its darkest (where its sky and apricot bands meet: luminance 0.676 at
+    // 390 px, against this glow's 0.669), so one reference covers both grounds.
     const fieldDarkest = [232, 211, 176];
     const ink = [14, 16, 19];
     // Liquid Glass bars ([data-scroll-edge]) float over content that the scroll edge dissolves
@@ -325,6 +327,20 @@ test("Increase Contrast darkens secondary ink, turns glass solid and still passe
   await settled(page);
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--ink-soft").trim())).toBe("#2e3136");
   expect(await floatingGlass(page, testInfo.project.name).evaluate((element) => getComputedStyle(element).backdropFilter)).toBe("none");
+  expect(await contrastFailures(page)).toEqual([]);
+});
+
+test("accessibility fallbacks win over the Tinted look", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("finboy.glass-look", "tinted"));
+  await page.emulateMedia({ contrast: "more" });
+  await page.goto("/dashboard");
+  await settled(page);
+  // Numbers, not strings: the CSS minifier writes 0.94 as .94.
+  const token = (name: string) =>
+    page.evaluate((property) => Number(getComputedStyle(document.documentElement).getPropertyValue(property)), name);
+  expect(await page.evaluate(() => document.documentElement.dataset.glassLook)).toBe("tinted");
+  expect(await token("--lg-tint")).toBe(0.94);
+  expect(await token("--surface-tint")).toBe(0.9);
   expect(await contrastFailures(page)).toEqual([]);
 });
 

@@ -10,7 +10,7 @@ export default function AdminConsoleLayout({ children }: { children: ReactNode }
   return (
     <AdminGate>
       <AppMotion>
-        <div className="app-shell bg-field relative min-h-dvh">
+        <div className="app-shell bg-field bg-wallpaper relative min-h-dvh">
           <a
             href="#main-content"
             className="sr-only rounded-full bg-ink px-4 py-3 text-white focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50"

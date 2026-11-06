@@ -13,8 +13,8 @@ import { AppMotion } from "@/components/motion/app-motion";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
-// The phone's browser chrome matches the top of the glass field.
-export const viewport: Viewport = { themeColor: "#e1e3e6" };
+// The phone's browser chrome matches the top of the wallpaper.
+export const viewport: Viewport = { themeColor: "#f2f3f6" };
 
 // Daily screens carry no WebGL: the brand scenes stay on the marketing page (F35).
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -23,7 +23,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <AppMotion>
         <PremiumProvider>
         <QuickAddProvider>
-          <div className="app-shell bg-field relative min-h-dvh">
+          <div className="app-shell bg-field bg-wallpaper relative min-h-dvh">
             <a
               href="#main-content"
               className="sr-only rounded-full bg-ink px-4 py-3 text-white focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50"

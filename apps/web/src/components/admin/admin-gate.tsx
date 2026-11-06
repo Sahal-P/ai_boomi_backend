@@ -28,7 +28,7 @@ export function AdminGate({ children }: { children: ReactNode }) {
 
   if (state !== "ready" || !session || detour) {
     return (
-      <main className="bg-field grid min-h-dvh place-items-center p-6">
+      <main className="bg-field bg-wallpaper grid min-h-dvh place-items-center p-6">
         {state === "unavailable" && problem ? (
           <div className="w-full max-w-md">
             <ProblemNotice problem={problem} onRetry={retry} />

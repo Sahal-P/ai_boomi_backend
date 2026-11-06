@@ -169,6 +169,50 @@
     radial-gradient(120% 62% at 0% 100%, var(--field-cool), transparent 64%),
     radial-gradient(90% 55% at 100% 56%, var(--field-warm), transparent 66%),
     radial-gradient(80% 45% at 18% 0%, rgb(255 255 255 / 0.55), transparent 70%), var(--field);
+  /* The app's wallpaper (`bg-wallpaper`), as macOS 26 has one behind its glass: the field's cool and
+     warm glows grown into bands of light sky and apricot with a sunflower sun, so the clear glass
+     above has colour and shape to carry and to bend at its rim. Their luminance stays the field's —
+     the darkest point, where the sky and apricot bands meet, is measured by e2e/theme.spec.ts — so
+     every text token keeps ≥ 4.5:1 on it. The landing keeps `--field-paint`: its 3D mirrors that
+     field (three/lib/field.ts). */
+  --wallpaper: #eef0f4;
+  --wallpaper-sky: #b6ddf8;
+  --wallpaper-apricot: #f9d2b6;
+  --wallpaper-sun: #ffdc70;
+  /* Where the sun sits: further out on phones, so the account button's clear glass is not a yellow disc. */
+  --wallpaper-sun-at: 104% -12%;
+  --wallpaper-paint:
+    radial-gradient(72% 48% at 18% 0%, rgb(255 255 255 / 0.8), transparent 70%),
+    radial-gradient(
+      circle at var(--wallpaper-sun-at),
+      color-mix(in srgb, var(--wallpaper-sun) 88%, transparent) 0 14%,
+      color-mix(in srgb, var(--wallpaper-sun) 36%, transparent) 21%,
+      transparent 27%
+    ),
+    radial-gradient(
+      circle at 112% 118%,
+      var(--wallpaper-apricot) 0 30%,
+      color-mix(in srgb, var(--wallpaper-apricot) 55%, transparent) 35%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at -14% 116%,
+      transparent 0 34%,
+      color-mix(in srgb, var(--wallpaper-sky) 70%, transparent) 37%,
+      var(--wallpaper-sky) 43% 50%,
+      color-mix(in srgb, var(--wallpaper-sky) 55%, transparent) 53%,
+      transparent 57%
+    ),
+    radial-gradient(circle at -14% 116%, var(--wallpaper-sky) 0 22%, transparent 29%),
+    radial-gradient(
+      circle at -14% 116%,
+      transparent 0 62%,
+      color-mix(in srgb, var(--wallpaper-sky) 45%, transparent) 65% 68%,
+      transparent 72%
+    ),
+    var(--wallpaper);
+  /* White fill of the content layer's widget glass on the wallpaper (Clear; Tinted .72). */
+  --surface-tint: 0.5;
   /* In-flow frosted glass (no blur), its lit rim and edge, and a lighter well inside it. */
   --glass-fill: rgb(236 236 238 / 0.74);
   --glass-rim: rgb(255 255 255 / 0.85);
@@ -229,7 +273,8 @@
   }
   @media (min-width: 64rem) {
     html {
-      scroll-padding-top: 1.5rem;
+      /* Clear of the floating toolbar (liquid-glass.css, .page-actions). */
+      scroll-padding-top: 6rem;
       scroll-padding-bottom: 1.5rem;
     }
   }
@@ -288,6 +333,33 @@
       inset 0 -10px 18px -16px rgb(255 255 255 / 0.6),
       0 1px 2px rgb(16 18 24 / 0.03),
       0 12px 32px -22px rgb(16 18 24 / 0.22);
+  }
+  /* On the app's wallpaper, content is clear glass too: widget glass, as iOS and macOS 26 draw
+     widgets. A clear white fill the wallpaper shows through; an edge drawn by light (a bright
+     top-left catch, a softer bottom-right one, a glow inside the rim, a faint dark outer edge);
+     a deep, soft shadow. Still no backdrop filter — the wallpaper is soft, so a blur would only
+     cost GPU. Under a mouse the glass catches the light where the pointer is (GlassProvider writes
+     --lg-x, --lg-y and --lg-lit). */
+  .bg-wallpaper .surface {
+    background-color: rgb(255 255 255 / var(--surface-tint));
+    background-image:
+      radial-gradient(
+        circle 22rem at var(--lg-x, 50%) var(--lg-y, 50%),
+        rgb(255 255 255 / calc(var(--lg-lit) * 0.5)),
+        transparent 72%
+      ),
+      radial-gradient(120% 90% at 0% 0%, rgb(255 255 255 / 0.38), transparent 55%);
+    border-color: rgb(255 255 255 / 0.36);
+    box-shadow:
+      0 0 0 0.5px rgb(14 16 19 / 0.09),
+      inset 1.5px 1.5px 0.5px -0.5px rgb(255 255 255 / 0.95),
+      inset -1px -1px 0.5px -0.5px rgb(255 255 255 / 0.6),
+      inset 0 0 24px rgb(255 255 255 / 0.26),
+      inset 0 -14px 18px -16px rgb(14 16 19 / 0.07),
+      0 1px 1px rgb(16 18 24 / 0.04),
+      0 8px 18px -10px rgb(16 18 24 / 0.12),
+      0 32px 64px -36px rgb(16 18 24 / 0.3);
+    transition: --lg-lit 0.5s ease-out;
   }
   /* Dialogs and sheets: crisp, near-opaque panels. Their frosted scrim is the blurred layer. */
   .float-panel {
@@ -436,6 +508,11 @@
   .bg-field::before {
     background: var(--field-paint);
   }
+  /* The app's screens paint the wallpaper instead (scroll edges and Ask's fade follow, as they read
+     --field-paint). */
+  .bg-wallpaper {
+    --field-paint: var(--wallpaper-paint);
+  }
   .bg-field::after {
     opacity: 0.03;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.05 0 0 0 0 0.06 0 0 0 0 0.08 0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
@@ -466,6 +543,12 @@
   .line-up {
     display: block;
     animation: line-up 1.3s var(--ease-out-expo) both;
+  }
+}
+
+@media (max-width: 63.98rem) {
+  :root {
+    --wallpaper-sun-at: 118% -16%;
   }
 }
 
@@ -546,7 +629,8 @@ html:has(.ask-page) {
     background: #ececee;
   }
   .bg-field::before,
-  .ask-fade {
+  .ask-fade,
+  .scroll-edge {
     background: var(--field);
   }
 }
@@ -558,7 +642,8 @@ html:has(.ask-page) {
     --border: rgb(14 16 19 / 0.3);
     --input: rgb(14 16 19 / 0.75);
   }
-  .glass {
+  .glass,
+  .bg-wallpaper .surface {
     border-color: rgb(14 16 19 / 0.45);
   }
 }

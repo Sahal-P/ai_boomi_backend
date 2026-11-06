@@ -9,7 +9,7 @@ export function OfflineBanner() {
   return (
     <div role="status" aria-live="polite">
       {!online && (
-        <p className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950">
+        <p className="offline-banner mb-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950">
           <WifiOff className="mt-0.5 size-4 shrink-0 text-amber-800" aria-hidden="true" />
           <span>
             <strong className="font-semibold">You&apos;re offline.</strong> You&apos;re seeing what

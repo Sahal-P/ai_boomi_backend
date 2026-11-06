@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Page not found" };
 
 export default function NotFound() {
   return (
-    <main className="bg-field grid min-h-dvh place-items-center p-6">
+    <main className="bg-field bg-wallpaper grid min-h-dvh place-items-center p-6">
       <section className="surface w-full max-w-md rounded-3xl p-6 sm:p-8">
         <Brand />
         <h1 className="mt-6 text-2xl font-medium tracking-[-0.025em]">That page doesn&apos;t exist</h1>

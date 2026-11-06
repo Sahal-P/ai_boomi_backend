@@ -10,6 +10,8 @@ const JANK_KEY = "finboy.glass-janky";
 /** What flexes and lights up when pressed: opted-in elements and glass links and buttons. */
 const GLASS_PRESSABLE =
   "[data-glass-press], :is(a, button):is(.lg-prominent, .lg-static, .lg-on-color)";
+/** What catches the light under a mouse: the wallpaper's glass cards and the desktop sidebar. */
+const GLASS_LIT = ".bg-wallpaper .surface, .lg-sidebar";
 
 type Navigation = Navigator & {
   userAgentData?: { brands?: { brand: string }[] };
@@ -30,7 +32,8 @@ function session(key: string, value?: string | null): string | null {
 /**
  * Picks the glass tier after hydration (server HTML is always `frost`), keeps it in step with
  * Reduce Transparency, Increase Contrast and forced colours, drops refraction for the session if
- * scrolling stays janky, and lights glass up from the point where it is pressed. Renders nothing.
+ * scrolling stays janky, and lights glass up from the point where it is pressed or, under a
+ * mouse, where the pointer is. Renders nothing.
  */
 export function GlassProvider() {
   useEffect(() => {
@@ -117,7 +120,44 @@ export function GlassProvider() {
     }
     window.addEventListener("blur", release);
 
+    // Pointer light: Liquid Glass catches the light as the device moves; under a mouse, the glass
+    // beneath the pointer lights up where the pointer is. Off for touch and reduced motion, and it
+    // fades while the page scrolls (the pointer is no longer over the same spot).
+    const fine = matchMedia("(hover: hover) and (pointer: fine)");
+    const still = matchMedia("(prefers-reduced-motion: reduce)");
+    let lit: HTMLElement | null = null;
+    let pointer: PointerEvent | null = null;
+    let lighting = 0;
+    const unlight = () => {
+      lit?.style.setProperty("--lg-lit", "0");
+      lit = null;
+    };
+    const light = () => {
+      lighting = 0;
+      const target = pointer?.target instanceof Element ? pointer.target.closest<HTMLElement>(GLASS_LIT) : null;
+      if (target !== lit) unlight();
+      if (!target || !pointer) return;
+      const box = target.getBoundingClientRect();
+      target.style.setProperty("--lg-x", `${Math.round(pointer.clientX - box.left)}px`);
+      target.style.setProperty("--lg-y", `${Math.round(pointer.clientY - box.top)}px`);
+      target.style.setProperty("--lg-lit", "1");
+      lit = target;
+    };
+    const onMove = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse" || !fine.matches || still.matches) return;
+      pointer = event;
+      if (!lighting) lighting = requestAnimationFrame(light);
+    };
+    document.addEventListener("pointermove", onMove, { passive: true });
+    document.documentElement.addEventListener("pointerleave", unlight);
+    window.addEventListener("scroll", unlight, { passive: true });
+
     return () => {
+      cancelAnimationFrame(lighting);
+      unlight();
+      document.removeEventListener("pointermove", onMove);
+      document.documentElement.removeEventListener("pointerleave", unlight);
+      window.removeEventListener("scroll", unlight);
       for (const query of Object.values(queries)) query.removeEventListener("change", apply);
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("pointerdown", onPress, { capture: true });

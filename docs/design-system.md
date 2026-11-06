@@ -1,11 +1,14 @@
 # FinBoy design system — Liquid Glass, sunflower moments, line art
 
-Daily screens follow a glass reference: a soft neutral field with a cool and a warm glow,
-frosted cards, near-black type and ink actions. Since the Liquid Glass round
+Daily screens follow a glass reference: a soft field with a cool and a warm glow, glass cards,
+near-black type and ink actions. Since the Liquid Glass round
 ([contract](liquid-glass-round/contract.md)) the navigation layer floating above them — bars,
-the sidebar, menus, sheets, dialogs, the Ask composer — is Apple's **Liquid Glass**: glass that
-bends what is behind it at its rim, lights up and flexes when pressed, and springs from the
-control that opened it. The one money number per screen sits on solid **sunflower** yellow, and
+the sidebar, the desktop toolbar, menus, sheets, dialogs, the Ask composer — is Apple's **Liquid
+Glass**: glass that bends what is behind it at its rim, lights up and flexes when pressed, and
+springs from the control that opened it. Its second pass gave the app what makes Apple's glass
+read as glass: a **wallpaper** with colour and shape behind it (the field's glows grown into sky
+and apricot bands and a sunflower sun), cards as clear **widget glass** over it, controls that
+content scrolls beneath, and light that follows the mouse. The one money number per screen sits on solid **sunflower** yellow, and
 the screens people pass through — sign-in, empty and all-done states, the landing hero — are
 flat yellow **moments** with drawn line-art illustrations. When FinBoy's AI is working, a dotted
 **thinking orb** shows it. Everything is light theme, and violet is retired everywhere, the
@@ -24,9 +27,10 @@ specified in [`docs/ux-round/ui-spec.md`](ux-round/ui-spec.md).
    glass over yellow: blurred yellow over the blue field turns muddy. Clear glass without blur
    (`lg-on-color`) may sit on a moment.
 2. **Liquid Glass is the navigation layer.** It floats above content: the tab pill, the
-   account button, the sidebar, menus, sheets, dialogs and Ask's composer. Content stays on the
-   standard `surface` material (no `backdrop-filter`: the field behind it is already soft);
-   content-layer controls look like glass (`lg-static`) and become real glass only while dragged
+   account button, the sidebar, the desktop toolbar, menus, sheets, dialogs and Ask's composer.
+   On the app's wallpaper, content cards are widget glass (`surface`): clear, lit at the edges,
+   but with no `backdrop-filter` — the wallpaper is soft, so a blur would only cost GPU.
+   Content-layer controls look like glass (`lg-static`) and become real glass only while dragged
    (the lens). At most three blurred or refracting layers in view, in every state.
 3. **Measured contrast.** Every text is ≥ 4.5:1 (large ≥ 3:1) and every form-control boundary
    ≥ 3:1 against its composited background, at the field's darkest point. The reference's own
@@ -43,13 +47,17 @@ specified in [`docs/ux-round/ui-spec.md`](ux-round/ui-spec.md).
 | Token | Value | Use |
 | --- | --- | --- |
 | `ink` / `ink-soft` / `ink-subtle` | `#0e1013` / `#474b52` / `#575b63` | Neutral text hierarchy; every step ≥ 4.5:1 on the field's darkest point and on glass over it |
-| `field` · `field-cool` · `field-warm` | `#e1e3e6` · `#b9deeb` · `#e8d3b0` | Every page's ground and its two glows (measured from the reference); the landing's 3D recomputes it behind its glass |
+| `field` · `field-cool` · `field-warm` | `#e1e3e6` · `#b9deeb` · `#e8d3b0` | The landing's and legal pages' ground and its two glows (measured from the reference); the landing's 3D recomputes it behind its glass |
+| `wallpaper` · `wallpaper-sky` · `wallpaper-apricot` · `wallpaper-sun` | `#eef0f4` · `#b6ddf8` · `#f9d2b6` · `#ffdc70` | The app's wallpaper (`bg-wallpaper`): the glows grown into sky and apricot bands and a sun (`wallpaper-sun-at`, further out on phones). Its darkest point (luminance 0.676, where the bands meet) is lighter than the field's warm glow, so every ink token keeps ≥ 4.5:1 |
+| `surface-tint` | .5 (Tinted .72; Increase Contrast .9; Reduce Transparency opaque `#ececee`) | White fill of the widget-glass cards on the wallpaper |
 | `glass-fill` · `glass-rim` · `glass-edge` | `rgb(236 236 238 / .74)` · white 85% · white 55% | In-flow frosted glass, its lit top-left rim and edge |
 | `well` | white 50% | A lighter well inside glass |
 | `float-fill` · `glass-blur` | `rgb(250 250 251 / .74)` · `blur(24px) saturate(140%)` | Floating glass; the blur goes through the variable (see below) |
 | `sunflower` / `sunflower-ink` | `#fed234` / `#3a2c00` | Hero and moment fill / secondary text on it (9.4:1). A fill under ink only: 1.18:1 as a line or text on glass |
 | `positive` · `negative` · `warning` | `#065f46` · `#a8201a` · `#d97706` | Verified/income, destructive, attention (`warning` for icons/dots; attention text uses `amber-800/900`) |
-| `lg-tint` · `lg-menu-tint` · `lg-thick-tint` · `lg-sidebar-tint` · `lg-static-tint` · `lg-composer-tint` | Clear .38 · .78 · .84 · .36 · .55 · .62; Tinted .70 · .92 · .95 · .64 · .72 · .86 | White fill of each Liquid Glass material (`app/liquid-glass.css`); Reduce Transparency .96–.99, Increase Contrast .9–.98 |
+| `lg-tint` · `lg-menu-tint` · `lg-thick-tint` · `lg-sidebar-tint` · `lg-static-tint` · `lg-composer-tint` | Clear .38 · .78 · .84 · .26 · .55 · .62; Tinted .70 · .92 · .95 · .64 · .72 · .86 | White fill of each Liquid Glass material (`app/liquid-glass.css`); Reduce Transparency .96–.99, Increase Contrast .9–.98 |
+| `lg-sidebar-frost` | 8 px (`frost` tier 18 px; Tinted 16 · 24) | The sidebar's lighter frost: nothing scrolls under it, so it shows the wallpaper's colour like a macOS 26 sidebar |
+| `lg-lit` (registered, not inherited) | 0–1 | How lit a card or the sidebar is by the mouse over it (GlassProvider) |
 | `lg-prominent` | ink .86 (Tinted .94) | Tinted glass for primary actions |
 | `lg-frost` · `lg-frost-fallback` | 2 px · 10 px (Tinted 10 · 18) | Frost after refraction, and the stronger frost that stands in for it in the `frost` tier (menus 12 · 20, thick 16 · 26) |
 | `lg-edge` · `lg-rim` · `lg-spec` | ink 16% · white 60% · white 96% | iOS 27's darker outer edge, the inner bright ring and the specular arcs |
@@ -80,8 +88,9 @@ sidebar refract in Chromium and still blur with `?glass=frost`.
 
 | Class | What it is | Where |
 | --- | --- | --- |
-| `bg-field` | Fixed pseudo-element field + grain (never repaints on scroll; iOS ignores `background-attachment: fixed`) | App shell, session check, demo, 404, landing below the hero (with `isolation-auto`, so DOM marked `z-20` stays above the 3D layer) |
-| `surface` | The content layer's standard material: in-flow frosted tint, 1 px white edge, inset top-left rim, Liquid Glass's faint dark edge, soft shadow; **no blur** | Cards, panels, rows |
+| `bg-field` | Fixed pseudo-element field + grain (never repaints on scroll; iOS ignores `background-attachment: fixed`) | App shell, session check, demo, 404, admin, legal pages, landing below the hero (with `isolation-auto`, so DOM marked `z-20` stays above the 3D layer) |
+| `bg-wallpaper` (with `bg-field`) | Paints the wallpaper instead of the field (`--field-paint: var(--wallpaper-paint)`), so scroll edges and Ask's fade follow | App shell, the admin console and its sign-in, session checks, demo, 404 |
+| `surface` | The content layer's standard material: in-flow frosted tint, 1 px white edge, inset top-left rim, Liquid Glass's faint dark edge, soft shadow; **no blur**. On the wallpaper it is **widget glass**: a clear white fill (`surface-tint`) the wallpaper shows through, a bright top-left catch and a softer bottom-right one, a glow inside the rim, a deep soft shadow, and the mouse's light | Cards, panels, rows |
 | `glass` | Frosted floating glass: `float-fill` + `--glass-blur` (pre–Liquid Glass) | The admin panel's header and tab bar, chart tooltips |
 | `float-panel` | Retired: dialogs and sheets are `lg-thick` over an unblurred dimming layer | — |
 | `solid-hero` | Sunflower with ink and a soft warm shadow | The one money number per screen (Home's "Left this month", the demo, the landing simulator's estimate and the mosaic's overview tile) |
@@ -95,7 +104,9 @@ sidebar refract in Chromium and still blur with `?glass=frost`.
 | `lg-static` | The glass look without a backdrop filter | Content-layer glass: `glass`/`outline` buttons, segmented tracks, the back button, landing chips |
 | `lg-on-color` | Clear glass on yellow (never blurred), warm shadow | Sign-in panels, the hero's secondary action, the landing nav over the hero |
 | `lg-platter` · `lg-knob` | The selected item's inset well · a raised glass knob | Tab bar and sidebar selection · segmented controls and the hero's chevron capsule |
-| `scroll-edge` | Fixed, unblurred copy of the field masked to the screen's edges | Under the phone bars and the landing nav (Apple's scroll edge effect) |
+| `lg-hover` | A bright glass pill under the mouse that glides from item to item | The desktop sidebar |
+| `page-actions` (with `lg` on desktop) | A page's actions; on desktop a floating, refracting toolbar capsule at the content column's top right that the page scrolls beneath (`PageActions` measures it, and the title and offline banner keep clear) | Every `PageHeader` with actions |
+| `scroll-edge` | Fixed, unblurred copy of the field masked to the screen's edges | Under the phone bars, desktop's toolbar row and the landing nav (Apple's scroll edge effect) |
 
 Inside yellow, use white tints (`bg-white/55`) or `lg-on-color`, never frosted glass. Fallbacks
 (unlayered, so they win over utilities): no `backdrop-filter` → near-opaque glass; **Reduce
@@ -114,7 +125,10 @@ edges, 75% ink control boundaries, solid Liquid Glass with a 60% ink edge; **for
   three-pass colour split. Chromium measures filters in CSS pixels at every DPR.
 - `GlassProvider` (root layout) picks the tier after hydration (`tier.ts`), follows the
   accessibility media queries, drops to `frost` for the session if scrolling stays janky, and
-  writes `--lg-x/--lg-y` and `data-pressed` for the press glow. The saved Clear · Tinted look is
+  writes `--lg-x/--lg-y` and `data-pressed` for the press glow. Under a mouse (fine pointer, no
+  reduced motion) it also lights the card or sidebar beneath the pointer: `--lg-x/--lg-y` and
+  `--lg-lit` (registered and not inherited, so nested glass stays unlit) drive a soft light in
+  the material's background, once per frame; scrolling lets it fade. The saved Clear · Tinted look is
   applied before first paint by an inline `<head>` script.
 - Glass with a backdrop filter is its children's *backdrop root*: render a lens or any other
   glass **beside** it, never inside, or it will only see its parent's own layer.
@@ -133,11 +147,14 @@ reference's welcome screen). Mark language on text: `lang="ml"`/`"hi"` for nativ
 ## App screens
 
 - **One page header** (`components/app-shell/page-header.tsx`): direct task title, one sentence
-  of support, actions on the right. Screens reached from another one (Import results) pass
-  `back` for the reference's glass square back button; top-level tabs never do.
+  of support, actions on the right — on desktop in a floating Liquid Glass toolbar capsule
+  (`PageActions`) that the page scrolls beneath, as toolbar items float in iPadOS and macOS 26.
+  Screens reached from another one (Import results) pass `back` for the reference's glass
+  square back button; top-level tabs never do.
 - **Navigation:** four tabs — Home, Transactions, Reports, Ask. Desktop: an inset Liquid Glass
-  sidebar (`lg-thick`) with the tinted-glass **Add entry** pill, the tabs (the selected one in
-  ink on a light platter) and an account button at its foot. Phones: no bar behind the
+  sidebar (`lg-thick lg-sidebar`, clearer than other thick glass, so it carries the wallpaper's
+  colour) with the tinted-glass **Add entry** pill, the tabs (the selected one in ink on a light
+  platter, and a bright highlight gliding under the mouse) and an account button at its foot. Phones: no bar behind the
   wordmark — content dissolves under the top scroll edge once scrolled — and a 44 px glass
   account circle; at the bottom a floating clear-glass tab pill (ink icon and label on the
   platter for the selected tab, every other tab labelled in secondary ink) with a round
@@ -272,6 +289,8 @@ validated with its `validate_palette.js` against glass at the field's warmest po
 | Liquid Glass materialize | Refraction ramps in (displacement scale 0 → full over 420 ms) when glass appears or the landing nav leaves the hero; reduced motion sets it at once. |
 | Press (`data-glass-press`, glass links and buttons) | Scale 1.06 on `--ease-spring` and a glow from the press point; reduced motion keeps the glow only. |
 | Selection platter, segmented knob | `layoutId` spring (stiffness 420, damping 30) between items. |
+| Sidebar highlight (`lg-hover`) | Glides under the mouse on a spring (520/38), appearing in place on the first item it reaches and fading out when the mouse leaves; reduced motion moves it without the glide. |
+| Pointer light | Cards and the sidebar brighten where the mouse is and fade in 0.5 s (`--lg-lit`); off for touch and reduced motion. |
 | Drag lens (`selection-lens.tsx`) | Follows the finger on a spring (650/40), stretches with its speed (scaleX ≤ 1.22), magnifies 1.28×; under reduced motion it moves straight and never stretches. |
 | Menus, dialogs, sheets | Open on `--ease-spring` (300 ms menus and dialogs, 500 ms sheets) from their source; close in 150–200 ms. |
 

@@ -3,7 +3,7 @@
 import { ArrowLeftRight, ChartPie, House, Plus, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState, type PointerEvent } from "react";
 
 import { AccountMenu, AccountPanel } from "@/components/app-shell/account-controls";
 import { GuardedLink } from "@/components/app-shell/guarded-link";
@@ -30,6 +30,8 @@ function isActive(pathname: string, href: string) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
+const GLIDE = { type: "spring", stiffness: 520, damping: 38, mass: 0.7 } as const;
+
 /** The selected item's well: Apple's selection platter, gliding between items on a gel spring. */
 function Platter({ layoutId }: { layoutId: string }) {
   return (
@@ -49,6 +51,14 @@ export function AppNav() {
   const pathname = usePathname();
   const quickAdd = useQuickAdd();
   const scrolled = useScrolled();
+  // The mouse's highlight in the sidebar glides from item to item; `jump` places it without a glide
+  // when the pointer first arrives.
+  const [hover, setHover] = useState<{ top: number; height: number; jump: boolean } | null>(null);
+  const highlight = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType !== "mouse") return;
+    const { offsetTop: top, offsetHeight: height } = event.currentTarget;
+    setHover((previous) => ({ top, height, jump: previous === null }));
+  };
   // Destructured: the React Compiler treats an object whose member is passed as `ref` as a ref.
   const { attach: attachSidebar, filter: sidebarFilter } = useLiquidGlass<HTMLElement>({ bezel: 22, thickness: 20 });
   const { attach: attachPillGlass, filter: pillFilter } = useLiquidGlass<HTMLElement>({ bezel: 16, thickness: 18 });
@@ -57,7 +67,8 @@ export function AppNav() {
 
   return (
     <>
-      {/* Content never scrolls under the sidebar: its glass bends the field's glows at the rim. */}
+      {/* Content never scrolls under the sidebar: like a macOS 26 sidebar it shows the wallpaper's
+          colour, bent at its rim, and catches the light where the mouse is. */}
       <aside
         ref={attachSidebar}
         className="lg-thick lg-sidebar fixed top-3 bottom-3 left-3 z-40 hidden w-[264px] flex-col rounded-[28px] p-4 lg:flex"
@@ -68,17 +79,28 @@ export function AppNav() {
           <Plus aria-hidden="true" /> Add entry
         </Button>
         <nav aria-label="App navigation" className="mt-5 flex-1">
-          <ul className="space-y-1">
+          <ul className="relative space-y-1" onPointerLeave={() => setHover(null)}>
+            <motion.span
+              aria-hidden="true"
+              className="lg-hover pointer-events-none absolute inset-x-0 top-0 rounded-full"
+              initial={false}
+              animate={hover ? { y: hover.top, height: hover.height, opacity: 1 } : { opacity: 0 }}
+              transition={
+                hover?.jump
+                  ? { y: { duration: 0 }, height: { duration: 0 }, opacity: { duration: 0.15 } }
+                  : { y: GLIDE, height: GLIDE, opacity: { duration: 0.2 } }
+              }
+            />
             {APP_NAVIGATION.map(({ label, href, icon: Icon }) => {
               const active = isActive(pathname, href);
               return (
-                <li key={href}>
+                <li key={href} onPointerEnter={highlight}>
                   <GuardedLink
                     href={href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
                       "relative flex h-11 items-center gap-3 rounded-full px-3.5 text-sm font-semibold transition-colors",
-                      active ? "text-ink" : "text-ink-soft hover:bg-white/45 hover:text-ink",
+                      active ? "text-ink" : "text-ink-soft hover:text-ink",
                     )}
                   >
                     {active ? <Platter layoutId="app-nav-active" /> : null}
@@ -93,9 +115,10 @@ export function AppNav() {
         <AccountPanel />
       </aside>
 
-      {/* Phones: no bar behind the wordmark; content dissolves under the top edge once scrolled
-          (iOS 27's uniform bar), and the account button is a small glass circle. */}
-      <ScrollEdge top={scrolled} bottom className="lg:hidden" />
+      {/* Content dissolves under the top edge once scrolled (iOS 27's uniform bar on phones; on desktop
+          a shorter band that fades out under the floating toolbar) and, on phones, under the tab bar. */}
+      <ScrollEdge top={scrolled} bottom />
+      {/* Phones: no bar behind the wordmark, and the account button is a small glass circle. */}
       <header data-scroll-edge="top" className="fixed inset-x-3 top-3 z-40 flex h-14 items-center justify-between pr-1.5 pl-2 lg:hidden">
         <Brand />
         <AccountMenu />

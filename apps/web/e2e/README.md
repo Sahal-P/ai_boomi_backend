@@ -27,13 +27,17 @@ UI-to-API part; record human-only checks separately.
 
 `theme.spec.ts` checks the Liquid Glass theme on rendered pages: every visible text, placeholder
 and form-control boundary against its composited background (ancestors, positioned platters,
-the field's darkest point, and — under a `[data-scroll-edge]` bar — the darkest ink dissolved
-by that scroll edge's `--edge-cover-*`) on every route and empty state; at most three blurred
+the field's darkest point, which also covers the lighter app wallpaper, and — under a
+`[data-scroll-edge]` bar or toolbar — the darkest ink dissolved by that scroll edge's
+`--edge-cover-*`) on every route and empty state; at most three blurred
 or refracting layers in view; real refraction in Chromium (an `feDisplacementMap` that has
 materialized), `?glass=frost` without `url()`, the Tinted look; Reduce Transparency (via CDP),
-Increase Contrast and forced-colours fallbacks; and the thinking orbs' dark-ink pin, hidden
+Increase Contrast (also over a saved Tinted look) and forced-colours fallbacks; and the thinking
+orbs' dark-ink pin, hidden
 status for assistive tech and resting behaviour. `layout.spec.ts` adds the navigation labels'
-contrast on glass and platter, the drag lens and the remembered Clear · Tinted choice. Two
+contrast on glass and platter, the drag lens, the remembered Clear · Tinted choice, and on
+desktop the floating toolbar (fixed while the page scrolls, clear of the title at 1024 px), the
+sidebar's gliding highlight and the cards' pointer light. Two
 opt-in tools run only when asked (`E2E_GLASS=refract|frost|solid` pins the glass tier for
 `perf.spec.ts`):
 

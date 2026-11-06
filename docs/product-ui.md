@@ -26,8 +26,9 @@ Phase-1 integration history (design snapshot, package provenance) stays in
   focused. Sources, Privacy & data, shortcuts, the Glass look (Clear · Tinted) and sign-out
   are in the account menu.
 - Every page has one task title (`<title>` "Task · FinBoy") and one heading; Import results adds
-  the glass back button to Sources.
-- The theme (`docs/design-system.md`): glass cards on a fixed field; Home's sunflower hero
+  the glass back button to Sources. On desktop a page's actions (the period control, Refresh)
+  float in a Liquid Glass toolbar at the top right that the page scrolls beneath.
+- The theme (`docs/design-system.md`): widget-glass cards on a fixed wallpaper; Home's sunflower hero
   ("Left this month", money in, money out, bills due, and the working on request); Reports'
   charts (a spending donut, six months of money in and out, budget meters); records as glass
   cards under month headings; and yellow moments with drawn illustrations for sign-in, empty and

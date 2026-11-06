@@ -92,6 +92,62 @@ test("navigation labels meet WCAG AA contrast as rendered", async ({ page }) => 
   }
 });
 
+test("desktop page actions float in a glass toolbar that the page scrolls beneath", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "the toolbar floats on desktop only");
+  // The narrowest desktop, where the title has the least room beside the toolbar.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto("/reports");
+  const toolbar = page.locator(".page-actions");
+  await expect(toolbar).toHaveClass(/(^|\s)lg(\s|$)/);
+  await expect(toolbar).toHaveAttribute("data-lg-refract", "");
+  const resting = await toolbar.boundingBox();
+  if (!resting) throw new Error("no toolbar box");
+  for (const text of [page.getByRole("heading", { level: 1 }), page.locator(".page-title p").first()]) {
+    const box = await text.boundingBox();
+    if (!box) throw new Error("no title box");
+    expect(intersects(box, resting), "the title keeps clear of the toolbar").toBe(false);
+  }
+  await page.mouse.move(600, 500);
+  await page.mouse.wheel(0, 700);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
+  expect(Math.round((await toolbar.boundingBox())?.y ?? -1)).toBe(Math.round(resting.y));
+  // Still the period control while the page scrolls beneath it.
+  await page.getByLabel("Period").selectOption({ label: "Last 3 months" });
+  await expect(page.getByLabel("Period")).toHaveValue(/^range:/);
+});
+
+test("the mouse's highlight glides along the desktop sidebar", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "the sidebar is desktop chrome");
+  await page.goto("/dashboard");
+  const sidebar = page.locator("aside.lg-sidebar");
+  const highlight = sidebar.locator(".lg-hover");
+  const opacity = () => highlight.evaluate((element) => Number(getComputedStyle(element).opacity));
+  await expect(highlight).toHaveAttribute("aria-hidden", "true");
+  expect(await opacity()).toBe(0);
+  const link = sidebar.getByRole("link", { name: "Reports", exact: true });
+  await link.hover();
+  await expect.poll(opacity).toBeGreaterThan(0.9);
+  await expect
+    .poll(async () => {
+      const [glide, target] = await Promise.all([highlight.boundingBox(), link.boundingBox()]);
+      return glide && target ? Math.abs(glide.y - target.y) + Math.abs(glide.height - target.height) : 99;
+    })
+    .toBeLessThan(2);
+  await page.mouse.move(900, 600);
+  await expect.poll(opacity).toBeLessThan(0.1);
+});
+
+test("glass cards catch the light where the mouse is", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "a mouse");
+  await page.goto("/reports");
+  const card = page.locator(".bg-wallpaper .surface").first();
+  const lit = () => card.evaluate((element) => getComputedStyle(element).getPropertyValue("--lg-lit").trim());
+  await card.hover();
+  await expect.poll(lit).toBe("1");
+  await page.mouse.move(1430, 990);
+  await expect.poll(lit).toBe("0");
+});
+
 test("dragging across the tab bar lenses the tabs and opens the one released on", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "desktop", "the tab bar is phone chrome");
   await page.goto("/dashboard");
@@ -182,11 +238,17 @@ test("no app screen scrolls sideways once its content is in", async ({ page }) =
   }
 });
 
-test("offline shows an honest banner and recovers when back online", async ({ page, context }) => {
+test("offline shows an honest banner and recovers when back online", async ({ page, context }, testInfo) => {
   await page.goto("/dashboard");
   await expect(page.getByRole("region", { name: /Left this month/ })).toBeVisible();
   await context.setOffline(true);
   await expect(page.getByText("You're offline.")).toBeVisible();
+  if (testInfo.project.name === "desktop") {
+    // The floating toolbar sits in the banner's row: the banner keeps clear of it.
+    const [banner, toolbar] = await Promise.all([page.locator(".offline-banner").boundingBox(), page.locator(".page-actions").boundingBox()]);
+    if (!banner || !toolbar) throw new Error("no banner or toolbar box");
+    expect(intersects(banner, toolbar), "the toolbar covers the banner").toBe(false);
+  }
   await page.getByRole("button", { name: "Refresh" }).click();
   await expect(page.getByRole("region", { name: /Left this month/ })).toBeVisible();
   await context.setOffline(false);

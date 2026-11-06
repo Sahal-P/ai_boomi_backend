@@ -60,23 +60,55 @@ database or dependency change. It supersedes earlier UI statements only where it
 | Sign-in | White tints on yellow | The same tints as clear glass on colour (`lg-on-color`), never blurred |
 | Under floating bars | Content showed through near-opaque glass | Apple's scroll edge effect: content dissolves into the field beneath the bars (`ScrollEdge`) |
 
+## Second pass — "it doesn't feel like Liquid Glass" (6 November 2026)
+
+Shown desktop Reports, the human said it did not feel like Liquid Glass. The cause: glass reads
+as glass only when something with colour and shape sits behind it, and on desktop nothing did.
+The sidebar bent a nearly flat grey field, nothing scrolled under any glass, and the cards were
+opaque grey. Apple's own macOS 26 glass is lively for the same reasons: a desktop wallpaper behind
+every window, and controls floating over content. This pass adds both:
+
+| Area | First pass | Now |
+| --- | --- | --- |
+| App ground | Grey field with a cool and a warm glow | `bg-wallpaper`: a light wallpaper with sky and apricot bands and a sunflower sun, at the field's luminance. The landing keeps its field, which its 3D mirrors |
+| Cards | Opaque grey `surface` | Widget glass, as iOS and macOS 26 draw widgets. A clear white fill (Clear .5, Tinted .72) that the wallpaper shows through, edges drawn by light and a deep, soft shadow. Still no backdrop filter |
+| Desktop page actions | In the header row | A floating Liquid Glass toolbar capsule at the column's top right. The page scrolls beneath it and it refracts what passes under it, over a desktop scroll edge |
+| Desktop sidebar | Thick glass, 16 px frost | Clearer glass (white .26, 8 px frost) that shows the wallpaper's colour and bends its bands at the rim. A bright highlight glides from item to item under the mouse |
+| Pointer | — | Glass cards and the sidebar catch the light where the mouse is: the desktop stand-in for the highlights iOS moves with the device |
+
+It supersedes, only as stated:
+
+- "Content cards keep the standard `surface` material": on the app's wallpaper they are widget
+  glass, still without a backdrop filter;
+- "Highlights that follow device motion": still none, but on desktop the mouse moves the light;
+- the desktop header's in-flow actions.
+
 ## Rules that still hold
 
 Measured by `e2e/theme.spec.ts` and `e2e/layout.spec.ts` and described in the
-[design system](../design-system.md): text ≥ 4.5:1 (now also against the darkest ink scrolled under
-a floating bar, dissolved by the scroll edge), form-control boundaries ≥ 3:1, at most three
-blurred or refracting layers in view in every state (an open menu, dialog or sheet makes the
-floating chrome solid so it never becomes a fourth), legible Reduce Transparency, Increase
-Contrast and forced-colours fallbacks, reduced motion without flex, stretch or overshoot, and
-no frosted glass over yellow. Content cards keep the standard `surface` material: Apple keeps
-Liquid Glass out of the content layer.
+[design system](../design-system.md):
+
+- text ≥ 4.5:1, now also against the darkest ink scrolled under a floating bar, dissolved by the
+  scroll edge;
+- form-control boundaries ≥ 3:1;
+- at most three blurred or refracting layers in view in every state. An open menu, dialog or sheet
+  makes the floating chrome solid, so it never becomes a fourth. On desktop the layers are the
+  sidebar, the toolbar and Ask's composer;
+- legible Reduce Transparency, Increase Contrast and forced-colours fallbacks;
+- reduced motion without flex, stretch, overshoot or the pointer light;
+- no frosted glass over yellow moments.
+
+The wallpaper's darkest point (luminance 0.676 at 390 px, where its sky and apricot bands meet) is
+lighter than the field's warm glow (0.669), so the same contrast reference covers both. Desktop
+focus scrolls clear of the toolbar. Content cards never carry a backdrop filter.
 
 ## Not in this round
 
 - Liquid merging between separate glass shapes (the video's smooth-minimum bridges); the SDF
   engine makes it a later addition.
 - Light/dark flipping of small glass and a dark mode: FinBoy stays light-only.
-- Highlights that follow device motion: no motion sensors in a money app.
+- Highlights that follow device motion: no motion sensors in a money app. On desktop the mouse
+  moves the light instead (second pass).
 - The unused `Switch`, the unused toast component, and sliders (none exist).
 
 ## Verification

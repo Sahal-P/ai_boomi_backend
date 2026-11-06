@@ -266,4 +266,7 @@ feat/finboy-liquid-glass, loopback web 3091 with the contract double on 8091 (Pl
 web only, no API, migration or dependency change. Refraction is a Chromium enhancement over a
 frosted fallback (never send `url()` to other engines' backdrop filters); text ≥ 4.5:1, control
 boundaries ≥ 3:1, ≤ 3 blurred layers in view, no frosted glass over yellow and every
-accessibility fallback still hold.
+accessibility fallback still hold. After "it doesn't feel like Liquid Glass", a second pass gave
+the app a wallpaper with colour and shape (`bg-wallpaper`; the landing keeps its field), widget-glass
+cards without backdrop filters, a floating desktop toolbar for page actions, a gliding sidebar
+highlight and pointer light, as the contract's *Second pass* records.

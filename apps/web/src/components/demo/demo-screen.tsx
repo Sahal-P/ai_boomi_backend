@@ -174,7 +174,7 @@ function DemoBody({ demo }: { demo: DemoData }) {
 export function DemoScreen() {
   const demo = useResource("demo", (signal) => getDemo(signal));
   return (
-    <div className="bg-field min-h-dvh">
+    <div className="bg-field bg-wallpaper min-h-dvh">
       {/* Content scrolls under the sample banner, so it is blurred near-opaque glass. */}
       <header className="sticky top-0 z-40 border-b border-white/70 bg-white/85 shadow-hairline backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8">
