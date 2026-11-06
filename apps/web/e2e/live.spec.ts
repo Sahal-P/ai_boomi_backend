@@ -219,7 +219,7 @@ test("admin: the CI test admin signs in through the proxy and sees activity, nev
   await expect(owner).toHaveCount(1);
   await expect(owner).toContainText("00000000");
   await page.goto("/admin/system");
-  await expect(page.getByRole("region", { name: "Service" })).toContainText("0014_admin");
+  await expect(page.getByRole("region", { name: "Service" })).toContainText("0015_advisor");
   await page.goto("/admin/audit");
   await expect(page.getByRole("list", { name: "Audit entries" })).toContainText("Signed in");
   await page.getByRole("button", { name: /^Admin account/ }).first().click();
