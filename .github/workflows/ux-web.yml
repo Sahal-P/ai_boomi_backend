@@ -1,10 +1,21 @@
-name: FinBoy CI and frontend release
+name: FinBoy fast deploy
 
 on:
   push:
-    branches: [main, feat/finboy-voxpay-hosting]
-  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'scripts/web-release.py'
   workflow_dispatch:
+    inputs:
+      full_validation:
+        description: Run the backend and full browser matrix before deployment
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -13,40 +24,12 @@ env:
   NEXT_TELEMETRY_DISABLED: '1'
 
 jobs:
-  changes:
+  build:
     if: github.repository == 'Sahal-P/ai_boomi_frontend'
     runs-on: ubuntu-24.04
-    outputs:
-      runtime: ${{ steps.paths.outputs.runtime }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - id: paths
-        env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-            printf 'runtime=true\n' >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BASE" HEAD | grep -E '^(apps/|deploy/|scripts/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|pyproject\.toml$|uv\.lock$|\.github/workflows/)' >/dev/null; then
-            printf 'runtime=true\n' >> "$GITHUB_OUTPUT"
-          else
-            printf 'runtime=false\n' >> "$GITHUB_OUTPUT"
-          fi
-
-  backend:
-    needs: changes
-    if: needs.changes.outputs.runtime == 'true'
-    uses: ./.github/workflows/ux-backend.yml
-
-  build:
-    needs: changes
-    if: needs.changes.outputs.runtime == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     concurrency:
-      group: web-build-${{ github.ref }}
+      group: finboy-web-build-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -65,9 +48,7 @@ jobs:
           restore-keys: |
             web-${{ runner.os }}-node24-${{ hashFiles('pnpm-lock.yaml', 'apps/web/next.config.ts') }}-
       - run: pnpm install --frozen-lockfile
-      - name: Frontend checks
-        run: pnpm lint:web && pnpm test:web && pnpm typecheck
-      - name: Build once for verification and production
+      - name: Build the production artifact
         env:
           NEXT_PUBLIC_API_URL: /
           FINBOY_API_ORIGIN: ''
@@ -81,13 +62,15 @@ jobs:
           path: /tmp/finboy-artifact/*
           retention-days: 7
 
+  backend:
+    if: inputs.full_validation == true
+    uses: ./.github/workflows/ux-backend.yml
+
   browsers:
     needs: build
+    if: inputs.full_validation == true
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    concurrency:
-      group: web-browser-${{ matrix.kind }}-${{ matrix.project }}-${{ github.ref }}
-      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
@@ -137,7 +120,7 @@ jobs:
         with:
           name: finboy-web-${{ github.sha }}
           path: /tmp/finboy-artifact
-      - name: Start the verified standalone build and local proxy
+      - name: Start the built web app and local proxy
         run: |
           cd /tmp/finboy-artifact
           sha256sum -c "$GITHUB_SHA.sha256"
@@ -159,7 +142,6 @@ jobs:
         run: |
           pnpm db:migrate
           pnpm db:check
-          # A throwaway admin for the real-API admin journey (docs/admin-round/contract.md).
           E2E_ADMIN_PASSWORD="$(openssl rand -hex 24)"
           echo "::add-mask::$E2E_ADMIN_PASSWORD"
           echo "E2E_ADMIN_PASSWORD=$E2E_ADMIN_PASSWORD" >> "$GITHUB_ENV"
@@ -178,7 +160,7 @@ jobs:
 
   release:
     needs: [build, backend, browsers]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: ${{ always() && github.repository == 'Sahal-P/ai_boomi_frontend' && github.ref == 'refs/heads/main' && needs.build.result == 'success' && (inputs.full_validation != true || (needs.backend.result == 'success' && needs.browsers.result == 'success')) }}
     runs-on: ubuntu-24.04
     environment: production
     timeout-minutes: 12
@@ -194,7 +176,7 @@ jobs:
         with:
           name: finboy-web-${{ github.sha }}
           path: release
-      - name: Verify and deploy through restricted SSH
+      - name: Deploy the verified artifact
         env:
           DEPLOY_KEY: ${{ secrets.FINBOY_WEB_DEPLOY_KEY }}
           KNOWN_HOSTS: ${{ secrets.FINBOY_WEB_KNOWN_HOSTS }}

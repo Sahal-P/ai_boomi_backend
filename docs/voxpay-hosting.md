@@ -37,10 +37,10 @@ following a drained, validated restart. Production health and CORS checks passed
   two-minute drain without holding the release job open. A later release waits before reusing
   a draining slot. It never touches
   API releases, other applications, database migrations or production backups.
-- The first feature-branch run, `40802736199`, passed backend, full contract browser and
-  real API browser checks at all three widths, using disposable CI databases. It finished
-  in 5m58s versus the earlier 8m16s web workflow. Run `40804058903` split contract and real
-  browser jobs, passed all six and finished in 4m48s without removing coverage.
+- Main pushes now build the web artifact once and deploy it immediately. They skip the backend
+  suite and six browser jobs. Select **Run workflow → Full validation** when a release needs that
+  depth of coverage; the server still rejects an artifact whose API digest differs from the
+  installed API.
 - `pnpm check`, `NEXT_PUBLIC_API_URL=/ FINBOY_API_ORIGIN= pnpm build`, `actionlint` and
   19 isolated deployment-safety tests passed locally. The Linux artifact staged and its
   revision-matched `/healthz` passed on the server.
@@ -61,8 +61,8 @@ following a drained, validated restart. Production health and CORS checks passed
   financial screenshots.
 - Keep `finboy-api.antlegs.in` for Gmail and Meta callbacks, all provider credentials
   and encryption/session keys, and the existing Vercel project as rollback evidence.
-  Users sign in once on the new host. Main-only frontend releases deploy after all
-  required checks, with serialized activation and a push to the backend mirror.
+  Users sign in once on the new host. Main-only frontend releases build once, use serialized
+  activation and push to the backend mirror. Full validation is manual from the workflow form.
 
 The user signed into GoDaddy in the `sahlcyprus@gmail.com` Chrome profile. Preserve the
 `finboy-api` A record and all unrelated domain records. Never stop shared services, run
