@@ -2,7 +2,10 @@
 
 import { useId, type ReactNode } from "react";
 
-/** Sunflower, the only colour fill in FinBoy's line art. */
+/**
+ * Sunflower, FinBoy's colour fill in its line art. A drawn WhatsApp chat (MoneyScene's phone)
+ * fills with WhatsApp's own colours instead: the wa-* tokens in globals.css.
+ */
 export const SUNFLOWER = "#fed234";
 
 /** A per-instance SVG id: a copy elsewhere on the page (even a hidden one) can't break this one. */
@@ -11,8 +14,9 @@ export function useSvgId(prefix: string) {
 }
 
 /**
- * Line-art frame: ink strokes in currentColor (forced colours adapt), white and sunflower fills,
- * halftone shading from a 4.5-unit dot grid — the same dot language as the thinking orbs.
+ * Line-art frame: ink strokes in currentColor (forced colours adapt), white and sunflower fills
+ * (WhatsApp's colours inside a drawn WhatsApp chat), halftone shading from a 4.5-unit dot grid —
+ * the same dot language as the thinking orbs.
  * Decorative only.
  */
 export function Art({ viewBox, className, children }: { viewBox: string; className?: string; children: (dots: string) => ReactNode }) {

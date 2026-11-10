@@ -48,6 +48,16 @@
   --color-chart-rest: var(--chart-rest);
   --color-chart-in: var(--chart-in);
   --color-chart-out: var(--chart-out);
+  --color-wa-wallpaper: var(--wa-wallpaper);
+  --color-wa-bar: var(--wa-bar);
+  --color-wa-out: var(--wa-out);
+  --color-wa-in: var(--wa-in);
+  --color-wa-text: var(--wa-text);
+  --color-wa-meta: var(--wa-meta);
+  --color-wa-icon: var(--wa-icon);
+  --color-wa-avatar: var(--wa-avatar);
+  --color-wa-accent: var(--wa-accent);
+  --color-wa-button: var(--wa-button);
 
   --font-sans:
     "Plus Jakarta Sans Variable", "Anek Malayalam Variable", ui-sans-serif,
@@ -58,6 +68,8 @@
   --font-malayalam:
     "Anek Malayalam Variable", "Plus Jakarta Sans Variable", ui-sans-serif,
     sans-serif;
+  /* WhatsApp on Android draws in Roboto; other systems use their own UI font (nothing downloads). */
+  --font-wa: Roboto, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
   /* Measured from the glass reference: 12px rows, 20–24px panels, pills for actions. */
@@ -241,6 +253,23 @@
   --chart-rest: #9a9ea6;
   --chart-in: #2a78d6;
   --chart-out: #b87800;
+
+  /* WhatsApp's own light theme (Android), only where a WhatsApp chat is drawn: the landing's
+     chat preview and the phone in MoneyScene. Bubbles, greys and greens are sampled from Meta's
+     Cloud API documentation screenshots (interactive reply buttons, audio messages). The plain
+     wallpaper is WhatsApp's "no doodles" setting. Greys are AA as WhatsApp draws them (5.7:1 on
+     white, 5.2:1 on the green bubble, 4.8:1 on the wallpaper). Reply-button labels use WhatsApp's
+     text green (4.7:1); its icon green (#1daa61, 3:1) only fills shapes. */
+  --wa-wallpaper: #efeae2;
+  --wa-bar: #ffffff;
+  --wa-out: #d9fdd3;
+  --wa-in: #ffffff;
+  --wa-text: #111b21;
+  --wa-meta: #666666;
+  --wa-icon: #54656f;
+  --wa-avatar: #dfe5e7;
+  --wa-accent: #1daa61;
+  --wa-button: #1a8456;
 
   --background: var(--field);
   --foreground: var(--ink);

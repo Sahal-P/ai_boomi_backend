@@ -7,8 +7,20 @@ import { Art, RupeeCoin, ShadedDisc, Sparkle, SUNFLOWER } from "./kit";
 const dot = { fill: "currentColor", stroke: "none" } as const;
 
 /**
- * Sign-in and the landing hero: a phone with your voice note and FinBoy's reply — a live
- * composing orb sits in the reply bubble — beside a receipt, an envelope and the ₹ coin.
+ * A WhatsApp bubble, its tail at the top outer corner as WhatsApp draws it (`out` is yours, on
+ * the right). Corners are 6 units, the tail 5 wide and 6 deep.
+ */
+function bubble(x: number, y: number, w: number, h: number, side: "out" | "in") {
+  const r = 6;
+  return side === "out"
+    ? `M${x + r} ${y}H${x + w + 5}L${x + w} ${y + 6}V${y + h - r}Q${x + w} ${y + h} ${x + w - r} ${y + h}H${x + r}Q${x} ${y + h} ${x} ${y + h - r}V${y + r}Q${x} ${y} ${x + r} ${y}Z`
+    : `M${x + w - r} ${y}H${x - 5}L${x} ${y + 6}V${y + h - r}Q${x} ${y + h} ${x + r} ${y + h}H${x + w - r}Q${x + w} ${y + h} ${x + w} ${y + h - r}V${y + r}Q${x + w} ${y} ${x + w - r} ${y}Z`;
+}
+
+/**
+ * Sign-in and the landing hero: a phone showing FinBoy's WhatsApp chat in WhatsApp's own colours
+ * (the wa-* tokens) — your voice note, FinBoy's reply with a live composing orb, a reply with its
+ * button, the message bar and mic — beside a receipt, an envelope and the ₹ coin in sunflower.
  */
 export function MoneyScene({ className }: { className?: string }) {
   return (
@@ -26,17 +38,35 @@ export function MoneyScene({ className }: { className?: string }) {
               <rect x="218" y="84" width="42" height="13" rx="6.5" fill={SUNFLOWER} strokeWidth={2} />
             </g>
             <rect x="58" y="10" width="118" height="210" rx="22" fill="#fff" />
+            {/* The chat: WhatsApp's wallpaper under a white top bar (back, FinBoy's photo, name, menu). */}
+            <rect x="68" y="24" width="98" height="182" rx="13" fill="var(--wa-wallpaper)" stroke="none" />
+            <path d="M68 39V37a13 13 0 0 1 13-13h72a13 13 0 0 1 13 13v2z" fill="var(--wa-bar)" stroke="none" />
+            <path d="M68 39h98" strokeWidth={1.5} />
             <rect x="68" y="24" width="98" height="182" rx="13" strokeWidth={1.5} />
             <rect x="101" y="16" width="32" height="5" rx="2.5" {...dot} />
-            <rect x="86" y="42" width="72" height="26" rx="13" fill={SUNFLOWER} strokeWidth={2} />
-            <path d="M96 49.5l8.5 5.5-8.5 5.5z" fill="currentColor" strokeWidth={1.2} />
-            <path d="M112 52v6M118 49v12M124 52.5v5M130 48v14M136 51v8M142 53v4M148 51.5v7" strokeWidth={2.2} />
-            <rect x="76" y="80" width="78" height="40" rx="14" fill="#fff" strokeWidth={2} />
+            <path d="M76 28.5l-3 3 3 3" strokeWidth={1.4} />
+            <circle cx="84" cy="31.5" r="4.5" fill={SUNFLOWER} strokeWidth={1.2} />
+            <path d="M92.5 31.5h19" strokeWidth={2.2} />
+            <circle cx="159" cy="28" r="0.9" {...dot} />
+            <circle cx="159" cy="31.5" r="0.9" {...dot} />
+            <circle cx="159" cy="35" r="0.9" {...dot} />
+            {/* Your voice note: play, WhatsApp's green knob, the waveform. */}
+            <path d={bubble(90, 45, 66, 24, "out")} fill="var(--wa-out)" strokeWidth={2} />
+            <path d="M97.5 52.5l7 4.5-7 4.5z" fill="currentColor" strokeWidth={1.2} />
+            <circle cx="111" cy="57" r="2.4" fill="var(--wa-accent)" stroke="none" />
+            <path d="M116 54.5v5M120.5 51.5v11M125 55v4M129.5 51v12M134 53.5v7M138.5 55.5v3M143 54v6M147.5 55.5v3" strokeWidth={2} />
+            {/* FinBoy's reply (the orb composes in its empty left side), then a reply with its button. */}
+            <path d={bubble(78, 80, 76, 40, "in")} fill="var(--wa-in)" strokeWidth={2} />
             <path d="M106 94h36M106 106h24" strokeWidth={2.2} />
-            <rect x="86" y="134" width="72" height="50" rx="11" fill="#fff" strokeWidth={2} />
-            <path d="M96 148h30" strokeWidth={2.2} />
-            <rect x="96" y="158" width="52" height="15" rx="7.5" fill={dots} strokeWidth={2} />
-            <path d="M100 198h34" strokeWidth={3} />
+            <rect x="78" y="125" width="76" height="52" rx="6" fill="var(--wa-in)" strokeWidth={2} />
+            <path d="M87 137h34" strokeWidth={2.2} />
+            <path d="M78 151h76" strokeWidth={1.2} />
+            <path d="M104 164h24" stroke="var(--wa-button)" strokeWidth={2.4} />
+            {/* WhatsApp's message bar and its green mic. */}
+            <rect x="72" y="184" width="70" height="15" rx="7.5" fill="var(--wa-bar)" strokeWidth={1.8} />
+            <circle cx="154" cy="191.5" r="7.5" fill="var(--wa-accent)" strokeWidth={1.8} />
+            <path d="M154 187.4v4.2" stroke="#fff" strokeWidth={2.6} />
+            <path d="M151.3 190.9a2.7 2.7 0 0 0 5.4 0M154 193.6v1.5" stroke="#fff" strokeWidth={1.2} />
             <RupeeCoin x={214} y={166} r={46} dots={dots} />
             <path d="M254 126l9-9M261 142l12-2M244 117l2-12" />
             <Sparkle x={30} y={46} r={12} />
@@ -47,8 +77,8 @@ export function MoneyScene({ className }: { className?: string }) {
           </>
         )}
       </Art>
-      {/* Centred on the reply bubble's empty left side (91, 100); 20 px fits it at any width. */}
-      <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: "28.4%", top: "43.5%" }}>
+      {/* Centred on the reply bubble's empty left side (92, 100); 20 px fits it at any width. */}
+      <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: "28.75%", top: "43.5%" }}>
         <ThinkingOrb state="composing" size={20} rest />
       </div>
     </div>

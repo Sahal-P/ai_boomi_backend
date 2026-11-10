@@ -29,6 +29,16 @@ test.describe("while WhatsApp sign-up is open", () => {
     const chat = page.getByRole("list", { name: "Example chat with FinBoy" });
     await expect(chat.getByText("Saved 3 · ₹190")).toBeVisible();
     await expect(chat.getByText("Undo all")).toBeVisible();
+    // Drawn the way WhatsApp draws it: its wallpaper, your green bubbles and FinBoy's white ones.
+    const background = (element: Element) => getComputedStyle(element).backgroundColor;
+    expect(await chat.evaluate((list) => getComputedStyle(list.parentElement ?? list).backgroundColor)).toBe(
+      "rgb(239, 234, 226)",
+    );
+    expect(await chat.locator("[data-from=you]").first().evaluate(background)).toBe("rgb(217, 253, 211)");
+    expect(await chat.locator("[data-from=finboy]").first().evaluate(background)).toBe("rgb(255, 255, 255)");
+    // WhatsApp never shows FinBoy's Premium pill: it sits in FinBoy's caption, outside the phone.
+    await expect(chat.getByText("Premium")).toHaveCount(0);
+    await expect(page.getByRole("figure").filter({ has: chat }).getByText("Premium", { exact: true })).toBeVisible();
     const fixes = page.getByRole("region", { name: /undone or fixed/ });
     for (const title of ["Undo", "Amount", "Category", "It asks first when unsure"]) {
       await expect(fixes.getByRole("heading", { name: title, exact: true })).toBeVisible();

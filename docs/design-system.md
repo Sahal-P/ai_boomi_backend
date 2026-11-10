@@ -55,6 +55,7 @@ specified in [`docs/ux-round/ui-spec.md`](ux-round/ui-spec.md).
 | `float-fill` · `glass-blur` | `rgb(250 250 251 / .74)` · `blur(24px) saturate(140%)` | Floating glass; the blur goes through the variable (see below) |
 | `sunflower` / `sunflower-ink` | `#fed234` / `#3a2c00` | Hero and moment fill / secondary text on it (9.4:1). A fill under ink only: 1.18:1 as a line or text on glass |
 | `positive` · `negative` · `warning` | `#065f46` · `#a8201a` · `#d97706` | Verified/income, destructive, attention (`warning` for icons/dots; attention text uses `amber-800/900`) |
+| `wa-wallpaper` · `wa-bar` · `wa-out` · `wa-in` · `wa-text` · `wa-meta` · `wa-icon` · `wa-avatar` · `wa-accent` · `wa-button`; `font-wa` | `#efeae2` · white · `#d9fdd3` · white · `#111b21` · `#666666` · `#54656f` · `#dfe5e7` · `#1daa61` · `#1a8456`; Roboto, then the system UI font | WhatsApp's own light theme (Android), only where a WhatsApp chat is drawn (see *WhatsApp chats*). Sampled from Meta's Cloud API documentation screenshots. The greys pass AA as WhatsApp draws them (5.7:1 on white, 5.2:1 on the green bubble, 4.8:1 on the wallpaper); reply-button labels use WhatsApp's text green (4.7:1); the icon green `wa-accent` (3:1) only fills shapes |
 | `lg-tint` · `lg-menu-tint` · `lg-thick-tint` · `lg-sidebar-tint` · `lg-static-tint` · `lg-composer-tint` | Clear .38 · .78 · .84 · .26 · .55 · .62; Tinted .70 · .92 · .95 · .64 · .72 · .86 | White fill of each Liquid Glass material (`app/liquid-glass.css`); Reduce Transparency .96–.99, Increase Contrast .9–.98 |
 | `lg-sidebar-frost` | 8 px (`frost` tier 18 px; Tinted 16 · 24) | The sidebar's lighter frost: nothing scrolls under it, so it shows the wallpaper's colour like a macOS 26 sidebar |
 | `lg-lit` (registered, not inherited) | 0–1 | How lit a card or the sidebar is by the mouse over it (GlassProvider) |
@@ -221,7 +222,8 @@ orbs pause offscreen and in hidden tabs.
 ## Illustrations (`components/illustrations/`)
 
 `kit.tsx` draws on 240-unit artboards: 2.5-unit strokes in `currentColor` (forced colours
-adapt), round caps and joins, white fills, sunflower as the only colour fill, halftone shading
+adapt), round caps and joins, white fills, sunflower as the only colour fill (except inside a
+drawn WhatsApp chat, below), halftone shading
 from a 4.5-unit dot grid (the orbs' dot language), four-point sparkles and "pop" lines, and
 the ₹ coin as a currency illustration (separate from the companion logo). Patterns and clip
 paths use per-instance
@@ -229,6 +231,28 @@ paths use per-instance
 each well under 6 KB, decorative): `MoneyScene` (sign-in, landing hero), `NoRecordsArt`,
 `NoMatchArt`, `AllReviewedArt`, `EmptyMonthArt`. Brand assets supplied later replace these
 defaults where they conflict.
+
+### WhatsApp chats
+
+Where FinBoy shows its WhatsApp chat, it looks like WhatsApp for Android in light mode, in the
+`wa-*` tokens (human's choice, 10 November 2026):
+- **The landing's How it works chat** (`marketing/chat-preview.tsx`) carries FinBoy's real replies
+  from `english.py`, as plain lines with no bold. It is drawn in an ink phone bezel:
+  - WhatsApp's top bar, with FinBoy's photo cropped round;
+  - the plain wallpaper (WhatsApp's "no doodles" setting; WhatsApp's doodle art and tail assets are
+    not copied);
+  - bubbles with tails, and grey "delivered" ticks (FinBoy sends no read receipts);
+  - reply buttons inside the bubble under a hairline, each with the reply arrow;
+  - the voice-message player with its transcript;
+  - the message bar with the green mic.
+
+  Every part is drawn, and nothing in the phone is focusable. Screen readers get the
+  same plain text as before. FinBoy's own caption (synthetic example, the Premium note) stays
+  outside the phone.
+- **`MoneyScene`'s phone** keeps the line art, but its chat is WhatsApp's: a white top bar,
+  the wallpaper, your voice note in the green bubble with the green knob, white replies with
+  tails, a reply-button row and the green mic. The receipt, envelope and coin keep sunflower.
+- The "…on WhatsApp" buttons and links stay FinBoy's ink.
 
 ## Primitives (`components/ui`)
 
