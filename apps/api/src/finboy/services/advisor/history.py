@@ -10,14 +10,20 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
+from finboy.core.config import Settings
 from finboy.db.models.advisor import AdvisorMessage, AdvisorThread
+from finboy.services.advisor import embeddings, ranking
 
 IDLE = timedelta(hours=6)
 MAX_TEXT = 4000
 TITLE = 80
+SEARCH_THREADS = 200  # the newest chats a past-chat search looks through
+EXCERPT = 700
+MEANING_FLOOR = 0.25
+KEYWORD_SHARE = 0.35
 
 
 @dataclass(frozen=True)
@@ -131,6 +137,36 @@ def save_turn(
     return thread
 
 
+def save_nudge(
+    session: Session, *, user_id: UUID, text: str, language: str, now: datetime
+) -> AdvisorThread:
+    """A coach nudge FinBoy sent first (phase 3), as FinBoy's turn in the WhatsApp chat, so a
+    reply such as "how?" continues it. A chat that went quiet gets a new one, like a question."""
+    thread = current(session, user_id, "whatsapp", None, now)
+    if thread is None:
+        thread = AdvisorThread(
+            user_id=user_id,
+            channel="whatsapp",
+            title=" ".join(text.split())[:TITLE],
+            started_at=now,
+            last_at=now,
+        )
+        session.add(thread)
+        session.flush()
+    thread.last_at = now
+    session.add(
+        AdvisorMessage(
+            thread_id=thread.id,
+            user_id=user_id,
+            role="assistant",
+            text=(text or "…")[:MAX_TEXT],
+            language=language,
+            created_at=now,
+        )
+    )
+    return thread
+
+
 @dataclass(frozen=True)
 class ThreadView:
     id: UUID
@@ -192,11 +228,11 @@ def delete_all(session: Session, user_id: UUID) -> int:
 def quiet_unsummarized(
     session: Session, user_id: UUID, current_id: UUID | None, now: datetime | None = None
 ) -> list[AdvisorThread]:
-    """Earlier threads with at least one full turn and no summary yet, newest first."""
+    """Quiet earlier threads with no summary, or new turns since their summary, newest first."""
     now = now or datetime.now(UTC)
     conditions = [
         AdvisorThread.user_id == user_id,
-        AdvisorThread.summary.is_(None),
+        or_(AdvisorThread.summary.is_(None), AdvisorThread.summarized_at < AdvisorThread.last_at),
         AdvisorThread.last_at < now - timedelta(minutes=10),
     ]
     if current_id is not None:
@@ -206,3 +242,110 @@ def quiet_unsummarized(
             select(AdvisorThread).where(*conditions).order_by(AdvisorThread.last_at.desc()).limit(3)
         )
     )
+
+
+@dataclass(frozen=True)
+class ChatHit:
+    """An earlier chat that matches a search, with the exchange closest to it."""
+
+    thread_id: UUID
+    title: str
+    summary: str | None
+    excerpt: str
+    last_at: datetime
+
+
+def _pairs(rows: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """(question, answer) pairs from a chat's messages in order."""
+    pairs: list[tuple[str, str]] = []
+    for role, text in rows:
+        if role == "user":
+            pairs.append((text, ""))
+        elif pairs and not pairs[-1][1]:
+            pairs[-1] = (pairs[-1][0], text)
+    return pairs
+
+
+def _excerpt(query: str, pairs: list[tuple[str, str]]) -> str:
+    if not pairs:
+        return ""
+    scores = ranking.bm25(query, {str(index): f"{q} {a}" for index, (q, a) in enumerate(pairs)})
+    best = max(range(len(pairs)), key=lambda index: (scores[str(index)], index))
+    question, answer = pairs[best]
+    text = f"They asked: {' '.join(question.split())} FinBoy said: {' '.join(answer.split())}"
+    return text if len(text) <= EXCERPT else text[: EXCERPT - 1] + "…"
+
+
+def search(
+    session: Session,
+    user_id: UUID,
+    query: str,
+    *,
+    exclude: UUID | None = None,
+    settings: Settings | None = None,
+    query_vector: list[float] | None = None,
+    limit: int = 3,
+) -> list[ChatHit]:
+    """The household's earlier chats about something: keywords over their words, and meaning
+    over their summaries when embeddings are on. The current chat is left out."""
+    conditions = [AdvisorThread.user_id == user_id]
+    if exclude is not None:
+        conditions.append(AdvisorThread.id != exclude)
+    found = list(
+        session.scalars(
+            select(AdvisorThread)
+            .where(*conditions)
+            .order_by(AdvisorThread.last_at.desc())
+            .limit(SEARCH_THREADS)
+        )
+    )
+    if not found:
+        return []
+    messages_by_thread: dict[UUID, list[tuple[str, str]]] = {row.id: [] for row in found}
+    for thread_id, role, text in session.execute(
+        select(AdvisorMessage.thread_id, AdvisorMessage.role, AdvisorMessage.text)
+        .where(
+            AdvisorMessage.user_id == user_id,
+            AdvisorMessage.thread_id.in_(list(messages_by_thread)),
+        )
+        .order_by(AdvisorMessage.created_at, AdvisorMessage.id)
+    ):
+        messages_by_thread[thread_id].append((role, text))
+    pairs = {key: _pairs(rows) for key, rows in messages_by_thread.items()}
+    documents = {
+        str(row.id): " ".join(
+            [row.title or "", row.summary or "", *(f"{q} {a}" for q, a in pairs[row.id])]
+        )
+        for row in found
+    }
+    scores = ranking.bm25(query, documents)
+    floor = max(max(scores.values(), default=0.0) * KEYWORD_SHARE, 1e-9)
+    by_keywords = [
+        key for key, score in sorted(scores.items(), key=lambda item: -item[1]) if score >= floor
+    ]
+    by_meaning: list[str] = []
+    if query_vector is not None and settings is not None:
+        model = settings.openai_embedding_model
+        scored = sorted(
+            (
+                (embeddings.similarity(query_vector, row.summary_embedding), str(row.id))
+                for row in found
+                if row.summary_embedding and row.embedding_model == model
+            ),
+            reverse=True,
+        )
+        by_meaning = [key for score, key in scored if score >= MEANING_FLOOR]
+    by_id = {str(row.id): row for row in found}
+    hits: list[ChatHit] = []
+    for key in ranking.fuse(by_keywords, by_meaning)[:limit]:
+        row = by_id[key]
+        hits.append(
+            ChatHit(
+                thread_id=row.id,
+                title=row.title or "",
+                summary=row.summary,
+                excerpt=_excerpt(query, pairs[row.id]),
+                last_at=row.last_at,
+            )
+        )
+    return hits

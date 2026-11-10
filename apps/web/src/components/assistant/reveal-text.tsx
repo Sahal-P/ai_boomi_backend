@@ -1,9 +1,10 @@
+import { boldSegments } from "@/lib/bold-text";
 import { cn } from "@/lib/utils";
 
 /**
  * An answer arriving word by word: each word rises out of a blur, the whole reveal taking about
  * 0.9 s at most. The words stay plain inline text, so assistive tech reads the finished answer,
- * and the global reduced-motion rule shows it at once.
+ * and the global reduced-motion rule shows it at once. WhatsApp-style *bold* shows as bold.
  */
 export function RevealText({
   text,
@@ -16,28 +17,48 @@ export function RevealText({
   lang?: string | undefined;
   className?: string | undefined;
 }) {
+  const segments = boldSegments(text);
   if (!animate) {
     return (
       <p lang={lang} className={cn("whitespace-pre-line", className)}>
-        {text}
+        {segments.map((segment, index) =>
+          segment.bold ? (
+            <strong key={index} className="font-semibold">
+              {segment.text}
+            </strong>
+          ) : (
+            segment.text
+          ),
+        )}
       </p>
     );
   }
-  const parts = text.split(/(\s+)/);
-  const words = parts.filter((part) => part.trim()).length;
+  const words = segments.reduce(
+    (count, segment) => count + segment.text.split(/\s+/).filter(Boolean).length,
+    0,
+  );
   const step = Math.min(28, 700 / Math.max(1, words));
   let word = 0;
   return (
     <p lang={lang} className={cn("whitespace-pre-line", className)}>
-      {parts.map((part, index) =>
-        part.trim() ? (
-          <span key={index} className="word-in" style={{ animationDelay: `${Math.round(word++ * step)}ms` }}>
-            {part}
-          </span>
+      {segments.map((segment, index) => {
+        const parts = segment.text.split(/(\s+)/).map((part, at) =>
+          part.trim() ? (
+            <span key={at} className="word-in" style={{ animationDelay: `${Math.round(word++ * step)}ms` }}>
+              {part}
+            </span>
+          ) : (
+            part
+          ),
+        );
+        return segment.bold ? (
+          <strong key={index} className="font-semibold">
+            {parts}
+          </strong>
         ) : (
-          part
-        ),
-      )}
+          <span key={index}>{parts}</span>
+        );
+      })}
     </p>
   );
 }

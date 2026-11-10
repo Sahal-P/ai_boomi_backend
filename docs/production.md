@@ -746,3 +746,107 @@ remain.
 **Acceptance:** real questions, a follow-up, a remembered fact recalled in a later chat, and
 "forget everything" on the web and on WhatsApp in each language, recorded separately from these
 checks.
+
+### Advisor phase 2: guides, recall, diary memory and live steps
+
+Phase 2 is on the same branch ([contract](advisor-round/contract.md#phase-2-money-guides-deeper-recall-diary-memory-and-live-steps)).
+It adds migration `0016_knowledge` and no dependency. It needs no pgvector or other extension:
+embeddings are plain `real[]` columns.
+
+**What changes with `ADVISOR_ENABLED=true` alone:**
+- The web asks through `POST /api/v1/assistant/ask/stream` and shows each step. The API's nginx
+  snippet already has `proxy_buffering off` and a 120-second read timeout.
+- The advisor can work out planning figures and search earlier chats.
+- With more than 40 memories, it recalls the relevant ones.
+- WhatsApp diary messages can teach lasting facts.
+
+The guides stay off until `KNOWLEDGE_ENABLED=true`. Search by meaning stays off until
+`OPENAI_EMBEDDING_MODEL` is set.
+
+**Before the guides are switched on:**
+- A person has reviewed every guide that will be served against its official sources and filled
+  `reviewed_on`, with a native read of the Hindi and Malayalam titles and terms.
+- Production serves only reviewed guides. Readiness reports `knowledge_configuration: missing`
+  while none is reviewed.
+
+**Before embeddings are switched on:**
+- A live capability check of the model at `ADVISOR_EMBEDDING_DIMENSIONS` (256) has passed.
+- Then, on the server, run `pnpm knowledge:index` with the production environment. It prints only
+  the guide counts.
+
+**Release:**
+1. Apply `alembic upgrade head` for `0016` with the backend release (a validated backup first, then
+   a drift check).
+2. Add the settings that have passed their checks to `/etc/finboy/production.env`.
+3. Restart `finboy.service` only.
+
+```
+KNOWLEDGE_ENABLED=true
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+```
+
+**Check:**
+- Signed in, readiness reports `knowledge_configuration: configured` and the expected
+  `knowledge_search`.
+- An Ask about a scheme shows its guide chip, linking to the official site.
+- `curl -N` on the stream (with a household cookie) shows `progress` lines arriving before the
+  `answer`.
+- Logs carry `advisor.answered` and `advisor.embedding` with outcomes and counts only.
+
+**Rollback:**
+- `KNOWLEDGE_ENABLED=false` hides the guides.
+- Unsetting `OPENAI_EMBEDDING_MODEL` returns to keyword search.
+- Migration `0016` can be downgraded at any time: everything it adds can be recomputed.
+
+### Advisor phase 3: the proactive coach
+
+Phase 3 is on the same branch ([contract](advisor-round/contract.md#phase-3-the-proactive-coach)).
+It adds migration `0017_coach` (additive) and no dependency. With `COACH_ENABLED` unset, nothing
+changes: no "For you" card, no "Coach me" button, "coach on" is an ordinary message and the timer
+job prints `Nudges: off`.
+
+**Before release:**
+- `pnpm eval:advisor --runs 3` passes live, including the coach's wording gate (at least 90% of
+  nudges in the advisor's words).
+- A native read of the Hindi and Malayalam coach copy and template bodies.
+- The human approves the release. The coach needs `ADVISOR_ENABLED=true`.
+
+**The template (optional at first):** submit `finboy_coach_update` to Meta in the same WhatsApp
+Business Account as the check-in. Use category Utility, no buttons, one body parameter (`{{1}}`,
+the code-written nudge line), in English, Hindi and Malayalam, with the bodies in the
+[contract](advisor-round/contract.md#the-template-finboy_coach_update-category-utility-no-buttons-one-body-parameter).
+Until Meta approves it, leave `WHATSAPP_COACH_TEMPLATE` unset. Readiness then reports
+`coach_configuration: window_only`, and nudges reach only households that wrote to FinBoy in the
+last day.
+
+**Release:**
+1. Backend first: a validated backup, `alembic upgrade head` for `0017`, then a drift check.
+2. Add to `/etc/finboy/production.env`, then restart `finboy.service` only:
+
+   ```
+   COACH_ENABLED=true
+   ```
+
+3. Install and enable the timer: copy `deploy/finboy-coach.service` and `.timer` to
+   `/etc/systemd/system/`, then `systemctl daemon-reload` and `systemctl enable --now
+   finboy-coach.timer`. It runs hourly 09:00–19:00 IST; the job sends only 08:00–20:00 IST.
+4. After Meta approves the template: add `WHATSAPP_COACH_TEMPLATE=finboy_coach_update` and restart
+   `finboy.service` only.
+5. Push main for the web: Home's "For you" shows only when the session reports `coach: true`.
+
+**Check:**
+- Readiness reports `coach_configuration` as `window_only` or `configured`; the session reports
+  `coach: true`; the admin panel shows "Coach nudges".
+- On the owner's phone: "this week" shows "🔔 Coach me"; tap it; the next timer run sends one nudge
+  at most (`python -m finboy.services.pilot.cli coach` prints `Nudges: sent …, quiet …`).
+- "coach off" stops them; STOP stops everything.
+- Logs carry `advisor.nudge` with the kind, the outcome, who wrote it and the latency, and never
+  its words or figures.
+
+**Rollback:** set `COACH_ENABLED=false` and restart. The timer may stay installed (it prints
+`Nudges: off`), or disable it with `systemctl disable --now finboy-coach.timer`. Opt-ins and sent
+nudges stay. Migration `0017` can be downgraded; it drops the opt-ins and claim rows, while the
+nudges' words stay in the chats.
+
+**Acceptance:** a real nudge received on a phone inside the window and, after approval, by
+template, each with a reply that continues it, recorded separately from these checks.

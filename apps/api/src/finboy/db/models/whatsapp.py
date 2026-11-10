@@ -46,6 +46,8 @@ class WhatsAppBinding(Base):
     encrypted_sender: Mapped[bytes | None] = mapped_column(LargeBinary)
     # The monthly check-in message was opted into (docs/money-manager-round/contract.md).
     checkin_opt_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The coach's nudges were opted into (docs/advisor-round/contract.md, phase 3).
+    coach_opt_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class WhatsAppReceipt(Base):
@@ -112,7 +114,7 @@ class WhatsAppPrompt(Base):
         CheckConstraint(
             "purpose IN ('consent','confirm','change_amount','undo','due_paid','due_repeat',"
             "'reminder_opt_in','web_login','link','saved','pick_item','pick_category',"
-            "'checkin_opt_in')",
+            "'checkin_opt_in','coach_opt_in')",
             name="purpose",
         ),
         CheckConstraint("state IN ('open','answered','expired','superseded')", name="state"),

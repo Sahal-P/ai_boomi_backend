@@ -2,17 +2,18 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 from finboy.core.config import LOCAL_USER_ID
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.logging import JsonFormatter
 from finboy.db.models.advisor import AdvisorMessage, AdvisorThread, HouseholdMemory
-from finboy.services.advisor import memory, service
+from finboy.services.advisor import history, memory, service
 from finboy.services.assistant.models import AssistantAnswer
 from sqlalchemy import select
 
-from .support import OTHER_USER, ask, call, reply
+from .support import OTHER_USER, ask, call, now, reply
 
 
 def whole(kind: str) -> dict:
@@ -221,3 +222,110 @@ def test_logs_carry_no_question_answer_or_figure(session, settings, toolbox, scr
     assert any('"event": "advisor.answered"' in line for line in lines)
     for line in lines:
         assert "Ramesh" not in line and "4,200" not in line and "4200" not in line
+
+
+def offered(model) -> list[str]:
+    return [tool["function"]["name"] for tool in model.calls[0]["tools"]]
+
+
+def test_the_guides_an_answer_used_become_its_sources(session, settings, toolbox, scripted):
+    settings = settings.model_copy(update={"knowledge_enabled": True})
+    model = scripted(
+        [call("search_knowledge", {"query": "PM-KISAN instalment"})],
+        reply(
+            "PM-KISAN pays *₹6,000* a year in three instalments of ₹2,000.",
+            sources=["pm-kisan", "a-guide-it-never-saw"],
+        ),
+    )
+    stages: list[str] = []
+    answer = ask(
+        session, settings, toolbox, "When does PM-KISAN money come?", progress=stages.append
+    )
+    assert answer.intent == "advisor" and answer.display_text.startswith("PM-KISAN pays")
+    assert [source.model_dump() for source in answer.sources] == [
+        {"id": "pm-kisan", "title": "PM-KISAN", "url": "https://pmkisan.gov.in"}
+    ]
+    assert stages == ["search_knowledge"] and "search_knowledge" in offered(model)
+    assert answer.warnings == []  # from the guides alone, not the household's records
+
+
+def test_a_guide_answer_that_quotes_their_own_figures_keeps_the_records_warning(
+    session, settings, toolbox, scripted
+):
+    settings = settings.model_copy(update={"knowledge_enabled": True})
+    scripted(
+        [call("search_knowledge", {"query": "PM-KISAN instalment"})],
+        reply(
+            "PM-KISAN pays ₹6,000 a year; this month you have spent ₹18,420.50.",
+            sources=["pm-kisan"],
+        ),
+    )
+    answer = ask(session, settings, toolbox, "Will PM-KISAN cover my spending?")
+    assert [source.id for source in answer.sources] == ["pm-kisan"]
+    assert "incomplete_coverage" in answer.warnings
+
+
+def test_sources_are_titled_in_the_readers_script(session, settings, toolbox, scripted):
+    settings = settings.model_copy(update={"knowledge_enabled": True})
+    scripted(
+        [call("search_knowledge", {"query": "पीएम किसान"})],
+        reply("पीएम-किसान में साल के *₹6,000* मिलते हैं।", sources=["pm-kisan"]),
+    )
+    answer = ask(session, settings, toolbox, "पीएम किसान का पैसा कब आता है?", display_style="hi")
+    assert [source.title for source in answer.sources] == ["पीएम-किसान"]
+
+
+def test_guides_stay_off_until_released_and_unretrieved_ones_are_not_sources(
+    session, settings, toolbox, scripted
+):
+    model = scripted(reply("Keep some money aside for emergencies.", sources=["emergency-fund"]))
+    answer = ask(session, settings, toolbox, "How big should my emergency fund be?")
+    assert answer.sources == [] and "search_knowledge" not in offered(model)
+    assert "plan_numbers" in offered(model) and "search_past_chats" in offered(model)
+
+
+def test_planning_figures_from_code_pass_the_check(session, settings, toolbox, scripted):
+    arguments = {
+        "calculation": "emi",
+        "amount_rupees": 100000,
+        "by_month": None,
+        "months": 12,
+        "monthly_rupees": None,
+        "annual_interest_percent": 12,
+    }
+    model = scripted(
+        [call("plan_numbers", arguments)],
+        reply("The EMI would be about *₹8,885* a month, ₹1,06,620 in all."),
+    )
+    answer = ask(session, settings, toolbox, "EMI on a 1 lakh loan at 12% for 12 months?")
+    assert answer.intent == "advisor" and "₹8,885" in answer.display_text
+    assert answer.warnings == []  # planning maths makes no claim about their records
+    assert len(model.calls) == 2  # no correction was needed
+
+
+def test_a_broken_progress_listener_never_stops_the_answer(session, settings, toolbox, scripted):
+    def broken(_stage: str) -> None:
+        raise RuntimeError("stream closed")
+
+    scripted([call("dues", {"days_ahead": 30})], reply("Electricity ₹1,500 is due soon."))
+    answer = ask(session, settings, toolbox, "What bills are due?", progress=broken)
+    assert answer.intent == "advisor" and answer.display_text == "Electricity ₹1,500 is due soon."
+
+
+def test_earlier_chats_can_be_searched_from_the_question(session, settings, toolbox, scripted):
+    toolbox.chats = [
+        history.ChatHit(
+            thread_id=uuid4(),
+            title="Gold loan",
+            summary="They asked whether a gold loan of ₹50,000 suits the wedding.",
+            excerpt="They asked: gold loan? FinBoy said: compare the rate first",
+            last_at=now() - timedelta(days=3),
+        )
+    ]
+    scripted(
+        [call("search_past_chats", {"query": "gold loan"})],
+        reply("Three days ago we talked about a gold loan of ₹50,000 for the wedding."),
+    )
+    answer = ask(session, settings, toolbox, "What did we say about the gold loan?")
+    assert answer.intent == "advisor" and "₹50,000" in answer.display_text
+    assert "past_chats" in toolbox.reads

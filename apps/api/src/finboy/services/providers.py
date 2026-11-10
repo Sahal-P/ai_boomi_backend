@@ -62,8 +62,26 @@ def triage(settings: Settings) -> Literal["off", "configured", "missing"]:
     return "missing"
 
 
+def knowledge(settings: Settings) -> Literal["off", "configured", "missing"]:
+    """FinBoy's money guides (advisor phase 2): missing when switched on with nothing to serve,
+    as in production before any guide is reviewed."""
+    if not settings.advisor_enabled or not settings.knowledge_enabled:
+        return "off"
+    from finboy.services.advisor.knowledge import serving
+
+    return "configured" if serving(settings) else "missing"
+
+
 def advisor(settings: Settings) -> Literal["off", "configured", "missing"]:
     """The advisor round (docs/advisor-round/contract.md): its flag and model key."""
     if not settings.advisor_enabled:
         return "off"
     return "configured" if settings.openai_api_key and settings.advisor_model else "missing"
+
+
+def coach(settings: Settings) -> Literal["off", "window_only", "configured"]:
+    """The coach (advisor phase 3): `window_only` until Meta approves its template, when nudges
+    reach only households that wrote to FinBoy in the last day."""
+    if not settings.coach_active:
+        return "off"
+    return "configured" if settings.whatsapp_coach_template else "window_only"

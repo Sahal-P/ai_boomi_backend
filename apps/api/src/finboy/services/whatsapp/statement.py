@@ -11,7 +11,7 @@ docs/money-manager-round/contract.md).
 
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from email.message import EmailMessage
 from email.utils import format_datetime
@@ -37,6 +37,8 @@ IST = ZoneInfo("Asia/Kolkata")
 SENDER = "voice@whatsapp.invalid"
 Kind = Literal["spent", "received", "due", "budget", "goal", "question", "unclear"]
 Checkup = Literal["today", "week", "month"]
+# The advisor's memory kinds (advisor/memory.py imports this module, so they are named here).
+MemoryKind = Literal["about", "goal", "plan", "preference", "person", "note"]
 # d1-ultra's options, as the closed values a Statement holds.
 CHECKUPS: dict[str, Checkup] = {"today": "today", "week": "week", "month": "month"}
 PAYMENTS: dict[str, Literal["spent", "received"]] = {"spent": "spent", "received": "received"}
@@ -105,6 +107,13 @@ use null when absent: amount_phrase (the rupee amount in words or digits, like "
 "milkman", "Swiggy" or "പാൽക്കാരന്"), day_phrase (when, like "कल", "आज", "10 तारीख",
 "yesterday", "on the 10th", "28-10-26", "ഇന്നലെ", "10-ാം തീയതി"), due_label (for due only: what
 it is for, like "समूह की किस्त", "school fees" or "ലോൺ തവണ").
+remember: a lasting fact about the household that the message itself states and that would help
+their money coach later, in English, short and in the third person: who a regular payee is
+("Ramesh is the milkman"), a family member and their role ("Riya is in school"), how income comes
+("Paid weekly wages by the brick kiln"), or an event they are planning ("Sister's wedding in
+May"). Never a guess, an amount, a one-off purchase, any number (account, phone, OTP, PIN) or
+anything about health. Most messages have none: null. remember_kind: person, about, plan, goal,
+preference or note; null when remember is null.
 Never invent an amount, a name or a date. mode: cash for नकद/कैश/cash/കാശ്/പണമായി, upi for UPI,
 फोनपे, गूगल पे, पेटीएम, PhonePe, GPay, Paytm; otherwise unknown. due_day: the day of the month for a due
 (1-31) only when it is said. category: the closest from the closed list: """
@@ -135,6 +144,9 @@ class StatementReading(BaseModel):
     due_day: int | None = Field(ge=1, le=31)
     due_label: str | None = Field(max_length=60)
     more: list[MoreItem] | None = Field(default=None, max_length=MAX_ITEMS - 1)
+    # Advisor round, phase 2: a lasting fact for the household's memory (never the message).
+    remember: str | None = Field(default=None, max_length=200)
+    remember_kind: MemoryKind | None = None
 
 
 @dataclass(frozen=True)
@@ -149,6 +161,8 @@ class Statement:
     label: str | None = None
     overall: bool = False  # a budget for all spending rather than one category
     checkup: Checkup | None = None  # a question d1-ultra recognised as a today/week/month check-up
+    remember: str | None = None  # a lasting fact the message states, for the advisor's memory
+    remember_kind: MemoryKind = "note"
 
 
 def mask(text: str) -> str:
@@ -321,6 +335,15 @@ def _ground_all(reading: StatementReading, text: str, today: date) -> list[State
     return items or [Statement(reading.type)]
 
 
+def _remembering(reading: StatementReading, items: list[Statement]) -> list[Statement]:
+    """The first statement carries the fact the message states, if any."""
+    fact = " ".join((reading.remember or "").split())
+    if not fact or items[0].kind in {"question", "unclear"}:
+        return items
+    first = replace(items[0], remember=fact, remember_kind=reading.remember_kind or "note")
+    return [first, *items[1:]]
+
+
 def _rules(text: str, today: date) -> Statement:
     """Development fallback without a model: verbs and one amount only, no names."""
     lowered = text.casefold()
@@ -382,10 +405,15 @@ def read_statements(text: str, settings: Settings, today: date) -> list[Statemen
     return triage.first(
         "message",
         settings,
-        lambda: _ground_all(_model_reading(text, settings), text, today),
+        lambda: _read(text, settings, today),
         lambda: triage.sort_message(text, resolve_style(text, "auto")[1], settings),
         lambda sort: _fast(sort, text, today),
     )
+
+
+def _read(text: str, settings: Settings, today: date) -> list[Statement]:
+    reading = _model_reading(text, settings)
+    return _remembering(reading, _ground_all(reading, text, today))
 
 
 def _fast(sort: triage.Sorted, text: str, today: date) -> list[Statement] | None:

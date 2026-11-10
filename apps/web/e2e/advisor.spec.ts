@@ -13,7 +13,7 @@ test("a Free household asks by typing, follows up in the same chat and reopens i
   await first.getByRole("button", { name: "And last month?" }).click();
   const second = page.getByRole("article", { name: /And last month/ });
   await expect(second.getByText("Last month you spent ₹3,000")).toBeVisible();
-  const asks = api.requests.filter((item) => item.method === "POST" && item.path === "/api/v1/assistant/ask");
+  const asks = api.requests.filter((item) => item.method === "POST" && item.path === "/api/v1/assistant/ask/stream");
   const threads = asks.map((item) => (item.body as { thread_id?: string }).thread_id ?? null);
   expect(threads[0]).toBeNull();
   expect(threads[1]).toBe(api.chats[0]?.id);
@@ -53,6 +53,28 @@ test("what FinBoy remembers shows on the answer and can be edited, switched off 
   await page.getByRole("alertdialog").getByRole("button", { name: "Forget everything" }).click();
   await expect(page.getByText("Nothing saved yet.")).toBeVisible();
   expect(api.memories).toHaveLength(0);
+});
+
+test("an answer from FinBoy's guides links each guide's official site", async ({ page, api }) => {
+  await page.goto("/assistant");
+  await page.getByLabel("Your question").fill("When does the PM-KISAN money come?");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  const answer = page.getByRole("article", { name: /PM-KISAN money/ });
+  await expect(answer.getByText("PM-KISAN pays eligible farmer families ₹6,000 a year")).toBeVisible();
+  await expect(answer.getByText("Official sites")).toBeVisible();
+  const guide = answer.getByRole("link", { name: /PM-KISAN.*official site, opens in a new tab/ });
+  await expect(guide).toHaveAttribute("href", "https://pmkisan.gov.in");
+  await expect(guide).toHaveAttribute("target", "_blank");
+  await expect(guide).toHaveAttribute("rel", "noopener noreferrer");
+  expect(api.requests.some((item) => item.path === "/api/v1/assistant/ask")).toBe(false);
+});
+
+test("a failure inside the stream explains itself and can be asked again", async ({ page }) => {
+  await page.goto("/assistant");
+  await page.getByLabel("Your question").fill("Is the advisor unavailable?");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  const answer = page.getByRole("article", { name: /unavailable/ });
+  await expect(answer.getByRole("button", { name: "Ask again" })).toBeVisible();
 });
 
 test("the account menu opens Memory", async ({ page }, testInfo) => {

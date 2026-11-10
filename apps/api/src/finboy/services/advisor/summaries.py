@@ -11,16 +11,18 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from finboy.core.config import Settings
-from finboy.services.advisor import history, prompt
+from finboy.db.models.advisor import AdvisorThread
+from finboy.services.advisor import embeddings, history, prompt
 from finboy.services.advisor.client import client_for
 
 logger = logging.getLogger(__name__)
 _POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="advisor-summary")
 MAX_TRANSCRIPT = 12_000
+BACKFILL = 20  # summaries without an embedding, embedded per run
 
 
 class ChatSummary(BaseModel):
@@ -63,11 +65,46 @@ def _summarize(bind: Engine, settings: Settings, user_id: UUID, current_id: UUID
                 found = response.output_parsed
                 if not isinstance(found, ChatSummary) or not found.summary.strip():
                     continue
+                summary = " ".join(found.summary.split())[:600]
+                title = " ".join(found.title.split())[: history.TITLE]
                 row = history.find(session, user_id, thread.id)
-                row.summary = " ".join(found.summary.split())[:600]
-                row.title = " ".join(found.title.split())[: history.TITLE] or row.title
+                row.summary = summary
+                row.title = title or row.title
                 row.summarized_at = datetime.now(UTC)
+                row.summary_embedding, row.embedding_model = None, None  # for the new summary
                 session.commit()
+            _embed_summaries(session, settings, user_id)
         logger.info("advisor.summarized", extra={"outcome": "done"})
     except Exception:
         logger.warning("advisor.summarized", extra={"outcome": "failed"})
+
+
+def _embed_summaries(session: Session, settings: Settings, user_id: UUID) -> None:
+    """Embeddings for this household's summaries that have none for the current model, so
+    past-chat search can match them by meaning."""
+    if not embeddings.available(settings):
+        return
+    model = settings.openai_embedding_model
+    pending = [
+        (row.id, f"{row.title or ''}. {row.summary}")
+        for row in session.scalars(
+            select(AdvisorThread)
+            .where(AdvisorThread.user_id == user_id, AdvisorThread.summary.is_not(None))
+            .order_by(AdvisorThread.last_at.desc())
+            .limit(200)
+        )
+        if row.embedding_model != model
+        or row.summary_embedding is None
+        or len(row.summary_embedding) != settings.advisor_embedding_dimensions
+    ][:BACKFILL]
+    session.rollback()  # no transaction stays open over the network call
+    if not pending:
+        return
+    found = embeddings.embed([text for _, text in pending], settings)
+    if found is None:
+        return
+    for (thread_id, _), vector in zip(pending, found, strict=True):
+        row = session.get(AdvisorThread, thread_id)
+        if row is not None and row.user_id == user_id:
+            row.summary_embedding, row.embedding_model = vector, model
+    session.commit()

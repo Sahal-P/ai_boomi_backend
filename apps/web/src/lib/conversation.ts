@@ -12,6 +12,8 @@ export type Turn = {
   state: "pending" | "answered" | "failed" | "cancelled";
   answer: Answer | null;
   problem: Problem | null;
+  /** The advisor's current step while it works, streamed from the API (advisor phase 2). */
+  progress?: string | null;
 };
 
 let turns: Turn[] = [];

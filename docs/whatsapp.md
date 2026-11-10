@@ -493,3 +493,31 @@ notes, photos and statements stay Premium. Commands that need no model, in Engli
 Malayalam: "memory off" / "memory on" (मेमोरी बंद / चालू, മെമ്മറി ഓഫ് / ഓൺ), "forget everything"
 (सब भूल जाओ, എല്ലാം മറക്കൂ) and "clear chat history". The question's words and the answer are kept
 as the household's chat; audio and diary messages are not.
+
+Phase 2:
+- **Diary facts.** A diary message can also teach a lasting fact without an extra model call. For
+  example, "Ramesh doodhwale ko 60 diye" saves "Ramesh is the milkman", and the entry's reply ends
+  with "📝 Saved to memory" the first time only. Only the fact is kept, never the message. This
+  needs both the advisor and the household's memory on.
+- **Guide sources.** An answer based on FinBoy's money guides ends with "📚 From FinBoy's money
+  guides: …", giving each guide's official site.
+
+Phase 3, the proactive coach, with `COACH_ENABLED` as well
+([contract](advisor-round/contract.md#phase-3-the-proactive-coach)):
+- **Opt-in.** "🔔 Coach me" under the "this week" check-up, or "coach on" / "coach off" (कोच चालू /
+  बंद, കോച്ച് ഓൺ / ഓഫ്). STOP stops everything, as before.
+- **What it says.** At most one short nudge a day, 08:00–20:00 IST, about the most important thing
+  it noticed: the Sunday recap, a due within two days, a budget over or near its limit, a payment
+  far above the usual, the month's salary or wages arriving, the savings goal from the 20th, or a
+  newly regular payment. A day with a check-in or due reminder gets no nudge, and no nudge is sent
+  twice.
+- **How it arrives.** Inside the 24-hour window, the advisor writes it with the household's memories
+  (figures checked against FinBoy's own; a code-written line otherwise), with a "🔕 Stop coaching"
+  button that works on older nudges too. Outside the window, only the approved
+  `WHATSAPP_COACH_TEMPLATE` (`finboy_coach_update`) carries the code-written line. Without it,
+  nudges wait until the household writes again.
+- **What is kept.** The nudge joins the household's chat, so "how?" continues it. Its claim row in
+  `advisor_nudges` holds a kind, a keyed period digest, the date and the delivery state. Meta's
+  delivery statuses update it only for the household's own number.
+- **Timer.** `python -m finboy.services.pilot.cli coach` from `deploy/finboy-coach.timer` (hourly
+  09:00–19:00 IST) prints counts only.

@@ -53,9 +53,20 @@ export const answerSchema = z.object({
     )
     .default([]),
   follow_ups: z.array(z.string()).default([]),
+  // Advisor phase 2: the reviewed FinBoy guides an answer is based on, with their official site.
+  sources: z
+    .array(
+      z.object({
+        id: z.string().regex(/^[a-z0-9-]{1,64}$/),
+        title: z.string().min(1),
+        url: z.url({ protocol: /^https$/ }).nullable().default(null),
+      }),
+    )
+    .default([]),
 });
 export type Answer = z.infer<typeof answerSchema>;
 export type MemoryChange = Answer["memory_changes"][number];
+export type AnswerSource = Answer["sources"][number];
 export type Evidence = z.infer<typeof evidenceSchema>;
 
 /** BCP 47 tag for displayed text, so romanized Hindi/Malayalam is not announced as native script. */
@@ -84,6 +95,113 @@ export const askQuestion = (
     signal,
     timeoutMs: 60_000,
   });
+
+type StreamEvent = { event: string; data: string };
+
+/** Complete server-sent events in `buffer`, and the unfinished rest to keep for the next chunk. */
+export function readEvents(buffer: string): { events: StreamEvent[]; rest: string } {
+  const blocks = buffer.split("\n\n");
+  const rest = blocks.pop() ?? "";
+  const events: StreamEvent[] = [];
+  for (const block of blocks) {
+    let event = "message";
+    const data: string[] = [];
+    for (const line of block.split("\n")) {
+      if (line.startsWith("event:")) event = line.slice(6).trim();
+      else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /, ""));
+    }
+    if (data.length > 0) events.push({ event, data: data.join("\n") });
+  }
+  return { events, rest };
+}
+
+const progressSchema = z.object({ stage: z.string().regex(/^[a-z_]{1,40}$/) });
+const streamErrorSchema = z.object({
+  status: z.number().int(),
+  error: z.object({
+    code: z.string().regex(/^[a-z0-9_.-]{1,64}$/),
+    request_id: z
+      .string()
+      .regex(/^[A-Za-z0-9-]{1,64}$/)
+      .optional(),
+  }),
+});
+
+function json(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Asks like `askQuestion`, but hears each step while the advisor works ("progress" events with
+ * the tool it is using), then the answer. Only while the advisor is on (advisor phase 2).
+ */
+export async function askQuestionStream(
+  text: string,
+  displayStyle: DisplayStyle,
+  options: { onProgress: (stage: string) => void; signal?: AbortSignal; threadId?: string | null },
+): Promise<Answer> {
+  const { onProgress, signal, threadId = null } = options;
+  const response = await apiFetch("/api/v1/assistant/ask/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+    body: JSON.stringify({
+      text,
+      display_style: displayStyle,
+      include_overdue_line: true,
+      ...(threadId ? { thread_id: threadId } : {}),
+    }),
+    signal,
+    timeoutMs: 60_000,
+  });
+  if (!response.ok) throw await failure(response);
+  const unexpected = () =>
+    new ApiError("FinBoy received an unexpected response.", response.status, { kind: "invalid_response" });
+  if (!response.body) throw unexpected();
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  try {
+    for (;;) {
+      let chunk: ReadableStreamReadResult<string>;
+      try {
+        chunk = await reader.read();
+      } catch (reason) {
+        if (signal?.aborted) throw reason;
+        if (reason instanceof DOMException && reason.name === "TimeoutError") {
+          throw new ApiError("FinBoy took too long to respond.", undefined, { kind: "timeout" });
+        }
+        const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+        throw new ApiError("FinBoy could not be reached.", undefined, { kind: offline ? "offline" : "network" });
+      }
+      if (chunk.done) throw unexpected(); // the stream ended without an answer
+      const { events, rest } = readEvents(buffer + chunk.value);
+      buffer = rest;
+      for (const item of events) {
+        const data = json(item.data);
+        if (item.event === "progress") {
+          const step = progressSchema.safeParse(data);
+          if (step.success) onProgress(step.data.stage);
+        } else if (item.event === "answer") {
+          const answer = answerSchema.safeParse(data);
+          if (!answer.success) throw unexpected();
+          return answer.data;
+        } else if (item.event === "error") {
+          const problem = streamErrorSchema.safeParse(data);
+          if (!problem.success) throw unexpected();
+          throw new ApiError("FinBoy could not complete the request.", problem.data.status, {
+            code: problem.data.error.code,
+            requestId: problem.data.error.request_id,
+          });
+        }
+      }
+    }
+  } finally {
+    reader.cancel().catch(() => undefined);
+  }
+}
 
 const threadSchema = z.object({
   id: z.uuid(),

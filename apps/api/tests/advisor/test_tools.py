@@ -8,7 +8,7 @@ from finboy.services.advisor import tools
 from finboy.services.advisor.tools import ToolError, ToolPeriod, to_spec
 from finboy.services.money.engine import PeriodSpec
 
-from .support import FixtureToolbox
+from .support import FixtureToolbox, make_settings
 
 TODAY = date(2026, 11, 7)  # a Saturday
 
@@ -19,7 +19,8 @@ def period(kind: str, **values) -> ToolPeriod:
 
 
 def run(name: str, arguments: dict, said: set[int] | None = None) -> dict:
-    result = tools.run(FixtureToolbox(), name, json.dumps(arguments), TODAY, said or set())
+    ctx = tools.Context(today=TODAY, said=said or set())
+    result = tools.run(FixtureToolbox(), name, json.dumps(arguments), ctx)
     return json.loads(result.output)
 
 
@@ -106,8 +107,7 @@ def test_payments_to_a_payee_are_listed_and_totalled_by_code() -> None:
                 "limit": 1,
             }
         ),
-        TODAY,
-        set(),
+        tools.Context(today=TODAY),
     )
     found = json.loads(result.output)
     assert (found["payments_found"], found["total_paid"]) == (2, "₹770.50")
@@ -149,7 +149,8 @@ def test_budgets_show_what_is_left() -> None:
 
 
 def test_every_tool_has_a_strict_schema() -> None:
-    definitions = tools.definitions()
+    settings = make_settings().model_copy(update={"knowledge_enabled": True})
+    definitions = tools.definitions(settings)
     assert [item["function"]["name"] for item in definitions] == [t.name for t in tools.TOOLS]
     for item in definitions:
         assert item["function"]["strict"] is True

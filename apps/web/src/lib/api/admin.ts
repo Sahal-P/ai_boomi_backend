@@ -161,7 +161,8 @@ const systemSchema = z.object({
   schema_head: z.string().max(64),
   flags: z.record(z.string().max(64), z.boolean()),
   limits: z.record(z.string().max(64), z.number().int()),
-  providers: z.record(z.string().max(64), z.enum(["configured", "missing", "disabled", "off"])),
+  // window_only: the advisor's coach before Meta approves its template (advisor phase 3).
+  providers: z.record(z.string().max(64), z.enum(["configured", "missing", "disabled", "off", "window_only"])),
   payu_environment: z.string().max(32),
   active_imports: count.nullable(),
   open_payments: count.nullable(),

@@ -423,7 +423,7 @@ def test_overview_and_system_show_counts_and_settings_never_secrets(world: World
     system = mine.get("/api/v1/admin/system")
     body = system.json()
     assert (body["database"], body["schema_status"]) == ("connected", "current")
-    assert body["schema_head"] == "0015_advisor" and body["flags"]["billing_enabled"] is True
+    assert body["schema_head"] == "0017_coach" and body["flags"]["billing_enabled"] is True
     assert body["limits"]["admin_session_hours"] == settings.admin_session_hours
     assert set(body["providers"].values()) <= {"configured", "missing", "disabled", "off"}
     for secret in (ENCRYPTION_KEY, SESSION_KEY, "s4ltForTestsOnly", "tEsTkY", "postgresql"):

@@ -84,6 +84,8 @@ def settings_for(**changes) -> Settings:
             "whatsapp_public_number": "919000000099",
             "signup_enabled": True,
             "signup_limit": 100,
+            # These flows predate the advisor; its WhatsApp behaviour is tested on its own.
+            "advisor_enabled": False,
             **changes,
         },
     )

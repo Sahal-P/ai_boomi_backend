@@ -205,6 +205,8 @@ def system(session: Session, settings: Settings) -> SystemStatus:
             "whatsapp": providers.whatsapp(settings),
             "fast_decisions": providers.triage(settings),
             "advisor": providers.advisor(settings),
+            "knowledge": providers.knowledge(settings),
+            "coach": providers.coach(settings),
             "payu": configured(bool(settings.payu_merchant_key and settings.payu_merchant_salt)),
             "email": configured(settings.resend_api_key is not None),
         },

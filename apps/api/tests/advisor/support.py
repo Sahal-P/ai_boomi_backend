@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from finboy.core.config import LOCAL_USER_ID, Settings
-from finboy.services.advisor import service
+from finboy.services.advisor import embeddings, service
 from finboy.services.advisor.synthetic import OTHER_USER, SyntheticHousehold, make_store, payment
 from sqlalchemy.orm import Session
 
@@ -27,6 +27,39 @@ def make_settings() -> Settings:
     )
 
 
+def embedding_settings() -> Settings:
+    """Settings with embeddings and the guides on (a synthetic model; no network in tests)."""
+    return make_settings().model_copy(
+        update={
+            "openai_embedding_model": "synthetic-embedding",
+            "advisor_embedding_dimensions": 64,
+            "knowledge_enabled": True,
+        }
+    )
+
+
+class ConceptEmbedder:
+    """Stands in for `embeddings.embed`: a text points along the axes of the concept words it
+    contains, so a match by meaning without shared words is easy to set up. Records each call."""
+
+    def __init__(self, concepts: dict[str, int], dimensions: int = 64) -> None:
+        self.concepts, self.dimensions = concepts, dimensions
+        self.calls: list[list[str]] = []
+
+    def __call__(self, texts: list[str], _settings: Settings) -> list[list[float]]:
+        self.calls.append(list(texts))
+        return [self.vector(text) for text in texts]
+
+    def vector(self, text: str) -> list[float]:
+        values = [0.0] * self.dimensions
+        for word, axis in self.concepts.items():
+            if word in text.casefold():
+                values[axis] = 1.0
+        if not any(values):
+            values[-1] = 1.0
+        return embeddings.normalise(values)
+
+
 class Item(SimpleNamespace):
     def model_dump(self, **_: Any) -> dict[str, Any]:
         return {key: value for key, value in vars(self).items() if key != "parsed_arguments"}
@@ -43,6 +76,7 @@ def reply(
     policy: str = "answer",
     follow_ups: list[str] | None = None,
     memory_updates: list[dict[str, Any]] | None = None,
+    sources: list[str] | None = None,
 ) -> service.AdvisorReply:
     return service.AdvisorReply.model_validate(
         {
@@ -51,6 +85,7 @@ def reply(
             "speech_text": text if speech is None else speech,
             "follow_ups": follow_ups or [],
             "memory_updates": memory_updates or [],
+            "sources": sources or [],
         }
     )
 

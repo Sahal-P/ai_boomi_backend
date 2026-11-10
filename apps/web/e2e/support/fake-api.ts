@@ -182,6 +182,9 @@ export type Scenario = {
   admin?: AdminScenario;
   /** Advisor round: Ask for everyone, kept chats and the Memory page (ADVISOR_ENABLED). */
   advisor?: boolean;
+  /** Advisor phase 3: Home's "For you" (COACH_ENABLED) and whether WhatsApp gets the nudges. */
+  coach?: boolean;
+  coachWhatsApp?: "none" | "off" | "on";
 };
 
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string; language: "en" | "hi" | "ml"; created_at: string };
@@ -244,6 +247,8 @@ export class FakeFinBoyApi {
   login: { state: "pending" | "confirmed" | "declined" | "used"; purpose: string } | null = null;
   statementImport: boolean;
   advisor: boolean;
+  coach: boolean;
+  coachWhatsApp: "none" | "off" | "on";
   chats: Chat[] = [];
   memories: MemoryRow[] = [];
   memoryEnabled = true;
@@ -268,6 +273,8 @@ export class FakeFinBoyApi {
     this.selfServe = scenario.selfServe ?? false;
     this.statementImport = scenario.statementImport ?? false;
     this.advisor = scenario.advisor ?? false;
+    this.coach = scenario.coach ?? false;
+    this.coachWhatsApp = scenario.coachWhatsApp ?? "off";
     this.plan = scenario.plan ? planFixture(scenario.plan) : null;
     const status = scenario.connection ?? "active";
     this.connection =
@@ -507,6 +514,7 @@ export class FakeFinBoyApi {
         statement_import: this.statementImport,
         plan: this.plan,
         advisor: this.advisor,
+        coach: this.coach,
       });
     }
     if (path === "/api/v1/auth/whatsapp/start" && method === "POST" && this.whatsapp) {
@@ -637,6 +645,7 @@ export class FakeFinBoyApi {
       this.requests.push({ method: "OUTCOME", path, body });
       return ok({ status: "ok" });
     }
+    if (path === "/api/v1/coach" && method === "GET") return this.forYou();
     if (this.advisor && (path.startsWith("/api/v1/assistant/") || path.startsWith("/api/v1/memory"))) {
       const advised = this.advisorRoute(method, path, body);
       if (advised) return advised;
@@ -1366,6 +1375,7 @@ export class FakeFinBoyApi {
     });
     let match: RegExpMatchArray | null;
     if (path === "/api/v1/assistant/ask" && method === "POST") return this.advise(body);
+    if (path === "/api/v1/assistant/ask/stream" && method === "POST") return this.adviseStream(body);
     if (path === "/api/v1/assistant/suggestions") {
       return ok({ suggestions: ["How much is left in my food and dining budget?", "Who do I pay the most?"] });
     }
@@ -1385,7 +1395,7 @@ export class FakeFinBoyApi {
       return ok({ thread: summary(chat), messages: chat.messages });
     }
     if (path === "/api/v1/memory" && method === "GET") {
-      return ok({ enabled: this.memoryEnabled, limit: 80, memories: this.memories, chats: this.chats.length });
+      return ok({ enabled: this.memoryEnabled, limit: 300, memories: this.memories, chats: this.chats.length });
     }
     if (path === "/api/v1/memory" && method === "DELETE") {
       const deleted = this.memories.length;
@@ -1414,6 +1424,43 @@ export class FakeFinBoyApi {
     return null;
   }
 
+  /** The streamed advisor (advisor phase 2): its steps, then the answer, as server-sent events. */
+  private adviseStream(body: Json): FakeResponse {
+    if (body.thread_id && !this.chats.some((item) => item.id === body.thread_id)) {
+      return envelope(404, "thread_not_found");
+    }
+    const event = (name: string, data: unknown) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
+    const scheme = /pm-kisan/i.test(String(body.text ?? ""));
+    const steps = [
+      event("progress", { stage: "thinking" }),
+      event("progress", { stage: scheme ? "search_knowledge" : "category_spending" }),
+    ];
+    const result = this.advise(body);
+    const last =
+      result.status === 200
+        ? event("answer", result.body)
+        : event("error", {
+            status: 503,
+            error: { code: "assistant_unavailable", message: "FinBoy could not answer just now.", request_id: "req-fake" },
+          });
+    return { status: 200, headers: { "content-type": "text/event-stream" }, raw: steps.join("") + last };
+  }
+
+  /** Home's "For you": the code-written items the API returns (advisor phase 3). */
+  private forYou(): FakeResponse {
+    if (!this.coach) return envelope(404, "coach_off");
+    const salary = this.transactions.find((row) => row.merchant === "Sample Employer");
+    const body = {
+      items: [
+        { kind: "due_soon", tone: "warning", title: "Due soon", text: "Electricity bill: ₹1,500 due tomorrow.", href: "#obligations", ask: "What do I have to pay this week?" },
+        { kind: "budget_near", tone: "warning", title: "Budget running low", text: "Food & dining: ₹2,700 of your ₹3,000 budget spent, ₹300 left with 13 days to go.", href: "#budgets-title", ask: "How can I spend less on food & dining?" },
+        { kind: "income_in", tone: "good", title: "Money in", text: '₹62,000 came in from Sample Employer. A good day to set a savings goal, like: "save 5000 a month".', href: `/transactions?selected=${salary?.id ?? ""}`, ask: "Help me plan this month's money" },
+      ],
+      whatsapp: this.coachWhatsApp,
+    };
+    return { status: 200, body };
+  }
+
   /** A synthetic advisor: answers in the chat it is given, remembers on "remember". */
   private advise(body: Json): FakeResponse {
     const text = String(body.text ?? "");
@@ -1426,11 +1473,14 @@ export class FakeFinBoyApi {
     }
     const followUp = chat.messages.length > 0;
     const remember = /remember/i.test(text) && this.memoryEnabled;
+    const scheme = /pm-kisan/i.test(text);
     const reply = remember
       ? "Got it — I'll remember that you're saving ₹40,000 for a bike."
-      : followUp
-        ? "Last month you spent ₹3,000 on food and dining."
-        : "You spent ₹4,200 on food and dining this month, ₹800 under your budget.";
+      : scheme
+        ? "PM-KISAN pays eligible farmer families ₹6,000 a year, in three instalments of ₹2,000."
+        : followUp
+          ? "Last month you spent ₹3,000 on food and dining."
+          : "You spent ₹4,200 on food and dining this month, ₹800 under your budget.";
     const memory_changes = [];
     if (remember) {
       const row: MemoryRow = { id: this.nextAdvisorId("b0000000"), kind: "goal", text: "Saving ₹40,000 for a bike", source: "web", created_at: NOW, updated_at: NOW };
@@ -1463,7 +1513,8 @@ export class FakeFinBoyApi {
         resolved_period: null,
         thread_id: chat.id,
         memory_changes,
-        follow_ups: followUp || remember ? [] : ["And last month?"],
+        follow_ups: followUp || remember || scheme ? [] : ["And last month?"],
+        sources: scheme ? [{ id: "pm-kisan", title: "PM-KISAN", url: "https://pmkisan.gov.in" }] : [],
       },
     };
   }

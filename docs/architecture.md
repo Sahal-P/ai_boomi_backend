@@ -131,6 +131,24 @@ kept chats with background summaries (`history.py`, `summaries.py`), a figure ch
 FinBoy's own numbers (`grounding.py`) and the keyword rules as fallback. `ADVISOR_ENABLED` turns it
 on; without it Ask answers as before.
 
+Phase 2 adds:
+- **Money guides.** A reviewed library in Markdown (`apps/api/knowledge`, `knowledge.py`), behind
+  `KNOWLEDGE_ENABLED`.
+- **Search.** Keyword search with reciprocal-rank fusion (`ranking.py`), plus optional OpenAI
+  embeddings stored as `real[]` and compared in Python (`embeddings.py`; no pgvector).
+- **Recall.** Of memories (`memory.recall`) and of earlier chats (`history.search`).
+- **Planning figures.** Computed in code (`plan_numbers`).
+- **Live steps.** Server-sent progress events at `POST /api/v1/assistant/ask/stream`.
+
+Phase 3 adds the proactive coach, behind `COACH_ENABLED`:
+- **Detectors** (`coach.py`) over the same read-only Toolbox: budgets, the savings goal, dues,
+  income, unusual and newly regular payments, and a Sunday recap, each with a code-written line.
+- **Home's "For you"** reads them live (`GET /api/v1/coach`, no model call).
+- **WhatsApp nudges** (`services/whatsapp/coach.py`) go to opted-in households from a systemd
+  timer (`pilot.cli coach`), claimed once per number, kind and period and once a day in
+  `advisor_nudges`. Inside the 24-hour window the advisor words them (figures checked); outside
+  it, the approved template carries the code-written line.
+
 ## Frontend and verification ownership
 
 Presentational components consume runtime-validated domain clients under `src/lib/api`

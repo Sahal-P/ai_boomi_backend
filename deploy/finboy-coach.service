@@ -1,0 +1,19 @@
+[Unit]
+Description=FinBoy coach nudges (opted-in households only, at most one a day)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=finboy
+Group=finboy
+WorkingDirectory=/opt/finboy/current
+EnvironmentFile=/etc/finboy/production.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/finboy/current/.venv/bin/python -m finboy.services.pilot.cli coach
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/finboy

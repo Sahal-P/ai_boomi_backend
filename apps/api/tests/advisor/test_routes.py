@@ -1,5 +1,6 @@
 """Advisor HTTP contracts: free Ask, the household's own chats and memory, fixed error words."""
 
+import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -9,7 +10,7 @@ from finboy.api.v1 import assistant as assistant_route
 from finboy.core.config import LOCAL_USER_ID
 from finboy.core.errors import AccessError
 from finboy.services.advisor import history, memory
-from finboy.services.assistant.models import AssistantAnswer
+from finboy.services.assistant.models import AnswerSource, AssistantAnswer
 
 from .support import OTHER_USER
 
@@ -105,7 +106,7 @@ async def test_memory_can_be_seen_edited_switched_off_and_cleared(client, sessio
     theirs = memory.remember(session, OTHER_USER, "person", "Ravi is the landlord", "web", 80)
     session.commit()
     listed = (await client.get("/api/v1/memory")).json()
-    assert listed["enabled"] is True and listed["limit"] == 80
+    assert listed["enabled"] is True and listed["limit"] == 300
     assert [item["text"] for item in listed["memories"]] == ["Saving for a bike"]
     edited = await client.patch(f"/api/v1/memory/{saved.id}", json={"text": "Saving for a car"})
     assert edited.status_code == 200 and edited.json()["text"] == "Saving for a car"
@@ -138,3 +139,66 @@ async def test_memory_routes_keep_cors_exact(client) -> None:
         headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "DELETE"},
     )
     assert "access-control-allow-origin" not in refused.headers
+
+
+def events(text: str) -> list[tuple[str, dict]]:
+    found = []
+    for block in text.strip().split("\n\n"):
+        fields = dict(line.split(": ", 1) for line in block.splitlines())
+        found.append((fields["event"], json.loads(fields["data"])))
+    return found
+
+
+async def test_the_stream_reports_each_step_then_the_answer(client, monkeypatch) -> None:
+    def advise(_session, **kwargs) -> AssistantAnswer:
+        kwargs["progress"]("category_spending")
+        kwargs["progress"]("search_knowledge")
+        source = AnswerSource(id="pm-kisan", title="PM-KISAN", url="https://pmkisan.gov.in")
+        return answer(thread_id=uuid4(), sources=[source])
+
+    monkeypatch.setattr(assistant_route, "advise", advise)
+    response = await client.post("/api/v1/assistant/ask/stream", json={"text": "PM-KISAN?"})
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert response.headers["cache-control"] == "no-store"
+    found = events(response.text)
+    assert [name for name, _ in found] == ["progress", "progress", "progress", "answer"]
+    assert [data["stage"] for name, data in found[:3]] == [
+        "thinking",
+        "category_spending",
+        "search_knowledge",
+    ]
+    final = found[-1][1]
+    assert final["intent"] == "advisor" and final["sources"][0]["url"] == "https://pmkisan.gov.in"
+
+
+async def test_a_failure_in_the_stream_is_a_fixed_error_event(client, monkeypatch, caplog) -> None:
+    def advise(_session, **_kwargs) -> AssistantAnswer:
+        raise RuntimeError("the database said something about Ramesh")
+
+    monkeypatch.setattr(assistant_route, "advise", advise)
+    response = await client.post("/api/v1/assistant/ask/stream", json={"text": "Food?"})
+    name, data = events(response.text)[-1]
+    assert name == "error" and data["status"] == 503
+    assert data["error"]["code"] == "assistant_unavailable" and data["error"]["request_id"]
+    assert "Ramesh" not in response.text and "Ramesh" not in caplog.text
+
+
+async def test_the_stream_checks_the_chat_the_limit_and_the_flag_first(
+    client, app, session, monkeypatch
+) -> None:
+    other = chat(session, OTHER_USER)
+    response = await client.post(
+        "/api/v1/assistant/ask/stream", json={"text": "More?", "thread_id": str(other)}
+    )
+    assert response.status_code == 404 and response.json()["error"]["code"] == "thread_not_found"
+
+    def limited(*_args) -> None:
+        raise AccessError("usage_limit")
+
+    monkeypatch.setattr(assistant_route.usage, "use", limited)
+    response = await client.post("/api/v1/assistant/ask/stream", json={"text": "Food?"})
+    assert response.status_code == 429 and response.json()["error"]["code"] == "usage_limit"
+    app.state.settings = app.state.settings.model_copy(update={"advisor_enabled": False})
+    response = await client.post("/api/v1/assistant/ask/stream", json={"text": "Food?"})
+    assert response.status_code == 404 and response.json()["error"]["code"] == "not_found"

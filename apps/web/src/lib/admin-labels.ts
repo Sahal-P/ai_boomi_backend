@@ -114,6 +114,8 @@ export const providerLabels: Record<string, string> = {
   whatsapp: "WhatsApp",
   fast_decisions: "Fast decisions",
   advisor: "Advisor and memory",
+  knowledge: "Money guides",
+  coach: "Coach nudges",
   payu: "PayU",
   email: "Email",
 };
@@ -123,6 +125,7 @@ export const providerStateLabels: Record<string, string> = {
   missing: "Missing",
   disabled: "Off",
   off: "Off",
+  window_only: "Within 24 hours only",
 };
 
 /** "needs_review" → "Needs review" for a code without its own label. */

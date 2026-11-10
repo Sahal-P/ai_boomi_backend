@@ -40,3 +40,22 @@ test("a question without a saved answer is shown as not answered", () => {
   assert.equal(turns[0]?.state, "failed");
   assert.equal(turns[0]?.answer, null);
 });
+
+test("a message FinBoy sent first is shown as its own, without a question", () => {
+  const turns = historyTurns(
+    [
+      message(1, "assistant", "🟡 Food & dining: ₹4,200 of your ₹5,000 budget spent."),
+      message(2, "user", "How do I cut back?"),
+      message(3, "assistant", "Cook at home twice this week."),
+    ],
+    THREAD,
+  );
+  assert.deepEqual(
+    turns.map((turn) => [turn.question, turn.answer?.display_text]),
+    [
+      ["How do I cut back?", "Cook at home twice this week."],
+      ["", "🟡 Food & dining: ₹4,200 of your ₹5,000 budget spent."],
+    ],
+  );
+  assert.equal(turns[1]?.state, "answered");
+});

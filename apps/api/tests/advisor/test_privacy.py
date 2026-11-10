@@ -1,11 +1,15 @@
 """Chats and memories leave with the household's data and come with its export."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from uuid import uuid4
 
 from finboy.core.config import LOCAL_USER_ID
+from finboy.db.models.advisor import AdvisorNudge
+from finboy.db.models.whatsapp import WhatsAppBinding
 from finboy.services.accounts.households import remove_household_data
 from finboy.services.advisor import history, memory
 from finboy.services.ux.privacy import export_records
+from sqlalchemy import select
 
 from .support import OTHER_USER
 
@@ -45,3 +49,45 @@ def test_the_export_carries_the_households_chats_and_memories(session) -> None:
     assert [item["text"] for item in exported["memories"]] == ["Saving for a bike"]
     assert len(exported["chats"]) == 1
     assert [row["role"] for row in exported["chats"][0]["messages"]] == ["user", "assistant"]
+
+
+def test_erasure_removes_the_coachs_nudges_and_the_export_keeps_their_words(session) -> None:
+    """Phase 3: the claim rows go with the household; a sent nudge's words are in its chat."""
+    for user_id in (LOCAL_USER_ID, OTHER_USER):
+        binding = WhatsAppBinding(
+            id=uuid4(),
+            user_id=user_id,
+            sender_hash=uuid4().hex,
+            enabled=True,
+            last_inbound_at=datetime.now(UTC),
+        )
+        session.add(binding)
+        session.flush()
+        session.add(
+            AdvisorNudge(
+                id=uuid4(),
+                binding_id=binding.id,
+                user_id=user_id,
+                kind="budget_near",
+                period_key="0" * 64,
+                day=date(2026, 11, 18),
+                via="message",
+                state="sent",
+            )
+        )
+        history.save_nudge(
+            session,
+            user_id=user_id,
+            text="🟡 Food & dining: ₹4,200 of your ₹5,000 budget spent.",
+            language="en",
+            now=datetime.now(UTC),
+        )
+    session.commit()
+    exported = export_records(session, user_id=LOCAL_USER_ID)
+    [nudge_chat] = exported["chats"]
+    assert [row["role"] for row in nudge_chat["messages"]] == ["assistant"]
+    assert nudge_chat["channel"] == "whatsapp"
+    counts = remove_household_data(session, LOCAL_USER_ID)
+    session.commit()
+    assert counts["advisor_nudges"] == 1
+    assert [row.user_id for row in session.scalars(select(AdvisorNudge))] == [OTHER_USER]

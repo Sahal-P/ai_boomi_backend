@@ -41,3 +41,22 @@ def test_figures_reads_values_and_money_hints() -> None:
         (Decimal("4215.50"), True),
         (Decimal("3"), False),
     ]
+
+
+def test_rupees_and_paise_said_out_loud_are_one_amount() -> None:
+    """A spoken reply says ₹770.50 as "770 rupees and 50 paise": the 50 is not an amount."""
+    sources = grounding.allowed(['{"total":"₹770.50"}'])
+    for reply in (
+        "You paid 770 rupees and 50 paise to Swiggy this month.",
+        "You paid ₹770 and 50 paise.",
+        "You paid Rs. 770, 50 paise.",
+        "आपने स्विगी को 770 रुपये 50 पैसे दिए।",
+        "आपने स्विगी को ७७० रुपये ५० पैसे दिए।",
+        "സ്വിഗ്ഗിക്ക് 770 രൂപയും 50 പൈസയും നൽകി.",
+        "Swiggy ko 770 rupaye aur 50 paise diye.",
+    ):
+        assert grounding.unchecked([reply], sources) == [], reply
+    # The paise never let another amount through.
+    assert grounding.unchecked(["About ₹50 a day."], sources) == ["50"]
+    assert grounding.unchecked(["You paid 770 rupees and 60 paise."], sources) == ["770.60"]
+    assert grounding.unchecked(["You paid 770 rupees and 5 paise."], sources) == ["770.05"]

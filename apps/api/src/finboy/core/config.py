@@ -120,8 +120,19 @@ class Settings(BaseSettings):
     advisor_max_tool_rounds: int = Field(default=4, ge=1, le=8)
     advisor_history_turns: int = Field(default=8, ge=0, le=30)
     # Kept per household; the most relevant `advisor_memory_prompt` of them reach each answer.
-    advisor_memory_limit: int = Field(default=80, ge=1, le=1000)
+    advisor_memory_limit: int = Field(default=300, ge=1, le=1000)
     advisor_memory_prompt: int = Field(default=40, ge=5, le=200)
+    # Phase 2: the reviewed money-knowledge library (off until the human reviews and releases it)
+    # and embeddings for semantic search; unset embeddings mean keyword search only.
+    knowledge_enabled: bool = False
+    openai_embedding_model: str | None = None  # set only after a live capability check
+    advisor_embedding_dimensions: int = Field(default=256, ge=64, le=3072)
+    # Phase 3: the proactive coach. Opted-in WhatsApp households hear at most one nudge a day and
+    # Home shows "For you". Off until the human releases it; it also needs ADVISOR_ENABLED.
+    coach_enabled: bool = False
+    # An approved utility template for nudges outside WhatsApp's 24-hour window (name only).
+    # Unset means nudges reach only households that wrote to FinBoy in the last day.
+    whatsapp_coach_template: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,64}$")
 
     # Statement round (docs/statement-round/contract.md): Google Pay statement imports on the web
     # and by WhatsApp document. Off until the human enables it; the web reads it from the session.
@@ -179,6 +190,7 @@ class Settings(BaseSettings):
         "whatsapp_sender_allowlist_json",
         "whatsapp_reminder_template",
         "whatsapp_checkin_template",
+        "whatsapp_coach_template",
         "openai_api_key",
         "resend_api_key",
         "openai_extraction_model",
@@ -186,6 +198,7 @@ class Settings(BaseSettings):
         "openai_transcribe_model",
         "openai_vision_model",
         "openai_advisor_model",
+        "openai_embedding_model",
         "groq_api_key",
         "groq_transcribe_model",
         "sarvam_api_key",
@@ -333,6 +346,11 @@ class Settings(BaseSettings):
     @property
     def advisor_model(self) -> str | None:
         return self.openai_advisor_model or self.openai_assistant_model
+
+    @property
+    def coach_active(self) -> bool:
+        """The coach runs only with the advisor, which writes its nudges."""
+        return self.coach_enabled and self.advisor_enabled
 
     @property
     def allowed_origins(self) -> list[str]:

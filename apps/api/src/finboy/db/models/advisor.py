@@ -5,14 +5,17 @@ deletes them (Memory page, WhatsApp commands) or its account; erasure removes th
 records (services/accounts/households.py). Audio, photos and diary messages are still never kept.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    REAL,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     Text,
     UniqueConstraint,
     func,
@@ -23,6 +26,17 @@ from sqlalchemy.orm import Mapped, mapped_column
 from finboy.db.base import Base
 
 MEMORY_KINDS = ("about", "goal", "plan", "preference", "person", "note")
+# Phase 3: what the coach can nudge about (services/advisor/coach.py), most important first.
+NUDGE_KINDS = (
+    "weekly_recap",
+    "due_soon",
+    "budget_over",
+    "unusual_payment",
+    "income_in",
+    "budget_near",
+    "goal_progress",
+    "new_regular",
+)
 
 
 class AdvisorThread(Base):
@@ -43,6 +57,9 @@ class AdvisorThread(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     summarized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Phase 2: the summary's embedding, for "what did we say about…" (unit length, or NULL).
+    summary_embedding: Mapped[list[float] | None] = mapped_column(ARRAY(REAL))
+    embedding_model: Mapped[str | None] = mapped_column(Text)
 
 
 class AdvisorMessage(Base):
@@ -88,3 +105,55 @@ class HouseholdMemory(Base):
     source: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Phase 2: the memory's embedding, to pick the relevant ones when there are many.
+    embedding: Mapped[list[float] | None] = mapped_column(ARRAY(REAL))
+    embedding_model: Mapped[str | None] = mapped_column(Text)
+
+
+class AdvisorNudge(Base):
+    """One coach nudge FinBoy sent first on WhatsApp (phase 3). The row is written before the
+    send, so a nudge goes out at most once per number, kind and period, and at most one a day.
+    `period_key` is a keyed digest (never a payee name); the words live in the household's chat.
+    """
+
+    __tablename__ = "advisor_nudges"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN (" + ",".join(f"'{kind}'" for kind in NUDGE_KINDS) + ")", name="kind"
+        ),
+        CheckConstraint("via IN ('message','template')", name="via"),
+        CheckConstraint("state IN ('sending','sent','failed','unknown')", name="state"),
+        CheckConstraint("provider_status IN ('sent','delivered','read','failed')", name="status"),
+        UniqueConstraint("binding_id", "kind", "period_key", name="uq_advisor_nudges_period"),
+        UniqueConstraint("binding_id", "day", name="uq_advisor_nudges_day"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    binding_id: Mapped[UUID] = mapped_column(ForeignKey("whatsapp_bindings.id", ondelete="CASCADE"))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(Text)
+    period_key: Mapped[str] = mapped_column(Text)
+    # The India date it went out: one nudge a day per number.
+    day: Mapped[date] = mapped_column(Date)
+    # "message" inside WhatsApp's 24-hour window, else the approved "template".
+    via: Mapped[str] = mapped_column(Text)
+    state: Mapped[str] = mapped_column(Text)
+    outbound_message_id: Mapped[str | None] = mapped_column(Text, unique=True)
+    provider_status: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class KnowledgeEmbedding(Base):
+    """A cached embedding of one money guide (apps/api/knowledge), keyed by its text and model.
+
+    The guides themselves live in Git; only their vectors are kept here, regenerable at any time.
+    """
+
+    __tablename__ = "knowledge_embeddings"
+
+    content_hash: Mapped[str] = mapped_column(Text, primary_key=True)
+    model: Mapped[str] = mapped_column(Text, primary_key=True)
+    dimensions: Mapped[int] = mapped_column(Integer, primary_key=True)
+    embedding: Mapped[list[float]] = mapped_column(ARRAY(REAL))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

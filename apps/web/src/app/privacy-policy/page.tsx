@@ -25,18 +25,22 @@ export default function PrivacyPolicyPage() {
         </li>
         <li>
           How you sign in: an encrypted copy of your WhatsApp number (shown to you masked, and used
-          only for messages you ask for, like a place opening up or a reminder), or a one-way code that identifies your Google account plus a
+          only for messages you ask for, like a place opening up, a reminder or the coach&apos;s nudges), or a one-way code that identifies your Google account plus a
           masked email like &ldquo;s***@***.com&rdquo;. We don&apos;t keep your name or photo.
         </li>
         <li>
           Your chats with FinBoy, typed or spoken: the words of each question (a voice question is
           kept as its text, never as audio) and FinBoy&apos;s answer, so you can pick up where you
-          left off on the website or WhatsApp.
+          left off on the website or WhatsApp. If you turn on the coach&apos;s WhatsApp messages,
+          each one FinBoy sends is kept in the same chat.
         </li>
         <li>
           What FinBoy remembers about you to give more personal answers, like your goals, who
-          people are to you or how your income comes. You can see, edit or delete each memory,
-          or turn memory off, on the Memory page.
+          people are to you or how your income comes, including a lasting fact a diary message
+          states, like who your milkman is (the fact only, never the message). With each memory and
+          chat summary we may keep a list of numbers that helps FinBoy find the right ones; it is
+          deleted with them. You can see, edit or delete each memory, or turn memory off, on the
+          Memory page.
         </li>
         <li>
           Records of your choices (confirm, change, undo), consent and reminder settings, daily
@@ -70,8 +74,9 @@ export default function PrivacyPolicyPage() {
       <p>
         To understand what you say or send, FinBoy uses these services, only for that request and
         without letting them keep or train on your data where they offer that choice: OpenAI
-        (reading text, screenshots and speech, and answering your questions with the figures from
-        your records, the memories and the recent chat that each answer needs), Liquid AI (quickly telling what a message, question
+        (reading text, screenshots and speech, answering your questions with the figures from your
+        records, the memories and the recent chat that each answer needs, and turning memories, chat
+        summaries and searches into numbers that help find the right ones), Liquid AI (quickly telling what a message, question
         or photo is about, so common ones are answered sooner), Sarvam AI (speech in English, Hindi
         and Malayalam, and spoken Malayalam replies), Groq (speech in English and Hindi), Resemble
         and Google Gemini (spoken replies), Meta (delivering WhatsApp messages) and Google (sign-in
@@ -105,6 +110,10 @@ export default function PrivacyPolicyPage() {
           On the Memory page, edit or delete what FinBoy remembers, turn memory off, or clear your
           chat history. On WhatsApp, send &ldquo;memory off&rdquo;, &ldquo;forget everything&rdquo;
           or &ldquo;clear chat history&rdquo;.
+        </li>
+        <li>
+          The coach&apos;s WhatsApp messages come only if you ask for them, at most one a day: send
+          &ldquo;coach on&rdquo; or &ldquo;coach off&rdquo;.
         </li>
         <li>Send STOP on WhatsApp to stop all messages; send START to turn them back on.</li>
         <li>

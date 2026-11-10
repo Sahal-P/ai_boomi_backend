@@ -18,6 +18,13 @@ MONEY_NEAR = re.compile(
     r"₹|\brs\.?|\binr\b|rupee|रुपय|रुपए|रूपय|रुपया|രൂപ|%|percent|प्रतिशत|ശതമാനം", re.IGNORECASE
 )
 SMALL = Decimal(100)
+# Spoken replies say ₹770.50 as "770 rupees and 50 paise" (रुपये … पैसे, രൂപ … പൈസ): one amount,
+# so the paise are never read as an invented ₹50. Applied to normalised (case-folded) text.
+RUPEE_WORD = r"(?:rupees?|rs\.?|rupaye|rupaiye|रुपये|रुपए|रुपया|रूपये|रूपए|രൂപ(?:യും)?)"
+PAISE = re.compile(
+    r"(?:(?:₹|\brs\.?)\s*(?P<a>\d[\d,]*)|(?P<b>\d[\d,]*)\s*" + RUPEE_WORD + r")"
+    r"(?:\s*(?:and|aur|और|,)\s*|\s+)(?P<p>\d{1,2})\s*(?:paise|paisa|पैसे|पैसा|പൈസ)"
+)
 
 
 def _value(token: str) -> Decimal | None:
@@ -27,10 +34,15 @@ def _value(token: str) -> Decimal | None:
         return None
 
 
+def _paise(match: re.Match[str]) -> str:
+    rupees = (match.group("a") or match.group("b")).replace(",", "")
+    return f"₹{rupees}.{int(match.group('p')):02d} "
+
+
 def figures(text: str) -> list[tuple[Decimal, bool]]:
     """(value, looks like money or a percentage) for each number in the text."""
     found: list[tuple[Decimal, bool]] = []
-    question = normalized(text)
+    question = PAISE.sub(_paise, normalized(text))
     for number, word in SCALED.findall(question):
         value = _value(number)
         if value is not None:

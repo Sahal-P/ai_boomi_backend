@@ -1,19 +1,24 @@
 """Thin HTTP boundaries over the same services used by WhatsApp."""
 
+import json
+import logging
+import queue
+from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from finboy.api import deps
 from finboy.api.deps import DB, CurrentUser, PremiumUser
 from finboy.core.clock import today_ist
-from finboy.core.errors import error_response
+from finboy.core.errors import ErrorDetail, ErrorResponse, error_response
 from finboy.db.session import get_session
 from finboy.services.accounts import usage
 from finboy.services.advisor import history
@@ -29,6 +34,9 @@ from finboy.services.speech.multipart import read_upload
 from finboy.services.speech.service import synthesize_speech, transcribe_audio
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
+logger = logging.getLogger(__name__)
+# Advisor answers streamed to the web run here, each with its own database session.
+_STREAMS = ThreadPoolExecutor(max_workers=8, thread_name_prefix="advisor-stream")
 
 
 class ThreadSummary(BaseModel):
@@ -107,15 +115,101 @@ def ask(
             display_style=body.display_style,
             settings=settings,
         )
-    if result.simulation is not None:
-        result = result.model_copy(
-            update={
-                "simulation": simulation_response(
-                    result.simulation, include_overdue_line=body.include_overdue_line
+    return _presented(result, body)
+
+
+def _presented(result: AssistantAnswer, body: AskRequest) -> AssistantAnswer:
+    if result.simulation is None:
+        return result
+    return result.model_copy(
+        update={
+            "simulation": simulation_response(
+                result.simulation, include_overdue_line=body.include_overdue_line
+            )
+        }
+    )
+
+
+def _event(name: str, data: object) -> str:
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return f"event: {name}\ndata: {payload}\n\n"
+
+
+def _stream_error(request_id: str, status: int, code: str, message: str) -> str:
+    body = ErrorResponse(error=ErrorDetail(code=code, message=message, request_id=request_id))
+    return _event("error", {"status": status} | body.model_dump())
+
+
+@router.post(
+    "/ask/stream",
+    response_class=StreamingResponse,
+    responses={200: {"content": {"text/event-stream": {}}}},
+)
+def ask_stream(
+    body: AskRequest,
+    request: Request,
+    session: Annotated[Session, Depends(get_session)],
+    user_id: CurrentUser,
+) -> Response:
+    """The advisor's answer as server-sent events: `progress` with the step it is on (the tool
+    it is using), then one `answer` or `error`. The advisor flag, the daily limit and the chat
+    are checked before the stream starts, so those failures stay ordinary JSON errors."""
+    settings = request.app.state.settings
+    if not settings.advisor_enabled:
+        return error_response(request, 404, "not_found", "Not found.")
+    usage.use(session, settings, user_id, "ai")
+    if body.thread_id is not None:
+        try:
+            history.find(session, user_id, body.thread_id)
+        except LookupError:
+            session.rollback()
+            return _thread_missing(request)
+    session.rollback()
+    engine, request_id = request.app.state.engine, request.state.request_id
+    events: queue.Queue[str | None] = queue.Queue()
+
+    def work() -> None:
+        try:
+            with Session(engine) as own:
+                result = advise(
+                    own,
+                    user_id=user_id,
+                    text=body.text,
+                    display_style=body.display_style,
+                    channel="web",
+                    settings=settings,
+                    thread_id=body.thread_id,
+                    progress=lambda stage: events.put(_event("progress", {"stage": stage})),
                 )
-            }
-        )
-    return result
+            answer = _presented(result, body).model_dump(mode="json", by_alias=True)
+            events.put(_event("answer", answer))
+        except LookupError:
+            events.put(
+                _stream_error(request_id, 404, "thread_not_found", "That chat was not found.")
+            )
+        except Exception:
+            logger.warning("assistant.stream", extra={"outcome": "failed"})
+            events.put(
+                _stream_error(
+                    request_id, 503, "assistant_unavailable", "FinBoy could not answer just now."
+                )
+            )
+        finally:
+            events.put(None)
+
+    events.put(_event("progress", {"stage": "thinking"}))
+    _STREAMS.submit(work)
+
+    def stream() -> Iterator[str]:
+        # A closed connection stops this loop; the answer is still kept in the chat.
+        while (item := events.get()) is not None:
+            yield item
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post(

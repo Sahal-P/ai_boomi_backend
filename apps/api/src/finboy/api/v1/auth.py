@@ -85,6 +85,8 @@ class SessionView(BaseModel):
     plan: PlanView | None = None
     # The advisor with chats and memory (docs/advisor-round/contract.md); off until released.
     advisor: bool = False
+    # Its proactive coach (phase 3): Home's "For you"; off until released.
+    coach: bool = False
 
 
 class Started(BaseModel):
@@ -164,6 +166,7 @@ def session_view(request: Request, session: DB) -> SessionView:
         statement_import=settings.statement_import_enabled,
         plan=plan,
         advisor=settings.advisor_enabled,
+        coach=settings.coach_active,
     )
 
 

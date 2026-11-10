@@ -22,6 +22,7 @@ import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { EmptyState, LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
 import { EmptyMonthArt, NoRecordsArt } from "@/components/illustrations/scenes";
 import { BudgetsCard } from "@/components/money/budgets-card";
+import { ForYouCard } from "@/components/money/for-you-card";
 import { MonthSelect } from "@/components/money/month-select";
 import { ObligationDialog } from "@/components/money/obligation-dialog";
 import { useQuickAdd } from "@/components/money/quick-add-provider";
@@ -293,7 +294,7 @@ export function OverviewScreen() {
   const [obligation, setObligation] = useState<string | null>(null);
   const [changes, setChanges] = useState(0);
   const quickAdd = useQuickAdd();
-  const { signIn } = useHouseholdAccess();
+  const { signIn, coach } = useHouseholdAccess();
   useRecordsChanged(() => {
     setChanges((value) => value + 1);
     summary.reload();
@@ -382,6 +383,8 @@ export function OverviewScreen() {
         <>
           <Hero summary={data} period={period} />
           <Attention summary={data} />
+          {/* The coach speaks about now, so only the current month shows it (advisor phase 3). */}
+          {coach && !period && <ForYouCard version={changes} />}
           <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
             <Bills onOpen={setObligation} version={changes} />
             <BudgetsCard period={period} version={changes} compact />

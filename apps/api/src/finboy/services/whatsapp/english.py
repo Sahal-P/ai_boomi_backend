@@ -522,6 +522,7 @@ RENEWAL_FAILED = (
 
 # Advisor round (docs/advisor-round/contract.md): memory and chat commands.
 MEMORY_UPDATED = "📝 Saved to memory"
+GUIDES = "📚 From FinBoy's money guides: {guides}"
 MEMORY_OFF = (
     "🧠 Memory is off. I won't use or save anything about you.\n"
     'Send "memory on" to turn it back on.'
@@ -532,3 +533,55 @@ MEMORY_ON = (
 )
 MEMORY_FORGOTTEN = "🗑️ Done. I've forgotten everything I remembered about you."
 CHATS_CLEARED = "🗑️ Done. Your chat history with FinBoy is cleared."
+
+# The proactive coach (docs/advisor-round/contract.md, phase 3). Each line is one sentence or two
+# without emoji or line breaks: a WhatsApp message adds an emoji, the approved template wraps the
+# line, and the web's "For you" card shows it as it is.
+COACH = {
+    "budget_near": "{name}: {spent} of your {limit} budget spent, {left} left with {days} to go.",
+    "budget_over": "{name}: {spent} spent, {over} over your {limit} budget, with {days} to go.",
+    "goal_behind": (
+        "Savings goal: {kept} kept of your {goal} this month, {still} still to keep with "
+        "{days} to go."
+    ),
+    "goal_reached": "Savings goal: {kept} kept this month, so your {goal} goal is reached.",
+    "due_soon": "{name}: {amount} due {when}.",
+    "income_goal": (
+        "{amount} came in from {name}. Setting your {goal} savings goal aside today keeps it safe."
+    ),
+    "income_no_goal": (
+        '{amount} came in from {name}. A good day to set a savings goal, like: "save 5000 a month".'
+    ),
+    "unusual_payment": (
+        "{name}: {amount} on {date}, more than three times the usual {usual}. If that's not "
+        "right, fix it in FinBoy."
+    ),
+    "new_regular": (
+        "{name} now looks like a regular payment: about {usual} a month, next around {next}. "
+        "Your regular payments come to {total} a month."
+    ),
+    "weekly_recap": "This week: {income} in, {outflow} out.{most}{ahead}",
+}
+COACH_MOST = " Most went on {top}."
+COACH_AHEAD = " Coming up: {amount} for {name} on {date}."
+COACH_WHEN = {0: "today", 1: "tomorrow"}
+COACH_ON_DATE = "on {date}"
+COACH_YES, COACH_NO = "🔔 Coach me", "🔕 Stop coaching"
+COACH_ASK = (
+    "🔔 Want me to message you when something needs a look: a budget running low, a bill due, "
+    "money coming in? At most once a day, never at night."
+)
+COACH_ON = (
+    "🔔 Done. When something needs a look, I'll message you here: at most once a day, between "
+    '8 am and 8 pm. Send "coach off" to stop.'
+)
+COACH_OFF = '🔕 OK, no more coach messages. Send "coach on" any time to start again.'
+# The approved template's body (docs/production.md), kept so the chat shows what was sent.
+COACH_TEMPLATE = (
+    'FinBoy coach: {line} Reply here to talk it through, or send "coach off" to stop these '
+    "messages."
+)
+
+
+def days(count: int) -> str:
+    return f"{count} day" if count == 1 else f"{count} days"

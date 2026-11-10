@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from finboy.core.config import LOCAL_USER_ID, Settings
+from finboy.db.models.advisor import AdvisorNudge
 from finboy.db.models.core import User
 from finboy.db.models.whatsapp import (
     WhatsAppBinding,
@@ -206,6 +207,14 @@ def admit(
                 .join(WhatsAppBinding, WhatsAppBinding.id == WhatsAppCheckin.binding_id)
                 .where(WhatsAppCheckin.outbound_message_id == status.id)
                 .with_for_update(of=WhatsAppCheckin)
+            ).first()
+        if row is None:
+            # An opted-in coach nudge (advisor phase 3), also sent outside any reply.
+            row = session.execute(
+                select(AdvisorNudge, WhatsAppBinding.sender_hash)
+                .join(WhatsAppBinding, WhatsAppBinding.id == AdvisorNudge.binding_id)
+                .where(AdvisorNudge.outbound_message_id == status.id)
+                .with_for_update(of=AdvisorNudge)
             ).first()
         if row is None or row[1] != config.digest("sender", status.recipient_id):
             continue

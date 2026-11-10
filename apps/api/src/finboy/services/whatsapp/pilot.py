@@ -29,9 +29,11 @@ from finboy.db.models.core import User
 from finboy.db.models.ledger import Commitment, EmailSource, SourceEvent, Transaction
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt, WhatsAppReceipt
 from finboy.services.accounts import households
+from finboy.services.advisor import memory as advisor_memory
 from finboy.services.advisor import service as advisor
 from finboy.services.assistant import service as assistant
 from finboy.services.assistant.language import money
+from finboy.services.assistant.models import AssistantAnswer
 from finboy.services.ingestion.hindi_numbers import parse_amount
 from finboy.services.ingestion.types import Category
 from finboy.services.money import budgets, merchants
@@ -53,6 +55,7 @@ from finboy.services.whatsapp import (
     reminders,
     statement,
 )
+from finboy.services.whatsapp import coach as coaching
 from finboy.services.whatsapp import memory as memory_commands
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion
@@ -110,6 +113,8 @@ class Conversation:
     self_serve: bool = False  # joined by itself (docs/signup-round/contract.md)
     # The language this message showed, if any: its text, or what speech-to-text heard.
     heard: Language | None = None
+    # A line added once to the next written reply, like "📝 Saved to memory".
+    note: str | None = None
 
     @property
     def language(self) -> Language:
@@ -137,6 +142,9 @@ class Conversation:
     ) -> bool:
         # Kept for the next message that shows no language; committed with the delivery.
         self.binding.last_language = self.language
+        limit = 1024 if buttons or listing else 4096  # an interactive body holds 1,024
+        if self.note and len(text) + len(self.note) + 2 <= limit:
+            text, self.note = f"{text}\n\n{self.note}", None
         return self.reply(
             self.session,
             self.config,
@@ -202,6 +210,8 @@ def _handle(conversation: Conversation) -> str | None:
         return summary(conversation)
     advising = conversation.settings.advisor_enabled
     command = memory_commands.command(text) if advising else None
+    if command is None and conversation.settings.coach_active:
+        command = coaching.command(text)  # "coach on" / "coach off" (advisor phase 3)
     if command is not None:
         return command(conversation)
     change = prompts.pending_change(conversation.session, binding)
@@ -231,6 +241,8 @@ def _handle(conversation: Conversation) -> str | None:
         return _answer(conversation, text)
     if reading.kind == "unclear":
         return _say(conversation, conversation.words.UNCLEAR, conversation.words.UNCLEAR_SPEECH)
+    if advising and reading.remember:
+        _learn(conversation, reading)
     if reading.amount_minor is None:
         return _say(
             conversation,
@@ -247,6 +259,25 @@ def _handle(conversation: Conversation) -> str | None:
     if len(readings) > 1:
         return _record_many(conversation, readings)
     return _record_money(conversation, reading)
+
+
+def _learn(conversation: Conversation, reading: statement.Statement) -> None:
+    """A lasting fact the diary message states ("Ramesh is the milkman") joins the household's
+    memory when memory is on. Only the fact is kept, never the message."""
+    session, user_id = conversation.session, conversation.binding.user_id
+    if not advisor_memory.enabled(session, user_id):
+        return
+    change = advisor_memory.learn(
+        session,
+        user_id,
+        reading.remember_kind,
+        reading.remember,
+        "whatsapp",
+        conversation.settings.advisor_memory_limit,
+    )
+    session.commit()
+    if change is not None:
+        conversation.note = conversation.words.MEMORY_UPDATED
 
 
 def _say(conversation: Conversation, text: str, spoken: str, error: str | None = None):
@@ -923,6 +954,16 @@ def _answer(conversation: Conversation, text: str) -> str | None:
     return conversation.done(sent)
 
 
+def with_guides(response: str, answer: AssistantAnswer, words: ModuleType) -> str:
+    """An advisor reply names the FinBoy guides it is based on, each with its official site."""
+    if not answer.sources:
+        return response
+    named = "; ".join(
+        f"{source.title} {source.url}" if source.url else source.title for source in answer.sources
+    )
+    return f"{response}\n\n{words.GUIDES.format(guides=named)}"
+
+
 def _advise(conversation: Conversation, text: str) -> str | None:
     """The advisor: the household's own figures, its memories and this chat, in its language."""
     from finboy.services.whatsapp.processor import phone_text
@@ -943,7 +984,7 @@ def _advise(conversation: Conversation, text: str) -> str | None:
             conversation.send(conversation.words.UNAVAILABLE), "assistant_unavailable"
         )
     conversation.heard = answer.speech_language
-    response = phone_text(answer.display_text)
+    response = with_guides(phone_text(answer.display_text), answer, conversation.words)
     if any(change.action != "forgotten" for change in answer.memory_changes):
         response += "\n\n" + conversation.words.MEMORY_UPDATED
     sent = conversation.send(response if len(response) <= 4096 else conversation.words.UNAVAILABLE)
@@ -1388,4 +1429,6 @@ HANDLERS: dict[tuple[str, str], Callable[[Conversation, WhatsAppPrompt, str], st
     **{("pick_category", category): _set_category for category in get_args(Category)},
     ("checkin_opt_in", "checkin"): cfo.checkin_choice,
     ("checkin_opt_in", "nocheckin"): cfo.checkin_choice,
+    ("coach_opt_in", "coach"): coaching.choice,
+    ("coach_opt_in", "nocoach"): coaching.choice,
 }

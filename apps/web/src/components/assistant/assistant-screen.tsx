@@ -3,6 +3,7 @@
 import { ArrowDown, Calculator, History, MessageCircle, PiggyBank, SquarePen, UtensilsCrossed, Wallet } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { Composer } from "@/components/assistant/composer";
@@ -14,6 +15,7 @@ import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAssistant } from "@/hooks/use-assistant";
+import { useQueryUpdate } from "@/hooks/use-query-update";
 import { useSpeech } from "@/hooks/use-speech";
 import { useResource } from "@/hooks/use-resource";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
@@ -29,6 +31,9 @@ const SUGGESTIONS: { text: string; lang?: string; icon?: typeof Wallet }[] = [
   { text: "इस महीने कितना पैसा बाकी है?", lang: "hi" },
   { text: "ഈ മാസം ഭക്ഷണത്തിന് എത്ര ചെലവായി?", lang: "ml" },
 ];
+
+// A question handed over from Home's "For you" (`?ask=`) is typed in, never sent by itself.
+const HANDED_OVER = 500;
 
 const istHour = new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: "Asia/Kolkata" });
 
@@ -115,13 +120,15 @@ export function AssistantScreen() {
   const { advisor } = useHouseholdAccess();
   // With the advisor on, every household can ask by typing; voice stays part of Premium.
   const canAsk = premium.premium || advisor;
-  const assistant = useAssistant();
+  const assistant = useAssistant({ stream: advisor });
   const [chatsOpen, setChatsOpen] = useState(false);
   const [chatsGeneration, setChatsGeneration] = useState(0);
   const [openProblem, setOpenProblem] = useState<Problem | null>(null);
   const [personal, setPersonal] = useState<string[] | null>(null);
   const speech = useSpeech();
-  const [draft, setDraft] = useState("");
+  const params = useSearchParams();
+  const update = useQueryUpdate();
+  const [draft, setDraft] = useState(() => params.get("ask")?.slice(0, HANDED_OVER) ?? "");
   const [fromVoice, setFromVoice] = useState(false);
   const voice = useVoiceRecorder((transcript) => {
     setDraft(transcript);
@@ -134,6 +141,11 @@ export function AssistantScreen() {
   const [hello] = useState(() => greeting(new Date()));
   const turns = [...assistant.turns].reverse();
   const empty = turns.length === 0;
+
+  // Once typed in, the handed-over question leaves the address, so a reload doesn't repeat it.
+  useEffect(() => {
+    if (params.has("ask")) update({ ask: null });
+  }, [params, update]);
 
   // Starter questions from the household's own figures, when the advisor is on.
   useEffect(() => {

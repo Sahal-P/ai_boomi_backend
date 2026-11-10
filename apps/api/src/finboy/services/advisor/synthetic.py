@@ -5,7 +5,7 @@ SQLite store for chats and memories. SQLite is a test and eval double only; Post
 the sole runtime store. Nothing here is a real household's data.
 """
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, MetaData, create_engine, event
@@ -17,6 +17,7 @@ from finboy.core.clock import IST, today_ist
 from finboy.core.config import LOCAL_USER_ID
 from finboy.db.base import Base
 from finboy.db.models import User
+from finboy.services.advisor import coach, history, knowledge
 from finboy.services.money import budgets, engine, insights
 from finboy.services.money.engine import (
     CategoryTotal,
@@ -103,6 +104,7 @@ class SyntheticHousehold:
 
     def __init__(self) -> None:
         self.reads: list[str] = []
+        self.chats: list[history.ChatHit] = []
         self.payments = [
             payment("Swiggy", 45000),
             payment("Swiggy", 32050),
@@ -205,3 +207,100 @@ class SyntheticHousehold:
     def simulate(self, monthly_minor: int) -> engine.CashFlowSimulation:
         self.reads.append("simulate")
         return engine.calculate_simulation(_summary(PeriodSpec()), monthly_minor)
+
+    def knowledge(self, query: str) -> list[knowledge.Hit]:
+        self.reads.append("knowledge")
+        return knowledge.search(query)  # keywords only: no network in tests or offline checks
+
+    def past_chats(self, query: str) -> list[history.ChatHit]:
+        self.reads.append("past_chats")
+        return list(self.chats)
+
+
+# Phase 3: a Sunday after the 20th, when every kind of coach nudge can come up.
+NUDGE_DAY = date(2026, 11, 22)
+
+
+def nudges() -> list[coach.Nudge]:
+    """One coach nudge of every kind with made-up figures, most important first: the offline
+    check's lines and the live gate's wording (evaluate.py)."""
+
+    def record(name: str, amount: int, *, out: bool = True, category: str) -> TransactionView:
+        return TransactionView(
+            id=UUID(int=amount),
+            direction="out" if out else "in",
+            kind="purchase" if out else "salary",
+            amount_minor=amount,
+            merchant=name,
+            category=category,
+            occurred_at=datetime.combine(NUDGE_DAY, time(12), IST),
+            status="confirmed",
+            confidence=0.9,
+        )
+
+    def due(label: str, amount: int, days: int) -> CommitmentView:
+        return CommitmentView(
+            id=UUID(int=amount),
+            kind="bill",
+            label=label,
+            amount_minor=amount,
+            due_date=NUDGE_DAY + timedelta(days=days),
+            status="upcoming",
+            confidence=0.9,
+        )
+
+    bill = due("Electricity bill", 150000, 1)
+    netflix = insights.RegularPayment(
+        name="Netflix",
+        usual_minor=64900,
+        months=3,
+        last_paid=NUDGE_DAY - timedelta(days=2),
+        next_expected=date(2026, 12, 20),
+        category="subscriptions",
+    )
+    return [
+        coach.Nudge(
+            "weekly_recap",
+            "2026-W47",
+            "info",
+            coach.RecapDetail(
+                start=NUDGE_DAY - timedelta(days=6),
+                end=NUDGE_DAY,
+                income_minor=3000000,
+                outflow_minor=842050,
+                top=(("food_dining", 420000), ("groceries", 310000)),
+                ahead=(due("Rent", 1200000, 3),),
+                overdue_minor=0,
+                waiting=1,
+            ),
+        ),
+        coach.Nudge("due_soon", str(bill.id), "warning", coach.DueDetail(bill, 1)),
+        coach.Nudge(
+            "budget_over",
+            "2026-11:total",
+            "warning",
+            coach.BudgetDetail(budgets.BudgetStatus("total", 2000000, 2100000), 9),
+        ),
+        coach.Nudge(
+            "unusual_payment",
+            "unusual",
+            "warning",
+            coach.UnusualDetail(record("Swiggy", 250000, category="food_dining"), 40000, "payee"),
+        ),
+        coach.Nudge(
+            "income_in",
+            "2026-11",
+            "good",
+            coach.IncomeDetail(
+                record("Acme Pvt Ltd", 3000000, out=False, category="salary"), 500000
+            ),
+        ),
+        coach.Nudge(
+            "budget_near",
+            "2026-11:food_dining",
+            "warning",
+            coach.BudgetDetail(budgets.BudgetStatus("food_dining", 500000, 420000), 9),
+        ),
+        coach.Nudge("goal_progress", "2026-11", "warning", coach.GoalDetail(500000, 200000, 9)),
+        coach.Nudge("new_regular", "netflix", "info", coach.RegularDetail(netflix, 94800)),
+    ]

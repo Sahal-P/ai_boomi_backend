@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { askQuestion, getThread, styles, type DisplayStyle } from "@/lib/api/assistant";
+import { askQuestion, askQuestionStream, getThread, styles, type DisplayStyle } from "@/lib/api/assistant";
 import { isAbort } from "@/lib/api/http";
 import { historyTurns } from "@/lib/chat-history";
 import {
@@ -49,15 +49,22 @@ function subscribeStyle(listener: () => void) {
   };
 }
 
-async function run(id: string, question: string, style: DisplayStyle) {
+async function run(id: string, question: string, style: DisplayStyle, stream: boolean) {
   inflight?.controller.abort();
   const controller = new AbortController();
   inflight = { id, controller };
   try {
-    const answer = await askQuestion(question, style, controller.signal, getThreadId());
+    // With the advisor on, the answer streams in with each step it takes.
+    const answer = stream
+      ? await askQuestionStream(question, style, {
+          onProgress: (stage) => updateTurn(id, { progress: stage }),
+          signal: controller.signal,
+          threadId: getThreadId(),
+        })
+      : await askQuestion(question, style, controller.signal, getThreadId());
     // The advisor keeps the chat on the server; the next question continues it.
     if (answer.thread_id) setThreadId(answer.thread_id);
-    updateTurn(id, { state: "answered", answer, problem: null });
+    updateTurn(id, { state: "answered", answer, problem: null, progress: null });
   } catch (error) {
     if (isAbort(error) || controller.signal.aborted) updateTurn(id, { state: "cancelled" });
     else updateTurn(id, { state: "failed", problem: describeProblem(error, "FinBoy couldn't answer that") });
@@ -66,7 +73,8 @@ async function run(id: string, question: string, style: DisplayStyle) {
   }
 }
 
-export function useAssistant() {
+/** `stream`: hear the advisor's steps while it works (only while the advisor is on). */
+export function useAssistant({ stream = false }: { stream?: boolean } = {}) {
   const turns = useSyncExternalStore(subscribeTurns, getTurns, getServerTurns);
   const style = useSyncExternalStore(subscribeStyle, readStyle, () => "auto" as const);
   const pending = turns.some((turn) => turn.state === "pending");
@@ -78,14 +86,14 @@ export function useAssistant() {
     ask(question: string, askStyle: DisplayStyle = style) {
       const text = question.trim().slice(0, 2000);
       if (!text || pending) return false;
-      void run(addTurn(text, askStyle), text, askStyle);
+      void run(addTurn(text, askStyle), text, askStyle, stream);
       return true;
     },
     retry(id: string) {
       const turn = turns.find((item) => item.id === id);
       if (!turn || pending) return;
-      updateTurn(id, { state: "pending", problem: null, askedAt: Date.now() });
-      void run(id, turn.question, turn.style);
+      updateTurn(id, { state: "pending", problem: null, askedAt: Date.now(), progress: null });
+      void run(id, turn.question, turn.style, stream);
     },
     cancel() {
       inflight?.controller.abort();

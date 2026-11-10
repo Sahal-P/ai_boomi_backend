@@ -1,6 +1,6 @@
 "use client";
 
-import { Brain, Check, ChevronDown, Copy, Pause, Play, RotateCcw, Square, Volume2 } from "lucide-react";
+import { BookOpen, Brain, Check, ChevronDown, Copy, ExternalLink, Pause, Play, RotateCcw, Square, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { RevealText } from "@/components/assistant/reveal-text";
@@ -11,7 +11,15 @@ import { ThinkingOrb } from "@/components/feedback/thinking-orb";
 import { RecordAmount } from "@/components/records/record-bits";
 import { Button } from "@/components/ui/button";
 import type { Playback } from "@/hooks/use-speech";
-import { displayLang, SPEECH_LIMITS, type DisplayStyle, type MemoryChange } from "@/lib/api/assistant";
+import { progressLabel } from "@/lib/advisor-progress";
+import {
+  displayLang,
+  SPEECH_LIMITS,
+  type Answer,
+  type AnswerSource,
+  type DisplayStyle,
+  type MemoryChange,
+} from "@/lib/api/assistant";
 import { formatMoney } from "@/lib/api/money";
 import { recordOutcome } from "@/lib/api/privacy";
 import type { Turn } from "@/lib/conversation";
@@ -49,17 +57,26 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-/** "Thinking…", then an honest note once it is taking a while. */
-function Thinking({ askedAt, onCancel }: { askedAt: number; onCancel: () => void }) {
+/** "Thinking…" or the advisor's current step, then an honest note once it is taking a while. */
+function Thinking({
+  askedAt,
+  progress,
+  onCancel,
+}: {
+  askedAt: number;
+  progress: string | null | undefined;
+  onCancel: () => void;
+}) {
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => setSlow(true), Math.max(0, 4_000 - (Date.now() - askedAt)));
     return () => window.clearTimeout(timer);
   }, [askedAt]);
+  const step = progress && progress !== "thinking" ? progressLabel(progress) : null;
   return (
     <div className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 text-[15px]">
-      <span className="shimmer-text font-medium">
-        {slow ? "Checking your records… this can take up to a minute." : "Thinking…"}
+      <span role="status" className="shimmer-text font-medium">
+        {step ?? (slow ? "Checking your records… this can take up to a minute." : "Thinking…")}
       </span>
       <Button size="sm" variant="ghost" className="h-8 px-3" onClick={onCancel}>
         Cancel
@@ -89,6 +106,55 @@ function MemoryNote({ changes }: { changes: MemoryChange[] }) {
       <Link href="/memory" className="shrink-0 font-semibold text-ink underline underline-offset-2">
         Manage
       </Link>
+    </div>
+  );
+}
+
+/**
+ * What an answer rests on. An advisor answer claims the household's records only when it carries
+ * their warning; one from FinBoy's guides says so; planning maths or a greeting claims neither.
+ */
+function basis(answer: Answer, copy: ReturnType<typeof answerCopy>): string | null {
+  if (answer.intent !== "advisor" || answer.policy !== "answer") return copy[answer.policy];
+  if (answer.warnings.includes("incomplete_coverage")) return copy.answer;
+  return answer.sources.length > 0 ? copy.guides : null;
+}
+
+/** The reviewed guides an answer is based on, each linking to its official site. */
+function Sources({ sources, lang }: { sources: AnswerSource[]; lang: string | undefined }) {
+  return (
+    <div className="space-y-2">
+      {sources.some((source) => source.url) && (
+        <p className="text-xs font-semibold text-ink-soft" lang="en">
+          Official sites
+        </p>
+      )}
+      <ul className="flex flex-wrap gap-2" lang={lang}>
+        {sources.map((source) => (
+          <li key={source.id}>
+            {source.url ? (
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="surface inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm text-ink transition-[transform,background-color] duration-300 ease-out-expo hover:-translate-y-px hover:bg-white/80"
+              >
+                <BookOpen className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />
+                {source.title}
+                <ExternalLink className="size-3.5 shrink-0 text-ink-soft" aria-hidden="true" />
+                <span className="sr-only" lang="en">
+                  (official site, opens in a new tab)
+                </span>
+              </a>
+            ) : (
+              <span className="surface inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm text-ink">
+                <BookOpen className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />
+                {source.title}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -131,17 +197,25 @@ export function TurnCard({
   const lang = answer ? displayLang(answer) : undefined;
   const copy = answerCopy(answer ?? { display_language: "en", display_script: "Latn" });
   return (
-    <article aria-label={`Question: ${turn.question}`} className="space-y-4 motion-safe:animate-[rise-in_0.6s_var(--ease-out-expo)_both]">
-      <div className="flex justify-end pl-10">
-        <p className="surface max-w-[85%] rounded-[20px] rounded-br-md px-4 py-2.5 text-[15px] leading-relaxed break-words whitespace-pre-line">
-          {turn.question}
-        </p>
-      </div>
+    <article
+      aria-label={turn.question ? `Question: ${turn.question}` : "A message from FinBoy"}
+      className="space-y-4 motion-safe:animate-[rise-in_0.6s_var(--ease-out-expo)_both]"
+    >
+      {/* No question: a message FinBoy sent first, like a coach nudge on WhatsApp. */}
+      {turn.question && (
+        <div className="flex justify-end pl-10">
+          <p className="surface max-w-[85%] rounded-[20px] rounded-br-md px-4 py-2.5 text-[15px] leading-relaxed break-words whitespace-pre-line">
+            {turn.question}
+          </p>
+        </div>
+      )}
 
       <div className="flex gap-3">
         <Avatar thinking={turn.state === "pending"} />
         <div className="min-w-0 flex-1 pt-1.5">
-          {turn.state === "pending" && <Thinking askedAt={turn.askedAt} onCancel={onCancel} />}
+          {turn.state === "pending" && (
+            <Thinking askedAt={turn.askedAt} progress={turn.progress} onCancel={onCancel} />
+          )}
           {turn.state === "cancelled" && (
             <div className="flex flex-wrap items-center gap-3 text-sm text-ink-soft">
               <span>You cancelled this question. Nothing was saved.</span>
@@ -157,7 +231,9 @@ export function TurnCard({
           {answer && turn.state === "answered" && (
             <div className="space-y-4" lang={lang}>
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                <span className="rounded-full bg-ink/[0.07] px-2.5 py-1 text-ink">{copy[answer.policy]}</span>
+                {basis(answer, copy) && (
+                  <span className="rounded-full bg-ink/[0.07] px-2.5 py-1 text-ink">{basis(answer, copy)}</span>
+                )}
                 {answer.resolved_period && (
                   // The API's period label is an ISO range; show the product's one date style instead.
                   <span className="rounded-full bg-muted px-2.5 py-1 text-ink-soft">
@@ -225,6 +301,7 @@ export function TurnCard({
                 </details>
               )}
 
+              {answer.sources.length > 0 && <Sources sources={answer.sources} lang={lang} />}
               {answer.memory_changes.length > 0 && <MemoryNote changes={answer.memory_changes} />}
 
               <div className="-ml-2 flex flex-wrap items-center gap-1">

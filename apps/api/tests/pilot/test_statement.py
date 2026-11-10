@@ -462,3 +462,17 @@ def test_a_sure_entry_does_not_wait_for_the_statement_model(monkeypatch) -> None
         release.set()
     assert result == [Statement("spent", 2000, None, "upi", TODAY, "food_dining")]
     assert seen == [("चाय 20 दिए", "hi")]
+
+
+def test_a_lasting_fact_rides_on_the_first_statement_only_for_entries() -> None:
+    fact = reading(remember="  Ramesh is   the milkman ", remember_kind="person")
+    first, second = statement._remembering(
+        fact, [Statement("spent", 6000), Statement("spent", 2000)]
+    )
+    assert (first.remember, first.remember_kind) == ("Ramesh is the milkman", "person")
+    assert second.remember is None
+    asked = statement._remembering(fact, [Statement("question")])
+    assert asked[0].remember is None
+    plain = statement._remembering(reading(), [Statement("spent", 6000)])
+    assert plain[0].remember is None
+    assert "remember:" in statement.PROMPT and "health" in statement.PROMPT

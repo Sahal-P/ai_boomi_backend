@@ -5,6 +5,7 @@ uv run --package finboy-api python -m finboy.services.pilot.cli owner on|off
 uv run --package finboy-api python -m finboy.services.pilot.cli erase <household-uuid> --confirm
 uv run --package finboy-api python -m finboy.services.pilot.cli remind
 uv run --package finboy-api python -m finboy.services.pilot.cli checkin
+uv run --package finboy-api python -m finboy.services.pilot.cli coach
 uv run --package finboy-api python -m finboy.services.pilot.cli report [--weeks 4]
 """
 
@@ -22,7 +23,7 @@ from finboy.db.session import build_engine
 from finboy.services.imports.locking import import_lock
 from finboy.services.mail.security import MailError
 from finboy.services.pilot import households, report
-from finboy.services.whatsapp import checkin, reminders
+from finboy.services.whatsapp import checkin, coach, reminders
 from finboy.services.whatsapp.config import ChannelUnavailable, channel_config
 from finboy.services.whatsapp.meta import MetaClient
 
@@ -43,6 +44,9 @@ def main(argv: list[str] | None = None) -> int:
     commands.add_parser("remind", help="send due reminder templates (timer; 08:00-20:00 IST)")
     commands.add_parser(
         "checkin", help="send opted-in monthly check-ins (timer; 1st-3rd, 08:00-20:00 IST)"
+    )
+    commands.add_parser(
+        "coach", help="send opted-in coach nudges, one a day at most (timer; 08:00-20:00 IST)"
     )
     weekly = commands.add_parser("report", help="weekly counts per pilot household (no content)")
     weekly.add_argument("--weeks", type=int, choices=range(1, 13), default=4, metavar="1-12")
@@ -65,9 +69,15 @@ def main(argv: list[str] | None = None) -> int:
                 households.set_owner_pilot(session, enabled=args.state == "on")
             print(f"Owner pilot flows: {args.state}")
         elif args.command == "remind":
-            return _remind(settings, factory)
+            return _remind(settings, factory, job="remind")
         elif args.command == "checkin":
-            return _remind(settings, factory, monthly=True)
+            return _remind(settings, factory, job="checkin")
+        elif args.command == "coach":
+            if not settings.coach_active:
+                # A rollback switch, not an error: the timer may stay installed meanwhile.
+                print("Nudges: off (COACH_ENABLED and ADVISOR_ENABLED are both needed).")
+                return 0
+            return _remind(settings, factory, job="coach")
         elif args.command == "report":
             with factory() as session:
                 rows = report.weekly(session, today=today_ist(), weeks=args.weeks)
@@ -91,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def _remind(settings: Settings, factory: sessionmaker, *, monthly: bool = False) -> int:
+def _remind(settings: Settings, factory: sessionmaker, *, job: str) -> int:
     try:
         config = channel_config(settings)
     except ChannelUnavailable:
@@ -99,11 +109,15 @@ def _remind(settings: Settings, factory: sessionmaker, *, monthly: bool = False)
         return 2
     client = MetaClient(config)
     try:
-        send = checkin.send_checkins if monthly else reminders.send_reminders
+        send = {
+            "remind": reminders.send_reminders,
+            "checkin": checkin.send_checkins,
+            "coach": coach.send_nudges,
+        }[job]
         counts = send(factory, settings, config, client, datetime.now(UTC))
     finally:
         client.close()
-    label = "Check-ins" if monthly else "Reminders"
+    label = {"remind": "Reminders", "checkin": "Check-ins", "coach": "Nudges"}[job]
     print(f"{label}:", ", ".join(f"{name} {count}" for name, count in counts.items()))
     return 0
 

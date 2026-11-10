@@ -34,6 +34,15 @@ class MemoryChange(BaseModel):
     id: UUID | None = None
 
 
+class AnswerSource(BaseModel):
+    """A reviewed FinBoy guide an advisor answer is based on (docs/advisor-round/contract.md)."""
+
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    title: str
+    url: str | None = None  # the guide's first official source
+
+
 class AssistantAnswer(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     data_version: str = "0"
@@ -57,6 +66,7 @@ class AssistantAnswer(BaseModel):
     thread_id: UUID | None = None
     memory_changes: list[MemoryChange] = Field(default_factory=list)
     follow_ups: list[str] = Field(default_factory=list)
+    sources: list[AnswerSource] = Field(default_factory=list)
 
 
 class AskRequest(BaseModel):

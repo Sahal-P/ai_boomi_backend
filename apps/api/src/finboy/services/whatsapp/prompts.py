@@ -16,6 +16,8 @@ CHOICES = frozenset(
     {"yes", "no", "change", "undo", "agree", "decline", "paid", "later", "again", "remind", "skip"}
     # Saved entries (docs/money-manager-round/contract.md); a category list row is its category.
     | {"amount", "category", "putback", "undoall", "fixone", "fix", "checkin", "nocheckin"}
+    # The coach's opt-in and stop (docs/advisor-round/contract.md, phase 3).
+    | {"coach", "nocoach"}
     | set(get_args(Category))
 )
 LIFETIME = {
@@ -33,9 +35,11 @@ LIFETIME = {
     "pick_item": timedelta(days=2),
     "pick_category": timedelta(hours=1),
     "checkin_opt_in": timedelta(days=30),
+    "coach_opt_in": timedelta(days=30),
 }
 # Several messages of saved items may be open at once; each keeps its own Undo all / Fix one.
-KEEP_OLDER = {"pick_item"}
+# Every coach nudge's "Stop coaching" keeps working too, so stopping never says "expired".
+KEEP_OLDER = {"pick_item", "coach_opt_in"}
 
 
 def _aware(value: datetime) -> datetime:

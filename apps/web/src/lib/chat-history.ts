@@ -32,16 +32,33 @@ export function historyAnswer(text: string, language: ChatMessage["language"], t
     thread_id: threadId,
     memory_changes: [],
     follow_ups: [],
+    sources: [],
   };
 }
 
-/** A saved chat (oldest first, question then answer) as turns, newest first like the store. */
+/**
+ * A saved chat (oldest first, question then answer) as turns, newest first like the store. A
+ * message FinBoy sent first (a coach nudge on WhatsApp, advisor phase 3) is a turn without a
+ * question.
+ */
 export function historyTurns(messages: ChatMessage[], threadId: string): Turn[] {
   const turns: Turn[] = [];
   for (let index = 0; index < messages.length; index += 1) {
     const question = messages[index];
     const reply = messages[index + 1];
-    if (question?.role !== "user") continue;
+    if (!question) continue;
+    if (question.role === "assistant") {
+      turns.push({
+        id: `history-${question.id}`,
+        question: "",
+        style: "auto",
+        askedAt: Date.parse(question.created_at),
+        state: "answered",
+        answer: historyAnswer(question.text, question.language, threadId),
+        problem: null,
+      });
+      continue;
+    }
     const answered = reply?.role === "assistant";
     turns.push({
       id: `history-${question.id}`,

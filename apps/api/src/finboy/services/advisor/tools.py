@@ -10,7 +10,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 from typing import Any, Literal, Protocol, get_args
 from uuid import UUID
 
@@ -19,7 +19,9 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from finboy.core.clock import IST
+from finboy.core.config import Settings
 from finboy.db.models.ledger import Category
+from finboy.services.advisor import embeddings, history, knowledge
 from finboy.services.assistant.language import money
 from finboy.services.money import budgets, engine, insights
 from finboy.services.money.engine import PeriodSpec, TransactionView
@@ -129,6 +131,58 @@ class AffordMonthlyArgs(BaseModel):
     monthly_rupees: float = Field(description="The monthly amount in rupees the person said")
 
 
+class SearchKnowledgeArgs(BaseModel):
+    """Search FinBoy's reviewed money guides: government schemes (PM-KISAN, Jan Dhan, Atal
+    Pension, PMSBY, PMJJBY, Ayushman Bharat, Sukanya Samriddhi, PPF, NPS, Kisan Credit Card),
+    loans, EMIs and getting out of debt, fraud safety (UPI, loan apps, OTP and KYC scams), bank
+    complaints, credit scores, budgeting and saving methods, insurance, deposits, and what SIPs,
+    index funds and diversification are."""
+
+    model_config = ConfigDict(extra="forbid")
+    query: str = Field(description="What to look up, in the person's words or in English")
+
+
+class SearchPastChatsArgs(BaseModel):
+    """Search this household's earlier chats with FinBoy, when they refer to something discussed
+    before that the summaries shown do not cover."""
+
+    model_config = ConfigDict(extra="forbid")
+    query: str = Field(description="What was discussed, in any language")
+
+
+class PlanNumbersArgs(BaseModel):
+    """Work out planning figures with code, never by hand: the monthly saving for a target by a
+    month, how many months a monthly saving takes, or a loan's EMI, total paid and interest from
+    a rate the person gave. Use only amounts the person said or FinBoy showed."""
+
+    model_config = ConfigDict(extra="forbid")
+    calculation: Literal["save_per_month", "months_to_goal", "emi"]
+    amount_rupees: float | None = Field(
+        description="The target (save_per_month, months_to_goal) or the loan amount (emi)"
+    )
+    by_month: str | None = Field(description="save_per_month: the target month, YYYY-MM")
+    months: int | None = Field(description="emi: the loan length in months")
+    monthly_rupees: float | None = Field(description="months_to_goal: the monthly saving")
+    annual_interest_percent: float | None = Field(
+        description="emi: the yearly interest rate the person gave"
+    )
+
+
+@dataclass
+class Context:
+    """What a tool call may rely on besides the engine."""
+
+    today: date
+    # Rupee amounts (in paise) the person said in this chat or that their memories hold.
+    said: set[int] = field(default_factory=set)
+    # Every number in the person's own words and memories (rates, months).
+    stated: set[Decimal] = field(default_factory=set)
+    # FinBoy's own figures so far: the snapshot and every tool result (grows as tools run).
+    known: set[Decimal] = field(default_factory=set)
+    # Guides returned by search_knowledge in this chat turn, for citing.
+    guides: dict[str, knowledge.Guide] = field(default_factory=dict)
+
+
 @dataclass
 class ToolResult:
     """What one call returned: JSON for the model, plus records the web may show as evidence."""
@@ -151,6 +205,8 @@ class Toolbox(Protocol):
     def dues(self, period: PeriodSpec) -> list[engine.CommitmentView]: ...
     def month_plan(self, period: PeriodSpec) -> budgets.MonthPlan: ...
     def simulate(self, monthly_minor: int) -> engine.CashFlowSimulation: ...
+    def knowledge(self, query: str) -> list[knowledge.Hit]: ...
+    def past_chats(self, query: str) -> list[history.ChatHit]: ...
 
 
 @dataclass
@@ -159,6 +215,9 @@ class EngineToolbox:
 
     session: Session
     user_id: UUID
+    settings: Settings | None = None
+    thread_id: UUID | None = None  # the current chat, left out of past-chat search
+    _vectors: dict[str, list[float] | None] = field(default_factory=dict, repr=False)
 
     def money_summary(self, period: PeriodSpec) -> engine.MoneySummary:
         return engine.money_summary(self.session, user_id=self.user_id, period=period)
@@ -201,6 +260,33 @@ class EngineToolbox:
             user_id=self.user_id,
             monthly_amount_minor=monthly_minor,
             label="Proposed monthly commitment",
+        )
+
+    def _vector(self, query: str) -> list[float] | None:
+        """The query's embedding, or None when embeddings are off or unavailable."""
+        if self.settings is None or not embeddings.available(self.settings):
+            return None
+        if query not in self._vectors:
+            self.session.rollback()  # never hold the engine's read lock over a network call
+            found = embeddings.embed([query], self.settings)
+            self._vectors[query] = found[0] if found else None
+        return self._vectors[query]
+
+    def knowledge(self, query: str) -> list[knowledge.Hit]:
+        vector = self._vector(query)
+        self.session.rollback()  # missing guide embeddings are fetched over the network
+        return knowledge.search(
+            query, settings=self.settings, session=self.session, query_vector=vector
+        )
+
+    def past_chats(self, query: str) -> list[history.ChatHit]:
+        return history.search(
+            self.session,
+            self.user_id,
+            query,
+            exclude=self.thread_id,
+            settings=self.settings,
+            query_vector=self._vector(query),
         )
 
 
@@ -279,7 +365,8 @@ def _percent(change: int, base: int) -> str | None:
     return f"{value}%"
 
 
-def _summary(box: Toolbox, args: MoneySummaryArgs, today: date) -> dict[str, Any]:
+def _summary(box: Toolbox, args: MoneySummaryArgs, ctx: Context) -> dict[str, Any]:
+    today = ctx.today
     summary = box.money_summary(to_spec(args.period, today))
     return {
         "period": _period_label(summary.period_start, summary.period_end),
@@ -304,7 +391,8 @@ def _summary(box: Toolbox, args: MoneySummaryArgs, today: date) -> dict[str, Any
     }
 
 
-def _category_spending(box: Toolbox, args: CategorySpendingArgs, today: date) -> dict[str, Any]:
+def _category_spending(box: Toolbox, args: CategorySpendingArgs, ctx: Context) -> dict[str, Any]:
+    today = ctx.today
     spec = to_spec(args.period, today)
     start, end = engine.period_dates(spec, today)
     rows = box.category_breakdown(spec, _category(args.category))
@@ -321,7 +409,8 @@ def _category_spending(box: Toolbox, args: CategorySpendingArgs, today: date) ->
     }
 
 
-def _find(box: Toolbox, args: FindPaymentsArgs, today: date) -> tuple[dict[str, Any], list]:
+def _find(box: Toolbox, args: FindPaymentsArgs, ctx: Context) -> tuple[dict[str, Any], list]:
+    today = ctx.today
     spec = to_spec(args.period, today)
     start, end = engine.period_dates(spec, today)
     payee = (args.payee or "").strip() or None
@@ -357,7 +446,8 @@ def _find(box: Toolbox, args: FindPaymentsArgs, today: date) -> tuple[dict[str, 
     )
 
 
-def _payees(box: Toolbox, args: PayeesAndPeopleArgs, today: date) -> dict[str, Any]:
+def _payees(box: Toolbox, args: PayeesAndPeopleArgs, ctx: Context) -> dict[str, Any]:
+    today = ctx.today
     found = box.insights(to_spec(args.period, today))
 
     def totals(items: list[insights.PayeeTotal]) -> list[dict[str, Any]]:
@@ -418,7 +508,8 @@ def _payees(box: Toolbox, args: PayeesAndPeopleArgs, today: date) -> dict[str, A
     }
 
 
-def _dues(box: Toolbox, args: DuesArgs, today: date) -> dict[str, Any]:
+def _dues(box: Toolbox, args: DuesArgs, ctx: Context) -> dict[str, Any]:
+    today = ctx.today
     days = args.days_ahead or 30
     if not 1 <= days <= MAX_DAYS_AHEAD:
         raise ToolError(f"days_ahead must be from 1 to {MAX_DAYS_AHEAD}")
@@ -443,7 +534,8 @@ def _dues(box: Toolbox, args: DuesArgs, today: date) -> dict[str, Any]:
     }
 
 
-def _budgets(box: Toolbox, args: BudgetsAndGoalArgs, today: date) -> dict[str, Any]:
+def _budgets(box: Toolbox, args: BudgetsAndGoalArgs, ctx: Context) -> dict[str, Any]:
+    today = ctx.today
     spec = PeriodSpec() if args.period is None else to_spec(args.period, today)
     plan = box.month_plan(spec)
     return {
@@ -483,7 +575,8 @@ def _metric(box: Toolbox, args: CompareArgs, spec: PeriodSpec) -> int:
     )
 
 
-def _compare(box: Toolbox, args: CompareArgs, today: date) -> dict[str, Any]:
+def _compare(box: Toolbox, args: CompareArgs, ctx: Context) -> dict[str, Any]:
+    today = ctx.today
     first, second = to_spec(args.first, today), to_spec(args.second, today)
     a, b = _metric(box, args, first), _metric(box, args, second)
     change = b - a
@@ -500,14 +593,14 @@ def _compare(box: Toolbox, args: CompareArgs, today: date) -> dict[str, Any]:
     }
 
 
-def _afford(box: Toolbox, args: AffordMonthlyArgs, today: date, said: set[int]) -> dict[str, Any]:
+def _afford(box: Toolbox, args: AffordMonthlyArgs, ctx: Context) -> dict[str, Any]:
     try:
         minor = int((Decimal(str(args.monthly_rupees)) * 100).to_integral_value())
     except ArithmeticError:
         raise ToolError("monthly_rupees must be a number") from None
     if minor <= 0 or minor > 10**12:
         raise ToolError("monthly_rupees must be a positive amount")
-    if minor not in said:
+    if minor not in ctx.said:
         raise ToolError(
             "Use only a monthly amount the person said in this conversation; otherwise ask them"
         )
@@ -522,6 +615,116 @@ def _afford(box: Toolbox, args: AffordMonthlyArgs, today: date, said: set[int]) 
         "left_after_proposal": money(result.remaining_after_proposal_minor),
         "warnings": list(result.warnings),
         "note": "A model of tracked money only, not advice to buy any product",
+    }
+
+
+def _rupees(value: float | None, name: str) -> Decimal:
+    try:
+        amount = Decimal(str(value)).quantize(Decimal("0.01"))
+    except ArithmeticError, TypeError:
+        raise ToolError(f"{name} is needed") from None
+    if amount <= 0 or amount > Decimal(10**10):
+        raise ToolError(f"{name} must be a positive amount")
+    return amount
+
+
+def _given(amount: Decimal, ctx: Context, name: str) -> None:
+    """An input amount must be one the person said or FinBoy showed, never a guess."""
+    if int(amount * 100) not in ctx.said and amount not in ctx.known:
+        raise ToolError(f"Use a {name} the person said or FinBoy showed; otherwise ask them")
+
+
+def _whole(value: Decimal) -> int:
+    return int(value.quantize(Decimal(1), rounding=ROUND_CEILING))
+
+
+def _plan(box: Toolbox, args: PlanNumbersArgs, ctx: Context) -> dict[str, Any]:
+    if args.calculation == "save_per_month":
+        target = _rupees(args.amount_rupees, "amount_rupees")
+        _given(target, ctx, "target")
+        try:
+            year, month = (int(part) for part in (args.by_month or "").split("-"))
+            last = date(year, month, 1)
+        except ValueError:
+            raise ToolError("by_month must look like 2027-03") from None
+        months = (year * 12 + month) - (ctx.today.year * 12 + ctx.today.month)
+        if not 1 <= months <= 600:
+            raise ToolError("by_month must be a later month, at most 50 years ahead")
+        return {
+            "target": money(int(target * 100)),
+            "months_counted": months,
+            "from_month": _first_of_month(ctx.today, -1).strftime("%B %Y"),
+            "to_month": last.strftime("%B %Y"),
+            "save_each_month": money(_whole(target / months) * 100),
+        }
+    if args.calculation == "months_to_goal":
+        target = _rupees(args.amount_rupees, "amount_rupees")
+        monthly = _rupees(args.monthly_rupees, "monthly_rupees")
+        _given(target, ctx, "target")
+        _given(monthly, ctx, "monthly amount")
+        months = _whole(target / monthly)
+        return {
+            "target": money(int(target * 100)),
+            "each_month": money(int(monthly * 100)),
+            "months_needed": months,
+        }
+    principal = _rupees(args.amount_rupees, "amount_rupees")
+    _given(principal, ctx, "loan amount")
+    months = args.months or 0
+    if not 1 <= months <= 480:
+        raise ToolError("months must be from 1 to 480")
+    if args.annual_interest_percent is None:
+        raise ToolError("annual_interest_percent is needed; ask the person for the rate")
+    rate = Decimal(str(args.annual_interest_percent))
+    if rate not in ctx.stated or not Decimal(0) <= rate <= Decimal(60):
+        raise ToolError("Use only an interest rate the person gave; otherwise ask them")
+    monthly_rate = rate / 1200
+    if monthly_rate == 0:
+        emi = principal / months
+    else:
+        growth = (1 + monthly_rate) ** months
+        emi = principal * monthly_rate * growth / (growth - 1)
+    emi_whole = _whole(emi)
+    total = emi_whole * months
+    return {
+        "loan": money(int(principal * 100)),
+        "annual_rate": f"{rate.normalize():f}%",
+        "months": months,
+        "emi": money(emi_whole * 100),
+        "total_paid": money(total * 100),
+        "total_interest": money(max(total * 100 - int(principal * 100), 0)),
+        "note": "An estimate from the rate given; the lender's own schedule may differ slightly",
+    }
+
+
+def _search_knowledge(box: Toolbox, args: SearchKnowledgeArgs, ctx: Context) -> dict[str, Any]:
+    query = args.query.strip()
+    if not query or len(query) > 300:
+        raise ToolError("query must be 1 to 300 characters")
+    hits = box.knowledge(query)
+    for hit in hits:
+        ctx.guides[hit.guide.id] = hit.guide
+    return knowledge.tool_output(hits)
+
+
+def _search_past_chats(box: Toolbox, args: SearchPastChatsArgs, ctx: Context) -> dict[str, Any]:
+    query = args.query.strip()
+    if not query or len(query) > 300:
+        raise ToolError("query must be 1 to 300 characters")
+    hits = box.past_chats(query)
+    if not hits:
+        return {"chats": [], "note": "No earlier chat matches; say so if they ask."}
+    return {
+        "chats": [
+            {
+                "date": hit.last_at.astimezone(IST).date().isoformat(),
+                "title": hit.title,
+                "summary": hit.summary,
+                "closest_exchange": hit.excerpt,
+            }
+            for hit in hits
+        ],
+        "note": "These are earlier chats; figures in them may be out of date.",
     }
 
 
@@ -541,32 +744,44 @@ TOOLS: tuple[Tool, ...] = (
     Tool("budgets_and_goal", BudgetsAndGoalArgs, _budgets),
     Tool("compare", CompareArgs, _compare),
     Tool("afford_monthly", AffordMonthlyArgs, _afford),
+    Tool("plan_numbers", PlanNumbersArgs, _plan),
+    Tool("search_past_chats", SearchPastChatsArgs, _search_past_chats),
+    Tool("search_knowledge", SearchKnowledgeArgs, _search_knowledge),
 )
 BY_NAME = {tool.name: tool for tool in TOOLS}
 
 
-def definitions() -> list[Any]:
+def offered(settings: Settings | None) -> tuple[Tool, ...]:
+    """The tools the model may call: the guides only while the library is released."""
+    knowledge_on = settings is not None and settings.knowledge_enabled
+    return tuple(tool for tool in TOOLS if tool.name != "search_knowledge" or knowledge_on)
+
+
+def definitions(settings: Settings | None = None) -> list[Any]:
     """The tool definitions for the Responses API, strict JSON schemas from the models."""
     return [
         pydantic_function_tool(tool.args, name=tool.name, description=tool.args.__doc__)
-        for tool in TOOLS
+        for tool in offered(settings)
     ]
 
 
-def run(box: Toolbox, name: str, arguments: str, today: date, said: set[int]) -> ToolResult:
+def run(
+    box: Toolbox,
+    name: str,
+    arguments: str,
+    ctx: Context,
+    settings: Settings | None = None,
+) -> ToolResult:
     """One tool call. Errors the model can fix come back as {"error": ...}; nothing raises."""
     tool = BY_NAME.get(name)
-    if tool is None:
+    if tool is None or (settings is not None and tool not in offered(settings)):
         return ToolResult(json.dumps({"error": "unknown tool"}))
     try:
         args = tool.args.model_validate_json(arguments or "{}")
         if tool.name == "find_payments":
-            output, evidence = _find(box, args, today)  # type: ignore[arg-type]
+            output, evidence = _find(box, args, ctx)  # type: ignore[arg-type]
             return ToolResult(json.dumps(output, ensure_ascii=False), evidence)
-        if tool.name == "afford_monthly":
-            output = _afford(box, args, today, said)  # type: ignore[arg-type]
-        else:
-            output = tool.run(box, args, today)
+        output = tool.run(box, args, ctx)
     except ValidationError:
         return ToolResult(json.dumps({"error": "arguments do not match the tool's schema"}))
     except ToolError as error:

@@ -12,7 +12,12 @@ from sqlalchemy.orm import Session
 
 from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.db.models.accounts import LoginRequest, UsageCounter, UserIdentity
-from finboy.db.models.advisor import AdvisorMessage, AdvisorThread, HouseholdMemory
+from finboy.db.models.advisor import (
+    AdvisorMessage,
+    AdvisorNudge,
+    AdvisorThread,
+    HouseholdMemory,
+)
 from finboy.db.models.billing import BillingProfile, Subscription
 from finboy.db.models.core import User
 from finboy.db.models.ledger import (
@@ -128,6 +133,8 @@ def remove_household_data(session: Session, user_id: UUID) -> dict[str, int]:
     def remove(name: str, statement) -> None:
         counts[name] = session.execute(statement).rowcount or 0
 
+    # The coach's sent-nudge claims (advisor phase 3); the bindings would cascade to them too.
+    remove("advisor_nudges", delete(AdvisorNudge).where(AdvisorNudge.user_id == user_id))
     # Bindings cascade to prompts, reminders, check-ins, receipts and deliveries.
     remove("whatsapp_bindings", delete(WhatsAppBinding).where(WhatsAppBinding.user_id == user_id))
     # Chats with the advisor and its memories (docs/advisor-round/contract.md).

@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from finboy.core.clock import today_ist
 from finboy.services.money import budgets
 from finboy.services.money.engine import PeriodSpec, money_summary, upcoming_commitments
+from finboy.services.whatsapp import coach as coaching
 from finboy.services.whatsapp import prompts
 
 if TYPE_CHECKING:
@@ -111,7 +112,13 @@ def week(conversation: Conversation) -> str | None:
         overdue=summary.overdue_commitments_minor,
         waiting=summary.pending_review_count,
     )
-    return _reply(conversation, text, spoken)
+    buttons = None
+    if conversation.settings.coach_active:
+        # The coach is offered (or stopped) here, like the monthly check-in under "this month".
+        ask, button = coaching.offer(conversation)
+        text, buttons = text + ask, [button]
+        session.commit()
+    return _reply(conversation, text, spoken, buttons)
 
 
 def month(conversation: Conversation) -> str | None:

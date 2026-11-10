@@ -1,0 +1,10 @@
+[Unit]
+Description=FinBoy coach nudges, hourly 09:00-19:00 IST (the job sends only 08:00-20:00 IST)
+
+[Timer]
+OnCalendar=*-*-* 03..13:30:00 UTC
+Persistent=false
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target

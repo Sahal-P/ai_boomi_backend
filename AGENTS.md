@@ -285,4 +285,13 @@ output never selects tools", "no generated figures", the Premium gate on Ask and
 fast path for questions, only as documented there. One agent on feat/finboy-advisor, loopback
 8101/3101, disposable finboy_advisor, migration `0015_advisor`. `ADVISOR_ENABLED` stays false
 until `pnpm eval:advisor` passes live and the human approves the release. Audio, photos,
-screenshots and diary messages are still never stored; admins never see chats or memories.
+screenshots and diary messages are still never stored; admins never see chats or memories. Phase 2 (same branch,
+migration `0016_knowledge`, no pgvector) adds reviewed money guides behind `KNOWLEDGE_ENABLED`
+(production serves only guides with `reviewed_on`), recall by keywords and optional embeddings
+(`OPENAI_EMBEDDING_MODEL`), planning figures computed in code, lasting facts learned from WhatsApp
+diary messages (only the fact, never the message) and streamed steps on the web. Phase 3 (same
+branch, migration `0017_coach`) adds the proactive coach behind `COACH_ENABLED`: detectors over
+the money engine, Home's "For you", and opt-in WhatsApp nudges ("coach on"), at most one a day
+counting check-ins and reminders, 08:00–20:00 IST, never twice, STOP and "coach off" respected.
+Inside the 24-hour window the advisor words a nudge with memory, figures checked; outside it only
+the approved `WHATSAPP_COACH_TEMPLATE` with the code-written line, unset until Meta approves it.

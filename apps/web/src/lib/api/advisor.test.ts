@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { answerSchema, askQuestion, getThread, listThreads } from "./assistant.ts";
+import { answerSchema, askQuestion, askQuestionStream, getThread, listThreads, readEvents } from "./assistant.ts";
+import { ApiError } from "./http.ts";
 import { deleteMemories, editMemory, listMemories, setMemoryEnabled } from "./memory.ts";
 
 const originalFetch = globalThis.fetch;
@@ -108,4 +109,102 @@ test("memory is read, edited, switched off and cleared", async () => {
   calls = record({ deleted: 1 });
   assert.equal((await deleteMemories()).deleted, 1);
   assert.equal(calls[0]?.method, "DELETE");
+});
+
+/** A streamed response whose bytes arrive in pieces, cut at the given byte offsets. */
+function stream(text: string, cuts: number[] = []) {
+  const calls: { url: string; accept: string | null; body: unknown }[] = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({
+      url: String(url).replace(/^.*\/api\/v1/, ""),
+      accept: new Headers(init?.headers).get("Accept"),
+      body: JSON.parse(String(init?.body)),
+    });
+    const bytes = new TextEncoder().encode(text);
+    const edges = [0, ...cuts, bytes.length];
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (let index = 1; index < edges.length; index += 1) {
+          controller.enqueue(bytes.slice(edges[index - 1], edges[index]));
+        }
+        controller.close();
+      },
+    });
+    return new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+  };
+  return calls;
+}
+
+const event = (name: string, data: unknown) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
+
+test("server-sent events are read whole, keeping an unfinished one for the next piece", () => {
+  const { events, rest } = readEvents('event: progress\ndata: {"stage":"dues"}\n\nevent: answer\ndata: {"a"');
+  assert.deepEqual(events, [{ event: "progress", data: '{"stage":"dues"}' }]);
+  assert.equal(rest, 'event: answer\ndata: {"a"');
+});
+
+test("a streamed question hears each step, then its answer with its guides", async () => {
+  const source = { id: "pm-kisan", title: "PM-KISAN", url: "https://pmkisan.gov.in" };
+  const text =
+    event("progress", { stage: "thinking" }) +
+    event("progress", { stage: "search_knowledge" }) +
+    event("progress", { stage: "Not A Stage" }) +
+    event("answer", { ...answer, thread_id: THREAD, sources: [source] });
+  const rupee = new TextEncoder().encode(text).indexOf(0xe2); // cut inside "₹"
+  const calls = stream(text, [7, 40, rupee + 1]);
+  const stages: string[] = [];
+  const result = await askQuestionStream("PM-KISAN?", "en", {
+    onProgress: (stage) => stages.push(stage),
+    threadId: THREAD,
+  });
+  assert.deepEqual(stages, ["thinking", "search_knowledge"]);
+  assert.equal(result.display_text, "Food this month is ₹4,200.");
+  assert.deepEqual(result.sources, [source]);
+  assert.deepEqual(calls, [
+    {
+      url: "/assistant/ask/stream",
+      accept: "text/event-stream",
+      body: { text: "PM-KISAN?", display_style: "en", include_overdue_line: true, thread_id: THREAD },
+    },
+  ]);
+});
+
+test("an error event is a classified failure; a stream that ends early is unexpected", async () => {
+  stream(
+    event("progress", { stage: "thinking" }) +
+      event("error", {
+        status: 503,
+        error: { code: "assistant_unavailable", message: "Internal words", request_id: "req-1" },
+      }),
+  );
+  await assert.rejects(
+    askQuestionStream("Food?", "en", { onProgress: () => undefined }),
+    (error: unknown) =>
+      error instanceof ApiError &&
+      error.kind === "unavailable" &&
+      error.code === "assistant_unavailable" &&
+      error.requestId === "req-1",
+  );
+  stream(event("progress", { stage: "thinking" }));
+  await assert.rejects(
+    askQuestionStream("Food?", "en", { onProgress: () => undefined }),
+    (error: unknown) => error instanceof ApiError && error.kind === "invalid_response",
+  );
+});
+
+test("a refusal before the stream starts is an ordinary failure", async () => {
+  record({ error: { code: "usage_limit", message: "Limit", request_id: "req-2" } }, 429);
+  await assert.rejects(
+    askQuestionStream("Food?", "en", { onProgress: () => undefined }),
+    (error: unknown) => error instanceof ApiError && error.kind === "rate_limited" && error.code === "usage_limit",
+  );
+});
+
+test("guide links must be https", () => {
+  for (const url of ["javascript:alert(1)", "http://pmkisan.gov.in", "not a url"]) {
+    const parsed = answerSchema.safeParse({ ...answer, sources: [{ id: "pm-kisan", title: "PM-KISAN", url }] });
+    assert.equal(parsed.success, false, url);
+  }
+  const plain = answerSchema.parse({ ...answer, sources: [{ id: "budgeting-basics", title: "Budgeting" }] });
+  assert.equal(plain.sources[0]?.url, null);
 });

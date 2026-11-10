@@ -1,9 +1,11 @@
 """Long-term memory, like ChatGPT's saved memories (docs/advisor-round/contract.md).
 
 The advisor saves lasting facts the household shares (family, work and income, goals, plans,
-preferences, people and their roles) and every saved memory goes back into its prompt. The
-household sees, edits and deletes them on the Memory page or by WhatsApp command, and can turn
-memory off. Memories are written in English; account numbers, OTPs and PINs are never kept.
+preferences, people and their roles). While there are few, every memory goes back into its
+prompt; beyond `ADVISOR_MEMORY_PROMPT`, the most recent ones and those closest to the question do
+(keywords, and meaning when embeddings are on). The household sees, edits and deletes them on the
+Memory page or by WhatsApp command, and can turn memory off. Memories are written in English;
+account numbers, OTPs and PINs are never kept.
 """
 
 import re
@@ -18,15 +20,19 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from finboy.core.config import Settings
 from finboy.db.models.advisor import HouseholdMemory
 from finboy.db.models.core import User
+from finboy.services.advisor import embeddings, ranking
 from finboy.services.assistant.models import MemoryChange
-from finboy.services.whatsapp.statement import mask
+from finboy.services.whatsapp.statement import MemoryKind, mask
 
-Kind = Literal["about", "goal", "plan", "preference", "person", "note"]
+Kind = MemoryKind
 Source = Literal["web", "whatsapp", "user"]
 MAX_TEXT = 300
 MAX_UPDATES = 5
+RECENT = 10  # always in the prompt, however many memories there are
+EMBED_BATCH = 100
 # Secrets are never remembered, even when someone asks.
 SECRET = re.compile(
     r"\b(?:otp|o\.t\.p|pin|m-?pin|upi\s*pin|cvv|password|passcode|passwd)\b"
@@ -154,6 +160,23 @@ def remember(
     return MemoryChange(action="saved", text=value, id=row.id)
 
 
+def learn(
+    session: Session, user_id: UUID, kind: Kind, text: str | None, source: Source, limit: int
+) -> MemoryChange | None:
+    """A fact noticed in passing (a diary message): saved like any memory, but only reported
+    when it is new, so the same milkman is not announced every morning."""
+    value = clean(text)
+    if value is None:
+        return None
+    known = session.scalar(
+        select(HouseholdMemory.id).where(
+            HouseholdMemory.user_id == user_id, HouseholdMemory.text_key == text_key(value)
+        )
+    )
+    change = remember(session, user_id, kind, value, source, limit)
+    return None if known is not None else change
+
+
 def edit(
     session: Session, user_id: UUID, memory_id: UUID, text: str, kind: Kind | None = None
 ) -> HouseholdMemory | None:
@@ -177,6 +200,8 @@ def edit(
     )
     if duplicate is not None:
         session.execute(delete(HouseholdMemory).where(HouseholdMemory.id == duplicate))
+    if row.text_key != key:
+        row.embedding, row.embedding_model = None, None  # worked out again for the new words
     row.text, row.text_key, row.updated_at = value, key, datetime.now(UTC)
     if kind is not None:
         row.kind = kind
@@ -226,3 +251,70 @@ def apply(
                     MemoryChange(action="forgotten", text=listing.texts.get(target, ""), id=target)
                 )
     return changes
+
+
+def _current(row: HouseholdMemory, settings: Settings) -> bool:
+    return (
+        row.embedding is not None
+        and row.embedding_model == settings.openai_embedding_model
+        and len(row.embedding) == settings.advisor_embedding_dimensions
+    )
+
+
+def _choose(
+    rows: list[HouseholdMemory], question: str, vector: list[float] | None, limit: int
+) -> list[HouseholdMemory]:
+    """The most recent memories, then the rest ranked by closeness to the question."""
+    recent, rest = rows[:RECENT], rows[RECENT:]
+    scores = ranking.bm25(question, {str(row.id): row.text for row in rest})
+    by_keywords = [
+        key for key, score in sorted(scores.items(), key=lambda item: -item[1]) if score > 0
+    ]
+    by_meaning: list[str] = []
+    if vector is not None:
+        scored = sorted(
+            (
+                (embeddings.similarity(vector, row.embedding), str(row.id))
+                for row in rest
+                if row.embedding is not None
+            ),
+            reverse=True,
+        )
+        by_meaning = [key for _, key in scored]
+    ranked = [*ranking.fuse(by_keywords, by_meaning), *(str(row.id) for row in rest)]
+    keep = {str(row.id) for row in recent} | set(
+        list(dict.fromkeys(ranked))[: max(limit - len(recent), 0)]
+    )
+    return [row for row in rows if str(row.id) in keep]
+
+
+def recall(
+    session: Session, user_id: UUID, question: str, settings: Settings
+) -> list[HouseholdMemory]:
+    """The memories for this question's prompt, newest first. Embeddings missing for the
+    household's memories are worked out in the same call as the question's, and saved."""
+    rows = listed(session, user_id)
+    limit = settings.advisor_memory_prompt
+    if len(rows) <= limit:
+        return rows
+    vector: list[float] | None = None
+    if embeddings.available(settings):
+        pending = [(row.id, row.text) for row in rows if not _current(row, settings)]
+        pending = pending[:EMBED_BATCH]
+        session.rollback()  # no transaction stays open over the network call
+        found = embeddings.embed([question, *(text for _, text in pending)], settings)
+        if found is not None:
+            vector = found[0]
+            for (memory_id, text), embedding in zip(pending, found[1:], strict=True):
+                session.execute(
+                    update(HouseholdMemory)
+                    .where(
+                        HouseholdMemory.id == memory_id,
+                        HouseholdMemory.user_id == user_id,
+                        HouseholdMemory.text == text,  # unchanged since it was read
+                    )
+                    .values(embedding=embedding, embedding_model=settings.openai_embedding_model)
+                )
+            session.commit()
+        rows = listed(session, user_id)
+    return _choose(rows, question, vector, limit)

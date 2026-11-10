@@ -405,7 +405,8 @@ def process_question(
                 receipts.finish(session, receipt_id, error=code)
                 return
             binding.last_language = answer.speech_language  # committed with the reply below
-            response = phone_text(answer.display_text)
+            words = pilot.WORDS[answer.display_language]
+            response = pilot.with_guides(phone_text(answer.display_text), answer, words)
             if len(response) > 4096:
                 response = (
                     "Please view this answer in FinBoy on the demo computer. "

@@ -15,6 +15,7 @@ from finboy.core.config import API_ROOT
 from finboy.db.models.mail import ImportRun
 from finboy.db.session import get_session
 from finboy.services import providers
+from finboy.services.advisor import embeddings
 
 router = APIRouter(tags=["readiness"])
 SCHEMA_HEAD = ScriptDirectory(str(API_ROOT / "alembic")).get_current_head()
@@ -32,6 +33,9 @@ class Readiness(BaseModel):
     whatsapp_configuration: Literal["disabled", "configured", "missing"]
     triage_configuration: Literal["off", "configured", "missing"]
     advisor_configuration: Literal["off", "configured", "missing"] = "off"
+    knowledge_configuration: Literal["off", "configured", "missing"] = "off"
+    knowledge_search: Literal["keywords", "keywords_and_meaning"] = "keywords"
+    coach_configuration: Literal["off", "window_only", "configured"] = "off"
     import_worker: Literal["in_process_not_durable"] = "in_process_not_durable"
     recorded_active_imports: int | None
     live_provider_acceptance: Literal["not_checked_by_readiness"] = "not_checked_by_readiness"
@@ -78,6 +82,9 @@ def readiness(
         whatsapp_configuration=providers.whatsapp(settings),
         triage_configuration=providers.triage(settings),
         advisor_configuration=providers.advisor(settings),
+        knowledge_configuration=providers.knowledge(settings),
+        knowledge_search="keywords_and_meaning" if embeddings.available(settings) else "keywords",
+        coach_configuration=providers.coach(settings),
         recorded_active_imports=active,
     )
     response.status_code = 200 if result.status == "ready" else 503
