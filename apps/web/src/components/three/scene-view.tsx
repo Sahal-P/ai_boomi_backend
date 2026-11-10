@@ -1,25 +1,21 @@
 "use client";
 
 import { PerspectiveCamera, View } from "@react-three/drei";
-import { Suspense, useRef, type ReactNode, type RefObject } from "react";
+import { Suspense, type ReactNode } from "react";
 
 import type { SceneSpec } from "./scene-spec";
 import { RibbonScene } from "./scenes/ribbon";
-import { VoiceOrbScene } from "./scenes/voice-orb";
 import { ProductStudioEnvironment } from "./studio-environment";
 
 type Vec3 = [number, number, number];
 
 /** Camera and studio per scene: metals want the dark cove, pastels and glass the light one. */
 const STAGES: Record<SceneSpec["name"], { position: Vec3; fov: number; tone: "dark" | "light" }> = {
-  "voice-orb": { position: [0, 0, 4.6], fov: 32, tone: "light" },
   ribbon: { position: [0, 0.2, 7.4], fov: 34, tone: "light" },
 };
 
-function renderScene(spec: SceneSpec, track: RefObject<HTMLElement | null>): ReactNode {
+function renderScene(spec: SceneSpec): ReactNode {
   switch (spec.name) {
-    case "voice-orb":
-      return <VoiceOrbScene state={spec.state ?? "idle"} level={spec.level} track={track} />;
     case "ribbon":
       return <RibbonScene />;
   }
@@ -37,13 +33,12 @@ type SceneViewProps = {
 
 export default function SceneView({ spec, className }: SceneViewProps) {
   const stage = STAGES[spec.name];
-  const track = useRef<HTMLElement>(null);
   return (
-    <View ref={track} className={className}>
+    <View className={className}>
       <PerspectiveCamera makeDefault position={stage.position} fov={stage.fov} onUpdate={(self) => self.lookAt(0, 0, 0)} />
       <ProductStudioEnvironment tone={stage.tone} />
       <directionalLight position={[-3, 5, 4]} intensity={1.2} color="#fff6ec" />
-      <Suspense fallback={null}>{renderScene(spec, track)}</Suspense>
+      <Suspense fallback={null}>{renderScene(spec)}</Suspense>
     </View>
   );
 }

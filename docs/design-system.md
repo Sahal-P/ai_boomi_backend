@@ -100,7 +100,7 @@ sidebar refract in Chromium and still blur with `?glass=frost`.
 | `field` | Glass field: 74% white with a soft top sheen, white inner rim, soft drop, 1 px `--input` edge (≥ 3:1); focus turns the edge ink with a soft ink halo | Every input, textarea and select |
 | `composer` | `lg` refracting bubble with `field`'s 1 px ink edge, a deeper shadow and, on focus, an ink edge with a sunflower halo; 20 px radius | Ask's composer (the textarea carries the edge, so the boundary check still measures it) |
 | `lg` | Liquid Glass (regular): clear white fill, specular rim, darker edge, lift shadow; refracts (Chromium) or frosts | Phone tab pill and account button, landing nav after the hero, Ask's composer, the drag lens |
-| `lg-menu` | Thicker glass for dense text | Dropdown and Select menus, the landing voice demo's status pill |
+| `lg-menu` | Thicker glass for dense text | Dropdown and Select menus |
 | `lg-thick` (+ `lg-sidebar`) | Large glass: deeper shadow, softer scattering, no light/dark flip | Dialogs, alert dialogs, sheets (inset 8 px, 32 px corners on phones), the desktop sidebar |
 | `lg-prominent` | Ink-tinted glass, lit from within | Primary buttons, the phone +, Add entry, the landing's Start links |
 | `lg-static` | The glass look without a backdrop filter | Content-layer glass: `glass`/`outline` buttons, segmented tracks, the back button, landing chips |
@@ -218,7 +218,6 @@ orbs pause offscreen and in hidden tabs.
 | Preparing a spoken answer | composing · 20 |
 | Import running; Sources' link to it | working · 64 / 20 |
 | Sign-in and landing-hero illustration (FinBoy's reply bubble) | composing · 20, rests after 5 s |
-| Landing voice demo status line | listening → searching → composing · 20 |
 
 ## Illustrations (`components/illustrations/`)
 
@@ -364,10 +363,10 @@ estimate on `solid-hero`, and no violet. Its scenes are re-toned to the same wor
   three.js (audit F35); thinking orbs are 2D canvases, not WebGL. Add 3D to an app screen only
   when it carries task state and has a phone-tested budget.
 - Slots render **above** DOM (canvas `z-10`); DOM that must overlap a scene needs `relative z-20`
-  (the voice demo's status pill does, on phones). That is why the landing's `main` is not
-  isolated: an isolated `bg-field` would trap `z-20` DOM below the canvas.
-- Scenes: `coin-swirl` (`merge` 0–1 or `loop`), `check-orb`, `voice-orb` (`state`, `level`
-  ref 0–1), `coin-stack` (`values` 0–1), `privacy-vault`, `inbox-slab`, `ribbon`.
+  (the final call to action's text does). That is why the landing's `main` is not isolated: an
+  isolated `bg-field` would trap `z-20` DOM below the canvas.
+- Scenes: `ribbon`, the final call to action's only one. The voice demo's glass orb was removed
+  on 11 November 2026, with the field shader, tone mapping and glass material only it used.
 - **Quality tiers** `high | medium | low` from device hints (software renderers → `low`);
   `AdaptiveQuality` (drei `PerformanceMonitor`) moves the DPR within the tier's range and steps
   down only when the range is exhausted, and only while the page is visible. QA override:

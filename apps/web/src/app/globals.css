@@ -189,8 +189,7 @@
      warm glows grown into bands of light sky and apricot with a sunflower sun, so the clear glass
      above has colour and shape to carry and to bend at its rim. Their luminance stays the field's —
      the darkest point, where the sky and apricot bands meet, is measured by e2e/theme.spec.ts — so
-     every text token keeps ≥ 4.5:1 on it. The landing keeps `--field-paint`: its 3D mirrors that
-     field (three/lib/field.ts). */
+     every text token keeps ≥ 4.5:1 on it. The landing keeps `--field-paint`. */
   --wallpaper: #eef0f4;
   --wallpaper-sky: #b6ddf8;
   --wallpaper-apricot: #f9d2b6;
@@ -538,8 +537,7 @@
   }
   /* The fixed field behind the app and the landing below its hero. A fixed pseudo-element never
      repaints on scroll (iOS ignores background-attachment: fixed); the grain keeps the large
-     gradients from banding. The landing's 3D recomputes this field behind its glass
-     (three/lib/field.ts): keep the two in step. */
+     gradients from banding. */
   .bg-field {
     isolation: isolate;
   }

@@ -1,22 +1,12 @@
 "use client";
 
 import { ChevronDown, Mic, Sparkles } from "lucide-react";
-import {
-  AnimatePresence,
-  motion,
-  useInView,
-  useReducedMotion,
-} from "motion/react";
+import { motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import type { OrbState } from "thinking-orbs";
 
 import { PremiumPill } from "@/components/billing/premium-pill";
-import { ThinkingOrb } from "@/components/feedback/thinking-orb";
-import { useLiquidGlass } from "@/components/liquid-glass/use-liquid-glass";
 import { AnimatedAmount } from "@/components/motion/animated-amount";
 import { EASE_OUT_EXPO, Reveal } from "@/components/motion/reveal";
-import { SceneSlot } from "@/components/three/scene-slot";
-import type { VoiceOrbState } from "@/components/three/scene-spec";
 import { cn } from "@/lib/utils";
 
 type Language = "ml" | "manglish" | "en" | "hi";
@@ -59,8 +49,10 @@ const BREAKDOWN = [
   { merchant: "Office Canteen", amountMinor: 100_000 },
 ] as const;
 
+type Phase = "idle" | "listening" | "thinking" | "speaking";
+
 // Starts on "idle" (full question and answer) so SSR, no-JS and reduced motion all show the complete exchange.
-const PHASES: Array<{ state: VoiceOrbState; ms: number }> = [
+const PHASES: Array<{ state: Phase; ms: number }> = [
   { state: "idle", ms: 2600 },
   { state: "listening", ms: 2600 },
   { state: "thinking", ms: 1400 },
@@ -68,27 +60,10 @@ const PHASES: Array<{ state: VoiceOrbState; ms: number }> = [
 ];
 const LISTENING = 1;
 
-const STATUS: Record<VoiceOrbState, string> = {
-  idle: "Illustrative demo",
-  listening: "Listening…",
-  thinking: "Checking your ledger…",
-  speaking: "Speaking in your language",
-};
-
-// The app's thinking-orb verbs for the same moments, so the demo and the product match.
-const ORB: Record<VoiceOrbState, OrbState | null> = {
-  idle: null,
-  listening: "listening",
-  thinking: "searching",
-  speaking: "composing",
-};
-
 export function VoiceSection() {
-  const { attach: attachStatus, filter: statusFilter } = useLiquidGlass<HTMLDivElement>({ bezel: 12, thickness: 14 });
   const [language, setLanguage] = useState<Language>("manglish");
   const [phase, setPhase] = useState(0);
   const [typed, setTyped] = useState(0);
-  const level = useRef(0);
   const root = useRef<HTMLElement>(null);
   const inView = useInView(root, { margin: "-20% 0px" });
   const reduced = useReducedMotion();
@@ -119,22 +94,6 @@ export function VoiceSection() {
     };
   }, [state, script.question]);
 
-  // Simulated voice level for the orb (mic while listening, speech while speaking).
-  useEffect(() => {
-    let frame = 0;
-    const tick = (time: number) => {
-      const seconds = time / 1000;
-      const speaking = state === "listening" || state === "speaking";
-      level.current = speaking
-        ? 0.22 +
-          0.55 * Math.abs(Math.sin(seconds * 8.3) * Math.sin(seconds * 3.1))
-        : 0;
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [state]);
-
   const question = Array.from(script.question);
   const questionShown =
     state === "listening" ? question.slice(0, typed).join("") : script.question;
@@ -154,7 +113,7 @@ export function VoiceSection() {
       aria-labelledby="voice-title"
       className="relative scroll-mt-24 overflow-hidden py-16 sm:py-28"
     >
-      <div className="mx-auto grid max-w-[1360px] items-center gap-14 px-6 sm:px-10 lg:grid-cols-[1.05fr_1fr] lg:px-16">
+      <div className="mx-auto grid max-w-[1360px] items-center gap-10 px-6 sm:px-10 lg:grid-cols-2 lg:gap-16 lg:px-16">
         <div>
           <Reveal>
             <div className="flex flex-wrap items-center gap-3">
@@ -178,7 +137,7 @@ export function VoiceSection() {
             <div
               role="group"
               aria-label="Answer language"
-              className="lg-static inline-flex max-w-full flex-wrap gap-1 rounded-2xl p-1"
+              className="lg-static grid grid-cols-2 gap-1 rounded-2xl p-1 sm:inline-flex sm:max-w-full sm:flex-wrap"
             >
               {(Object.keys(SCRIPT) as Language[]).map((key) => (
                 <button
@@ -210,122 +169,97 @@ export function VoiceSection() {
               ))}
             </div>
           </Reveal>
+        </div>
 
-          <Reveal delay={0.18} className="mt-6">
-            <div className="surface rounded-[1.75rem] p-5 sm:p-6">
-              <p className="sr-only" lang={script.lang}>
-                Question: {script.question} Answer: {script.answer}
-              </p>
-              <div aria-hidden="true" className="flex justify-end">
-                <p
-                  lang={script.lang}
-                  className="max-w-[85%] rounded-[1.25rem] rounded-br-md bg-ink px-4 py-3 text-[0.95rem] text-white"
-                >
-                  <Mic className="mr-2 inline size-3.5 -translate-y-px opacity-70" />
-                  {questionShown}
-                  {state === "listening" ? (
-                    <span className="ml-0.5 inline-block h-4 w-px animate-pulse bg-white/80 align-middle" />
-                  ) : null}
-                </p>
-              </div>
-              <AnimatePresence mode="wait">
-                {answerVisible ? (
-                  <motion.div
-                    key={language}
-                    aria-hidden="true"
-                    initial={{ opacity: 0, y: 12, filter: "blur(6px)" }}
-                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
-                    className="mt-4 rounded-[1.25rem] rounded-bl-md bg-well p-4 ring-1 ring-ink/5"
-                  >
-                    <p
-                      lang={script.lang}
-                      className="flex gap-2 text-[0.95rem] leading-relaxed text-ink"
-                    >
-                      <Sparkles className="mt-1 size-4 shrink-0 text-ink" />
-                      {script.answer}
-                    </p>
-                    <div className="mt-4 flex items-end justify-between gap-4 border-t border-ink/10 pt-4">
-                      <div>
-                        <p className="text-xs font-semibold text-ink-soft">
-                          Food &amp; dining · October
-                        </p>
-                        <AnimatedAmount
-                          amountMinor={786_000}
-                          className="text-3xl font-semibold tracking-[-0.03em] text-ink"
-                        />
-                      </div>
-                      <p className="text-right text-xs text-ink-soft">
-                        12 transactions · all confirmed
-                      </p>
-                    </div>
-                    <ul className="mt-4 grid gap-1.5 text-sm">
-                      {BREAKDOWN.map((row) => (
-                        <li
-                          key={row.merchant}
-                          className="flex items-center justify-between"
-                        >
-                          <span className="text-ink">
-                            {row.merchant}
-                            {"note" in row ? (
-                              <span className="ml-2 rounded-full bg-ink/[0.07] px-2 py-0.5 text-[11px] font-semibold text-ink">
-                                {row.note}
-                              </span>
-                            ) : null}
-                          </span>
-                          <span className="tabular text-ink-soft">
-                            {new Intl.NumberFormat("en-IN", {
-                              style: "currency",
-                              currency: "INR",
-                              maximumFractionDigits: 0,
-                            }).format(row.amountMinor / 100)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </motion.div>
+        <Reveal delay={0.18} className="w-full lg:max-w-[36rem] lg:justify-self-end">
+          <div className="surface rounded-[1.75rem] p-5 sm:p-6">
+            <p className="sr-only" lang={script.lang}>
+              Question: {script.question} Answer: {script.answer}
+            </p>
+            <div aria-hidden="true" className="flex justify-end">
+              <p
+                lang={script.lang}
+                className="max-w-[85%] rounded-[1.25rem] rounded-br-md bg-ink px-4 py-3 text-[0.95rem] text-white"
+              >
+                <Mic className="mr-2 inline size-3.5 -translate-y-px opacity-70" />
+                {questionShown}
+                {state === "listening" ? (
+                  <span className="ml-0.5 inline-block h-4 w-px animate-pulse bg-white/80 align-middle" />
                 ) : null}
-              </AnimatePresence>
-              <details className="group mt-4 text-sm text-ink-soft">
-                <summary className="flex cursor-pointer list-none items-center gap-1.5 font-semibold text-ink">
-                  How was this calculated?
-                  <ChevronDown
-                    className="size-4 transition-transform group-open:rotate-180"
-                    aria-hidden="true"
-                  />
-                </summary>
-                <p className="mt-2 leading-relaxed">
-                  Sum of 12 confirmed food &amp; dining transactions, 1–28
-                  October. Two entries still waiting for your check are left
-                  out until you approve them.
-                </p>
-              </details>
+              </p>
             </div>
-          </Reveal>
-        </div>
-
-        <div className="relative">
-          <SceneSlot
-            spec={{ name: "voice-orb", state, level }}
-            className="mx-auto aspect-square w-full max-w-[560px]"
-          />
-          {statusFilter}
-          {/* Refracting glass over the 3D orb; the thicker menu glass keeps the words clear over
-              its darkest state (and turns opaque under Reduce Transparency). */}
-          <div
-            ref={attachStatus}
-            aria-live="polite"
-            className="lg-menu absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2.5 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap text-ink"
-          >
-            {ORB[state] ? (
-              <ThinkingOrb state={ORB[state]} size={20} />
-            ) : (
-              <span className="size-2 rounded-full bg-ink-subtle" aria-hidden="true" />
-            )}
-            {STATUS[state]}
+            {/* Always laid out and only faded, so the card keeps its height while the question is
+                asked and nothing beside or below it moves. */}
+            <motion.div
+              key={language}
+              aria-hidden="true"
+              initial={false}
+              animate={answerVisible ? { opacity: 1, y: 0, filter: "blur(0px)" } : { opacity: 0, y: 12, filter: "blur(6px)" }}
+              transition={{ duration: answerVisible ? 0.7 : 0.25, ease: EASE_OUT_EXPO }}
+              className="mt-4 rounded-[1.25rem] rounded-bl-md bg-well p-4 ring-1 ring-ink/5"
+            >
+                  <p
+                    lang={script.lang}
+                    className="flex gap-2 text-[0.95rem] leading-relaxed text-ink"
+                  >
+                    <Sparkles className="mt-1 size-4 shrink-0 text-ink" />
+                    {script.answer}
+                  </p>
+                  <div className="mt-4 flex items-end justify-between gap-4 border-t border-ink/10 pt-4">
+                    <div>
+                      <p className="text-xs font-semibold text-ink-soft">
+                        Food &amp; dining · October
+                      </p>
+                      <AnimatedAmount
+                        amountMinor={786_000}
+                        className="text-3xl font-semibold tracking-[-0.03em] text-ink"
+                      />
+                    </div>
+                    <p className="text-right text-xs text-ink-soft">
+                      12 transactions · all confirmed
+                    </p>
+                  </div>
+                  <ul className="mt-4 grid gap-1.5 text-sm">
+                    {BREAKDOWN.map((row) => (
+                      <li
+                        key={row.merchant}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="text-ink">
+                          {row.merchant}
+                          {"note" in row ? (
+                            <span className="ml-2 rounded-full bg-ink/[0.07] px-2 py-0.5 text-[11px] font-semibold text-ink">
+                              {row.note}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="tabular text-ink-soft">
+                          {new Intl.NumberFormat("en-IN", {
+                            style: "currency",
+                            currency: "INR",
+                            maximumFractionDigits: 0,
+                          }).format(row.amountMinor / 100)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+            </motion.div>
+            <details className="group mt-4 text-sm text-ink-soft">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 font-semibold text-ink">
+                How was this calculated?
+                <ChevronDown
+                  className="size-4 transition-transform group-open:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+              <p className="mt-2 leading-relaxed">
+                Sum of 12 confirmed food &amp; dining transactions, 1–28
+                October. Two entries still waiting for your check are left
+                out until you approve them.
+              </p>
+            </details>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );
