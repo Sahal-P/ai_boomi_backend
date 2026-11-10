@@ -58,6 +58,10 @@
   --color-wa-avatar: var(--wa-avatar);
   --color-wa-accent: var(--wa-accent);
   --color-wa-button: var(--wa-button);
+  --color-wa-quote: var(--wa-quote);
+  --color-wa-quote-name: var(--wa-quote-name);
+  --color-wa-played: var(--wa-played);
+  --color-wa-field-edge: var(--wa-field-edge);
 
   --font-sans:
     "Plus Jakarta Sans Variable", "Anek Malayalam Variable", ui-sans-serif,
@@ -270,6 +274,13 @@
   --wa-avatar: #dfe5e7;
   --wa-accent: #1daa61;
   --wa-button: #1a8456;
+  /* A reply's quote of FinBoy's message (sampled from Meta's reply screenshot); the name and side
+     bar are its brown darkened to 4.55:1 on the quote. Played voice notes turn the mic blue. */
+  --wa-quote: #d5f3cf;
+  --wa-quote-name: #876331;
+  --wa-played: #53bdeb;
+  /* While the message bar is a real field (after ✏️ Amount): ≥3:1 on the wallpaper (3.8:1). */
+  --wa-field-edge: #767676;
 
   --background: var(--field);
   --foreground: var(--ink);
@@ -335,6 +346,12 @@
 }
 
 @layer components {
+  /* A drawn WhatsApp chat's wallpaper: FinBoy's own doodles (scripts/chat-wallpaper.mjs) on
+     WhatsApp's beige. It stays put while the messages scroll, as WhatsApp's does. */
+  .wa-wallpaper {
+    background: var(--wa-wallpaper) url("/brand/chat-wallpaper.svg") 0 0 / 280px 280px repeat;
+  }
+
   /* Floating glass: the only blurred material. Use it where content scrolls underneath (phone
      header and tab bar, sheets, dialogs, menus) — at most three in view. */
   .glass {

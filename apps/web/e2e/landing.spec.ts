@@ -23,16 +23,76 @@ test.describe("while WhatsApp sign-up is open", () => {
     else await expect(code).toHaveCount(0);
   });
 
+  test("the chat answers every tap the way FinBoy does", async ({ page }) => {
+    // Headless runs have no audio device: play() only reports that it started.
+    await page.addInitScript(() => {
+      HTMLMediaElement.prototype.play = function play() {
+        return Promise.resolve();
+      };
+      HTMLMediaElement.prototype.pause = function pause() {};
+    });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/?graphics=off");
+    const chat = page.getByRole("list", { name: "Example chat with FinBoy" });
+
+    const voice = chat.getByRole("button", { name: "Play FinBoy's voice note" });
+    await voice.click();
+    await expect(voice).toHaveAttribute("aria-pressed", "true");
+    await voice.click();
+    await expect(voice).toHaveAttribute("aria-pressed", "false");
+
+    const undoAll = chat.getByRole("button", { name: "Undo all" });
+    await undoAll.click();
+    await expect(chat.getByText("Removed 3 entries (₹190).")).toBeVisible();
+    await expect(undoAll).toHaveAttribute("aria-disabled", "true");
+
+    await chat.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(chat.getByText("Removed: ₹500 paid · milkman")).toBeVisible();
+    await chat.getByRole("button", { name: "Put it back" }).click();
+    await expect(chat.getByText(/Put back\.\s*✅ Saved: ₹500 paid/)).toBeVisible();
+
+    await chat.getByRole("button", { name: "Amount", exact: true }).last().click();
+    await expect(chat.getByText("Say or type the right amount. Like: 400")).toBeVisible();
+    const field = page.getByRole("textbox", { name: "Message FinBoy the right amount" });
+    await expect(field).toBeFocused();
+    await field.fill("0");
+    await field.press("Enter");
+    await expect(chat.getByText("I didn't get the amount. Say or type just the amount, like: 400")).toBeVisible();
+    await field.fill("400");
+    await field.press("Enter");
+    await expect(chat.getByText("Groceries: ₹2,200 of ₹6,000 this month")).toBeVisible();
+    await expect(field).toHaveCount(0);
+
+    await chat.getByRole("button", { name: "Category", exact: true }).last().click();
+    const choose = chat.getByRole("button", { name: "Choose category" });
+    await choose.click();
+    const sheet = page.getByRole("dialog", { name: "Choose category" });
+    await expect(sheet.getByRole("button", { name: "Food & dining" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    await expect(choose).toBeFocused();
+    await choose.click();
+    await sheet.getByRole("button", { name: "Food & dining" }).click();
+    await expect(chat.getByText("Changed to Food & dining. Next time, milkman goes there too.")).toBeVisible();
+
+    await page.getByRole("button", { name: "Start again" }).click();
+    await expect(chat.getByRole("listitem")).toHaveCount(5);
+    await expect(chat.getByText("Removed 3 entries (₹190).")).toHaveCount(0);
+  });
+
   test("the page shows the WhatsApp journey, the fixes and the same plans as /pricing", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/?graphics=off");
     const chat = page.getByRole("list", { name: "Example chat with FinBoy" });
     await expect(chat.getByText("Saved 3 · ₹190")).toBeVisible();
     await expect(chat.getByText("Undo all")).toBeVisible();
-    // Drawn the way WhatsApp draws it: its wallpaper, your green bubbles and FinBoy's white ones.
+    // Drawn the way WhatsApp draws it: its beige under FinBoy's doodles, your green bubbles and
+    // FinBoy's white ones.
     const background = (element: Element) => getComputedStyle(element).backgroundColor;
-    expect(await chat.evaluate((list) => getComputedStyle(list.parentElement ?? list).backgroundColor)).toBe(
-      "rgb(239, 234, 226)",
+    const screen = page.locator("[data-wa-screen]");
+    expect(await screen.evaluate(background)).toBe("rgb(239, 234, 226)");
+    expect(await screen.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain(
+      "/brand/chat-wallpaper.svg",
     );
     expect(await chat.locator("[data-from=you]").first().evaluate(background)).toBe("rgb(217, 253, 211)");
     expect(await chat.locator("[data-from=finboy]").first().evaluate(background)).toBe("rgb(255, 255, 255)");
