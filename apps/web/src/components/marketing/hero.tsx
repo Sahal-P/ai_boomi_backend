@@ -56,7 +56,7 @@ export function Hero() {
             </Link>
           </div>
           <p className="mt-5 max-w-[30rem] text-sm leading-relaxed text-sunflower-ink">
-            Free to start. Voice, photo reading and Ask are Premium: {PREMIUM_PRICE} a month after{" "}
+            Free to start. Voice and photo reading are Premium: {PREMIUM_PRICE} a month after{" "}
             {TRIAL_DAYS} free days. No card needed.
           </p>
           <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[13px] font-semibold text-sunflower-ink">

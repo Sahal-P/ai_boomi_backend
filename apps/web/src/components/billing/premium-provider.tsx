@@ -19,7 +19,7 @@ const PremiumContext = createContext<PremiumValue | null>(null);
 /** One upgrade sheet for the whole app, mounted beside quick add. Any `premium_required` answer
  *  from the API opens it too, wherever the person was. */
 export function PremiumProvider({ children }: { children: ReactNode }) {
-  const { plan } = useHouseholdAccess();
+  const { plan, advisor } = useHouseholdAccess();
   const [open, setOpen] = useState(false);
   const [feature, setFeature] = useState<Feature | null>(null);
   const premium = plan === null || plan.premium;
@@ -46,7 +46,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   return (
     <PremiumContext value={value}>
       {children}
-      {plan && <PremiumSheet open={open} onOpenChange={setOpen} plan={plan} feature={feature} />}
+      {plan && <PremiumSheet open={open} onOpenChange={setOpen} plan={plan} feature={feature} advisor={advisor} />}
     </PremiumContext>
   );
 }

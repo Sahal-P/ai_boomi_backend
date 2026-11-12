@@ -13,12 +13,17 @@ import { describeProblem, type Problem } from "@/lib/messages";
 import { FEATURE_LINES, type Feature, premiumUntil, rupees, shortDate, startsLine } from "@/lib/plan";
 import { preconnectPayU, submitToPayU } from "@/lib/payu";
 
-export const BENEFITS = [
+const BENEFITS = [
   { key: "voice", icon: Mic, text: "Voice notes and spoken replies, in English, Hindi and Malayalam" },
   { key: "ask", icon: MessageCircleQuestion, text: "Ask FinBoy anything about your money" },
   { key: "photos", icon: Camera, text: "Photos of bills and UPI screenshots, read for you" },
   { key: "statement", icon: FileText, text: "Months of history from a Google Pay statement" },
 ] as const;
+
+/** What Premium adds for this household. With the advisor on (the session's `advisor`), asking
+ *  is free for everyone, so it is not something Premium adds. */
+export const benefitsFor = (advisor: boolean) =>
+  advisor ? BENEFITS.filter(({ key }) => key !== "ask") : BENEFITS;
 
 /**
  * The one upgrade sheet. Opening it warms the connection to PayU; Pay asks the API for a signed
@@ -29,11 +34,13 @@ export function PremiumSheet({
   onOpenChange,
   plan,
   feature,
+  advisor,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   plan: Plan;
   feature: Feature | null;
+  advisor: boolean;
 }) {
   const ids = useId();
   const wide = useMediaQuery("(min-width: 640px)");
@@ -91,7 +98,7 @@ export function PremiumSheet({
 
         <div className="space-y-5 p-5 sm:p-6">
           <ul className="space-y-3" aria-label="What Premium includes">
-            {BENEFITS.map(({ key, icon: Icon, text }) => (
+            {benefitsFor(advisor).map(({ key, icon: Icon, text }) => (
               <li key={key} className="flex items-start gap-3 text-sm leading-snug">
                 <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink/[0.06]">
                   <Icon className="size-4" aria-hidden="true" />

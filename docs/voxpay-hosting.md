@@ -37,6 +37,15 @@ following a drained, validated restart. Production health and CORS checks passed
   two-minute drain without holding the release job open. A later release waits before reusing
   a draining slot. It never touches
   API releases, other applications, database migrations or production backups.
+- Compression, 12 November 2026:
+  - Next compresses the pages it serves. nginx serves `/_next/static/` from disk, though, and the
+    host's `nginx.conf` gzips only HTML, so those files went out uncompressed.
+  - That location now gzips JS, CSS, JSON, SVG and text over 1 KB, with `Vary: Accept-Encoding`.
+  - The landing's 18 files dropped from 1,267,316 to 397,170 bytes, and each one unzips to the
+    same bytes.
+  - Releases don't install the site file. To change it: back up
+    `/etc/nginx/sites-available/finboy-web` to `/var/backups/finboy/nginx`, install
+    `deploy/nginx-finboy-web.conf` in its place, run `nginx -t`, then reload.
 - Main pushes now build the web artifact once and deploy it immediately. They skip the backend
   suite and six browser jobs. Select **Run workflow → Full validation** when a release needs that
   depth of coverage; the server still rejects an artifact whose API digest differs from the

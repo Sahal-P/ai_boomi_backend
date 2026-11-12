@@ -116,10 +116,7 @@ export function VoiceSection() {
       <div className="mx-auto grid max-w-[1360px] items-center gap-10 px-6 sm:px-10 lg:grid-cols-2 lg:gap-16 lg:px-16">
         <div>
           <Reveal>
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="eyebrow text-ink-soft">Ask FinBoy · English · हिन्दी · മലയാളം</p>
-              <PremiumPill />
-            </div>
+            <p className="eyebrow text-ink-soft">Ask FinBoy · English · हिन्दी · മലയാളം</p>
             <h2
               id="voice-title"
               className="mt-4 text-[clamp(2.1rem,4.2vw,3.6rem)] leading-[1.05] font-semibold tracking-[-0.04em] text-ink"
@@ -130,6 +127,10 @@ export function VoiceSection() {
             <p className="mt-5 max-w-lg text-[1.0625rem] leading-relaxed text-ink-soft">
               Illustrative synthetic demo. In the app, FinBoy answers from your
               tracked ledger — the numbers come from code, never from a guess.
+            </p>
+            {/* Asking is free for every household (lib/pricing.ts); only the voice is Premium. */}
+            <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+              Typing your question is free. Asking by voice needs <PremiumPill className="align-middle" />
             </p>
           </Reveal>
 

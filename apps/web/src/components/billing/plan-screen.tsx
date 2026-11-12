@@ -10,7 +10,7 @@ import { ContactFields } from "@/components/billing/contact-fields";
 import { PaymentHistory } from "@/components/billing/payment-history";
 import { PaymentResult } from "@/components/billing/payment-result";
 import { usePremium } from "@/components/billing/premium-provider";
-import { BENEFITS } from "@/components/billing/premium-sheet";
+import { benefitsFor } from "@/components/billing/premium-sheet";
 import { EmptyState } from "@/components/feedback/states";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { AllReviewedArt } from "@/components/illustrations/scenes";
@@ -189,7 +189,7 @@ function Receipts({ plan }: { plan: Plan }) {
 
 /** Account menu → Plan: where the household sees, pays for and manages FinBoy Premium. */
 export function PlanScreen() {
-  const { plan, refresh } = useHouseholdAccess();
+  const { plan, refresh, advisor } = useHouseholdAccess();
   const premium = usePremium();
   const router = useRouter();
   const params = useSearchParams();
@@ -262,7 +262,7 @@ export function PlanScreen() {
             {plan.premium ? "What's included" : "What Premium adds"}
           </h2>
           <ul className="mt-3 space-y-3">
-            {BENEFITS.map(({ key, text }) => (
+            {benefitsFor(advisor).map(({ key, text }) => (
               <li key={key} className="flex items-start gap-3 text-sm leading-snug">
                 {plan.premium ? (
                   <Check className="mt-0.5 size-4 shrink-0 text-positive" aria-hidden="true" />
@@ -274,8 +274,8 @@ export function PlanScreen() {
             ))}
           </ul>
           <p className="mt-4 text-xs leading-relaxed text-ink-soft">
-            Always free: typed entries on the web and WhatsApp, Home, Transactions, Reports, budgets and your
-            savings goal.
+            Always free: typed entries on the web and WhatsApp, Home, Transactions, Reports, budgets
+            {advisor ? ", your savings goal and asking FinBoy." : " and your savings goal."}
           </p>
         </section>
         {!included && <Renewal plan={plan} />}

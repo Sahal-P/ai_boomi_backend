@@ -27,7 +27,7 @@ export function PlansSection() {
         <SectionHeading
           id="plans-title"
           eyebrow="Plans"
-          title="Typing is free. Premium listens, reads and answers."
+          title="Typing is free. Premium listens, reads and speaks."
           description={`Every new household gets its first ${TRIAL_DAYS} days of Premium. No card needed to start.`}
         />
         <div className="mt-8 grid max-w-4xl gap-3 sm:mt-12 sm:gap-4 md:grid-cols-2">

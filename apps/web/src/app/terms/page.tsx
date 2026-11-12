@@ -48,7 +48,7 @@ export default function TermsPage() {
       <h2>Premium and payments</h2>
       <ul>
         <li>
-          Premium adds voice notes and spoken replies, Ask FinBoy, reading photos and screenshots,
+          Premium adds voice notes and spoken replies, reading photos and screenshots,
           and Google Pay statement import. Everything else stays free. See{" "}
           <Link href="/pricing" className="font-semibold underline underline-offset-4">
             Pricing

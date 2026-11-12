@@ -410,9 +410,6 @@ export const simulate = (amount: number, signal?: AbortSignal) =>
     timeoutMs: 15_000,
   });
 
-export const recordsNote =
-  "Based on email-derived and confirmed records. Your actual bank balance may differ.";
-
 export const formatMoney = (minor: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",

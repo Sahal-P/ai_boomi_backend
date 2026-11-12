@@ -124,6 +124,23 @@ test.describe("on the Free plan with statement import on", () => {
   });
 });
 
+test.describe("on the Free plan, with asking free for everyone", () => {
+  // Advisor round (docs/advisor-round/contract.md): asking is not something Premium adds.
+  test.use({ scenario: { ...household, plan: "free", advisor: true } });
+
+  test("Premium never lists asking, and the plan counts it as always free", async ({ page }) => {
+    await page.goto("/plan");
+    const adds = page.getByRole("region", { name: "What Premium adds" });
+    await expect(adds.getByText("Photos of bills and UPI screenshots, read for you")).toBeVisible();
+    await expect(adds.getByText("Ask FinBoy anything about your money")).toHaveCount(0);
+    await expect(adds.getByText(/^Always free: .+, your savings goal and asking FinBoy\.$/)).toBeVisible();
+    await page.getByRole("button", { name: "Pay ₹299" }).click();
+    const includes = upgradeSheet(page).getByRole("list", { name: "What Premium includes" });
+    await expect(includes.getByRole("listitem")).toHaveCount(3);
+    await expect(includes.getByText("Ask FinBoy anything about your money")).toHaveCount(0);
+  });
+});
+
 test.describe("in the last week of the trial", () => {
   test.use({ scenario: { ...household, plan: "trial-ending" } });
 

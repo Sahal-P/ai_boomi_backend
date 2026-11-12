@@ -12,20 +12,22 @@ import { Button } from "@/components/ui/button";
 import { useQueryUpdate } from "@/hooks/use-query-update";
 import { useResource } from "@/hooks/use-resource";
 import { getDemo, type DemoData } from "@/lib/api/demo";
-import { formatMoney, recordsNote, type Transaction } from "@/lib/api/money";
+import { formatMoney, type Transaction } from "@/lib/api/money";
 import { formatDay } from "@/lib/dates";
 import {
   categoryLabels,
   effectLabel,
-  extractionLabels,
   kindLabels,
   liabilityLabels,
   obligationKindLabels,
-  paymentLabels,
   reasonFor,
   statusLabels,
 } from "@/lib/labels";
 import { describeProblem } from "@/lib/messages";
+
+/** Sign-in opens with WhatsApp and creates an account in one tap. It is a plain link, so the
+ *  sample still calls nothing but /api/v1/demo. */
+const START = "/login";
 
 function SampleTag() {
   return (
@@ -64,19 +66,18 @@ function SampleRecord({ row, onClose }: { row: Transaction | null; onClose: () =
               <p className="mt-1 text-sm text-ink-soft">
                 {kindLabels[row.kind]} · {categoryLabels[row.category]} · {formatDay(row.occurred_at)} · {statusLabels[row.status]}
               </p>
+              {/* What the household would do, not where the sample's records came from. */}
               {reason && (
                 <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-950">
-                  <span className="font-semibold">{reason.title}.</span> {reason.detail}
+                  <span className="font-semibold">{reason.title}.</span> {reason.resolve}
                 </p>
               )}
-              <dl className="mt-4 space-y-2 text-sm">
-                <div><dt className="text-xs text-ink-soft">Payment</dt><dd>{paymentLabels[row.payment_verification]}</dd></div>
-                <div><dt className="text-xs text-ink-soft">Details in the email</dt><dd>{extractionLabels[row.extraction_quality]}</dd></div>
+              <dl className="mt-4 text-sm">
                 <div><dt className="text-xs text-ink-soft">Effect on totals</dt><dd>{effectLabel(row)}</dd></div>
               </dl>
               <p className="mt-5 text-xs leading-relaxed text-ink-soft">
-                This synthetic record is part of the read-only sample. In your household, you&apos;d
-                see its source emails and could confirm, correct or reject it.
+                This record is made up. In your own account you&apos;d fix or confirm it here, or with the
+                buttons FinBoy sends you on WhatsApp.
               </p>
             </>
           )}
@@ -91,20 +92,35 @@ function DemoBody({ demo }: { demo: DemoData }) {
   const update = useQueryUpdate();
   const selected = demo.transactions.find((row) => row.id === params.get("selected")) ?? null;
   const { summary } = demo;
+  // The same three figures, in the same words, as Home's month card.
+  const stats = [
+    { label: "Money in", sign: "+", value: summary.tracked_income_minor },
+    { label: "Money out", sign: "−", value: summary.confirmed_outflows_minor },
+    { label: "Bills due", sign: "−", value: summary.unresolved_commitments_minor },
+  ];
+  const waiting = summary.pending_review_count;
   return (
     <div className="space-y-5">
       <section aria-labelledby="sample-estimate" className="solid-hero rounded-3xl p-5 sm:p-8">
         <div className="flex flex-wrap items-center gap-2"><SampleTag /><span className="text-xs text-sunflower-ink">as of {formatDay(demo.as_of)}</span></div>
-        <h2 id="sample-estimate" className="mt-3 text-sm font-medium text-sunflower-ink">Estimated unallocated (sample)</h2>
+        <h2 id="sample-estimate" className="mt-3 text-sm font-medium text-sunflower-ink">Left this month (sample)</h2>
         <p className="mt-2 text-[2.75rem] leading-none font-semibold tracking-[-0.04em] tabular-nums sm:text-6xl">{formatMoney(summary.estimated_unallocated_minor)}</p>
+        <p className="mt-3 text-sm text-sunflower-ink">From the sample&apos;s confirmed records — not a bank balance.</p>
         <dl className="mt-5 grid gap-2 text-sm sm:grid-cols-3">
-          <div className="rounded-2xl bg-white/55 p-3"><dt className="text-sunflower-ink">Tracked income</dt><dd className="mt-1 font-semibold tabular-nums">+ {formatMoney(summary.tracked_income_minor)}</dd></div>
-          <div className="rounded-2xl bg-white/55 p-3"><dt className="text-sunflower-ink">Confirmed net outflows</dt><dd className="mt-1 font-semibold tabular-nums">− {formatMoney(summary.confirmed_outflows_minor)}</dd></div>
-          <div className="rounded-2xl bg-white/55 p-3"><dt className="text-sunflower-ink">Unresolved obligations</dt><dd className="mt-1 font-semibold tabular-nums">− {formatMoney(summary.unresolved_commitments_minor)}</dd></div>
+          {stats.map((stat) => (
+            <div key={stat.label} className="rounded-2xl bg-white/55 p-3">
+              <dt className="text-sunflower-ink">{stat.label}</dt>
+              <dd className="mt-1 font-semibold tabular-nums">{stat.sign} {formatMoney(stat.value)}</dd>
+            </div>
+          ))}
         </dl>
-        <p className="mt-4 text-sm text-sunflower-ink">
-          {summary.pending_review_count} sample records wait for review and aren&apos;t counted. {recordsNote}
-        </p>
+        {waiting > 0 && (
+          <p className="mt-4 text-sm text-sunflower-ink">
+            {waiting === 1
+              ? "1 sample record waits for review and isn't counted yet."
+              : `${waiting} sample records wait for review and aren't counted yet.`}
+          </p>
+        )}
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[1.3fr_1fr]">
@@ -165,12 +181,30 @@ function DemoBody({ demo }: { demo: DemoData }) {
           </section>
         </div>
       </div>
+
+      <section
+        aria-labelledby="sample-start"
+        className="surface flex flex-col gap-4 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+      >
+        <div>
+          <h2 id="sample-start" className="text-lg font-semibold">Start your own on WhatsApp</h2>
+          <p className="mt-1 max-w-xl text-sm leading-relaxed text-ink-soft">
+            Sign up with WhatsApp in one tap, then tell FinBoy what you spend, typed or in a voice
+            note. It adds up to a month like this one. Typing is free.
+          </p>
+        </div>
+        <Button asChild className="shrink-0 self-start sm:self-auto">
+          <Link href={START}>
+            Get started <ArrowRight aria-hidden="true" />
+          </Link>
+        </Button>
+      </section>
       <SampleRecord row={selected} onClose={() => update({ selected: null })} />
     </div>
   );
 }
 
-/** A read-only synthetic household, visibly separate from yours. It never writes anything. */
+/** A read-only, made-up household, visibly separate from yours. It never writes anything. */
 export function DemoScreen() {
   const demo = useResource("demo", (signal) => getDemo(signal));
   return (
@@ -185,8 +219,8 @@ export function DemoScreen() {
             </span>
           </div>
           <Button asChild size="sm">
-            <Link href="/sources?intent=gmail">
-              Use your own emails <ArrowRight aria-hidden="true" />
+            <Link href={START}>
+              Start your own <ArrowRight aria-hidden="true" />
             </Link>
           </Button>
         </div>
@@ -195,8 +229,9 @@ export function DemoScreen() {
         <div>
           <h1 className="text-[1.75rem] leading-tight font-medium tracking-[-0.025em] sm:text-[2rem]">A sample household</h1>
           <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-soft">
-            Arun&apos;s synthetic mailbox, shown the way FinBoy shows yours. Nothing here comes from
-            or changes your household records, and leaving the sample changes nothing.
+            A made-up month for Arun&apos;s household, shown the way FinBoy shows yours. Yours fills up
+            from WhatsApp: type what you spent or say it in a voice note. Nothing here touches your
+            records, and leaving changes nothing.
           </p>
         </div>
         {demo.status === "loading" && <LoadingPanel label="Loading the sample…" />}
