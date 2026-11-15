@@ -114,6 +114,11 @@ test("comparison discloses the publisher and sources its competitor claims", asy
   await page.goto("/guides/choose-whatsapp-expense-tracker-india");
   await expect(page.getByText(/FinBoy publishes this guide/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Expensebit: WhatsApp tracker details" })).toHaveAttribute("href", "https://expensebit.com/whatsapp-expense-tracker");
+  const plans = page.getByRole("table");
+  await expect(plans).toContainText("₹299/month");
+  await expect(plans).toContainText("₹99/month");
+  await expect(plans.getByRole("link", { name: "Xpensy" })).toHaveAttribute("href", "https://xpensy.in/");
+  await expect(plans.getByRole("link", { name: "Expensebit" })).toHaveAttribute("href", "https://expensebit.com/pricing");
   const scripts = await page.locator('script[type="application/ld+json"]').allTextContents();
   expect(scripts.map(value => JSON.parse(value))).toEqual(expect.arrayContaining([
     expect.objectContaining({ "@type": "Article", datePublished: "2026-11-15", dateModified: "2026-11-15" }),
