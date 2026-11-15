@@ -107,9 +107,9 @@ def render_bundle(directory: Path) -> None:
         "are not a complete competitor ranking database. Inspect raw captures before relying on "
         "individual recommendations. Competitors have substantive feature pages; this research "
         "does not demonstrate that generic category keywords are easy to win.\n\n"
-        "## First release\n\nPublish the four supported feature pages and four practical guides. "
-        "Explain actual correction/Undo workflows, supported statement formats, language support "
-        "and coverage limits. Consolidate remaining briefs into an editorial backlog.\n"
+        "## Original editorial priorities\n\nThe initial research prioritized four feature pages "
+        "and four practical guides. Check what is currently published before proposing additions. "
+        "Consolidate overlapping briefs and verify product support and coverage limits.\n"
     )
     (directory / "report.md").write_text(summary, encoding="utf-8")
     report_path = directory / "report.html"
