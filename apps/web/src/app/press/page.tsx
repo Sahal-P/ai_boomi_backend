@@ -15,6 +15,7 @@ export default function PressPage() {
     <p>For the WhatsApp flow, try the <Link className="underline" href="/features/whatsapp-expense-tracker">interactive example</Link> or watch the <a className="underline" href="/video/whatsapp-example.mp4">32-second captioned walkthrough</a>. Both use synthetic examples.</p>
     <h2 className="text-2xl font-semibold">Brand assets</h2>
     <p>Download the <a className="underline" href="/brand/finboy-logo-dark.svg" download>FinBoy logo</a> or the <a className="underline" href="/brand/finboy-icon-512.png" download>square icon</a>.</p>
+    <p>The <a className="underline" href="/brand/finboy-press-pack.zip" download>press pack</a> includes logos, four labelled screenshots of the synthetic WhatsApp example, and the captioned walkthrough.</p>
     <h2 className="text-2xl font-semibold">Get in touch</h2>
     <p>For questions or a product walkthrough, email <a className="underline" href="mailto:support@finboy.io">support@finboy.io</a>.</p>
   </SeoPage>;
