@@ -33,7 +33,7 @@ export function ContentPage({ item, path, guide = false, preview, children }: { 
   breadcrumbs.push({ "@type": "ListItem", position: breadcrumbs.length + 1, name: item.title, item: `${SITE_URL}${path}` });
   return <SeoPage title={item.title}>
     <JsonLd value={{ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: breadcrumbs }} />
-    {guide && <JsonLd value={{ "@context": "https://schema.org", "@type": "Article", headline: item.title, description: item.description, datePublished: CONTENT_UPDATED_AT, dateModified: updatedAt, author: { "@type": "Organization", name: "FinBoy", url: SITE_URL }, publisher: { "@type": "Organization", name: "FinBoy", url: SITE_URL }, mainEntityOfPage: `${SITE_URL}${path}` }} />}
+    {guide && <JsonLd value={{ "@context": "https://schema.org", "@type": "Article", headline: item.title, description: item.description, datePublished: item.publishedAt ?? CONTENT_UPDATED_AT, dateModified: updatedAt, author: { "@type": "Organization", name: "FinBoy", url: SITE_URL }, publisher: { "@type": "Organization", name: "FinBoy", url: SITE_URL }, mainEntityOfPage: `${SITE_URL}${path}` }} />}
     <p className="max-w-3xl text-lg text-ink-soft sm:text-xl">{item.intro}</p>
     <p className="text-sm text-ink-soft">{guide ? "By the FinBoy team · " : ""}{item.updatedAt ? "Updated" : "Reviewed"} <time dateTime={updatedAt}>{updatedLabel}</time></p>
     {preview}

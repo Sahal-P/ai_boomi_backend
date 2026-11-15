@@ -25,6 +25,7 @@ export default async function FeaturePage({ params }: Props) {
       <section aria-labelledby="chat-preview-title" className="rounded-3xl bg-well p-5 sm:p-8">
         <h2 id="chat-preview-title" className="mb-5 text-2xl font-semibold tracking-tight">Try a sample WhatsApp conversation</h2>
         <ChatPreview />
+        <p className="mt-5 text-sm text-ink-soft"><a className="font-semibold underline underline-offset-4" href="/video/whatsapp-example.mp4">Watch the 32-second captioned walkthrough</a> using synthetic examples.</p>
       </section>
     </>
   ) : undefined;
