@@ -60,3 +60,34 @@ test("guides include valid article and breadcrumb data without requiring JavaScr
     await context.close();
   }
 });
+
+test("WhatsApp page shows the sample, plan details and contextual links", async ({ page }) => {
+  await page.goto("/features/whatsapp-expense-tracker");
+  await expect(page.getByRole("heading", { name: "Try a sample WhatsApp conversation" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Example chat with FinBoy" })).toBeVisible();
+  await expect(page.getByText(/Text entries and typed questions are free/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "How to record UPI expenses" })).toHaveAttribute("href", "/features/upi-expense-tracker");
+  await expect(page.getByRole("link", { name: "Read what FinBoy keeps and how to delete it" })).toHaveAttribute("href", "/privacy-policy");
+});
+
+test("updated guide has accurate dates and links to its source and feature", async ({ page, request }) => {
+  await page.goto("/guides/download-google-pay-statement");
+  await expect(page.getByRole("heading", { name: "Is this a bank statement?" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "How FinBoy imports Google Pay statements" })).toHaveAttribute("href", "/features/google-pay-statement-import");
+  const article = await page.locator('script[type="application/ld+json"]').allTextContents();
+  expect(article.map(value => JSON.parse(value))).toEqual(expect.arrayContaining([
+    expect.objectContaining({ "@type": "Article", datePublished: "2026-11-04", dateModified: "2026-11-15" }),
+  ]));
+  const sitemap = await (await request.get("/sitemap.xml")).text();
+  expect(sitemap).toMatch(/<loc>https:\/\/finboy\.io\/guides\/download-google-pay-statement<\/loc>\s*<lastmod>2026-11-15<\/lastmod>/);
+  expect(sitemap).toMatch(/<loc>https:\/\/finboy\.io\/features\/voice-expense-tracker<\/loc>\s*<lastmod>2026-11-04<\/lastmod>/);
+});
+
+test("public plan and privacy summaries distinguish typed Ask and saved chats", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByText(/Text entries and typed questions are free/)).toBeVisible();
+  await expect(page.getByText(/Questions to Ask FinBoy and its answers are saved as chats/)).toBeVisible();
+  await page.goto("/pricing");
+  await expect(page.getByText("Ask FinBoy about your money, with answers from your own records")).toBeVisible();
+  await expect(page.locator('meta[name="description"]')).not.toHaveAttribute("content", /Premium adds voice, Ask FinBoy/);
+});

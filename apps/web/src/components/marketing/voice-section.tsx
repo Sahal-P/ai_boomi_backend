@@ -118,7 +118,7 @@ export function VoiceSection() {
           <Reveal>
             <div className="flex flex-wrap items-center gap-3">
               <p className="eyebrow text-ink-soft">Ask FinBoy · English · हिन्दी · മലയാളം</p>
-              <PremiumPill />
+              <PremiumPill /> <span className="text-sm text-ink-soft">for voice</span>
             </div>
             <h2
               id="voice-title"

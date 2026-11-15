@@ -19,7 +19,7 @@ const steps: { title: string; body: ReactNode }[] = [
     body: (
       <>
         FinBoy tells you what it writes down — the amount, the date, who you paid and what it was
-        for — and that it doesn’t keep your voice notes, photos or messages. Tap ✅ Yes, I agree.
+        for — and that it doesn’t keep your voice notes, photos or diary messages. Tap ✅ Yes, I agree.
         Tap ❌ No and nothing is kept.
       </>
     ),
@@ -71,6 +71,10 @@ export function HowItWorks() {
                 Sign in on the web
               </Link>{" "}
               with WhatsApp or Google to see Home, Transactions and Reports.
+            </p>
+            <p className="text-sm leading-relaxed text-ink-soft">
+              See how the <Link href="/features/whatsapp-expense-tracker" className="font-semibold text-ink underline underline-offset-4">WhatsApp expense tracker</Link> works, or read the{" "}
+              <Link href="/guides/track-expenses-on-whatsapp" className="font-semibold text-ink underline underline-offset-4">daily expense diary guide</Link>.
             </p>
           </div>
         </div>

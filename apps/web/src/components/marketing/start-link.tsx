@@ -23,8 +23,8 @@ const WEB_LABEL = "Get started";
 /**
  * The page's main action. While sign-ups are open it opens FinBoy's WhatsApp chat with
  * "Hi FinBoy" typed in; until the API answers it points at the sign-in page, so an early tap
- * still lands somewhere useful. `short` shows only "Start" on phones; the accessible name stays
- * whole and still contains the visible word.
+ * still lands somewhere useful. `short` shows a compact but descriptive label on phones; the
+ * accessible name stays whole and still contains the visible words.
  */
 export function StartLink({
   className,
@@ -41,7 +41,7 @@ export function StartLink({
   const label = entry.kind === "chat" ? CHAT_LABEL : WEB_LABEL;
   const text = short ? (
     <>
-      <span className="sm:hidden">Start</span>
+      <span className="sm:hidden">{entry.kind === "chat" ? "WhatsApp" : WEB_LABEL}</span>
       <span className="max-sm:hidden">{label}</span>
     </>
   ) : (

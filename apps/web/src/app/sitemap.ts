@@ -2,7 +2,11 @@ import type { MetadataRoute } from "next";
 import { CONTENT_UPDATED_AT, features, guides } from "@/lib/seo/content";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return ["", "/about", "/press", "/pricing", "/contact", "/privacy-policy", "/terms", "/refund-policy", "/guides", ...Object.keys(features).map((slug) => `/features/${slug}`), ...Object.keys(guides).map((slug) => `/guides/${slug}`)].map(
-    (path) => ({ url: `https://finboy.io${path}`, ...((path === "" || path.startsWith("/features/") || path.startsWith("/guides")) ? { lastModified: CONTENT_UPDATED_AT } : {}) }),
-  );
+  return [
+    { url: "https://finboy.io", lastModified: "2026-11-15" },
+    ...["/about", "/press", "/pricing", "/contact", "/privacy-policy", "/terms", "/refund-policy"].map((path) => ({ url: `https://finboy.io${path}` })),
+    { url: "https://finboy.io/guides", lastModified: CONTENT_UPDATED_AT },
+    ...Object.entries(features).map(([slug, item]) => ({ url: `https://finboy.io/features/${slug}`, lastModified: item.updatedAt ?? CONTENT_UPDATED_AT })),
+    ...Object.entries(guides).map(([slug, item]) => ({ url: `https://finboy.io/guides/${slug}`, lastModified: item.updatedAt ?? CONTENT_UPDATED_AT })),
+  ];
 }

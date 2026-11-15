@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="7 November 2026">
+    <LegalPage title="Privacy Policy" updated="15 November 2026">
       <p>
         FinBoy helps you keep track of your own money: what came in, what went out and what is due.
         This page says exactly what we keep, what we never keep, and how to delete everything.
@@ -21,7 +21,8 @@ export default function PrivacyPolicyPage() {
       <ul>
         <li>
           Your money records: the amount, date, money in or out, who you paid or who paid you, the
-          category, and any dues you add. Nothing counts until you confirm it.
+          category, and any dues you add. Clear diary entries are saved; FinBoy asks you to check
+          some entries before counting them, such as possible duplicates.
         </li>
         <li>
           How you sign in: an encrypted copy of your WhatsApp number (shown to you masked, and used
