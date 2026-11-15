@@ -47,7 +47,7 @@
     "test:e2e": "pnpm --filter @finboy/web test:e2e",
     "seo": "uv run --package finboy-api python -m scripts.seo",
     "lint:seo": "uv run ruff check scripts/seo && uv run ruff format --check scripts/seo",
-    "test:seo": "uv run python -m pytest scripts/seo/test_engine.py"
+    "test:seo": "uv run python -m pytest scripts/seo"
   },
   "devDependencies": {
     "concurrently": "10.0.6"

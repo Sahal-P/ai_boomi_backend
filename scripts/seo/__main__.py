@@ -288,7 +288,11 @@ def analyze(directory: Path, limit: int, cap: float) -> None:
 
 def csv_safe(value: object) -> str:
     text = "" if value is None else str(value)
-    return "'" + text if text.lstrip().startswith(("=", "+", "-", "@")) else text
+    return (
+        "'" + text
+        if text.startswith(("\t", "\r", "\n")) or text.lstrip().startswith(("=", "+", "-", "@"))
+        else text
+    )
 
 
 def report(directory: Path) -> None:
@@ -358,25 +362,67 @@ for(const button of document.querySelectorAll('[data-column]'))button.addEventLi
     from scripts.seo.bundle import render_bundle
 
     render_bundle(directory)
+    from scripts.seo.gsc_report import render_gsc
+
+    if render_gsc(directory):
+        report_path = directory / "report.html"
+        report_path.write_text(
+            report_path.read_text(encoding="utf-8").replace(
+                "</body>", '<p><a href="gsc-report.html">Search Console performance</a></p></body>'
+            ),
+            encoding="utf-8",
+        )
+        markdown_path = directory / "report.md"
+        with markdown_path.open("a", encoding="utf-8") as handle:
+            handle.write("\n## Search Console\n\nSee [performance](gsc-report.md).\n")
     print(json.dumps({"report_rows": len(rows)}))
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "command", choices=["discover", "import-serp", "analyze", "assess", "report"]
+        "command", choices=["discover", "import-serp", "import-gsc", "analyze", "assess", "report"]
     )
     parser.add_argument("--input", type=Path)
     parser.add_argument("--source", default=SOURCE)
     parser.add_argument("--directory", type=Path, default=OUT)
     parser.add_argument("--limit", type=int, default=300)
     parser.add_argument("--max-cost", type=float, default=0.25)
+    parser.add_argument("--pages", type=Path)
+    parser.add_argument("--start-date")
+    parser.add_argument("--end-date")
+    parser.add_argument("--country")
+    parser.add_argument("--device", choices=["all", "desktop", "mobile", "tablet"])
+    parser.add_argument("--search-type", choices=["web", "image", "video", "news"], default="web")
+    parser.add_argument(
+        "--source-kind", choices=["gsc-export", "browser-transcription"], default="gsc-export"
+    )
+    parser.add_argument("--query-evidence", type=Path)
+    parser.add_argument("--page-evidence", type=Path)
+    parser.add_argument("--replace-gsc", action="store_true")
     args = parser.parse_args(sys.argv[2:] if sys.argv[1:2] == ["--"] else None)
     try:
         if args.command == "discover":
             discover(args.input, args.source, args.directory)
         elif args.command == "import-serp":
             import_serp(args.input, args.directory)
+        elif args.command == "import-gsc":
+            from scripts.seo.gsc import import_gsc
+
+            import_gsc(
+                args.input,
+                args.pages,
+                args.directory,
+                args.start_date,
+                args.end_date,
+                args.country,
+                args.device,
+                args.search_type,
+                args.source_kind,
+                args.query_evidence,
+                args.page_evidence,
+                args.replace_gsc,
+            )
         elif args.command == "analyze":
             analyze(args.directory, args.limit, args.max_cost)
         elif args.command == "assess":

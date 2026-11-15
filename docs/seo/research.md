@@ -50,6 +50,8 @@ pnpm seo -- analyze --limit 300
 pnpm seo -- import-serp --input /absolute/path/observations.jsonl
 pnpm seo -- assess --input /absolute/path/editorial-reviews.json
 pnpm seo -- report
+pnpm seo -- import-gsc --input /absolute/path/Queries.csv --pages /absolute/path/Pages.csv \
+  --start-date 2026-11-02 --end-date 2026-11-13 --country IN --device all
 ```
 
 Only public research text reaches Liquid. No application startup or database connection
@@ -83,6 +85,35 @@ No inference of demand, full-page absence or Google difficulty is made.
 `pnpm lint:seo` and `pnpm test:seo` are included in `pnpm check`. Tests cover source
 normalization, ranking provenance, missing evidence, budget rejection before credential
 loading, retry caps, malformed provider responses, score boundaries and CSV injection.
+
+### Search Console exports
+
+Export the Search results performance report in English as CSV after selecting the desired
+date, country, device and search type filters. Extract its query and page CSVs into a private
+location. Supply the exact inclusive dates and filters; `--pages` may be omitted if that table
+is unavailable. The command accepts `--country ALL` for all countries and `--device all`,
+`desktop`, `mobile` or `tablet`; `--search-type` defaults to `web`. The property is fixed to
+`https://finboy.io/`. The operator must verify that the supplied context matches the export.
+
+The importer records the file names and SHA-256 hashes and writes gitignored JSON snapshots,
+plus `gsc-report.html`, `gsc-report.csv` and `gsc-report.md` in the chosen output directory.
+Reimporting different data for an existing period and filter set is rejected by default.
+Use `--replace-gsc` to replace a corrected or preliminary snapshot; the prior version is
+retained in `gsc-history/`. The most recently imported filter set selects the report;
+its latest period is compared with an earlier non-overlapping period only when duration and
+all filters match. A missing row is unknown, never assumed to be zero. Query and page tables
+are reported separately: they do not establish query-to-page attribution. Brand matching
+recognizes `finboy` and `fin boy`; unmatched queries may include other brand spellings.
+
+The visible-query group sums are not full property totals. Google omits anonymized queries,
+may truncate table rows and can export unavailable values as zero. Page aggregation can
+differ from property aggregation, and average position is not a verified individual ranking.
+See [Google's export guidance](https://support.google.com/webmasters/answer/12919797) and
+[query limitations](https://support.google.com/webmasters/answer/17011259). A manually
+transcribed browser observation must use `--source-kind browser-transcription` and supply
+`--query-evidence` plus `--page-evidence` if a page table is supplied. Retain those captures
+privately; their file names and hashes are recorded. The default `gsc-export` is reserved for
+downloaded CSV files. No Liquid calls are made by this command.
 
 ## Website and release
 
