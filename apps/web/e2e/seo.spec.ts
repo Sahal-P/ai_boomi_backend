@@ -80,7 +80,8 @@ test("updated guide has accurate dates and links to its source and feature", asy
   ]));
   const sitemap = await (await request.get("/sitemap.xml")).text();
   expect(sitemap).toMatch(/<loc>https:\/\/finboy\.io\/guides\/download-google-pay-statement<\/loc>\s*<lastmod>2026-11-15<\/lastmod>/);
-  expect(sitemap).toMatch(/<loc>https:\/\/finboy\.io\/features\/voice-expense-tracker<\/loc>\s*<lastmod>2026-11-04<\/lastmod>/);
+  expect(sitemap).toMatch(/<loc>https:\/\/finboy\.io\/features\/voice-expense-tracker<\/loc>\s*<lastmod>2026-11-15<\/lastmod>/);
+  expect(sitemap).toMatch(/<loc>https:\/\/finboy\.io\/guides\/monthly-household-budget-india<\/loc>\s*<lastmod>2026-11-04<\/lastmod>/);
 });
 
 test("public plan and privacy summaries distinguish typed Ask and saved chats", async ({ page }) => {
@@ -90,4 +91,17 @@ test("public plan and privacy summaries distinguish typed Ask and saved chats", 
   await page.goto("/pricing");
   await expect(page.getByText("Ask FinBoy about your money, with answers from your own records")).toBeVisible();
   await expect(page.locator('meta[name="description"]')).not.toHaveAttribute("content", /Premium adds voice, Ask FinBoy/);
+  await expect(page.getByText("Draft for legal review.")).toHaveCount(0);
+});
+
+test("voice, UPI and statement pages explain their different workflows", async ({ page }) => {
+  await page.goto("/features/voice-expense-tracker");
+  await expect(page.getByRole("heading", { name: "Three examples to try" })).toBeVisible();
+  await expect(page.getByText(/questions to Ask FinBoy/i)).toBeVisible();
+  await page.goto("/features/upi-expense-tracker");
+  await expect(page.getByRole("heading", { name: "Check the reply and avoid double-counting" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download a Google Pay statement" })).toHaveAttribute("href", "/guides/download-google-pay-statement");
+  await page.goto("/features/google-pay-statement-import");
+  await expect(page.getByRole("heading", { name: "If FinBoy cannot import the file" })).toBeVisible();
+  await expect(page.getByText(/not password-protected/)).toBeVisible();
 });

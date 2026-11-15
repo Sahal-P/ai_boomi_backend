@@ -26,7 +26,7 @@ export function LegalPage({
       <article className="surface mx-auto max-w-3xl rounded-3xl p-6 leading-relaxed sm:p-10 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-semibold [&_li]:mt-1 [&_p]:mt-3 [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5">
         <Brand />
         <h1 className="mt-8 text-3xl font-extrabold tracking-[-0.03em] sm:text-4xl">{title}</h1>
-        <p className="text-sm text-ink-soft">Last updated {updated}. Draft for legal review.</p>
+        <p className="text-sm text-ink-soft">Last updated {updated}.</p>
         {children}
         <nav
           aria-label="FinBoy pages"
