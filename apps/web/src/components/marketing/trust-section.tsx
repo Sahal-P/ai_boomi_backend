@@ -14,8 +14,8 @@ const FACTS = [
   },
   {
     icon: EyeOff,
-    title: "Your messages aren’t kept",
-    body: "FinBoy writes down the amount, the date, who you paid and what it was for. Your WhatsApp messages, voice notes, photos, screenshots, statement PDFs and their transcripts aren’t kept.",
+    title: "Know what is kept",
+    body: "Diary messages are kept as records, not as messages; voice notes, photos and statement PDFs aren’t kept. Questions to Ask FinBoy and its answers are saved as chats, which you can delete.",
   },
   {
     icon: ScanText,
@@ -36,7 +36,7 @@ export function TrustSection() {
         <SectionHeading
           id="privacy-title"
           eyebrow="Privacy"
-          title="FinBoy keeps the record, not your messages."
+          title="Know what FinBoy keeps."
           description="Only you can see your records. This is what FinBoy sees, keeps and lets you remove."
         />
         <ul className="mt-8 grid gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">

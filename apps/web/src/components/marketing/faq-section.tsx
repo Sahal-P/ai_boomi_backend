@@ -29,7 +29,7 @@ const QUESTIONS = [
   },
   {
     question: "What is free and what is Premium?",
-    answer: `Typed entries, Home, Transactions, Reports, budgets, a savings goal and the today, this week and this month check-ups are free. Voice notes, photo and screenshot reading, Ask FinBoy and Google Pay statement import are Premium at ${PREMIUM_PRICE} a month, with your first ${TRIAL_DAYS} days free.`,
+    answer: `Typed entries, typed questions, Home, Transactions, Reports, budgets, a savings goal and the today, this week and this month check-ups are free. Voice notes, photo and screenshot reading, and Google Pay statement import are Premium at ${PREMIUM_PRICE} a month, with your first ${TRIAL_DAYS} days free. Daily usage limits apply.`,
   },
   {
     question: "Can I bring in my Google Pay history?",

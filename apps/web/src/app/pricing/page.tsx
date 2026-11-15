@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   alternates: { canonical: "/pricing" },
   title: "Pricing",
-  description: `FinBoy is free to use. Premium adds voice, Ask FinBoy, photo reading and statement import for ${PREMIUM_PRICE} a month, with the first ${TRIAL_DAYS} days free.`,
+  description: `Track expenses and ask questions by text for free. Premium adds voice, photo reading and statement import for ${PREMIUM_PRICE} a month after a ${TRIAL_DAYS}-day trial.`,
 };
 
 function Features({ items }: { items: readonly string[] }) {
@@ -27,9 +27,9 @@ function Features({ items }: { items: readonly string[] }) {
 
 export default function PricingPage() {
   return (
-    <LegalPage title="Pricing" updated="2 November 2026">
+    <LegalPage title="Pricing" updated="15 November 2026">
       <p>
-        FinBoy is free to use. Premium adds the parts that listen, read and answer, for{" "}
+        FinBoy is free to use. Premium adds voice, photo reading and statement import, for{" "}
         {PREMIUM_PRICE} a month — and every new household gets its first {TRIAL_DAYS} days of
         Premium free.
       </p>

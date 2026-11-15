@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms" updated="2 November 2026">
+    <LegalPage title="Terms" updated="15 November 2026">
       <p>
         FinBoy helps you track your own money by WhatsApp, voice or the web.{" "}
         {BUSINESS.name ? `It is run by ${BUSINESS.name} and is still in beta.` : "It is still in beta."}{" "}
@@ -48,8 +48,8 @@ export default function TermsPage() {
       <h2>Premium and payments</h2>
       <ul>
         <li>
-          Premium adds voice notes and spoken replies, Ask FinBoy, reading photos and screenshots,
-          and Google Pay statement import. Everything else stays free. See{" "}
+          Premium adds voice notes and spoken replies, reading photos and screenshots,
+          and Google Pay statement import. Typed questions to Ask FinBoy are free, subject to daily limits. See{" "}
           <Link href="/pricing" className="font-semibold underline underline-offset-4">
             Pricing
           </Link>
