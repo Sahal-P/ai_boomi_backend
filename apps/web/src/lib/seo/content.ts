@@ -9,6 +9,7 @@ export type Content = {
   title: string;
   description: string;
   intro: string;
+  publishedAt?: string;
   updatedAt?: string;
   sections: readonly Section[];
   related: readonly { href: string; label: string }[];
@@ -75,6 +76,21 @@ export const features: Readonly<Record<string, Content>> = {
 };
 
 export const guides: Readonly<Record<string, Content>> = {
+  "choose-whatsapp-expense-tracker-india": {
+    title: "How to choose a WhatsApp expense tracker in India",
+    description: "Compare WhatsApp expense trackers by entry methods, pricing, corrections, privacy and shared access before choosing one.",
+    intro: "A WhatsApp expense tracker can make a daily diary easier to keep, but the right choice depends on what you need it to record and who will use it. FinBoy publishes this guide and makes one of the products below. Competitor details come from their public pages checked on 15 November 2026; we have not independently tested their products here.",
+    publishedAt: "2026-11-15",
+    updatedAt: "2026-11-15",
+    sections: [
+      { heading: "Start with the entries you actually make", paragraphs: ["If you mostly want to type a quick purchase, try a short message such as ‘tea 20’. If speaking or sending a payment screenshot matters to you, check whether those inputs are available and whether they cost extra.", "FinBoy supports text on its Free plan; voice and photo reading are Premium. Expensebit’s public page describes text, voice notes and receipt or payment images. Spendzbot’s FAQ describes plain-English messages and reports; check its current documentation for other input methods rather than assuming they are included."], links: [{ href: "/features/whatsapp-expense-tracker", label: "See how FinBoy records an entry" }, { href: "https://expensebit.com/whatsapp-expense-tracker", label: "Expensebit: WhatsApp tracker details" }, { href: "https://spendzbot.com/faq", label: "Spendzbot: frequently asked questions" }] },
+      { heading: "Check what is free after a trial", paragraphs: ["Look beyond the first screen: does the free plan continue after a trial, and which actions require a paid plan? Prices and limits can change, so check the current terms before relying on a comparison.", "FinBoy lists typed entries and typed questions on Free, with voice, photos and supported statement import on Premium. Spendzbot’s FAQ describes its WhatsApp tracking and web dashboard as free while it grows. MuneemJi’s WhatsApp page describes paid plans; check its current offer and terms directly."], links: [{ href: "/pricing", label: "FinBoy pricing and terms" }, { href: "https://spendzbot.com/faq", label: "Spendzbot pricing in its FAQ" }, { href: "https://muneemji.app/expense-tracker-on-whatsapp", label: "MuneemJi WhatsApp page and pricing" }] },
+      { heading: "Try a mistake before adding real spending", paragraphs: ["Use a made-up entry first. Check the amount and category in the reply, then try correcting or removing it. A quick entry is only useful if you can notice and fix a misunderstanding.", "FinBoy offers Amount, Category and Undo controls for saved WhatsApp entries. Other products can use different correction flows; check their instructions and try the flow before committing to a habit."], links: [{ href: "/features/whatsapp-expense-tracker", label: "Try FinBoy’s synthetic chat example" }] },
+      { heading: "Consider privacy and who can see the diary", paragraphs: ["Read each service’s privacy information: what is retained, which providers process messages or audio, and how records can be exported or deleted. A service may process a message without keeping its original file, while still saving the resulting expense record.", "If two people need one shared diary, verify that the product actually supports it. Spendzbot’s FAQ describes a shared ledger for up to two WhatsApp numbers. Do not assume a single-user tracker offers the same access."], links: [{ href: "/privacy-policy", label: "FinBoy privacy policy" }, { href: "https://spendzbot.com/faq", label: "Spendzbot FAQ: shared access and deletion" }] },
+      { heading: "Check what your totals leave out", paragraphs: ["A WhatsApp diary can only report the information it has. If a tool does not automatically read every bank or UPI payment, missing purchases stay outside its totals. Check whether the product supports the statement format you already use, and inspect overlap with manually entered items.", "FinBoy can import a supported Google Pay transaction statement with Premium. A Google Pay statement covers its own history, not every payment from your bank or another UPI app."], links: [{ href: "/features/google-pay-statement-import", label: "Supported Google Pay statement import" }, { href: "/tools/cash-upi-expense-diary", label: "Try the free cash and UPI browser diary" }] },
+    ],
+    related: [{ href: "/guides/track-expenses-on-whatsapp", label: "How to track daily expenses on WhatsApp" }, { href: "/guides/track-cash-and-upi-expenses", label: "Track cash and UPI together" }],
+  },
   "download-google-pay-statement": {
     title: "How to download a Google Pay transaction statement",
     description: "Learn how to download a Google Pay transaction statement as a PDF, choose a period and check what it covers before importing it.",
@@ -107,6 +123,7 @@ export const guides: Readonly<Record<string, Content>> = {
     title: "How to track cash and UPI expenses together",
     description: "Keep cash and UPI purchases in one expense diary, use consistent categories and review entries for gaps and duplicates.",
     intro: "A payment app shows only part of everyday spending. A cash snack, a UPI cab payment and a grocery bill can all belong in the same monthly budget. A combined diary helps you review the purchases together without assuming one payment history is complete.",
+    updatedAt: "2026-11-15",
     sections: [
       { heading: "Record cash before the details fade", paragraphs: ["Add a cash purchase by text or voice when it is convenient and safe. A synthetic entry such as ‘cash tea 20’ preserves what the money was for. Keep enough description to recognize it during your review.", "Try to use a consistent habit, such as checking for missing purchases at the end of the day. It is easier to remember a small cash expense that evening than several weeks later."] },
       { heading: "Add the UPI purchases you want to track", paragraphs: ["Enter a UPI purchase by text, voice or a payment screenshot in the WhatsApp diary. A supported Google Pay statement can add transaction history for a period.", "FinBoy works from the information you provide. It does not passively see every payment across your UPI apps or bank accounts. Use the original payment app and bank records to check payment status."] },

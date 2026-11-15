@@ -12,6 +12,7 @@ export default function PressPage() {
     <p>FinBoy offers Free and Premium plans. <Link className="underline" href="/pricing">See current pricing</Link> and <Link className="underline" href="/privacy-policy">read the Privacy Policy</Link> for more detail.</p>
     <h2 className="text-2xl font-semibold">Try the sample</h2>
     <p>The <Link className="underline" href="/demo">sample household</Link> uses synthetic data and is available without signing in. It is a read-only demonstration.</p>
+    <p>For the WhatsApp flow, try the <Link className="underline" href="/features/whatsapp-expense-tracker">interactive example</Link> or watch the <a className="underline" href="/video/whatsapp-example.mp4">32-second captioned walkthrough</a>. Both use synthetic examples.</p>
     <h2 className="text-2xl font-semibold">Brand assets</h2>
     <p>Download the <a className="underline" href="/brand/finboy-logo-dark.svg" download>FinBoy logo</a> or the <a className="underline" href="/brand/finboy-icon-512.png" download>square icon</a>.</p>
     <h2 className="text-2xl font-semibold">Get in touch</h2>
