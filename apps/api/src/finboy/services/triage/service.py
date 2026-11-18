@@ -45,6 +45,8 @@ CATEGORY_HINTS: dict[Category, str] = {
     "loan_emi": "loan, EMI, SHG or instalment repayment",
     "fees": "bank charges",
     "family_events": "wedding, festival, gifts, ceremonies",
+    "work": "office, clients, coworking, tools for work",
+    "friends": "going out with friends, cinema, a party, an outing",
     "remittance": "money sent to or received from family",
     "farming": (
         "seeds, fertiliser, pesticide, diesel for pump or tractor, tractor hire, farm labour"

@@ -80,6 +80,8 @@ SPENDING_ORDER: tuple[Category, ...] = (
     "rent",
     "education",
     "family_events",
+    "work",
+    "friends",
     "loan_emi",
     "travel",
     "subscriptions",

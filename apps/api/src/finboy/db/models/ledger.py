@@ -43,6 +43,8 @@ Category = Literal[
     "livestock",
     "phone_recharge",
     "family_events",
+    "work",
+    "friends",
     "remittance",
     "wages",
     "farm_sales",
@@ -118,7 +120,7 @@ class Transaction(Base):
             "category IN ('salary','other_income','rent','food_dining','groceries','transport',"
             "'shopping','utilities','subscriptions','travel','health','education','investments',"
             "'loan_emi','fees','transfer','farming','livestock','phone_recharge','family_events',"
-            "'remittance','wages','farm_sales','govt_benefit','other')",
+            "'work','friends','remittance','wages','farm_sales','govt_benefit','other')",
             name="category",
         ),
         Index("ix_transactions_user_id_occurred_at", "user_id", "occurred_at"),

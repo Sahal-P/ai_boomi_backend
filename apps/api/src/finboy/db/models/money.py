@@ -17,13 +17,13 @@ from finboy.db.base import Base
 BUDGET_CATEGORIES = (
     "'total','rent','food_dining','groceries','transport','shopping','utilities',"
     "'subscriptions','travel','health','education','investments','loan_emi','fees','farming',"
-    "'livestock','phone_recharge','family_events','remittance','other'"
+    "'livestock','phone_recharge','family_events','work','friends','remittance','other'"
 )
 CATEGORIES = (
     "'salary','other_income','rent','food_dining','groceries','transport','shopping','utilities',"
     "'subscriptions','travel','health','education','investments','loan_emi','fees','transfer',"
-    "'farming','livestock','phone_recharge','family_events','remittance','wages','farm_sales',"
-    "'govt_benefit','other'"
+    "'farming','livestock','phone_recharge','family_events','work','friends','remittance','wages',"
+    "'farm_sales','govt_benefit','other'"
 )
 
 

@@ -45,6 +45,8 @@ CATEGORY = {
     "livestock": "पशु",
     "phone_recharge": "मोबाइल रिचार्ज",
     "family_events": "शादी-त्योहार",
+    "work": "काम",
+    "friends": "दोस्त और घूमना",
     "remittance": "परिवार का पैसा",
     "wages": "मज़दूरी",
     "farm_sales": "फ़सल-दूध की बिक्री",

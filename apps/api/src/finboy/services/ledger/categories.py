@@ -40,6 +40,8 @@ CATEGORY_RULES: tuple[tuple[str, Category], ...] = (
         "food_dining",
     ),
     (r"\b(flipkart|meesho|ajio|nykaa|textiles?|fashion|footwear|electronics)\b", "shopping"),
+    (r"\b(wework|awfis|91springboard|cowork)\b", "work"),
+    (r"\b(pvr|inox|carnival cinemas)\b", "friends"),
 )
 
 

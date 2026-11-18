@@ -63,7 +63,7 @@ export const PASSWORD = "synthetic-household-password";
 const NOW = "2026-10-24T09:30:00+05:30";
 const BUDGETED = [
   "total", "rent", "food_dining", "groceries", "transport", "shopping", "utilities", "subscriptions", "travel", "health",
-  "education", "investments", "loan_emi", "fees", "farming", "livestock", "phone_recharge", "family_events", "remittance", "other",
+  "education", "investments", "loan_emi", "fees", "farming", "livestock", "phone_recharge", "family_events", "work", "friends", "remittance", "other",
 ];
 const uuid = (prefix: string, index: number) => `${prefix}-0000-4000-8000-${index.toString(16).padStart(12, "0")}`;
 export const ids = {

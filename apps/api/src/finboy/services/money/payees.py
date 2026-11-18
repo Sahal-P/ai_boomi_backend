@@ -45,6 +45,8 @@ SpendingCategory = Literal[
     "livestock",
     "phone_recharge",
     "family_events",
+    "work",
+    "friends",
     "remittance",
     "other",
 ]

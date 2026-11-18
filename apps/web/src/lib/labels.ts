@@ -20,6 +20,8 @@ export const categoryLabels: Record<Category, string> = {
   groceries: "Groceries",
   transport: "Transport",
   shopping: "Shopping",
+  work: "Work",
+  friends: "Friends & outings",
   utilities: "Utilities",
   subscriptions: "Subscriptions",
   travel: "Travel",

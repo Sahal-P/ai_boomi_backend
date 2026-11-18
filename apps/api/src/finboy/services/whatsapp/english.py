@@ -44,6 +44,8 @@ CATEGORY = {
     "livestock": "Livestock",
     "phone_recharge": "Phone recharge",
     "family_events": "Family events",
+    "work": "Work",
+    "friends": "Friends & outings",
     "remittance": "Family money",
     "wages": "Wages",
     "farm_sales": "Farm sales",

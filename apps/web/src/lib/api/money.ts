@@ -10,6 +10,8 @@ export const categories = [
   "groceries",
   "transport",
   "shopping",
+  "work",
+  "friends",
   "utilities",
   "subscriptions",
   "travel",

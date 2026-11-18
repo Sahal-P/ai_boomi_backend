@@ -120,6 +120,8 @@ CATEGORIES: dict[Category, tuple[str, ...]] = {
     "livestock": ("livestock", "cattle", "fodder", "पशु", "चारा", "കന്നുകാലി"),
     "phone_recharge": ("recharge", "रिचार्ज", "റീചാർജ്"),
     "family_events": ("wedding", "festival", "शादी", "त्योहार", "കല്യാണ", "ഉത്സവ"),
+    "work": ("work spending", "office", "काम का खर्च", "ജോലി ചെലവ്"),
+    "friends": ("outing", "outings", "friends", "cinema", "घूमने", "दोस्तों", "സുഹൃത്തുക്കൾ"),
     "remittance": ("sent home", "remittance", "घर भेजे", "परिवार को भेज", "വീട്ടിലേക്ക് അയച്ച"),
     "wages": ("wages", "mazdoori", "मज़दूरी", "मजदूरी", "കൂലി"),
     "farm_sales": ("crop sale", "milk sale", "फसल बेच", "दूध बेच", "വിള വിൽപ്പന"),

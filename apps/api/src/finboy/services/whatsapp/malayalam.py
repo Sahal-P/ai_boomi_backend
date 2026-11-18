@@ -46,6 +46,8 @@ CATEGORY = {
     "livestock": "കന്നുകാലി",
     "phone_recharge": "മൊബൈൽ റീചാർജ്",
     "family_events": "കല്യാണം, ആഘോഷം",
+    "work": "ജോലി",
+    "friends": "സുഹൃത്തുക്കൾ",
     "remittance": "വീട്ടുകാരുടെ പണം",
     "wages": "കൂലി",
     "farm_sales": "വിളവ് വിൽപ്പന",

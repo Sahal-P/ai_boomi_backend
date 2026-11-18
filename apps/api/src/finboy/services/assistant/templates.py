@@ -381,6 +381,8 @@ CATEGORY_NAMES: dict[str, tuple[str, str, str]] = {
     "livestock": ("livestock", "पशुओं", "കന്നുകാലികൾ"),
     "phone_recharge": ("phone recharge", "मोबाइल रिचार्ज", "ഫോൺ റീചാർജ്"),
     "family_events": ("weddings and festivals", "शादी-त्योहारों", "കല്യാണവും ഉത്സവങ്ങളും"),
+    "work": ("work", "काम", "ജോലി"),
+    "friends": ("friends and outings", "दोस्तों और घूमने", "സുഹൃത്തുക്കൾ"),
     "remittance": ("money to or from family", "परिवार के लेन-देन", "കുടുംബത്തിനുള്ള പണം"),
     "wages": ("wages", "मज़दूरी", "കൂലി"),
     "farm_sales": ("farm sales", "फसल और दूध की बिक्री", "കാർഷിക വിൽപ്പന"),
