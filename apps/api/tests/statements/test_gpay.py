@@ -88,6 +88,16 @@ def test_a_row_that_is_neither_paid_nor_received_is_kept_apart_from_the_totals()
     assert statement.rows[1].name == "Self transfer to Sample Bank 5678"
 
 
+def test_a_date_printed_with_its_year_is_read() -> None:
+    """Current Google Pay statements print "01 Apr, 2026" on one line and the time below it."""
+    current = Row(date="01 Apr, 2026", year="")
+    statement = parse_statement(statement_pdf([[current]], sent="₹315", received="₹0"))
+    row = statement.rows[0]
+    assert statement.reconciled
+    assert row.occurred_at == datetime(2026, 4, 1, 10, 42, tzinfo=IST)
+    assert (row.direction, row.name, row.amount_minor) == ("out", "Asha Stores", 31500)
+
+
 def test_missing_pages_and_rows_outside_the_period_are_unreadable() -> None:
     pages = [[Row()], [Row(date="05 Apr,", upi="600000000006")]]
     assert problem(statement_pdf(pages, numbering=[(1, 3), (2, 3)], sent="₹568")) == (

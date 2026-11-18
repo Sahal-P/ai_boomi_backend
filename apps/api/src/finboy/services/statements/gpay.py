@@ -35,7 +35,9 @@ Problem = Literal["not_gpay_statement", "statement_locked", "statement_unreadabl
 Direction = Literal["out", "in", "other"]
 
 AMOUNT = re.compile(r"^₹(\d[\d,]*(?:\.\d{1,2})?)$")
-DATE_START = re.compile(r"^\d{1,2}\s*[A-Z][a-z]{2},?$")
+# A row starts on the date. Older statements put the year on the next line ("01 Apr," then "2026");
+# current ones print the year on the date line ("01 Apr, 2026").
+DATE_START = re.compile(r"^\d{1,2}\s*[A-Z][a-z]{2},?(?:\s+\d{4})?$")
 WHEN = re.compile(r"^(\d{1,2})\s*([A-Z][a-z]{2}),?\s*(\d{4})\s*(\d{1,2}):(\d{2})\s*([AP]M)$")
 PERIOD = re.compile(r"(\d{1,2} [A-Z][a-z]+ \d{4})\s*-\s*(\d{1,2} [A-Z][a-z]+ \d{4})")
 REFERENCE = re.compile(r"^UPI Transaction ID:?\s*([A-Za-z0-9]{6,35})$")
@@ -304,8 +306,8 @@ def _rows(words: Sequence[_Word], layout: _Layout, *, page: int) -> list[Row]:
             columns[2].append(word)
         else:
             columns[1].append(word)
-    # A row starts where a date ("01 Apr,") opens a line in the first column; every word below
-    # it, in any column, belongs to that row until the next date.
+    # A row starts where a date ("01 Apr," or "01 Apr, 2026") opens a line in the first column;
+    # every word below it, in any column, belongs to that row until the next date.
     starts = [line.top for line in _grouped(columns[0]) if DATE_START.match(line.text)]
     blocks: list[tuple[list[_Word], list[_Word], list[_Word]]] = [([], [], []) for _ in starts]
     for index, column in enumerate(columns):

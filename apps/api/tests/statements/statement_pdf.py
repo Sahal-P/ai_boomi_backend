@@ -138,11 +138,10 @@ def statement_pdf(
         ]
         top = header - 41
         for row in rows:
-            runs += [
-                (24.5, top, 9, row.date),
-                (24.4, top - 11, 9, row.year),
-                (24.4, top - 22, 9, row.time),
-            ]
+            runs += [(24.5, top, 9, row.date)]
+            if row.year:
+                runs.append((24.4, top - 11, 9, row.year))
+            runs.append((24.4, top - 22, 9, row.time))
             lines = [*row.details, f"UPI Transaction ID: {row.upi}", row.account]
             runs += [(104.9, top - 15 * offset, 9, line) for offset, line in enumerate(lines)]
             runs += [(540.0, top - 11 * offset, 9, part) for offset, part in enumerate(row.amount)]
