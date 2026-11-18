@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 from finboy.core.clock import IST
 from finboy.core.config import Settings
 from finboy.db.models.advisor import NUDGE_KINDS
+from finboy.services import model_response
 from finboy.services.advisor import grounding, memory, prompt
 from finboy.services.advisor.client import client_for
 from finboy.services.advisor.tools import Toolbox, _first_of_month
@@ -654,7 +655,9 @@ def compose(
         {"role": "user", "content": "Write the message."},
     ]
     try:
-        response = model.responses.parse(
+        response = model_response.parse(
+            model,
+            settings.assistant_provider,
             model=settings.advisor_model,
             input=items,
             text_format=NudgeReply,

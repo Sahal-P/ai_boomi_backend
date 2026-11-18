@@ -28,6 +28,7 @@ from finboy.core.clock import today_ist
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import DisplayStyle, Language
+from finboy.services import model_response
 from finboy.services.advisor import grounding, history, memory, prompt, snapshot, summaries, tools
 from finboy.services.advisor.client import client_for
 from finboy.services.assistant import service as assistant
@@ -206,7 +207,9 @@ def converse(
         if remaining < 1:
             raise TimeoutError
         final = rounds >= settings.advisor_max_tool_rounds
-        response = client.responses.parse(
+        response = model_response.parse(
+            client,
+            settings.assistant_provider,
             model=settings.advisor_model,
             input=items,
             tools=definitions,

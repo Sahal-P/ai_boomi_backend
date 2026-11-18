@@ -6,15 +6,19 @@ from openai import OpenAI
 
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
+from finboy.services import model_response
 
 
 @lru_cache(maxsize=4)
-def _client(key: str, retries: int) -> OpenAI:
-    return OpenAI(api_key=key, max_retries=retries)
+def _client(key: str, retries: int, url: str | None = None) -> OpenAI:
+    return OpenAI(api_key=key, max_retries=retries, base_url=url)
 
 
 def client_for(settings: Settings) -> OpenAI:
-    key = settings.openai_api_key
+    provider = settings.assistant_provider
+    key = settings.ai_key(provider)
     if key is None or not key.get_secret_value() or not settings.advisor_model:
         raise ProviderUnavailable("configuration_missing")
-    return _client(key.get_secret_value(), settings.provider_max_retries)
+    return _client(
+        key.get_secret_value(), settings.provider_max_retries, model_response.base_url(provider)
+    )

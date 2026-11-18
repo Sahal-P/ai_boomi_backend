@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
+from finboy.services import model_response
 from finboy.services.ingestion.amounts import parse_amount
 from finboy.services.ingestion.types import Category
 from finboy.services.speech.media import InvalidAudio, run_media
@@ -332,9 +333,10 @@ def read_image(
     image: bytes, content_type: str, settings: Settings, received_at: datetime
 ) -> ImageReading | None:
     """A grounded line from a payment screenshot or a photo of a bill, or None otherwise."""
-    key = settings.openai_api_key
+    provider = settings.screenshot_provider
+    key = settings.ai_key(provider)
     if (
-        not settings.openai_vision_model
+        not settings.ai_model(provider, settings.openai_vision_model)
         or key is None
         or not key.get_secret_value()
         or os.environ.get("FINBOY_EXTRACTION_MODE", "live") != "live"
@@ -384,14 +386,21 @@ def preview(png: bytes, settings: Settings) -> bytes:
 
 def _vision_read(png: bytes, settings: Settings, received_at: datetime) -> ImageReading | None:
     """The vision model's transcript and fields, kept only where they appear in the image."""
+    provider = settings.screenshot_provider
+    key = settings.ai_key(provider)
+    if not key:
+        raise CaptureUnavailable
     try:
         with OpenAI(
-            api_key=settings.openai_api_key.get_secret_value(),
+            api_key=key.get_secret_value(),
+            base_url=model_response.base_url(provider),
             timeout=settings.assistant_timeout_seconds,
             max_retries=settings.provider_max_retries,
         ) as client:
-            response = client.responses.parse(
-                model=settings.openai_vision_model,
+            response = model_response.parse(
+                client,
+                provider,
+                model=settings.ai_model(provider, settings.openai_vision_model),
                 store=False,
                 max_output_tokens=3000,
                 input=[

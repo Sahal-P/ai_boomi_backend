@@ -80,8 +80,13 @@ def _prepare(
         if rules.not_transaction:
             return Prepared(message, classification, rules, trusted)
         mode = os.environ.get("FINBOY_EXTRACTION_MODE", "live")
-        model = settings.openai_extraction_model
-        key = settings.openai_api_key
+        provider = settings.email_extraction_provider
+        model = (
+            settings.openai_extraction_model
+            if mode == "offline"
+            else settings.ai_model(provider, settings.openai_extraction_model)
+        )
+        key = settings.ai_key(provider)
         # FinBoy renders voice and typed entries itself in the rules format: no model call,
         # nothing cached.
         if (

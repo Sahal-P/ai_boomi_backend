@@ -11,6 +11,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from finboy.core.config import Settings
+from finboy.services import model_response
 from finboy.services.ingestion.amounts import AMOUNT_PATTERN, parse_amount
 from finboy.services.ingestion.claims import (
     MODEL_CONFLICT,
@@ -102,14 +103,25 @@ def cache_key(message: NormalizedMessage, model: str) -> str:
 def live_extract(message: NormalizedMessage, settings: Settings) -> LLMResult:
     from openai import OpenAI
 
-    key = settings.openai_api_key
+    provider = settings.email_extraction_provider
+    key = settings.ai_key(provider)
     if key is None or not key.get_secret_value():
         raise ExtractionUnavailable("extraction_unavailable")
     # SDK retries transient errors with exponential backoff. Do not duplicate that loop.
-    with _LIMIT, OpenAI(api_key=key.get_secret_value(), timeout=30.0, max_retries=2) as client:
+    with (
+        _LIMIT,
+        OpenAI(
+            api_key=key.get_secret_value(),
+            timeout=30.0,
+            max_retries=2,
+            base_url=model_response.base_url(provider),
+        ) as client,
+    ):
         try:
-            response = client.responses.parse(
-                model=settings.openai_extraction_model,
+            response = model_response.parse(
+                client,
+                provider,
+                model=settings.ai_model(provider, settings.openai_extraction_model),
                 reasoning={"effort": "none"},
                 max_output_tokens=3000,
                 store=False,

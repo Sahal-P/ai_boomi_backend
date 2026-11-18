@@ -13,6 +13,8 @@ from sqlalchemy.exc import ArgumentError
 from finboy.core.languages import Language
 
 LOCAL_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
+ModelProvider = Literal["openai", "deepseek"]
+DEEPSEEK_MODEL = "deepseek-flash"
 
 API_ROOT = Path(__file__).resolve().parents[3]
 
@@ -36,7 +38,10 @@ class Settings(BaseSettings):
     openai_assistant_model: str | None = None
     openai_transcribe_model: str | None = None
     openai_vision_model: str | None = None
-    entry_parser_provider: Literal["openai", "deepseek"] = "openai"
+    entry_parser_provider: ModelProvider = "openai"
+    assistant_provider: ModelProvider = "openai"
+    email_extraction_provider: ModelProvider = "openai"
+    screenshot_provider: ModelProvider = "openai"
     deepseek_api_key: SecretStr | None = None
     # "groq" sends English/Hindi to Groq Whisper (Malayalam stays on OpenAI); "sarvam" sends all
     # three languages to Sarvam Saaras (docs/malayalam-round/contract.md).
@@ -348,7 +353,15 @@ class Settings(BaseSettings):
 
     @property
     def advisor_model(self) -> str | None:
-        return self.openai_advisor_model or self.openai_assistant_model
+        return self.ai_model(
+            self.assistant_provider, self.openai_advisor_model or self.openai_assistant_model
+        )
+
+    def ai_key(self, provider: ModelProvider) -> SecretStr | None:
+        return self.deepseek_api_key if provider == "deepseek" else self.openai_api_key
+
+    def ai_model(self, provider: ModelProvider, openai_model: str | None) -> str | None:
+        return DEEPSEEK_MODEL if provider == "deepseek" else openai_model
 
     @property
     def coach_active(self) -> bool:

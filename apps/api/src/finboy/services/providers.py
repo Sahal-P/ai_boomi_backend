@@ -76,7 +76,11 @@ def advisor(settings: Settings) -> Literal["off", "configured", "missing"]:
     """The advisor round (docs/advisor-round/contract.md): its flag and model key."""
     if not settings.advisor_enabled:
         return "off"
-    return "configured" if settings.openai_api_key and settings.advisor_model else "missing"
+    return (
+        "configured"
+        if settings.ai_key(settings.assistant_provider) and settings.advisor_model
+        else "missing"
+    )
 
 
 def coach(settings: Settings) -> Literal["off", "window_only", "configured"]:

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from finboy.core.config import Settings
 from finboy.db.models.advisor import AdvisorThread
+from finboy.services import model_response
 from finboy.services.advisor import embeddings, history, prompt
 from finboy.services.advisor.client import client_for
 
@@ -50,7 +51,9 @@ def _summarize(bind: Engine, settings: Settings, user_id: UUID, current_id: UUID
                     continue
                 transcript = "\n".join(lines)[-MAX_TRANSCRIPT:]
                 session.rollback()
-                response = client_for(settings).responses.parse(
+                response = model_response.parse(
+                    client_for(settings),
+                    settings.assistant_provider,
                     model=settings.advisor_model,
                     input=[
                         {"role": "system", "content": prompt.SUMMARY},

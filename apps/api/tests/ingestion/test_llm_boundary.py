@@ -39,8 +39,10 @@ def test_live_sdk_contract_failure_redaction(monkeypatch, caplog):
             return False
 
     monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=Client))
-    settings = SimpleNamespace(
-        openai_api_key=SimpleNamespace(get_secret_value=lambda: "local-test-key"),
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql+psycopg://test:test@127.0.0.1:1/finboy_test",
+        openai_api_key="local-test-key",
         openai_extraction_model="configured-model",
     )
     message = NormalizedMessage("example.test", "s", None, private, "h")
@@ -185,8 +187,10 @@ def test_global_live_concurrency_is_bounded(monkeypatch):
             return False
 
     monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=Client))
-    settings = SimpleNamespace(
-        openai_api_key=SimpleNamespace(get_secret_value=lambda: "local-test-key"),
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql+psycopg://test:test@127.0.0.1:1/finboy_test",
+        openai_api_key="local-test-key",
         openai_extraction_model="configured-model",
     )
     message = NormalizedMessage("example.test", "s", None, "Synthetic input", "h")

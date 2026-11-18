@@ -229,7 +229,9 @@ def test_deepseek_uses_the_same_grounding(monkeypatch, message, phrase, amount) 
     def create(**kwargs):
         seen.update(kwargs)
         model_output = reading(amount_phrase=phrase, counterparty="Invented payee")
-        return SimpleNamespace(status="completed", output_text=model_output.model_dump_json())
+        return SimpleNamespace(
+            status="completed", output=[], output_text=model_output.model_dump_json()
+        )
 
     def client(**kwargs):
         assert kwargs["api_key"] == "synthetic-deepseek-key"

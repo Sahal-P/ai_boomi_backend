@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
+from finboy.services import model_response
 from finboy.services.assistant.language import resolve_style
 from finboy.services.ingestion.amounts import AMOUNT_PATTERN
 from finboy.services.ingestion.amounts import parse_amount as rupees
@@ -398,10 +399,9 @@ def read_statements(text: str, settings: Settings, today: date) -> list[Statemen
     if QUESTION.search(text) and not BANK_SMS.search(text):
         return [Statement("question")]
     text = mask(text)
-    if settings.entry_parser_provider == "deepseek":
-        api_key, model = settings.deepseek_api_key, "deepseek-flash"
-    else:
-        api_key, model = settings.openai_api_key, settings.openai_assistant_model
+    provider = settings.entry_parser_provider
+    api_key = settings.ai_key(provider)
+    model = settings.ai_model(provider, settings.openai_assistant_model)
     if not api_key or not model:
         if settings.environment == "production":
             raise ProviderUnavailable("configuration_missing")
@@ -461,7 +461,7 @@ def _read(
     text: str, settings: Settings, today: date, *, api_key: SecretStr, model: str
 ) -> list[Statement]:
     """The model classifies and copies phrases. The parser grounds them before use."""
-    deepseek = settings.entry_parser_provider == "deepseek"
+    provider = settings.entry_parser_provider
     messages = [
         {"role": "system", "content": PROMPT},
         {"role": "user", "content": text},
@@ -469,37 +469,19 @@ def _read(
     try:
         with OpenAI(
             api_key=api_key.get_secret_value(),
-            base_url="https://api.deepseek.com" if deepseek else None,
+            base_url=model_response.base_url(provider),
             timeout=settings.assistant_timeout_seconds,
             max_retries=settings.provider_max_retries,
         ) as client:
-            if deepseek:
-                response = client.responses.create(
-                    model=model,
-                    input=messages,
-                    reasoning={"effort": "none"},
-                    max_output_tokens=1500,
-                    text={
-                        "format": {
-                            "type": "json_schema",
-                            "name": "StatementReading",
-                            "schema": StatementReading.model_json_schema(),
-                        }
-                    },
-                )
-                reading = (
-                    StatementReading.model_validate_json(response.output_text)
-                    if response.status == "completed"
-                    else None
-                )
-            else:
-                reading = client.responses.parse(
-                    model=model,
-                    input=messages,
-                    store=False,
-                    max_output_tokens=1500,
-                    text_format=StatementReading,
-                ).output_parsed
+            reading = model_response.parse(
+                client,
+                provider,
+                model=model,
+                input=messages,
+                store=False,
+                max_output_tokens=1500,
+                text_format=StatementReading,
+            ).output_parsed
     except Exception:
         raise ProviderUnavailable("statement_unavailable") from None
     if not isinstance(reading, StatementReading):

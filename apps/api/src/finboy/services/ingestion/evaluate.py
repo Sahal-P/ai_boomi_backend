@@ -24,6 +24,9 @@ def evaluate(
     oracle = json.loads((MAILBOX / "expected_ledger.json").read_text())
     paths = sorted(MAILBOX.glob("*.eml"))
     mode = "live" if live else "rules" if rules_only else "offline"
+    model = settings.openai_extraction_model
+    if live:
+        model = settings.ai_model(settings.email_extraction_provider, model)
     with ThreadPoolExecutor(max_workers=4) as pool:
         prepared = list(
             pool.map(lambda path: prepare(path.read_bytes(), settings, mode=mode), paths)
@@ -31,7 +34,7 @@ def evaluate(
     ledger = Ledger()
     for path, item in zip(paths, prepared, strict=True):
         if live:
-            record_prepared(item, settings.openai_extraction_model)
+            record_prepared(item, model)
         for event in item.extraction.events:
             ledger.add(event, path.name, item.trusted)
     expected = oracle["transactions"]
@@ -155,7 +158,7 @@ def evaluate(
         errors.append("before_correction_food")
     metrics = {
         "mode": mode,
-        "model": getattr(settings, "openai_extraction_model", None),
+        "model": model,
         "messages": len(paths),
         "canonical_count": len(actual),
         "expected_canonical_count": len(expected),

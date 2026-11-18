@@ -196,7 +196,12 @@ def system(session: Session, settings: Settings) -> SystemStatus:
         },
         providers={
             "assistant": configured(
-                bool(settings.openai_api_key and settings.openai_assistant_model)
+                bool(
+                    settings.ai_key(settings.assistant_provider)
+                    and settings.ai_model(
+                        settings.assistant_provider, settings.openai_assistant_model
+                    )
+                )
             ),
             "transcription": configured(providers.transcription(settings)),
             "english_hindi_speech": configured(providers.english_hindi_tts(settings)),

@@ -13,6 +13,7 @@ from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
 from finboy.db.models.ledger import Category
+from finboy.services import model_response
 from finboy.services.assistant.periods import LAST_WEEK, THIS_WEEK, normalized, read_period
 from finboy.services.money.engine import PeriodSpec
 from finboy.services.triage import service as triage
@@ -462,7 +463,10 @@ def parse_intent(
     fallback = rule_intent(text)
     if rules_only:
         return fallback
-    if not settings.openai_api_key or not settings.openai_assistant_model:
+    provider = settings.assistant_provider
+    if not settings.ai_key(provider) or not settings.ai_model(
+        provider, settings.openai_assistant_model
+    ):
         if settings.environment == "production":
             raise ProviderUnavailable("configuration_missing")
         return fallback
@@ -523,14 +527,21 @@ def _model_intent(
     text: str, settings: Settings, display_style: str, speech_language: Language
 ) -> ParsedIntent:
     """The assistant model's reading and contextual prose, checked against the question."""
+    provider = settings.assistant_provider
+    key = settings.ai_key(provider)
+    if not key:
+        raise ProviderUnavailable("configuration_missing")
     try:
         with OpenAI(
-            api_key=settings.openai_api_key.get_secret_value(),
+            api_key=key.get_secret_value(),
+            base_url=model_response.base_url(provider),
             timeout=settings.assistant_timeout_seconds,
             max_retries=settings.provider_max_retries,
         ) as client:
-            response = client.responses.parse(
-                model=settings.openai_assistant_model,
+            response = model_response.parse(
+                client,
+                provider,
+                model=settings.ai_model(provider, settings.openai_assistant_model),
                 store=False,
                 max_output_tokens=2400,
                 text_format=ModelReading,
