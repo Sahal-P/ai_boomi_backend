@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     openai_vision_model: str | None = None
     entry_parser_provider: ModelProvider = "openai"
     assistant_provider: ModelProvider = "openai"
+    advisor_answer_provider: ModelProvider = "openai"
     email_extraction_provider: ModelProvider = "openai"
     screenshot_provider: ModelProvider = "openai"
     deepseek_api_key: SecretStr | None = None
@@ -353,9 +354,10 @@ class Settings(BaseSettings):
 
     @property
     def advisor_model(self) -> str | None:
-        return self.ai_model(
-            self.assistant_provider, self.openai_advisor_model or self.openai_assistant_model
-        )
+        return self.advisor_model_for(self.assistant_provider)
+
+    def advisor_model_for(self, provider: ModelProvider) -> str | None:
+        return self.ai_model(provider, self.openai_advisor_model or self.openai_assistant_model)
 
     def ai_key(self, provider: ModelProvider) -> SecretStr | None:
         return self.deepseek_api_key if provider == "deepseek" else self.openai_api_key

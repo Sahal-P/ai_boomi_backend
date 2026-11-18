@@ -76,9 +76,10 @@ def advisor(settings: Settings) -> Literal["off", "configured", "missing"]:
     """The advisor round (docs/advisor-round/contract.md): its flag and model key."""
     if not settings.advisor_enabled:
         return "off"
+    provider = settings.advisor_answer_provider
     return (
         "configured"
-        if settings.ai_key(settings.assistant_provider) and settings.advisor_model
+        if settings.ai_key(provider) and settings.advisor_model_for(provider)
         else "missing"
     )
 

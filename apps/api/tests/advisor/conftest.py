@@ -39,7 +39,7 @@ def scripted(monkeypatch):
 
     def install(*steps: list[Item] | service.AdvisorReply | Exception) -> ScriptedModel:
         model = ScriptedModel(*steps)
-        monkeypatch.setattr(service, "client_for", lambda _settings: model)
+        monkeypatch.setattr(service, "client_for", lambda _settings, **_kwargs: model)
         return model
 
     return install

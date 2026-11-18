@@ -334,8 +334,11 @@ def main(argv: list[str] | None = None) -> int:
         print("PASSED (offline check)")
         return 0
     settings = Settings()  # type: ignore[call-arg]
-    if not settings.ai_key(settings.assistant_provider) or not settings.advisor_model:
-        print("The configured assistant provider requires a key and model")
+    if any(
+        not settings.ai_key(provider) or not settings.advisor_model_for(provider)
+        for provider in (settings.advisor_answer_provider, settings.assistant_provider)
+    ):
+        print("The configured advisor providers require a key and model")
         return 2
     # The phase 2 and 3 releases.
     released = {"advisor_enabled": True, "knowledge_enabled": True, "coach_enabled": True}

@@ -585,7 +585,8 @@ WhatsApp diary parsing and the web Quick Add preview. Set `DEEPSEEK_API_KEY` in 
 backend environment file. Manual entry saves directly, and speech transcription
 uses its own provider settings. The default parser is `openai`.
 
-The same key supports `ASSISTANT_PROVIDER=deepseek` for Ask, summaries and coach wording,
+The same key supports `ASSISTANT_PROVIDER=deepseek` for question interpretation, summaries
+and coach wording, `ADVISOR_ANSWER_PROVIDER=deepseek` for Ask with ledger tools,
 `EMAIL_EXTRACTION_PROVIDER=deepseek` for minimized email text, and
 `SCREENSHOT_PROVIDER=deepseek` for payment and bill images. Enable each after its
 synthetic checks and publication of the privacy notice. DeepSeek caches request context

@@ -199,6 +199,7 @@ def converse(
     Every tool result's figures join `ctx.known`, the figures the reply may quote."""
     deadline = perf_counter() + settings.advisor_timeout_seconds * 2
     definitions = tools.definitions(settings)
+    provider = settings.advisor_answer_provider
     used: list[str] = []
     evidence: list[TransactionView] = []
     rounds, repaired = 0, False
@@ -209,8 +210,8 @@ def converse(
         final = rounds >= settings.advisor_max_tool_rounds
         response = model_response.parse(
             client,
-            settings.assistant_provider,
-            model=settings.advisor_model,
+            provider,
+            model=settings.advisor_model_for(provider),
             input=items,
             tools=definitions,
             tool_choice="none" if final else "auto",
@@ -348,7 +349,8 @@ def advise(
         {"role": "user", "content": question},
     ]
     try:
-        result = converse(client_for(settings), settings, items, box, ctx, session, progress)
+        client = client_for(settings, provider=settings.advisor_answer_provider)
+        result = converse(client, settings, items, box, ctx, session, progress)
     except Exception:
         # Unavailable, slow, malformed or still unchecked: the rules and templates answer.
         return fallback("fallback", [])
