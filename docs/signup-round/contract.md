@@ -102,8 +102,8 @@ Gmail needs.
   statement reader, in English or Hindi. It returns kind, amount, direction, counterparty,
   category, date and due day, and nothing is stored. Amounts must be grounded deterministically,
   as on WhatsApp.
-- `POST /api/v1/entries` saves the fields the person saw and may have edited. Money in or out
-  becomes one `manual_entry` line through the import pipeline and is confirmed with the existing
+- `POST /api/v1/entries` saves fields entered manually or filled in from a preview. Money in or out
+  becomes one `manual_entry` event through the import pipeline and is confirmed with the existing
   versioned decision: Save is the explicit confirmation. A due becomes an `upcoming` `loan`
   obligation. Quick adds are labelled "Added by you" and never appear in the imports list.
 - **Undo** in the sheet rejects the entry (a due is dismissed), so it stops counting and never

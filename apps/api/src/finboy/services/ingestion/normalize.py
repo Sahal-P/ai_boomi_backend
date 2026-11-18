@@ -44,7 +44,8 @@ class NormalizedMessage:
 
 
 def minimize(text: str) -> str:
-    """Retain financial values/dates; mask account, phone and long numeric identifiers."""
+    """Retain financial values and dates while removing links and masking identifiers."""
+    text = re.sub(r"https?://\S+", "", text, flags=re.I)
     text = re.sub(r"[\w.+-]+@[\w.-]+", "[address]", text)
 
     def pseudonymize_reference(match: re.Match[str]) -> str:
@@ -105,7 +106,7 @@ def normalize(raw: bytes, received_at: datetime | None = None) -> NormalizedMess
         ):
             break
         if not line.startswith(">"):
-            lines.append(re.sub(r"https?://\S+", "", line))
+            lines.append(line)
     text = minimize(subject + "\n" + "\n".join(lines))[:MAX_TEXT]
     text = re.sub(r"[ \t]+", " ", text)
     if received_at is None:

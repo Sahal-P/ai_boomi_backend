@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import sessionmaker
 
+from finboy.core.clock import IST
 from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.core.languages import Language
 from finboy.db.models.ledger import EmailSource, SourceEvent, Transaction
@@ -16,8 +17,9 @@ from finboy.db.models.mail import ImportRun
 from finboy.services.assistant.language import money
 from finboy.services.imports.runner import create_run, run_import
 from finboy.services.ingestion import screenshot
+from finboy.services.ingestion.normalize import minimize
 from finboy.services.ingestion.pipeline import InboundMessage
-from finboy.services.ingestion.types import Category
+from finboy.services.ingestion.types import Category, Event
 from finboy.services.mail.security import MailError
 from finboy.services.whatsapp import statement
 from finboy.services.whatsapp.events import InboundQuestion
@@ -100,11 +102,38 @@ def record_entry(
     *,
     user_id: UUID,
     entry_id: str,
-    line: str,
+    entry: statement.Statement,
     received_at: datetime,
-    category: Category | None,
 ) -> Capture:
-    """Quick add on the website: one typed or spoken line through review, like a voice note."""
+    """Save the chosen web entry fields as one event through the shared import pipeline."""
+    if entry.kind not in {"spent", "received"} or entry.day is None or entry.amount_minor is None:
+        raise ValueError("incomplete_entry")
+    local = received_at.astimezone(IST)
+    occurred_at = (
+        local.replace(second=0, microsecond=0)
+        if entry.day == local.date()
+        else datetime.combine(entry.day, datetime.min.time(), tzinfo=IST)
+    )
+    merchant = minimize(entry.counterparty or "").strip() or None
+    whole, paise = divmod(entry.amount_minor, 100)
+    evidence = {
+        "amount_minor": f"₹{whole}.{paise:02d}",
+        "occurred_at": entry.day.isoformat(),
+    }
+    if merchant:
+        evidence["merchant"] = merchant
+    event = Event(
+        event_type="debit" if entry.kind == "spent" else "credit",
+        amount_minor=entry.amount_minor,
+        merchant=merchant,
+        occurred_at=occurred_at,
+        category=entry.category,
+        evidence=evidence,
+        field_confidence=dict.fromkeys(evidence, 1.0),
+        extractor_id="manual-entry-v1",
+        rule_fields=list(evidence),
+    )
+    line = statement.payment_line(entry, received_at)
     return _import_one(
         engine,
         settings,
@@ -113,7 +142,7 @@ def record_entry(
         message_id=entry_id,
         raw=statement.as_message(line, received_at, sender=ENTRY_SENDER, subject="Added in FinBoy"),
         received_at=received_at,
-        category_hint=category,
+        entry_event=event,
     )
 
 
@@ -128,6 +157,7 @@ def _import_one(
     received_at: datetime,
     category_hint: Category | None = None,
     attempts: int = 1,
+    entry_event: Event | None = None,
 ) -> Capture:
     factory = sessionmaker(engine, expire_on_commit=False)
     for attempt in range(attempts):
@@ -151,6 +181,7 @@ def _import_one(
                 raw_rfc822=raw,
                 received_at=received_at,
                 category_hint=category_hint,
+                entry_event=entry_event,
             )
         ],
     )

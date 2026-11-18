@@ -1,10 +1,10 @@
 """Quick add, daily limits and "Delete my account" through the real API and PostgreSQL."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from finboy.core.clock import today_ist
+from finboy.core.clock import IST, today_ist
 from finboy.db.models.core import User
 from finboy.db.models.ledger import EmailSource, Transaction
 from finboy.db.models.mail import AuditEvent
@@ -102,6 +102,51 @@ def test_quick_add_previews_then_saves_with_one_tap(world) -> None:
             browser.post("/api/v1/entries", json={"kind": "spent", "amount_minor": 0}).status_code
             == 422
         )
+    finally:
+        browser.__exit__(None, None, None)
+
+
+@pytest.mark.parametrize(
+    ("kind", "payee", "merchant", "direction", "category"),
+    [
+        ("spent", "Refund Club on 01-01-25", "Refund Club on 01-01-25", "out", "friends"),
+        ("received", "Asha paid Rs. 50 a@example.test", "Asha paid Rs. 50 [address]", "in", "work"),
+    ],
+)
+def test_entry_saves_the_chosen_fields_without_a_preview(
+    world, kind: str, payee: str, merchant: str, direction: str, category: str
+) -> None:
+    browser, phone = signed_in(world)
+    _, pg, _ = world
+    day = today_ist() - timedelta(days=5)
+    try:
+        saved = browser.post(
+            "/api/v1/entries",
+            json={
+                "kind": kind,
+                "amount_minor": 1250,
+                "counterparty": payee,
+                "category": category,
+                "day": day.isoformat(),
+            },
+        )
+        assert saved.status_code == 200
+        detail = browser.get(f"/api/v1/transactions/{saved.json()['transaction_id']}").json()
+        record = detail["transaction"]
+        assert record["status"] == "confirmed"
+        assert record["direction"] == direction
+        assert record["amount_minor"] == 1250
+        assert record["merchant"] == merchant
+        assert record["category"] == category
+        assert datetime.fromisoformat(record["occurred_at"]).astimezone(IST).date() == day
+        (source,) = detail["sources"]
+        assert source["source"] == "manual_entry"
+        assert source["merchant"] == merchant
+        with pg() as session:
+            (row,) = session.scalars(
+                select(Transaction).where(Transaction.user_id == phone.household())
+            ).all()
+            assert str(row.id) == saved.json()["transaction_id"]
     finally:
         browser.__exit__(None, None, None)
 

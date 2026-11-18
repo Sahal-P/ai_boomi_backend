@@ -65,10 +65,12 @@ const kindNames: Record<Draft["kind"], string> = {
   due: "To pay later",
 };
 
+const ENTRY_DATE_WINDOW_MS = 366 * 86_400_000;
+const MAX_ENTRY_PAISE = 1_000_000_000;
+
 /**
- * Quick add: say or type one sentence, check the card, Save. Save is the confirmation; Undo right
- * here rejects the entry (a due is dismissed) so it stops counting without waiting in Review. The
- * sentence itself is never stored.
+ * Quick add shares one draft and save flow for a sentence preview and manual entry.
+ * Undo rejects a transaction or dismisses an upcoming payment.
  */
 export function QuickAdd({
   open,
@@ -92,6 +94,13 @@ export function QuickAdd({
   const listening = voice.state.step === "requesting" || voice.state.step === "recording";
   const amount = draft ? inputPaise(draft.amount) : null;
   const today = istDate(new Date());
+  const due = draft?.kind === "due";
+  const todayMs = Date.parse(today);
+  const minDate = due ? today : new Date(todayMs - ENTRY_DATE_WINDOW_MS).toISOString().slice(0, 10);
+  const maxDate = due ? new Date(todayMs + ENTRY_DATE_WINDOW_MS).toISOString().slice(0, 10) : today;
+  const validDate = draft !== null && draft.date >= minDate && draft.date <= maxDate;
+  const validAmount = amount !== null && amount <= MAX_ENTRY_PAISE;
+  const showAmountError = Boolean(draft?.amount) && !validAmount;
 
   function reset() {
     setText("");
@@ -100,7 +109,13 @@ export function QuickAdd({
     setSaved(null);
     setUndone(false);
     action.clear();
-    voice.reset();
+    voice.cancel();
+  }
+
+  function changeOpen(next: boolean) {
+    if (!next && (action.busy === "save" || action.busy === "undo")) return;
+    if (!next) reset();
+    onOpenChange(next);
   }
 
   async function read() {
@@ -117,7 +132,7 @@ export function QuickAdd({
   }
 
   async function save() {
-    if (!draft || amount === null) return;
+    if (!draft || !validAmount || !validDate) return;
     const result = await action.run("save", "This entry wasn't saved", () =>
       saveEntry({
         kind: draft.kind,
@@ -158,28 +173,22 @@ export function QuickAdd({
     }
   }
 
-  const dateInvalid =
-    draft !== null &&
-    (draft.kind === "due" ? draft.date < today : draft.date > today || !draft.date);
-
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) reset();
-      }}
-    >
+    <Sheet open={open} onOpenChange={changeOpen}>
       <SheetContent
         side={wide ? "right" : "bottom"}
         className="gap-0 overflow-y-auto p-5 data-[side=bottom]:max-h-[92dvh] sm:max-w-md sm:p-6"
-        aria-describedby={`${ids}-description`}
+        aria-describedby={saved ? undefined : `${ids}-description`}
       >
         <SheetHeader className="p-0">
           <SheetTitle className="text-xl">Add money in or out</SheetTitle>
-          <SheetDescription id={`${ids}-description`}>
-            Say or type it the way you&apos;d tell a friend. Nothing is added until you save.
-          </SheetDescription>
+          {!saved && (
+            <SheetDescription id={`${ids}-description`}>
+              {draft
+                ? "Nothing is added until you save."
+                : "Type or say what happened, or enter the details yourself."}
+            </SheetDescription>
+          )}
         </SheetHeader>
 
         {saved ? (
@@ -195,10 +204,10 @@ export function QuickAdd({
                   <RotateCcw aria-hidden="true" /> {action.busy === "undo" ? "Undoing…" : "Undo"}
                 </Button>
               )}
-              <Button onClick={reset}>
+              <Button onClick={reset} disabled={action.busy !== null}>
                 <Plus aria-hidden="true" /> Add another
               </Button>
-              <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              <Button variant="ghost" onClick={() => changeOpen(false)} disabled={action.busy !== null}>
                 Done
               </Button>
             </div>
@@ -217,7 +226,7 @@ export function QuickAdd({
                 {(Object.keys(kindNames) as Draft["kind"][]).map((kind) => (
                   <label
                     key={kind}
-                    className="flex min-h-11 cursor-pointer items-center justify-center rounded-full border px-2 text-center text-xs font-semibold has-checked:border-ink has-checked:bg-ink has-checked:text-white"
+                    className="flex min-h-11 cursor-pointer items-center justify-center rounded-full border px-2 text-center text-xs font-semibold has-checked:border-ink has-checked:bg-ink has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2"
                   >
                     <input
                       type="radio"
@@ -247,9 +256,15 @@ export function QuickAdd({
                   inputMode="decimal"
                   autoComplete="off"
                   value={draft.amount}
-                  aria-invalid={amount === null || undefined}
+                  aria-invalid={showAmountError || undefined}
+                  aria-describedby={showAmountError ? `${ids}-amount-error` : undefined}
                   onChange={(event) => setDraft({ ...draft, amount: event.target.value })}
                 />
+                {showAmountError && (
+                  <p id={`${ids}-amount-error`} className="text-xs text-ink-soft">
+                    Enter ₹0.01 to ₹1 crore with up to two decimal places.
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <label htmlFor={`${ids}-date`} className="text-sm font-semibold">
@@ -259,11 +274,17 @@ export function QuickAdd({
                   id={`${ids}-date`}
                   type="date"
                   value={draft.date}
-                  min={draft.kind === "due" ? today : undefined}
-                  max={draft.kind === "due" ? undefined : today}
-                  aria-invalid={dateInvalid || undefined}
+                  min={minDate}
+                  max={maxDate}
+                  aria-invalid={!validDate || undefined}
+                  aria-describedby={!validDate ? `${ids}-date-error` : undefined}
                   onChange={(event) => setDraft({ ...draft, date: event.target.value })}
                 />
+                {!validDate && (
+                  <p id={`${ids}-date-error`} className="text-xs text-ink-soft">
+                    {due ? "Choose a date within the next year." : "Choose a date within the past year through today."}
+                  </p>
+                )}
               </div>
             </div>
             <div className="space-y-1.5">
@@ -278,31 +299,41 @@ export function QuickAdd({
                 onChange={(event) => setDraft({ ...draft, who: event.target.value })}
               />
             </div>
-            <div className="space-y-1.5">
-              <label htmlFor={`${ids}-category`} className="text-sm font-semibold">
-                Category
-              </label>
-              <select
-                id={`${ids}-category`}
-                value={draft.category}
-                onChange={(event) =>
-                  setDraft({ ...draft, category: event.target.value as Draft["category"] })
-                }
-                className="field field-select h-11 w-full rounded-lg pl-3 text-sm"
-              >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {categoryLabels[category]}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!due && (
+              <div className="space-y-1.5">
+                <label htmlFor={`${ids}-category`} className="text-sm font-semibold">
+                  Category
+                </label>
+                <select
+                  id={`${ids}-category`}
+                  value={draft.category}
+                  onChange={(event) =>
+                    setDraft({ ...draft, category: event.target.value as Draft["category"] })
+                  }
+                  className="field field-select h-11 w-full rounded-lg pl-3 text-sm"
+                >
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {categoryLabels[category]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {action.problem && <ProblemNotice problem={action.problem} />}
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" size="lg" disabled={action.busy !== null || amount === null || dateInvalid}>
+              <Button type="submit" size="lg" disabled={action.busy !== null || !validAmount || !validDate}>
                 <Check aria-hidden="true" /> {action.busy === "save" ? "Saving…" : "Save"}
               </Button>
-              <Button type="button" variant="ghost" onClick={() => setDraft(null)}>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={action.busy !== null}
+                onClick={() => {
+                  action.clear();
+                  setDraft(null);
+                }}
+              >
                 Back
               </Button>
             </div>
@@ -398,6 +429,18 @@ export function QuickAdd({
                   {!premium.premium && <PremiumPill />}
                 </Button>
               )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                disabled={action.busy !== null || listening || voice.state.step === "transcribing"}
+                onClick={() => {
+                  action.clear();
+                  setDraft({ kind: "spent", amount: "", who: "", category: "other", date: today });
+                }}
+              >
+                Enter manually
+              </Button>
               {(listening || voice.state.step === "transcribing" || action.busy === "read") && (
                 <ThinkingOrb state={listening ? "listening" : "working"} size={20} />
               )}

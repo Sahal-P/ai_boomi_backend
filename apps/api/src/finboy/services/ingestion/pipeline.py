@@ -4,7 +4,7 @@ import hashlib
 import os
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from itertools import islice
 from typing import Literal
@@ -31,7 +31,7 @@ from finboy.services.ingestion.llm import (
 )
 from finboy.services.ingestion.normalize import normalize
 from finboy.services.ingestion.rules import extract_rules
-from finboy.services.ingestion.types import Category, Extraction
+from finboy.services.ingestion.types import Category, Event, Extraction
 from finboy.services.ledger.persist import persist_event
 
 
@@ -47,6 +47,7 @@ class InboundMessage:
     failure_reason: Literal["message_unavailable"] | None = None
     # A pilot household's spoken category; used only where extraction found none.
     category_hint: Category | None = None
+    entry_event: Event | None = field(default=None, repr=False)
 
 
 @dataclass
@@ -69,6 +70,8 @@ def _prepare(
         if inbound.failure_reason:
             return None
         message = normalize(inbound.raw_rfc822, inbound.received_at)
+        if inbound.source == "manual_entry" and inbound.entry_event is not None:
+            return Prepared(message, "unknown", Extraction(events=[inbound.entry_event]), False)
         classification = classify(message)
         trusted = trusted_domain(message.sender_domain)
         if classification in {"non_financial", "promotional"}:

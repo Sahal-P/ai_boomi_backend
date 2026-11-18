@@ -25,9 +25,10 @@ refuses deleted households and stale epochs, and answers pilot households
 IDs look missing (404). Outside production a request without a session is the owner.
 `services/accounts` owns households (capacity under an advisory lock, consent, erasure),
 WhatsApp login codes (HMAC only, bound to a browser nonce), Google ID-token checks, daily
-usage counters and the counts-only CLI. Quick add (`/api/v1/entries`) reuses the WhatsApp
-statement reader and turns one sentence into a `manual_entry` import line plus the
-ordinary versioned confirm decision. See the [sign-up contract](signup-round/contract.md).
+usage counters and the counts-only CLI. Quick add uses the WhatsApp statement reader to
+preview text or voice. Saving a previewed or manual transaction writes a `manual_entry`
+event through the shared import pipeline and confirms it with a versioned decision.
+See the [sign-up contract](signup-round/contract.md).
 
 `services/billing` owns FinBoy Premium (off until `BILLING_ENABLED`): the plan each household is
 on (trial, paid, grace, free or included), PayU's signed checkout and its hash-checked results,

@@ -83,8 +83,9 @@ exist from `GET /api/v1/auth/session` (`sign_in`), never from build-time variabl
 - **Quick add** (`quick-add.tsx`): the sidebar's **Add entry**, the phone **+** and Home's empty
   state "Add what you spent today" open a sheet (right on desktop, bottom on phones). Type or **Say it** in
   English, Hindi or Malayalam, with an example in each (the Malayalam one marked `lang="ml"`);
-  Enter works like Next. The editable card (money out, money in or
-  to pay later; amount; date; to or for; category) saves with one tap. **Undo** rejects the
+  Enter works like Next. **Enter manually** opens the same form with today's date and no
+  amount or payee. Money in and out have a category. Upcoming payments have a due date
+  and optional label. **Undo** rejects the
   entry (a due is dismissed) so it stops counting without waiting in Review, then **Add
   another** or **Done**. A question offers **Ask FinBoy instead**. The sentence is never
   stored; records show "Added by you".

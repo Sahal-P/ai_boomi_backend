@@ -1,4 +1,4 @@
-"""Quick add: one typed or spoken sentence becomes a record or a due, saved with one tap.
+"""Quick add: enter details directly or preview a typed or spoken sentence.
 
 docs/signup-round/contract.md. The sentence is read once and never stored. Save is the explicit
 confirmation, it goes through the same pipeline and versioned decision as everything else, and it
@@ -47,7 +47,7 @@ class EntryPreview(BaseModel):
 
 
 class EntrySave(BaseModel):
-    """What the person saw on the preview, possibly edited. Every field is checked again."""
+    """The details the person chose to save, with or without a preview."""
 
     model_config = ConfigDict(extra="forbid")
     kind: Literal["spent", "received", "due"]
@@ -127,20 +127,19 @@ def save(
         )
     session.rollback()  # the import pipeline commits through its own sessions
     now = now_ist()
-    line = statement.payment_line(
-        statement.Statement(
-            body.kind, body.amount_minor, body.counterparty, "unknown", body.day, body.category
-        ),
-        now,
-    )
     result = capture.record_entry(
         request.app.state.engine,
         request.app.state.settings,
         user_id=user_id,
         entry_id="entry:" + uuid4().hex,
-        line=line,
+        entry=statement.Statement(
+            body.kind,
+            body.amount_minor,
+            body.counterparty,
+            day=body.day,
+            category=body.category,
+        ),
         received_at=now,
-        category=body.category,
     )
     if result.outcome == "busy":
         return error_response(

@@ -34,6 +34,61 @@ async function openAccountMenu(page: Page, testInfo: TestInfo) {
 test.describe("on the Free plan", () => {
   test.use({ scenario: { ...household, plan: "free" } });
 
+  test("manual entry saves directly and keeps the draft on failure", async ({ page, api }) => {
+    api.failNext(/^\/api\/v1\/entries$/, 503, "entry_unavailable", 1, "POST");
+    await page.goto("/transactions?scope=all");
+    await page.getByRole("button", { name: "Add entry", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: "Add money in or out" });
+    const manual = sheet.getByRole("button", { name: "Enter manually" });
+    const sentence = sheet.getByLabel("What happened?");
+    await sentence.fill("Something to finish later");
+    await manual.click();
+    await sheet.getByRole("button", { name: "Back" }).click();
+    await expect(sentence).toHaveValue("Something to finish later");
+    await manual.click();
+
+    const amount = sheet.getByLabel("Amount (₹)");
+    const day = sheet.getByLabel("Date", { exact: true });
+    const save = sheet.getByRole("button", { name: "Save", exact: true });
+    await expect(amount).toHaveValue("");
+    await expect(day).toHaveValue("2026-11-25");
+    await expect(sheet.getByRole("radio", { name: "Money out" })).toBeChecked();
+    await expect(sheet.getByLabel("Category")).toHaveValue("other");
+    await expect(save).toBeDisabled();
+    await amount.fill("10000000.01");
+    await expect(save).toBeDisabled();
+    await amount.fill("12.50");
+    await day.fill("2026-11-26");
+    await expect(save).toBeDisabled();
+    await day.fill("2026-11-24");
+    await sheet.getByLabel("To or for").fill("Refund Club");
+    await sheet.getByLabel("Category").selectOption("work");
+    await save.click();
+    await expect(sheet.getByText("This entry wasn't saved")).toBeVisible();
+    await expect(amount).toHaveValue("12.50");
+    await expect(day).toHaveValue("2026-11-24");
+    await save.click();
+    await expect(sheet.getByText("Added: ₹12.50 · Refund Club")).toBeVisible();
+    await expect(page.locator("main").getByText("Refund Club", { exact: true })).toBeVisible();
+    expect(api.requests.some(({ path }) => path === "/api/v1/entries/preview")).toBe(false);
+    expect(api.transactions).toHaveLength(1);
+    expect(api.transactions[0]).toMatchObject({
+      amount_minor: 1250,
+      category: "work",
+      direction: "out",
+      source_modes: ["manual_entry"],
+      status: "confirmed",
+    });
+
+    await sheet.getByRole("button", { name: "Undo" }).click();
+    await expect(sheet.getByText("Undone: ₹12.50 · Refund Club")).toBeVisible();
+    expect(api.transactions[0]?.status).toBe("rejected");
+    await sheet.getByRole("button", { name: "Done" }).click();
+    await expect(sheet).toBeHidden();
+    await page.getByRole("button", { name: "Add entry", exact: true }).click();
+    await expect(manual).toBeVisible();
+  });
+
   test("a Premium control explains itself, and Pay goes straight to PayU with a signed form", async ({ page, api }, testInfo) => {
     const payu = await interceptPayU(page);
     await page.goto("/dashboard");
