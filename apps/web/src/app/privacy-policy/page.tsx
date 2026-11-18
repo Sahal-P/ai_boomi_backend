@@ -78,8 +78,9 @@ export default function PrivacyPolicyPage() {
         (reading text, screenshots and speech, answering your questions with the figures from your
         records, the memories and the recent chat that each answer needs, and turning memories, chat
         summaries and searches into numbers that help find the right ones), Liquid AI (quickly telling what a message, question
-        or photo is about, so common ones are answered sooner), Sarvam AI (speech in English, Hindi
-        and Malayalam, and spoken Malayalam replies), Groq (speech in English and Hindi), Resemble
+        or photo is about, so common ones are answered sooner), DeepSeek (reading masked diary and
+        Quick Add text when enabled), Sarvam AI (speech in English, Hindi and Malayalam, and spoken
+        Malayalam replies), Groq (speech in English and Hindi), Resemble
         and Google Gemini (spoken replies), Meta (delivering WhatsApp messages) and Google (sign-in
         and, if you connect it, Gmail). If you pay for Premium, PayU processes the payment and
         receives your email address and phone number for the receipt. FinBoy never sells your data

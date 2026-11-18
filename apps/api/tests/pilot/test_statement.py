@@ -1,4 +1,5 @@
 import threading
+from contextlib import nullcontext
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
 
@@ -212,6 +213,44 @@ def test_the_model_only_classifies_and_copies(monkeypatch: pytest.MonkeyPatch) -
     assert result.amount_minor == 50000 and result.counterparty == "दूधवाले"
     assert seen["store"] is False and seen["text_format"] is StatementReading
     assert "UNTRUSTED" in seen["input"][0]["content"]
+
+
+@pytest.mark.parametrize(
+    ("message", "phrase", "amount"),
+    [
+        ("Spent 93 on tea", "93", 9300),
+        ("दूधवाले को पाँच सौ नकद दिए", "पाँच सौ", 50000),
+        ("ചായയ്ക്ക് 50 കൊടുത്തു", "50", 5000),
+    ],
+)
+def test_deepseek_uses_the_same_grounding(monkeypatch, message, phrase, amount) -> None:
+    seen = {}
+
+    def create(**kwargs):
+        seen.update(kwargs)
+        model_output = reading(amount_phrase=phrase, counterparty="Invented payee")
+        return SimpleNamespace(status="completed", output_text=model_output.model_dump_json())
+
+    def client(**kwargs):
+        assert kwargs["api_key"] == "synthetic-deepseek-key"
+        assert kwargs["base_url"] == "https://api.deepseek.com"
+        return nullcontext(SimpleNamespace(responses=SimpleNamespace(create=create)))
+
+    monkeypatch.setattr(statement, "OpenAI", client)
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql+psycopg://test:test@127.0.0.1:1/finboy_test",
+        environment="test",
+        entry_parser_provider="deepseek",
+        deepseek_api_key="synthetic-deepseek-key",
+    )
+    result = statement.read_statement(f"{message} account 123456789012", settings, TODAY)
+    assert result.kind == "spent" and result.amount_minor == amount
+    assert result.counterparty is None
+    assert seen["model"] == "deepseek-flash"
+    assert seen["reasoning"] == {"effort": "none"}
+    assert seen["text"]["format"]["schema"] == StatementReading.model_json_schema()
+    assert "123456789012" not in seen["input"][1]["content"]
 
 
 def test_payment_lines_are_read_by_the_existing_rules_extractor() -> None:

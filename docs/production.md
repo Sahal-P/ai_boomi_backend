@@ -578,6 +578,17 @@ and `model`; `whatsapp.processed` gives reply times to compare with the days bef
 **Acceptance:** real phone messages, questions and a stray photo in each enabled language, recorded
 separately from these checks.
 
+## Entry parser provider
+
+`ENTRY_PARSER_PROVIDER=deepseek` selects DeepSeek’s hosted `deepseek-flash` for
+WhatsApp diary parsing and the web Quick Add preview. Set `DEEPSEEK_API_KEY` in the
+backend environment file. Manual entry saves directly, and speech transcription
+uses its own provider settings. The default parser is `openai`.
+
+Before enabling DeepSeek for household traffic, verify the provider’s data retention
+terms and run the parser with synthetic entries in English, Hindi, and Malayalam.
+Set `ENTRY_PARSER_PROVIDER=openai` and restart `finboy.service` to switch back.
+
 ## Statement import release procedure
 
 `feat/finboy-statement-import` ([contract](statement-round/contract.md)) adds migration

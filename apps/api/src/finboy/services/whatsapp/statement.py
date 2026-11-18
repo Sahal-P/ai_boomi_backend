@@ -19,7 +19,7 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 from openai import OpenAI
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
@@ -398,22 +398,21 @@ def read_statements(text: str, settings: Settings, today: date) -> list[Statemen
     if QUESTION.search(text) and not BANK_SMS.search(text):
         return [Statement("question")]
     text = mask(text)
-    if not settings.openai_api_key or not settings.openai_assistant_model:
+    if settings.entry_parser_provider == "deepseek":
+        api_key, model = settings.deepseek_api_key, "deepseek-flash"
+    else:
+        api_key, model = settings.openai_api_key, settings.openai_assistant_model
+    if not api_key or not model:
         if settings.environment == "production":
             raise ProviderUnavailable("configuration_missing")
         return [_rules(text, today)]
     return triage.first(
         "message",
         settings,
-        lambda: _read(text, settings, today),
+        lambda: _read(text, settings, today, api_key=api_key, model=model),
         lambda: triage.sort_message(text, resolve_style(text, "auto")[1], settings),
         lambda sort: _fast(sort, text, today),
     )
-
-
-def _read(text: str, settings: Settings, today: date) -> list[Statement]:
-    reading = _model_reading(text, settings)
-    return _remembering(reading, _ground_all(reading, text, today))
 
 
 def _fast(sort: triage.Sorted, text: str, today: date) -> list[Statement] | None:
@@ -458,30 +457,54 @@ def _fast(sort: triage.Sorted, text: str, today: date) -> list[Statement] | None
     ]
 
 
-def _model_reading(text: str, settings: Settings) -> StatementReading:
-    """The statement model's reading: it sorts the message and copies its phrases."""
+def _read(
+    text: str, settings: Settings, today: date, *, api_key: SecretStr, model: str
+) -> list[Statement]:
+    """The model classifies and copies phrases. The parser grounds them before use."""
+    deepseek = settings.entry_parser_provider == "deepseek"
+    messages = [
+        {"role": "system", "content": PROMPT},
+        {"role": "user", "content": text},
+    ]
     try:
         with OpenAI(
-            api_key=settings.openai_api_key.get_secret_value(),
+            api_key=api_key.get_secret_value(),
+            base_url="https://api.deepseek.com" if deepseek else None,
             timeout=settings.assistant_timeout_seconds,
             max_retries=settings.provider_max_retries,
         ) as client:
-            response = client.responses.parse(
-                model=settings.openai_assistant_model,
-                store=False,
-                max_output_tokens=1500,
-                text_format=StatementReading,
-                input=[
-                    {"role": "system", "content": PROMPT},
-                    {"role": "user", "content": text},
-                ],
-            )
-        reading = response.output_parsed
+            if deepseek:
+                response = client.responses.create(
+                    model=model,
+                    input=messages,
+                    reasoning={"effort": "none"},
+                    max_output_tokens=1500,
+                    text={
+                        "format": {
+                            "type": "json_schema",
+                            "name": "StatementReading",
+                            "schema": StatementReading.model_json_schema(),
+                        }
+                    },
+                )
+                reading = (
+                    StatementReading.model_validate_json(response.output_text)
+                    if response.status == "completed"
+                    else None
+                )
+            else:
+                reading = client.responses.parse(
+                    model=model,
+                    input=messages,
+                    store=False,
+                    max_output_tokens=1500,
+                    text_format=StatementReading,
+                ).output_parsed
     except Exception:
         raise ProviderUnavailable("statement_unavailable") from None
     if not isinstance(reading, StatementReading):
         raise ProviderUnavailable("statement_unavailable")
-    return reading
+    return _remembering(reading, _ground_all(reading, text, today))
 
 
 def payment_line(statement: Statement, received_at: datetime) -> str:

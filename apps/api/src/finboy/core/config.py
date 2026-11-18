@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     openai_assistant_model: str | None = None
     openai_transcribe_model: str | None = None
     openai_vision_model: str | None = None
+    entry_parser_provider: Literal["openai", "deepseek"] = "openai"
+    deepseek_api_key: SecretStr | None = None
     # "groq" sends English/Hindi to Groq Whisper (Malayalam stays on OpenAI); "sarvam" sends all
     # three languages to Sarvam Saaras (docs/malayalam-round/contract.md).
     speech_transcribe_provider: Literal["openai", "groq", "sarvam"] = "openai"
@@ -192,6 +194,7 @@ class Settings(BaseSettings):
         "whatsapp_checkin_template",
         "whatsapp_coach_template",
         "openai_api_key",
+        "deepseek_api_key",
         "resend_api_key",
         "openai_extraction_model",
         "openai_assistant_model",
