@@ -18,12 +18,13 @@ def transcription(settings: Settings) -> bool:
     return openai
 
 
-def malayalam_tts(settings: Settings) -> bool:
-    if settings.malayalam_tts_provider == "sarvam":
-        return bool(
-            settings.sarvam_api_key and settings.sarvam_tts_model and settings.sarvam_tts_speaker_ml
-        )
-    return bool(settings.gemini_api_key and settings.gemini_tts_model and settings.gemini_tts_voice)
+def malayalam_tts(settings: Settings) -> Literal["off", "configured", "missing"]:
+    """Spoken Malayalam replies come only from Sarvam; off means they are written only."""
+    if settings.malayalam_tts_provider == "off":
+        return "off"
+    if settings.sarvam_api_key and settings.sarvam_tts_model and settings.sarvam_tts_speaker_ml:
+        return "configured"
+    return "missing"
 
 
 def english_hindi_tts(settings: Settings) -> bool:

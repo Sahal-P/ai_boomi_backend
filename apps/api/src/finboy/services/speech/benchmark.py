@@ -85,11 +85,11 @@ def generate_questions(settings: Settings) -> list[dict[str, object]]:
                 path=name,
                 synthetic=True,
                 live_generated=True,
-                provider="gemini" if language == "ml" else "resemble",
-                model=settings.gemini_tts_model
+                provider="sarvam" if language == "ml" else "resemble",
+                model=settings.sarvam_tts_model
                 if language == "ml"
                 else settings.resemble_tts_model,
-                voice=settings.gemini_tts_voice
+                voice=settings.sarvam_tts_speaker_ml
                 if language == "ml"
                 else "Fatima"
                 if language == "hi"

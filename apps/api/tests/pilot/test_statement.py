@@ -117,7 +117,8 @@ def test_rules_fallback_without_a_model(text: str, kind: str) -> None:
         ("ശമ്പളം ₹25,000 കിട്ടി.", "received", 2500000, TODAY, None),
         ("10-ാം തീയതി 1200 തവണ അടയ്ക്കണം", "due", 120000, None, date(2026, 11, 10)),
         ("10 तारीख को 1200 की किस्त देना है", "due", 120000, None, date(2026, 11, 10)),
-        ("പാൽക്കാരന് അഞ്ഞൂറ് രൂപ കൊടുത്തു", "spent", None, TODAY, None),  # words: asked again
+        ("പാൽക്കാരന് അഞ്ഞൂറ് രൂപ കൊടുത്തു", "spent", 50000, TODAY, None),  # number words
+        ("പാൽക്കാരന് പൈസ കൊടുത്തു", "spent", None, TODAY, None),  # no amount: asked
         ("നമസ്കാരം", "unclear", None, None, None),
     ],
 )

@@ -210,7 +210,6 @@ def test_malayalam_speech_request_shape_and_real_mp3(
         return spoken(wav)
 
     mock_http(monkeypatch, handler)
-    monkeypatch.setattr(providers, "gemini_synthesize", MagicMock(side_effect=AssertionError))
     audio = service.synthesize_speech(text="നമസ്കാരം", language="ml", settings=sarvam)
     request = seen[0]
     assert str(request.url) == "https://api.sarvam.ai/text-to-speech"
@@ -237,8 +236,9 @@ def test_malayalam_speech_request_shape_and_real_mp3(
 @pytest.mark.parametrize(
     "provider,language,expected",
     [
-        ("gemini", "ml", "gemini"),
+        ("off", "ml", None),
         ("sarvam", "ml", "sarvam"),
+        ("off", "hi", "resemble"),
         ("sarvam", "hi", "resemble"),
         ("sarvam", "en", "resemble"),
     ],
@@ -248,17 +248,19 @@ def test_only_malayalam_speech_follows_the_setting(
 ) -> None:
     calls = {
         name: MagicMock(return_value=(wav, "audio/wav"))
-        for name in ("gemini_synthesize", "sarvam_synthesize", "resemble_synthesize")
+        for name in ("sarvam_synthesize", "resemble_synthesize")
     }
     for name, fake in calls.items():
         monkeypatch.setattr(providers, name, fake)
     text = {"ml": "നമസ്കാരം", "hi": "नमस्ते", "en": "Hello"}[language]
-    service.synthesize_speech(
-        text=text,
-        language=language,
-        settings=sarvam.model_copy(update={"malayalam_tts_provider": provider}),
-    )
-    assert [name for name, fake in calls.items() if fake.called] == [f"{expected}_synthesize"]
+    chosen = sarvam.model_copy(update={"malayalam_tts_provider": provider})
+    if expected is None:
+        with pytest.raises(ProviderUnavailable, match="configuration_missing"):
+            service.synthesize_speech(text=text, language=language, settings=chosen)
+    else:
+        service.synthesize_speech(text=text, language=language, settings=chosen)
+    called = [name for name, fake in calls.items() if fake.called]
+    assert called == ([] if expected is None else [f"{expected}_synthesize"])
 
 
 @pytest.mark.parametrize(
@@ -328,16 +330,19 @@ def test_settings_validation(settings: Settings) -> None:
     )
     assert blank.sarvam_api_key is blank.sarvam_stt_model is None
     assert blank.sarvam_tts_model is blank.sarvam_tts_speaker_ml is None
-    assert (blank.speech_transcribe_provider, blank.malayalam_tts_provider) == ("openai", "gemini")
+    assert (blank.speech_transcribe_provider, blank.malayalam_tts_provider) == ("openai", "off")
+    # An older .env that still names the removed Gemini voice keeps Malayalam replies written.
+    assert Settings(**{**base, "malayalam_tts_provider": "gemini"}).malayalam_tts_provider == "off"
     assert "synthetic" not in repr(Settings(**{**base, "sarvam_api_key": "synthetic-sarvam"}))
 
 
 def test_readiness_follows_the_chosen_providers(settings: Settings, sarvam: Settings) -> None:
-    assert _transcription(sarvam) and _malayalam_tts(sarvam)
+    assert _transcription(sarvam) and _malayalam_tts(sarvam) == "configured"
     assert not _transcription(sarvam.model_copy(update={"sarvam_stt_model": None}))
-    assert not _malayalam_tts(sarvam.model_copy(update={"sarvam_tts_speaker_ml": None}))
-    # The defaults keep reporting OpenAI transcription and Gemini Malayalam speech.
-    assert not _transcription(settings) and not _malayalam_tts(settings)
+    no_voice = sarvam.model_copy(update={"sarvam_tts_speaker_ml": None})
+    assert _malayalam_tts(no_voice) == "missing"
+    # By default transcription is OpenAI's and Malayalam replies are written only.
+    assert not _transcription(settings) and _malayalam_tts(settings) == "off"
     openai_only = sarvam.model_copy(update={"speech_transcribe_provider": "openai"})
     assert _transcription(openai_only)
     groq = openai_only.model_copy(update={"speech_transcribe_provider": "groq"})

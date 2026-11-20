@@ -152,8 +152,8 @@ UNCLEAR = (
     '🎤 "How much did I spend this week?"'
 )
 UNCLEAR_SPEECH = "I didn't understand. Say it like, paid the milkman five hundred."
-AMOUNT_MISSING = 'How many rupees? Say it again with the amount, like: "Paid the milkman 500"'
-AMOUNT_MISSING_SPEECH = "How many rupees? Say it again with the amount."
+AMOUNT_MISSING = "How many rupees? Say or type just the amount, like: 500"
+AMOUNT_MISSING_SPEECH = "How many rupees? Just say the amount."
 DUE_DAY_MISSING = (
     'Which date is it due? Say it like: "Loan instalment 1200, every month on the 10th"'
 )

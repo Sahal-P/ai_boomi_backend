@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, ValidationError
 from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
-from finboy.services.speech.media import MAX_PROVIDER_AUDIO_BYTES, SAMPLE_RATE, pcm_to_wav
+from finboy.services.speech.media import MAX_PROVIDER_AUDIO_BYTES, SAMPLE_RATE
 
 MAX_JSON_BYTES = 18 * 1024 * 1024
 
@@ -49,84 +49,6 @@ def decode_base64(value: str) -> bytes:
     if not data or len(data) > MAX_PROVIDER_AUDIO_BYTES:
         raise ProviderUnavailable("speech_unavailable")
     return data
-
-
-class GeminiAudio(BaseModel):
-    type: str
-    data: str | None = Field(default=None, repr=False)
-    mime_type: str | None = None
-
-
-class GeminiStep(BaseModel):
-    type: str
-    content: list[GeminiAudio] = Field(default_factory=list)
-
-
-class GeminiResult(BaseModel):
-    status: str | None = None
-    steps: list[GeminiStep]
-
-
-def gemini_synthesize(text: str, settings: Settings) -> tuple[bytes, str]:
-    if (
-        not settings.gemini_api_key
-        or not settings.gemini_tts_model
-        or not settings.gemini_tts_voice
-    ):
-        raise ProviderUnavailable("configuration_missing")
-    # Current documented interactions schema; no automatic fallback to an older/different model.
-    if settings.gemini_tts_model not in {"gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts"}:
-        raise ProviderUnavailable("configuration_missing")
-    with provider_client(settings) as client:
-        raw = bounded_request(
-            client,
-            "POST",
-            str(settings.gemini_tts_base_url).rstrip("/") + "/interactions",
-            headers={"x-goog-api-key": settings.gemini_api_key.get_secret_value()},
-            json={
-                "model": settings.gemini_tts_model,
-                "store": False,
-                "input": [
-                    {
-                        "type": "user_input",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": text,
-                                "annotations": [
-                                    {
-                                        "type": "speech_metadata",
-                                        "style": "Clear Malayalam, measured pace.",
-                                    }
-                                ],
-                            }
-                        ],
-                    }
-                ],
-                "response_format": {"type": "audio"},
-                "generation_config": {"speech_config": [{"voice": settings.gemini_tts_voice}]},
-            },
-        )
-    result = GeminiResult.model_validate_json(raw)
-    blocks = [
-        b
-        for step in result.steps
-        if step.type == "model_output"
-        for b in step.content
-        if b.type == "audio" and b.data
-    ]
-    if len(blocks) != 1:
-        raise ProviderUnavailable("speech_unavailable")
-    block = blocks[0]
-    data = decode_base64(block.data)
-    mime = block.mime_type or ""
-    if mime == "audio/wav":
-        return data, mime
-    # Raw PCM requires explicit 16-bit rate metadata; do not guess endianness/rate.
-    match = re.fullmatch(r"audio/L16;codec=pcm;rate=(\d+)", mime, flags=re.I)
-    if match:
-        return pcm_to_wav(data, int(match[1])), "audio/wav"
-    raise ProviderUnavailable("speech_unavailable")
 
 
 class ResembleResult(BaseModel):

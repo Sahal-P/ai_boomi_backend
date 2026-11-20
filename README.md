@@ -59,7 +59,8 @@ acceptance gaps; provider configuration alone never means completion.
   `MALAYALAM_TTS_PROVIDER=sarvam` speaks Malayalam with Bulbul v3
   ([Malayalam voice contract](docs/malayalam-round/contract.md)).
   OpenAI vision reads WhatsApp payment screenshots into the review queue. Resemble Ultra
-  English/Hindi (human's final provider choice), verified Gemini Malayalam TTS. System
+  English/Hindi (human's final provider choice); Malayalam replies are written unless
+  `MALAYALAM_TTS_PROVIDER=sarvam` (Gemini was removed on 20 November 2026). System
   ffmpeg/ffprobe validate/transcode real media. No cloning or training.
 - One API, one web app, PostgreSQL as the only persistent service. Stateless
   webhook-only ingress may forward exactly GET/POST /api/v1/whatsapp/webhook.

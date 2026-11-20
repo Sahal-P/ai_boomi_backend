@@ -152,12 +152,11 @@ def synthesize_speech(*, text: str, language: Language, settings: Settings) -> S
         raise InvalidAudio()
     if language == "ml" and not re.search(r"[\u0d00-\u0d7f]", text):
         raise InvalidAudio()
+    if language == "ml" and settings.malayalam_tts_provider != "sarvam":
+        raise ProviderUnavailable("configuration_missing")  # Malayalam replies stay written
     try:
         if language == "ml":
-            if settings.malayalam_tts_provider == "sarvam":
-                audio, mime = providers.sarvam_synthesize(text, settings)
-            else:
-                audio, mime = providers.gemini_synthesize(text, settings)
+            audio, mime = providers.sarvam_synthesize(text, settings)
             mp3 = to_mp3(audio, mime, settings)
         else:
             audio, mime = providers.resemble_synthesize(text, language, settings)

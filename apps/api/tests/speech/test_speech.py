@@ -24,9 +24,10 @@ def configured(settings: Settings) -> Settings:
         update={
             "openai_api_key": SecretStr("synthetic-not-real"),
             "openai_transcribe_model": "gpt-transcribe",
-            "gemini_api_key": SecretStr("synthetic-gemini"),
-            "gemini_tts_model": "gemini-3.8-flash-tts",
-            "gemini_tts_voice": "Kore",
+            "malayalam_tts_provider": "sarvam",
+            "sarvam_api_key": SecretStr("synthetic-sarvam"),
+            "sarvam_tts_model": "bulbul:v3",
+            "sarvam_tts_speaker_ml": "kavitha",
             "resemble_api_key": SecretStr("synthetic-resemble"),
             "resemble_tts_model": "resemble-ultra",
             "resemble_voice_uuid_en": "stock-en",
@@ -125,7 +126,7 @@ def test_mp3_is_real_and_pcm_has_wav_header(settings: Settings, wav: bytes) -> N
 
 @pytest.mark.parametrize(
     "language,text,expected",
-    [("en", "Hello", "resemble"), ("hi", "नमस्ते", "resemble"), ("ml", "നമസ്കാരം", "gemini")],
+    [("en", "Hello", "resemble"), ("hi", "नमस्ते", "resemble"), ("ml", "നമസ്കാരം", "sarvam")],
 )
 def test_provider_routing(
     monkeypatch: pytest.MonkeyPatch,
@@ -136,45 +137,25 @@ def test_provider_routing(
     expected: str,
 ) -> None:
     resemble = MagicMock(return_value=(wav, "audio/wav"))
-    gemini = MagicMock(return_value=(wav, "audio/wav"))
+    sarvam = MagicMock(return_value=(wav, "audio/wav"))
     monkeypatch.setattr(providers, "resemble_synthesize", resemble)
-    monkeypatch.setattr(providers, "gemini_synthesize", gemini)
+    monkeypatch.setattr(providers, "sarvam_synthesize", sarvam)
     result = service.synthesize_speech(text=text, language=language, settings=configured)
     assert result.media_type == "audio/mpeg" and result.data
-    assert resemble.call_count == (expected == "resemble") and gemini.call_count == (
-        expected == "gemini"
+    assert resemble.call_count == (expected == "resemble") and sarvam.call_count == (
+        expected == "sarvam"
     )
 
 
-def test_gemini_current_schema_transient_and_header_key(
-    monkeypatch: pytest.MonkeyPatch, configured: Settings, wav: bytes
+def test_malayalam_speech_is_off_unless_sarvam_is_chosen(
+    monkeypatch: pytest.MonkeyPatch, configured: Settings
 ) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/v1beta/interactions" and not request.url.query
-        assert request.headers["x-goog-api-key"] == "synthetic-gemini"
-        body = json.loads(request.content)
-        assert body["store"] is False
-        assert body["model"] == "gemini-3.8-flash-tts"
-        return httpx.Response(
-            200,
-            json={
-                "steps": [
-                    {
-                        "type": "model_output",
-                        "content": [
-                            {
-                                "type": "audio",
-                                "mime_type": "audio/wav",
-                                "data": base64.b64encode(wav).decode(),
-                            }
-                        ],
-                    }
-                ]
-            },
-        )
-
-    mock_http(monkeypatch, handler)
-    assert providers.gemini_synthesize("നമസ്കാരം", configured) == (wav, "audio/wav")
+    called = MagicMock(side_effect=AssertionError("no provider is called"))
+    monkeypatch.setattr(providers, "sarvam_synthesize", called)
+    monkeypatch.setattr(providers, "resemble_synthesize", called)
+    off = configured.model_copy(update={"malayalam_tts_provider": "off"})
+    with pytest.raises(ProviderUnavailable, match="configuration_missing"):
+        service.synthesize_speech(text="നമസ്കാരം", language="ml", settings=off)
 
 
 def test_resemble_omits_stored_clip_parameters_and_model(
@@ -213,7 +194,7 @@ def test_provider_errors_are_fixed_and_redacted(
     with pytest.raises(ProviderUnavailable) as exc:
         service.synthesize_speech(text="നമസ്കാരം", language="ml", settings=configured)
     assert str(exc.value) == "speech_unavailable"
-    assert "NEVER-LEAK" not in caplog.text and "synthetic-gemini" not in caplog.text
+    assert "NEVER-LEAK" not in caplog.text and "synthetic-sarvam" not in caplog.text
 
 
 def test_timeout_and_missing_credentials(

@@ -252,6 +252,7 @@ class Household:
         monkeypatch.setattr(
             pilot.speech, "synthesize_speech", lambda **_: SynthesizedAudio(b"synthetic mp3")
         )
+        monkeypatch.setattr(pilot.missing_amount, "_held", {})  # nothing waits from other tests
         monkeypatch.setattr(pilot.decisions, "decide", self.decide)
         monkeypatch.setattr(pilot.decisions, "undo_decision", self.undo)
         # The real versioned paths take PostgreSQL advisory locks: tests/pilot/test_postgres.py.

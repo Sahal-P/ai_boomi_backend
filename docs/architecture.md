@@ -107,8 +107,8 @@ is capped. Contributing income/spending evidence is selected before the ten-row 
 limit. Supported relative periods resolve against IST; unsupported periods get a specific
 period clarification. Results include snapshot, resolved period, localized fact/warning
 labels and separate display-script/speech metadata. LLMs never calculate ledger totals
-or choose SQL/tools. Resemble Ultra English/Hindi, Gemini Malayalam and OpenAI
-transcription remain backend-only, with independent speech failure and text fallback.
+or choose SQL/tools. Resemble Ultra English/Hindi speech, optional Sarvam Malayalam speech
+and OpenAI transcription remain backend-only, with independent speech failure and text fallback.
 Liquid AI's d1-ultra decision model (backend-only, off until released) sorts messages,
 questions and photos in parallel with the OpenAI call, so sure common cases answer first
 (`services/triage`, [contract](triage-round/contract.md)); it never sees ledger amounts.

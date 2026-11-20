@@ -56,8 +56,9 @@ class Settings(BaseSettings):
     # A Bulbul speaker name, chosen by listening; Malayalam replies only.
     sarvam_tts_speaker_ml: str | None = Field(default=None, pattern=r"^[a-z]{2,24}$")
     sarvam_base_url: AnyHttpUrl = "https://api.sarvam.ai"
-    # Malayalam spoken replies; English and Hindi stay on Resemble.
-    malayalam_tts_provider: Literal["gemini", "sarvam"] = "gemini"
+    # Malayalam spoken replies (English and Hindi stay on Resemble): Sarvam Bulbul, or off so
+    # Malayalam replies are written only. Gemini was removed on 20 Nov 2026.
+    malayalam_tts_provider: Literal["off", "sarvam"] = "off"
     # Liquid AI d1-ultra sorts messages, questions and photos so a sure answer need not wait for
     # the slower model call (docs/triage-round/contract.md). Off until the human releases it.
     liquid_api_key: SecretStr | None = None
@@ -79,16 +80,12 @@ class Settings(BaseSettings):
 
     # Provider model/voice IDs are configured only after a synthetic live capability check.
     resemble_tts_base_url: AnyHttpUrl = "https://f.cluster.resemble.ai"
-    gemini_tts_base_url: AnyHttpUrl = "https://generativelanguage.googleapis.com/v1beta"
     ffprobe_binary: str = "ffprobe"
     resemble_api_key: SecretStr | None = None
     resemble_project_uuid: str | None = None
     resemble_voice_uuid_en: str | None = None
     resemble_voice_uuid_hi: str | None = None
     resemble_tts_model: str | None = None
-    gemini_api_key: SecretStr | None = None
-    gemini_tts_model: str | None = None
-    gemini_tts_voice: str | None = None
     assistant_timeout_seconds: float = Field(default=30, ge=1, le=60)
     speech_timeout_seconds: float = Field(default=30, ge=1, le=60)
     provider_max_retries: int = Field(default=1, ge=0, le=3)
@@ -185,9 +182,6 @@ class Settings(BaseSettings):
         "resemble_voice_uuid_en",
         "resemble_voice_uuid_hi",
         "resemble_tts_model",
-        "gemini_api_key",
-        "gemini_tts_model",
-        "gemini_tts_voice",
         "whatsapp_app_id",
         "whatsapp_app_secret",
         "whatsapp_verify_token",
@@ -237,9 +231,14 @@ class Settings(BaseSettings):
     def empty_optional_value(cls, value: object) -> object:
         return None if value == "" else value
 
+    @field_validator("malayalam_tts_provider", mode="before")
+    @classmethod
+    def removed_malayalam_provider(cls, value: object) -> object:
+        # An older .env still names the removed Gemini voice: Malayalam replies stay written.
+        return "off" if value == "gemini" else value
+
     @field_validator(
         "resemble_tts_base_url",
-        "gemini_tts_base_url",
         "groq_base_url",
         "sarvam_base_url",
         "liquid_base_url",

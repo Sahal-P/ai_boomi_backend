@@ -382,7 +382,7 @@ that joined while it was.
   - voice notes get a language hint only after a choice; otherwise speech-to-text detects
     the language (Sarvam when `SPEECH_TRANSCRIBE_PROVIDER=sarvam`);
   - spoken replies use Bulbul when `MALAYALAM_TTS_PROVIDER=sarvam`;
-  - amounts arrive as digits; a Malayalam number typed as words gets "എത്ര രൂപ?".
+  - amounts can be digits or Malayalam number words (20 November 2026; see "Missing amounts").
 - **Unchanged:** buttons, undo, daily limits, the pilot's Hindi reminder template and the
   no-storage rules. WhatsApp never merges or deletes.
 
@@ -521,3 +521,21 @@ Phase 3, the proactive coach, with `COACH_ENABLED` as well
   delivery statuses update it only for the household's own number.
 - **Timer.** `python -m finboy.services.pilot.cli coach` from `deploy/finboy-coach.timer` (hourly
   09:00–19:00 IST) prints counts only.
+
+## Missing amounts (20 November 2026)
+
+When a diary message has everything but the amount, FinBoy still asks "how many rupees?". It now
+asks for just the amount ("Say or type just the amount, like: 500", in the household's language).
+- **The next message.** If it is only an amount ("700", "₹700", "पचास", "എഴുനൂറ് രൂപ"), it
+  completes that entry. The entry is then saved like any other, with Undo, Amount and Category,
+  without another model call.
+- **Anything else.** Any other message, a button tap or a photo is read as usual and forgets the
+  entry. A voice answer that cannot be heard keeps it waiting.
+- **Where it waits.** The entry (kind, payee, category, mode, day) waits in the API process's memory
+  for at most ten minutes. It is never written to the database or a log, and a restart forgets
+  it. The API runs one worker (`deploy/finboy.service`).
+- **Credits and top-ups.** The diary reader now treats bought credits, a top-up or a recharge as
+  money spent, also when written in Malayalam (ക്രെഡിറ്റ്സ്). In live checks, OpenAI and DeepSeek
+  read the voice note's transcript as spent, where before they read it as received; with the
+  Malayalam amount reader it is saved as ₹700. Salary, cashback and money people send are still
+  received.

@@ -1,4 +1,4 @@
-"""Deterministic rupee amounts from digits and Hindi, Hinglish or English number words.
+"""Deterministic rupee amounts from digits and Hindi, Hinglish, English or Malayalam number words.
 
 Spoken Hindi amounts mix forms: "500", "पाँच सौ", "बारह सौ" (1,200), "डेढ़ सौ" (150), "ढाई हज़ार"
 (2,500), "सवा लाख" (1,25,000), "साढ़े तीन सौ" (350), "पौने दो सौ" (175), "paanch sau". Anything
@@ -6,14 +6,15 @@ ambiguous (two amounts, a bare fraction, an unknown word inside a number) yields
 caller asks "कितने रुपये?" instead of recording a guess. English households say "five hundred",
 "two thousand five hundred", "twenty-five" or "2.5k" (docs/signup-round/contract.md).
 
-Malayalam amounts arrive as digits, because Sarvam writes spoken amounts as "₹500". Malayalam
-number words are not read, so a typed "അഞ്ഞൂറ്" gets "how many rupees?"
-(docs/malayalam-round/contract.md).
+Malayalam number words (എഴുനൂറ്, ആയിരത്തഞ്ഞൂറ്, രണ്ട് ലക്ഷം) are split into the same tokens by
+malayalam_numbers: OpenAI speech-to-text writes spoken Malayalam amounts as words, not digits.
 """
 
 import re
 import unicodedata
 from fractions import Fraction
+
+from finboy.services.ingestion import malayalam_numbers
 
 MAX_RUPEES = 10**7  # one crore; larger spoken amounts are treated as misheard
 
@@ -95,6 +96,9 @@ for _name, _value in {
     "dhai": "5/2",
 }.items():
     WORDS[_norm(_name)] = Fraction(_value)
+# Malayalam numbers below 100 and halves (ഒന്നര) stay words, like their Hindi counterparts.
+WORDS.update({name: Fraction(value) for name, value in malayalam_numbers.SMALL.items()})
+WORDS.update(malayalam_numbers.HALVES)
 
 MULTIPLIERS = {
     _norm(name): value
@@ -147,6 +151,7 @@ def _tokens(text: str) -> list[str]:
     text = re.sub(r"(?<=\d),(?=\d)", "", text)  # 1,200 and 1,25,000
     text = re.sub(r"(?<=\d)(?=[^\d\s.,])|(?<=[^\d\s.,])(?=\d)", " ", text)  # ₹500, 500रुपये
     tokens = [token for token in (_norm(item) for item in _SEPARATORS.split(text)) if token]
+    tokens = malayalam_numbers.tokens(tokens)
     merged: list[str] = []
     for index, token in enumerate(tokens):
         previous = merged[-1] if merged else ""
@@ -245,3 +250,23 @@ def parse_amount(text: str) -> int | None:
     """Exactly one stated amount in paise, or None when absent or ambiguous."""
     amounts = find_amounts(text)
     return amounts[0] if len(amounts) == 1 else None
+
+
+# Words that can stand next to a bare answer to "how many rupees?" without changing it.
+_ONLY = {_norm(word) for word in ("only", "just", "सिर्फ़", "बस", "मात्र", "മാത്രം")}
+
+
+def only_amount(text: str) -> int | None:
+    """The amount when a message says nothing else ("700", "₹700", "पचास", "എഴുനൂറ് രൂപ").
+
+    It answers "how many rupees?", so a lone small number word counts here, unlike in a sentence.
+    """
+    tokens = [token for token in _tokens(text) if token not in CURRENCY and token not in _ONLY]
+    if not tokens or not all(_is_amount_token(token) for token in tokens):
+        return None
+    if len(tokens) == 1 and WORDS.get(tokens[0], Fraction(1)).denominator != 1:
+        return None  # "डेढ़" or "ഒന്നര" alone is not an amount
+    value = _value(tokens)
+    if value is None or not 0 < value <= MAX_RUPEES or (value * 100).denominator != 1:
+        return None
+    return int(value * 100)

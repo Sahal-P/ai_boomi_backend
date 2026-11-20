@@ -295,3 +295,18 @@ the money engine, Home's "For you", and opt-in WhatsApp nudges ("coach on"), at 
 counting check-ins and reminders, 08:00–20:00 IST, never twice, STOP and "coach off" respected.
 Inside the 24-hour window the advisor words a nudge with memory, figures checked; outside it only
 the approved `WHATSAPP_COACH_TEMPLATE` with the code-written line, unset until Meta approves it.
+
+## Voice amounts round — 20 November 2026
+
+From main 6b7e212 the human asked to fix a WhatsApp voice entry that lost its amount, and to remove
+Gemini:
+- Malayalam number words are read as amounts, deterministically.
+- An entry that lacks only its amount waits in the API's memory, never stored, for the household's
+  next message.
+- The diary reader treats bought credits, top-ups and recharges as spending.
+- `MALAYALAM_TTS_PROVIDER` is `off` (the default, written replies) or `sarvam`.
+
+This supersedes "Malayalam number words are not read", the Gemini Malayalam voice and the
+`openai/gemini` code defaults, only as documented in `docs/voice.md` ("Malayalam amounts and
+speech") and `docs/whatsapp.md` ("Missing amounts"). One agent on feat/finboy-voice-amounts; no
+migration.

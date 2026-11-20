@@ -29,7 +29,7 @@ class Readiness(BaseModel):
     gmail_configuration: Literal["configured", "missing"]
     transcription_configuration: Literal["configured", "missing"]
     english_hindi_tts_configuration: Literal["configured", "missing"]
-    malayalam_tts_configuration: Literal["configured", "missing"]
+    malayalam_tts_configuration: Literal["off", "configured", "missing"]
     whatsapp_configuration: Literal["disabled", "configured", "missing"]
     triage_configuration: Literal["off", "configured", "missing"]
     advisor_configuration: Literal["off", "configured", "missing"] = "off"
@@ -76,9 +76,7 @@ def readiness(
         english_hindi_tts_configuration="configured"
         if providers.english_hindi_tts(settings)
         else "missing",
-        malayalam_tts_configuration="configured"
-        if providers.malayalam_tts(settings)
-        else "missing",
+        malayalam_tts_configuration=providers.malayalam_tts(settings),
         whatsapp_configuration=providers.whatsapp(settings),
         triage_configuration=providers.triage(settings),
         advisor_configuration=providers.advisor(settings),

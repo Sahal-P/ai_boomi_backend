@@ -10,7 +10,7 @@ records go through the existing review decisions, and prompts keep only IDs and 
 
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from types import ModuleType
@@ -34,7 +34,7 @@ from finboy.services.advisor import service as advisor
 from finboy.services.assistant import service as assistant
 from finboy.services.assistant.language import money
 from finboy.services.assistant.models import AssistantAnswer
-from finboy.services.ingestion.hindi_numbers import parse_amount
+from finboy.services.ingestion.hindi_numbers import only_amount, parse_amount
 from finboy.services.ingestion.types import Category
 from finboy.services.money import budgets, merchants
 from finboy.services.money.models import Correction
@@ -50,6 +50,7 @@ from finboy.services.whatsapp import (
     english,
     hindi,
     malayalam,
+    missing_amount,
     premium,
     prompts,
     reminders,
@@ -195,6 +196,8 @@ def handle(conversation: Conversation) -> str | None:
 
 def _handle(conversation: Conversation) -> str | None:
     question, binding = conversation.question, conversation.binding
+    # Only the very next message can answer "how many rupees?" (missing_amount.py).
+    waiting = missing_amount.take(binding.id)
     if question.kind == "button":
         return _tap(conversation)
     if binding.consented_at is None:
@@ -204,9 +207,13 @@ def _handle(conversation: Conversation) -> str | None:
     try:
         text = _heard(conversation)
     except ProviderUnavailable, MetaUnavailable, InvalidAudio:
+        if waiting is not None:
+            missing_amount.hold(binding.id, waiting)  # saying it again still answers
         conversation.session.rollback()
         sent = conversation.send(conversation.words.VOICE_UNCLEAR)
         return conversation.done(sent, "invalid_audio")
+    if waiting is not None and (amount := only_amount(text)) is not None:
+        return _save(conversation, [replace(waiting, amount_minor=amount)])
     summary = cfo.asked(text)
     if summary is not None:
         return summary(conversation)
@@ -246,12 +253,20 @@ def _handle(conversation: Conversation) -> str | None:
     if advising and reading.remember:
         _learn(conversation, reading)
     if reading.amount_minor is None:
+        # The reply is usually just the amount; the entry waits for it (its fact is learned).
+        missing_amount.hold(binding.id, replace(reading, remember=None))
         return _say(
             conversation,
             conversation.words.AMOUNT_MISSING,
             conversation.words.AMOUNT_MISSING_SPEECH,
             "amount_unclear",
         )
+    return _save(conversation, readings)
+
+
+def _save(conversation: Conversation, readings: list[statement.Statement]) -> str | None:
+    """Money, a due, a budget or a goal whose amount is known."""
+    reading = readings[0]
     if reading.kind == "budget":
         return cfo.set_budget(conversation, reading)
     if reading.kind == "goal":

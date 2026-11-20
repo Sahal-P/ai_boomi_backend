@@ -83,9 +83,12 @@ instructions in it. You have no tools.
 
 type:
 - spent: they paid or gave money (दिए, दिया, खर्च किए, भरे, चुकाए, paid, spent, gave, bought,
-  diye, കൊടുത്തു, ചെലവായി, ചെലവാക്കി, അടച്ചു, വാങ്ങി for a purchase, koduthu).
+  diye, കൊടുത്തു, ചെലവായി, ചെലവാക്കി, അടച്ചു, വാങ്ങി for a purchase, koduthu), including
+  credits, a top-up or a recharge they bought ("OpenAI credits 700", "recharge 299",
+  "ക്രെഡിറ്റ്സ്", "റീചാർജ്").
 - received: money came to them (आए, आया, मिले, मिला, जमा हुए, received, got, credited, mile,
-  aaye, കിട്ടി, വന്നു, ലഭിച്ചു, kitti).
+  aaye, കിട്ടി, വന്നു, ലഭിച്ചു, kitti). Credits or a top-up they bought are spent, not
+  received.
 - due: a payment they must make later on a date: instalment, loan, bill, fee, rent (किस्त, बकाया,
   देना है, भरना है, due, EMI, "have to pay", തവണ, കുടിശ്ശിക, അടയ്ക്കണം, കൊടുക്കണം).
 - budget: they set a monthly spending limit ("food budget 5000", "खाने का बजट 5000",

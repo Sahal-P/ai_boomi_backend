@@ -205,7 +205,7 @@ def system(session: Session, settings: Settings) -> SystemStatus:
             ),
             "transcription": configured(providers.transcription(settings)),
             "english_hindi_speech": configured(providers.english_hindi_tts(settings)),
-            "malayalam_speech": configured(providers.malayalam_tts(settings)),
+            "malayalam_speech": providers.malayalam_tts(settings),
             "gmail": configured(providers.gmail(settings)),
             "whatsapp": providers.whatsapp(settings),
             "fast_decisions": providers.triage(settings),

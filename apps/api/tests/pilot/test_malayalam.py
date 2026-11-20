@@ -151,11 +151,62 @@ def test_a_malayalam_voice_note_is_heard_in_malayalam_and_read_back(kerala, monk
     assert hints == ["ml"] and kerala.texts()[-1].startswith("✅ ചേർത്തു: ₹500 കൊടുത്തു")
 
 
-def test_unclear_and_missing_amounts_are_explained_in_malayalam(kerala) -> None:
+def test_unclear_and_missing_amounts_are_explained_in_malayalam(kerala, monkeypatch) -> None:
     # The rules reader: no model is configured in tests.
     assert kerala.say("നമസ്കാരം") is None and kerala.texts()[-1] == malayalam.UNCLEAR
-    assert kerala.say("പാൽക്കാരന് അഞ്ഞൂറ് രൂപ കൊടുത്തു") == "amount_unclear"
+    assert kerala.say("പാൽക്കാരന് കൊടുത്തു") == "amount_unclear"
     assert kerala.texts()[-1] == malayalam.AMOUNT_MISSING and kerala.spoken[-1] == "ml"
+    # The answer can be a Malayalam number word on its own.
+    recorded: dict = {}
+
+    def record_voice(_engine, _settings, **kwargs):
+        recorded.update(kwargs)
+        return Capture("saved", 50000, None, kerala.record())
+
+    monkeypatch.setattr(pilot.capture, "record_voice", record_voice)
+    assert kerala.say("അഞ്ഞൂറ്") is None
+    assert recorded["line"].startswith("Rs. 500.00 paid on ")
+    assert kerala.texts()[-1].startswith("✅ ചേർത്തു: ₹500 കൊടുത്തു")
+
+
+def test_malayalam_number_words_are_amounts(kerala, monkeypatch) -> None:
+    recorded: dict = {}
+
+    def record_voice(_engine, _settings, **kwargs):
+        recorded.update(kwargs)
+        return Capture("saved", 150000, None, kerala.record(amount=150000))
+
+    monkeypatch.setattr(pilot.capture, "record_voice", record_voice)
+    assert kerala.say("പാൽക്കാരന് ആയിരത്തഞ്ഞൂറ് രൂപ കൊടുത്തു") is None
+    assert recorded["line"].startswith("Rs. 1500.00 paid on ")
+
+
+def test_a_voice_note_without_its_amount_is_finished_by_the_next_reply(kerala, monkeypatch):
+    # 20 Nov 2026: "700 OpenAI credits" came through without its amount and "700" went to Ask.
+    read: list[str] = []
+    missing = Statement("spent", None, "OpenAI", "unknown", today_ist(), "subscriptions")
+    monkeypatch.setattr(
+        pilot.statement, "read_statements", lambda text, *_args: read.append(text) or [missing]
+    )
+    monkeypatch.setattr(
+        pilot.speech,
+        "transcribe_audio",
+        lambda **_kwargs: Transcript(transcript="ഓപ്പൺ എഐ ക്രെഡിറ്റ്സ്.", detected_language="ml"),
+    )
+    recorded: dict = {}
+
+    def record_voice(_engine, _settings, **kwargs):
+        recorded.update(kwargs)
+        return Capture("saved", 70000, "OpenAI", kerala.record(amount=70000))
+
+    monkeypatch.setattr(pilot.capture, "record_voice", record_voice)
+    assert kerala.say("", kind="audio") == "amount_unclear"
+    assert kerala.texts()[-1] == malayalam.AMOUNT_MISSING
+    assert kerala.say("700") is None
+    assert read == ["ഓപ്പൺ എഐ ക്രെഡിറ്റ്സ്."]  # the answer itself never went to a model
+    assert recorded["line"].startswith("Rs. 700.00 paid to OpenAI on ")
+    assert recorded["category"] == "subscriptions"
+    assert kerala.texts()[-1].startswith("✅ ചേർത്തു: ₹700 കൊടുത്തു")
 
 
 @pytest.mark.parametrize("words", ["കണക്ക്", "എന്റെ കണക്ക്", "കണക്ക് പറയൂ.", "കണക്ക് കാണിക്കൂ"])

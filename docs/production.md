@@ -401,7 +401,8 @@ pass. See [branding release evidence](handoffs/finboy-branding.md) and [asset us
 
 `feat/finboy-malayalam-voice` adds Sarvam speech and Malayalam
 ([contract](malayalam-round/contract.md)). It has no migration. With the new settings unset,
-production behaves as before: OpenAI transcription and Gemini Malayalam speech.
+production uses OpenAI transcription and written Malayalam replies (Gemini was removed on 20
+November 2026).
 
 **Before release:**
 - In Sarvam's dashboard, turn off training on your content and set Data retention → Model APIs
@@ -424,7 +425,7 @@ SARVAM_TTS_SPEAKER_ML=<chosen voice>
 `/api/v1/readiness` should report `transcription_configuration` and `malayalam_tts_configuration`
 as `configured`.
 
-**Rollback:** set `SPEECH_TRANSCRIBE_PROVIDER=openai` and `MALAYALAM_TTS_PROVIDER=gemini`, then
+**Rollback:** set `SPEECH_TRANSCRIBE_PROVIDER=openai` and `MALAYALAM_TTS_PROVIDER=off`, then
 restart.
 
 **Acceptance:** record real phone voice notes in Malayalam, Hindi and English, and playback of a

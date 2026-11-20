@@ -23,7 +23,7 @@ account, subscription, funds, training, or cloned voice was created. Current cho
 | --- | --- | --- |
 | English TTS | Resemble Ultra / stock Lucy (`fb2d2858`, en-US) | Authenticated `/synthesize`, real MP3, browser playback |
 | Hindi TTS | Resemble Ultra / stock Fatima (`af3b3fad`, hi) | Authenticated `/synthesize`, real MP3, browser playback |
-| Malayalam TTS | `gemini-3.8-flash-tts` / prebuilt Kore | Authenticated `/models` and `/interactions`; WAV converted to MP3, browser playback |
+| Malayalam TTS | Sarvam `bulbul:v3` only when `MALAYALAM_TTS_PROVIDER=sarvam`; off by default (written replies) | Gemini was removed on 20 November 2026 (see below) |
 | STT, all three languages | `gpt-transcribe` | Model listed by this OpenAI account; actual transcription of six provider-generated fixtures |
 | Assistant understanding and contextual wording | `gpt-6-luna` | Actual Structured Outputs requests, including the purchase-planning regression |
 
@@ -36,11 +36,8 @@ account availability. See [synthesis schema](https://docs.resemble.ai/api-refere
 [voice discovery](https://docs.resemble.ai/api-reference/voices/list-voices), and
 [Ultra announcement](https://www.resemble.ai/changelog).
 
-Gemini's current [speech generation guide](https://ai.google.dev/gemini-api/docs/speech-generation)
-lists Malayalam and the 3.8 TTS models. This account's `/models` response included
-`gemini-3.8-flash-tts`; a real synthetic request returned audio. The adapter implements
-the current Interactions schema for the configured 3.8 Flash / Flash-Lite TTS family;
-other model families need their documented schema verified before use.
+Gemini Malayalam speech was removed on 20 November 2026; see
+[Malayalam amounts and speech](#malayalam-amounts-and-speech-20-november-2026).
 
 OpenAI's current [file transcription guide](https://developers.openai.com/api/docs/guides/speech-to-text)
 uses plural `languages` and returns language codes. The adapter sends `languages`
@@ -164,9 +161,7 @@ inputs. Supported inputs: WAV, MP3, WebM, Ogg/Opus and audio MP4/M4A. Validated 
 is wrapped in a correct WAV header for STT; filenames and MIME alone are not trusted.
 
 Resemble returns base64 MP3; its real response included line breaks, which are removed
-before strict base64 validation. Gemini's verified unary output is WAV. Explicit
-raw-PCM MIME with codec/rate metadata can be wrapped in WAV; unspecified encodings
-are rejected. Generated audio is bounded at 12 MiB / 180 seconds, decoded and encoded
+before strict base64 validation. Sarvam returns WAV. Generated audio is bounded at 12 MiB / 180 seconds, decoded and encoded
 as 24 kHz mono 64 kbps MP3 through pipes. WAV/PCM bytes are never relabeled as MP3.
 
 Services never persist or log raw questions, transcripts, input/generated audio,
@@ -177,9 +172,7 @@ explicit synthetic evaluation corpus. Real recordings belong in gitignored
 as benchmark fixtures.
 
 Resemble requests omit `project_uuid` and `title`, avoiding intentionally stored
-clips. User text is escaped before submission to the text/SSML field. Gemini uses
-`store=false`; see [Interactions retention](https://ai.google.dev/gemini-api/docs/interactions-overview).
-OpenAI assistant requests also set `store=false`. These are application storage controls,
+clips. User text is escaped before submission to the text/SSML field. OpenAI assistant requests also set `store=false`. These are application storage controls,
 **not** a claim of zero upstream operational/abuse retention. Resemble's current Ultra
 implementation is described as powered by xAI in its official changelog; upstream
 retention guarantees were not established. No stored-clip or voice-creation endpoint
@@ -194,7 +187,7 @@ are used. System `ffmpeg` and `ffprobe` must be present; verified locally at
 Backend-only settings: `OPENAI_API_KEY`, `OPENAI_TRANSCRIBE_MODEL`,
 `OPENAI_ASSISTANT_MODEL`, `RESEMBLE_API_KEY`, `RESEMBLE_TTS_MODEL`,
 `RESEMBLE_VOICE_UUID_EN`, `RESEMBLE_VOICE_UUID_HI`, `RESEMBLE_TTS_BASE_URL`,
-`GEMINI_API_KEY`, `GEMINI_TTS_MODEL`, `GEMINI_TTS_VOICE`, `GEMINI_TTS_BASE_URL`,
+`MALAYALAM_TTS_PROVIDER` (`off` or `sarvam`), the `SARVAM_*` settings below,
 `FFMPEG_BINARY`, `FFPROBE_BINARY`, `ASSISTANT_TIMEOUT_SECONDS`,
 `SPEECH_TIMEOUT_SECONDS`, `PROVIDER_MAX_RETRIES`, `SPEECH_MAX_AUDIO_BYTES`,
 `SPEECH_MAX_DURATION_SECONDS`, `SPEECH_MAX_TEXT_CHARACTERS`. The shared bootstrap
@@ -202,8 +195,8 @@ provides these. Model/voice choices live in ignored environment files, not defau
 or frontend variables. HTTP uses bounded timeouts and connection-establishment
 retries only for TTS; OpenAI uses its bounded SDK retry setting. Redirects are disabled.
 
-The human authorized reusing Layover's Gemini key; it was copied directly into
-`~/.config/finboy/secrets.env`. Resemble and OpenAI keys are also backend-only in that
+A Gemini key reused from Layover was kept in `~/.config/finboy/secrets.env`; FinBoy no longer
+uses it (removed 20 November 2026). Resemble and OpenAI keys are also backend-only in that
 private file and ignored worktree env, mode 600. No key appears in provider URLs.
 Agent 3's env uses API 8013, web 3013, exact loopback CORS and database `finboy_p3`.
 No database writes/schema changes were made by this owner.
@@ -311,8 +304,8 @@ until both live benchmark modes pass for all six fixtures.
 ## Sarvam AI (Malayalam voice round, 28 October 2026)
 
 The human chose Sarvam for speech-to-text in all three languages, and for Malayalam spoken
-replies ([contract](malayalam-round/contract.md)). The code defaults are unchanged: `openai`
-transcription and `gemini` Malayalam speech.
+replies ([contract](malayalam-round/contract.md)). The code defaults are `openai` transcription
+and, since 20 November 2026, no Malayalam speech (`MALAYALAM_TTS_PROVIDER=off`).
 
 **Settings** (backend only):
 - `SPEECH_TRANSCRIBE_PROVIDER=sarvam`, `SARVAM_API_KEY`, `SARVAM_STT_MODEL=saaras:v3`;
@@ -372,3 +365,25 @@ names beyond the audio or reply text itself, and stores nothing.
 
 **Not verified:** real microphone or WhatsApp voice notes from people, and phone playback of
 Bulbul audio.
+
+## Malayalam amounts and speech (20 November 2026)
+
+A WhatsApp voice note saying "700 OpenAI credits" got "എത്ര രൂപ?" in production. OpenAI
+speech-to-text heard it as Malayalam and wrote the amount as the word ഏഴുനൂറ്. FinBoy did not read
+Malayalam number words: that rule assumed Sarvam, which writes digits, but production
+transcribes with OpenAI. The human asked for the fixes below and for Gemini to go.
+
+- **Malayalam number words are amounts.** `services/ingestion/malayalam_numbers.py` splits fused
+  numbers back into their parts, with no model and no guess. Examples: എഴുന്നൂറ്റമ്പത് is
+  700 + 50, ആയിരത്തഞ്ഞൂറ് is 1,000 + 500 and രണ്ടര ലക്ഷം is 2.5 lakh. It accepts common spellings
+  (chillus, a final ു, ഏഴുനൂറ്/എഴുന്നൂറ്) and case endings (എഴുനൂറിന്). As with Hindi, a lone
+  word below 100 is money only next to രൂപ. Anything that does not parse completely is left
+  alone, so FinBoy asks instead.
+  - Live check: OpenAI's transcripts of the user's note and of the synthetic number clip
+    ("ഏഴായിരത്തി എണ്ണൂറ്റി അറുപത് രൂപ") read as ₹700 and ₹7,860.
+  - Asking speech-to-text to write digits changed only English, so the prompt is unchanged.
+- **Gemini is removed.** Its prepaid credits had run out (HTTP 402), and production had sent no
+  spoken reply in the 30 days before. `MALAYALAM_TTS_PROVIDER` is `off` (the default: Malayalam replies are written only)
+  or `sarvam` (Bulbul, after the Sarvam dashboard steps). An older env file that still says
+  `gemini` reads as `off`. Readiness and the admin panel report Malayalam speech as `off`,
+  `configured` or `missing`. Leftover `GEMINI_*` variables are ignored and can be deleted.

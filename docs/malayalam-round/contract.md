@@ -7,6 +7,11 @@ This contract supersedes earlier statements only where it says so. Two statement
 
 Everything else in those contracts still binds.
 
+**Changed on 20 November 2026.** Malayalam number words are now read as amounts. Gemini is removed,
+so `MALAYALAM_TTS_PROVIDER` is `off` (the default) or `sarvam`
+([voice](../voice.md#malayalam-amounts-and-speech-20-november-2026)). The statements below about
+number words and Gemini describe this round as it was.
+
 ## Human decisions
 
 - **Speech-to-text:** Sarvam AI Saaras for English, Hindi and Malayalam

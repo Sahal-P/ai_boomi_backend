@@ -7,7 +7,7 @@ from finboy.main import create_app
 
 @pytest.mark.anyio
 async def test_readiness_separates_configuration_from_live_acceptance(client, session):
-    session.scalar.side_effect = ["0017_coach", 0]
+    session.scalar.side_effect = ["0018_work_friends", 0]
     response = await client.get("/api/v1/readiness")
     assert response.status_code == 200
     result = response.json()
@@ -15,7 +15,7 @@ async def test_readiness_separates_configuration_from_live_acceptance(client, se
     assert result["gmail_configuration"] == "missing"
     assert result["transcription_configuration"] == "missing"
     assert result["english_hindi_tts_configuration"] == "missing"
-    assert result["malayalam_tts_configuration"] == "missing"
+    assert result["malayalam_tts_configuration"] == "off"  # written replies only
     assert result["whatsapp_configuration"] == "disabled"
     assert result["triage_configuration"] == "off"
     assert result["coach_configuration"] == "off"

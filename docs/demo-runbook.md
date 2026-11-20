@@ -111,7 +111,8 @@ After correction, each food answer must cite ₹7,860 from the same engine. List
 answer requests actual MP3 separately; click play. A missing/failed speech provider
 leaves text usable and reports unavailable. Verify number pronunciation with human
 listening; do not infer this from HTTP success. Hindi/English use Resemble Ultra
-(the human's final provider choice); Malayalam uses verified Gemini TTS. Model/voice
+(the human's final provider choice); Malayalam is spoken only with Sarvam Bulbul
+(`MALAYALAM_TTS_PROVIDER=sarvam`) and is otherwise text. Model/voice
 IDs and actual benchmark evidence are in voice.md. No cloning/training requested.
 
 Test keyboard navigation, dialog Escape/focus return, browser mic denial, offline,

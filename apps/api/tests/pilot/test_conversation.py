@@ -240,6 +240,55 @@ def test_unclear_messages_and_missing_amounts_are_explained_not_guessed(
     assert household.texts()[-1] == hindi.AMOUNT_MISSING
 
 
+def test_the_entry_waits_for_its_amount_only_until_the_next_message(household, monkeypatch) -> None:
+    from finboy.services.whatsapp import missing_amount
+    from finboy.services.whatsapp.statement import Statement
+
+    def reads(kind: str) -> None:
+        monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [Statement(kind)])
+
+    monkeypatch.setattr(pilot.capture, "record_voice", MagicMock(side_effect=AssertionError))
+    reads("spent")
+    assert household.say("दूधवाले को पैसे दिए") == "amount_unclear"
+    # Something else came first: the entry is forgotten and "500" alone is read as usual.
+    reads("unclear")
+    assert household.say("नमस्ते") is None
+    assert household.say("500") is None and household.texts()[-1] == hindi.UNCLEAR
+    # Ten minutes later it is forgotten too.
+    reads("spent")
+    assert household.say("दूधवाले को पैसे दिए") == "amount_unclear"
+    later = missing_amount.monotonic() + missing_amount.LIFETIME_SECONDS + 1
+    monkeypatch.setattr(missing_amount, "monotonic", lambda: later)
+    reads("unclear")
+    assert household.say("500") is None and household.texts()[-1] == hindi.UNCLEAR
+
+
+def test_a_voice_answer_that_failed_keeps_the_entry_waiting(household, monkeypatch) -> None:
+    from finboy.core.clock import today_ist
+    from finboy.core.errors import ProviderUnavailable
+    from finboy.services.whatsapp.statement import Statement
+
+    missing = Statement("spent", None, "दूधवाले", "cash", today_ist(), "groceries")
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [missing])
+    assert household.say("दूधवाले को नकद दिए") == "amount_unclear"
+    monkeypatch.setattr(
+        pilot.speech,
+        "transcribe_audio",
+        MagicMock(side_effect=ProviderUnavailable("speech_unavailable")),
+    )
+    assert household.say("", kind="audio") == "invalid_audio"
+    recorded: dict = {}
+
+    def record_voice(_engine, _settings, **kwargs):
+        recorded.update(kwargs)
+        return Capture("saved", 50000, "दूधवाले", household.record())
+
+    monkeypatch.setattr(pilot.capture, "record_voice", record_voice)
+    assert household.say("पाँच सौ") is None
+    assert recorded["line"].startswith("Rs. 500.00 paid to दूधवाले via cash on ")
+    assert household.texts()[-1].startswith("✅ जोड़ दिया: ₹500 दिए")
+
+
 def test_an_already_confirmed_payment_is_not_offered_again(household, monkeypatch) -> None:
     from finboy.core.clock import today_ist
     from finboy.services.whatsapp.statement import Statement
