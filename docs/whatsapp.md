@@ -199,6 +199,11 @@ provider status tracks sent/failed/delivered/read separately and monotonically.
 A callback arriving before its provider ID was durably recorded can be missed; an
 uncertain send remains unknown and requires a fresh inbound question.
 
+FinBoy uses Meta's native typing indicator for inbound messages it will answer. This
+also marks the message as read. WhatsApp clears it when FinBoy replies or after
+25 seconds. The indicator request runs alongside reply processing with a two-second
+deadline. Its failure has no effect on the reply.
+
 Media is resolved by authenticated Graph media ID with the expected phone ID; webhook
 or user-supplied URLs are never fetched. The returned URL must be HTTPS on the exact
 allowlist (`lookaside.fbsbx.com`, `mmg.whatsapp.net`), without credentials/custom port

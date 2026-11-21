@@ -248,6 +248,7 @@ async def test_concurrent_http_duplicates_run_shared_services_once(
     from .conftest import payload
 
     calls = {"ask": 0, "send": 0, "stt": 0, "tts": 0}
+    typing_ids: list[str] = []
     lock = Lock()
 
     class Client:
@@ -256,6 +257,10 @@ async def test_concurrent_http_duplicates_run_shared_services_once(
 
         def close(self) -> None:
             pass
+
+        def start_typing(self, _loop: asyncio.AbstractEventLoop, message_id: str) -> None:
+            with lock:
+                typing_ids.append(message_id)
 
         def send(self, *_args, **_kwargs) -> str:
             with lock:
@@ -297,7 +302,8 @@ async def test_concurrent_http_duplicates_run_shared_services_once(
     monkeypatch.setattr(processor.speech, "synthesize_speech", tts)
     settings = wa_settings.model_copy(update={"database_url": Settings().database_url})
     app = create_app(settings)
-    raw = json.dumps(payload(kind=kind, message_id="wamid." + uuid4().hex)).encode()
+    inbound_id = "wamid." + uuid4().hex
+    raw = json.dumps(payload(kind=kind, message_id=inbound_id)).encode()
     signature = "sha256=" + hmac.new(config.app_secret.encode(), raw, hashlib.sha256).hexdigest()
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -315,6 +321,7 @@ async def test_concurrent_http_duplicates_run_shared_services_once(
                 ]
             )
         assert [reply.status_code for reply in replies] == [200, 200]
+        assert typing_ids == [inbound_id]
         assert calls["ask"] == 1
         assert calls["send"] == (2 if kind == "audio" else 1)
         assert calls["stt"] == calls["tts"] == (1 if kind == "audio" else 0)

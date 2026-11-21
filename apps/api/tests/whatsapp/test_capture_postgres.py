@@ -226,7 +226,7 @@ async def test_signed_image_webhook_captures_once(
     from .conftest import payload
 
     engine, user = household
-    calls = {"read": 0, "send": 0}
+    calls = {"read": 0, "send": 0, "typing": 0}
     lock = Lock()
 
     class Client:
@@ -235,6 +235,10 @@ async def test_signed_image_webhook_captures_once(
 
         def close(self) -> None:
             pass
+
+        def start_typing(self, _loop: asyncio.AbstractEventLoop, _message_id: str) -> None:
+            with lock:
+                calls["typing"] += 1
 
         def download_image(self, *_args) -> DownloadedMedia:
             return DownloadedMedia(b"synthetic image", "image/png")
@@ -278,7 +282,7 @@ async def test_signed_image_webhook_captures_once(
                 ]
             )
         assert [reply.status_code for reply in replies] == [200, 200]
-        assert calls == {"read": 1, "send": 1}
+        assert calls == {"read": 1, "send": 1, "typing": 1}
         with Session(engine) as session:
             receipt = session.scalars(
                 select(WhatsAppReceipt)

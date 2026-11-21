@@ -2,6 +2,7 @@
 
 import logging
 import re
+from asyncio import AbstractEventLoop
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
 from uuid import UUID, uuid4
@@ -151,6 +152,8 @@ def process_question(
     config: ChannelConfig,
     receipt_id: UUID,
     question: InboundQuestion,
+    *,
+    typing_loop: AbstractEventLoop | None = None,
 ) -> None:
     started = perf_counter()
     client = MetaClient(config)
@@ -185,6 +188,17 @@ def process_question(
             is_pilot = household.pilot is True
             self_serve = household.joined_via is not None
             diary = is_pilot or self_serve
+            tapped = prompts.parse(question.button_id or "") if question.kind == "button" else None
+            login_button = tapped is not None and session.scalar(
+                select(WhatsAppPrompt.purpose).where(
+                    WhatsAppPrompt.id == tapped[0], WhatsAppPrompt.binding_id == binding.id
+                )
+            ) in {"web_login", "link"}
+            if question.kind == "button" and not (diary or login_button):
+                receipts.finish(session, receipt_id, error="prompt_expired")
+                return
+            if typing_loop is not None:
+                client.start_typing(typing_loop, question.message_id)
             conversation = pilot.Conversation(
                 session,
                 settings,
@@ -241,12 +255,7 @@ def process_question(
             if code is not None:
                 receipts.finish(session, receipt_id, error=signup.handle_code(conversation, code))
                 return
-            tapped = prompts.parse(question.button_id or "") if question.kind == "button" else None
-            if tapped is not None and session.scalar(
-                select(WhatsAppPrompt.purpose).where(
-                    WhatsAppPrompt.id == tapped[0], WhatsAppPrompt.binding_id == binding.id
-                )
-            ) in {"web_login", "link"}:
+            if tapped is not None and login_button:
                 prompt = prompts.claim(session, binding, tapped[0])
                 error = (
                     signup.tap(conversation, prompt, tapped[1])
@@ -325,10 +334,6 @@ def process_question(
                     return
             if diary:
                 receipts.finish(session, receipt_id, error=pilot.handle(conversation))
-                return
-            if question.kind == "button":
-                # Only pilot households are ever sent buttons; acknowledge without acting.
-                receipts.finish(session, receipt_id, error="prompt_expired")
                 return
             if question.kind == "image":
                 # End this read snapshot; the import pipeline commits through its own sessions.

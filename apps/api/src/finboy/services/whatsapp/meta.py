@@ -1,9 +1,12 @@
 """Bounded official Graph transport; no automatic outbound retries."""
 
+import asyncio
 import hashlib
 import hmac
+import logging
 import re
 import time
+from concurrent.futures import Future
 from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
@@ -12,6 +15,8 @@ from pydantic import BaseModel, Field, ValidationError
 
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import BUTTON_ID
+
+logger = logging.getLogger(__name__)
 
 AUDIO_TYPES = {"audio/aac", "audio/amr", "audio/mpeg", "audio/mp4", "audio/ogg"}
 IMAGE_TYPES = {"image/jpeg", "image/png"}
@@ -82,6 +87,8 @@ class MetaClient:
     ) -> None:
         self.config = config
         self.base = f"https://graph.facebook.com/{config.version}"
+        self._messages_url = f"{self.base}/{config.phone_id}/messages"
+        self._typing: Future[None] | None = None
         self.client = httpx.Client(
             headers={
                 "Authorization": f"Bearer {config.access_token}",
@@ -101,7 +108,41 @@ class MetaClient:
             self.vouched.add(recipient)
 
     def close(self) -> None:
+        self._cancel_typing()
         self.client.close()
+
+    def start_typing(self, loop: asyncio.AbstractEventLoop, message_id: str) -> None:
+        """Signal from the webhook loop while the reply worker continues."""
+        self._typing = asyncio.run_coroutine_threadsafe(self._show_typing(message_id), loop)
+
+    def _cancel_typing(self) -> None:
+        if self._typing is not None:
+            self._typing.cancel()
+            self._typing = None
+
+    async def _show_typing(self, message_id: str) -> None:
+        try:
+            async with (
+                asyncio.timeout(2),
+                httpx.AsyncClient(
+                    headers={"Authorization": f"Bearer {self.config.access_token}"},
+                    follow_redirects=False,
+                    trust_env=False,
+                ) as client,
+                client.stream(
+                    "POST",
+                    self._messages_url,
+                    json={
+                        "messaging_product": "whatsapp",
+                        "status": "read",
+                        "message_id": message_id,
+                        "typing_indicator": {"type": "text"},
+                    },
+                ) as response,
+            ):
+                response.raise_for_status()
+        except httpx.HTTPError, TimeoutError:
+            logger.info("whatsapp.typing_unavailable", extra={"outcome": "unavailable"})
 
     def _read(
         self, method: str, url: str, *, limit: int = 32768, **kwargs: object
@@ -307,10 +348,9 @@ class MetaClient:
             **message,
         }
         # Unlike read/upload failures, a transport/5xx failure after send may be ambiguous.
+        self._cancel_typing()
         try:
-            with self.client.stream(
-                "POST", f"{self.base}/{self.config.phone_id}/messages", json=payload
-            ) as response:
+            with self.client.stream("POST", self._messages_url, json=payload) as response:
                 if response.status_code >= 500 or 300 <= response.status_code < 400:
                     raise SendUnknown
                 if response.status_code >= 400:

@@ -268,7 +268,7 @@ def test_image_replies_follow_the_language_preference(
 def test_deleted_or_suspended_households_are_recorded_but_never_answered(
     monkeypatch: pytest.MonkeyPatch, config: ChannelConfig, wa_settings: Settings, stopped: str
 ) -> None:
-    factory, receipt, _, _meta, send, ask, transcribe, _speak, finish = harness(monkeypatch)
+    factory, receipt, _, meta, send, ask, transcribe, _speak, finish = harness(monkeypatch)
     session = factory.return_value.__enter__.return_value
     row = household(joined_via="whatsapp")
     setattr(row, stopped, datetime.now(UTC))
@@ -276,8 +276,34 @@ def test_deleted_or_suspended_households_are_recorded_but_never_answered(
     question = InboundQuestion(
         "wamid.synthetic", "919000000001", datetime.now(UTC), "text", text="synthetic question"
     )
-    processor.process_question(factory, wa_settings, config, receipt.id, question)
+    processor.process_question(
+        factory, wa_settings, config, receipt.id, question, typing_loop=MagicMock()
+    )
     assert finish.call_args.kwargs["error"] == "disabled"
     send.assert_not_called()
     ask.assert_not_called()
     transcribe.assert_not_called()
+    meta.start_typing.assert_not_called()
+
+
+def test_pdf_signals_typing_before_import(
+    monkeypatch: pytest.MonkeyPatch, config: ChannelConfig, wa_settings: Settings
+) -> None:
+    factory, receipt, _, meta, send, _, _, _, _ = harness(monkeypatch)
+    question = InboundQuestion(
+        "wamid.pdf",
+        "919000000001",
+        datetime.now(UTC),
+        "document",
+        media_id="5678",
+        mime_type="application/pdf",
+    )
+    loop = MagicMock()
+
+    def import_document(*_args):
+        meta.start_typing.assert_called_once_with(loop, question.message_id)
+        return processor.documents.DocumentImport("not_statement")
+
+    monkeypatch.setattr(processor.documents, "import_document", import_document)
+    processor.process_question(factory, wa_settings, config, receipt.id, question, typing_loop=loop)
+    send.assert_called_once()

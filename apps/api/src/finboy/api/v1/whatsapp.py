@@ -81,6 +81,7 @@ async def receive_webhook(request: Request, tasks: BackgroundTasks) -> dict[str,
         admitted = await run_in_threadpool(persist)
     except Exception:
         raise HTTPException(503) from None
+    loop = asyncio.get_running_loop()
     for item in admitted:
         tasks.add_task(
             process_question,
@@ -89,5 +90,6 @@ async def receive_webhook(request: Request, tasks: BackgroundTasks) -> dict[str,
             config,
             item.receipt_id,
             item.question,
+            typing_loop=loop,
         )
     return {"status": "accepted"}

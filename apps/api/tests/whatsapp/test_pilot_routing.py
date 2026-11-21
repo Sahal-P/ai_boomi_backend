@@ -95,11 +95,26 @@ def test_the_owners_language_commands_are_unchanged(
     assert send.call_args.kwargs["text"] == "മലയാളം തിരഞ്ഞെടുത്തു. FinBoy രേഖകളെക്കുറിച്ച് ചോദിക്കാം."
 
 
-def test_a_button_from_a_non_pilot_household_does_nothing(
-    monkeypatch: pytest.MonkeyPatch, config: ChannelConfig, wa_settings: Settings
+@pytest.mark.parametrize("purpose", [None, "web_login"])
+def test_owner_button_shows_typing_only_if_it_has_a_reply(
+    monkeypatch: pytest.MonkeyPatch,
+    config: ChannelConfig,
+    wa_settings: Settings,
+    purpose: str | None,
 ) -> None:
-    factory, receipt, _, _, send, ask, _, _, finish = harness(monkeypatch)
+    factory, receipt, _, meta, send, ask, _, _, finish = harness(monkeypatch)
+    session = factory.return_value.__enter__.return_value
+    session.scalar.return_value = purpose
+    # An expired web login prompt still gets an explanation.
+    monkeypatch.setattr(processor.prompts, "claim", lambda *_: None)
     tap = question(kind="button", button_id="fb1:" + "a" * 32 + ":yes")
-    processor.process_question(factory, wa_settings, config, receipt.id, tap)
-    assert send.call_count == ask.call_count == 0
+    loop = MagicMock()
+    processor.process_question(factory, wa_settings, config, receipt.id, tap, typing_loop=loop)
+    if purpose:
+        meta.start_typing.assert_called_once_with(loop, tap.message_id)
+        send.assert_called_once()
+    else:
+        meta.start_typing.assert_not_called()
+        send.assert_not_called()
+    ask.assert_not_called()
     assert finish.call_args.kwargs["error"] == "prompt_expired"

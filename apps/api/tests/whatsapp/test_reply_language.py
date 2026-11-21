@@ -135,12 +135,15 @@ def test_the_consent_card_follows_the_first_message_and_otherwise_english(
     kind: str,
     module: ModuleType,
 ) -> None:
-    factory, receipt, _, _, _, _, transcribe, _, _ = harness(monkeypatch)
+    factory, receipt, _, meta, _, _, transcribe, _, _ = harness(monkeypatch)
     session = factory.return_value.__enter__.return_value
     session.execute.return_value.one_or_none.return_value = household(**new_household)
     consent = MagicMock(return_value=None)
     monkeypatch.setattr(processor.pilot, "ask_consent", consent)
-    processor.process_question(factory, wa_settings, config, receipt.id, question(words, kind))
+    inbound = question(words, kind)
+    loop = MagicMock()
+    processor.process_question(factory, wa_settings, config, receipt.id, inbound, typing_loop=loop)
+    meta.start_typing.assert_called_once_with(loop, inbound.message_id)
     assert consent.call_args.args[0].words is module
     assert not transcribe.called
 
@@ -153,14 +156,16 @@ def test_a_login_code_gets_the_language_last_used_or_english(
     last: str | None,
     module: ModuleType,
 ) -> None:
-    factory, receipt, binding, _, _, _, _, _, _ = harness(monkeypatch)
+    factory, receipt, binding, meta, _, _, _, _, _ = harness(monkeypatch)
     binding.last_language = last
     session = factory.return_value.__enter__.return_value
     session.execute.return_value.one_or_none.return_value = household(pilot=True)
     handle_code = MagicMock(return_value=None)
     monkeypatch.setattr(processor.signup, "handle_code", handle_code)
     code = question(f"FinBoy login code {login.new_code()}")
-    processor.process_question(factory, wa_settings, config, receipt.id, code)
+    loop = MagicMock()
+    processor.process_question(factory, wa_settings, config, receipt.id, code, typing_loop=loop)
+    meta.start_typing.assert_called_once_with(loop, code.message_id)
     assert handle_code.call_args.args[0].words is module
 
 

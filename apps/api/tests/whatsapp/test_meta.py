@@ -1,5 +1,7 @@
+import asyncio
 import hashlib
 import json
+from functools import partial
 
 import httpx
 import pytest
@@ -152,6 +154,59 @@ def test_unknown_recipient_never_reaches_meta(config: ChannelConfig) -> None:
             client.send("919000000099", text="answer")
         with pytest.raises(InvalidMedia):
             client.download_audio("https://evil.test/a", "audio/ogg")
+    finally:
+        client.close()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("stalls", [False, True], ids=["rejected", "stalled"])
+async def test_typing_uses_inbound_id_and_never_blocks_reply(
+    config: ChannelConfig, monkeypatch: pytest.MonkeyPatch, stalls: bool
+) -> None:
+    seen: list[httpx.Request] = []
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    async def typing(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        started.set()
+        if stalls:
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                cancelled.set()
+                raise
+        return httpx.Response(429)
+
+    monkeypatch.setattr(
+        httpx, "AsyncClient", partial(httpx.AsyncClient, transport=httpx.MockTransport(typing))
+    )
+    reply_transport = httpx.MockTransport(
+        lambda _: httpx.Response(200, json={"messages": [{"id": "wamid.reply"}]})
+    )
+    client = MetaClient(config, transport=reply_transport)
+    try:
+        client.start_typing(asyncio.get_running_loop(), "wamid.inbound")
+        await asyncio.wait_for(started.wait(), 1)
+        reply = await asyncio.wait_for(
+            asyncio.to_thread(client.send, "919000000001", text="answer"), 1
+        )
+        assert reply == "wamid.reply"
+        if stalls:
+            await asyncio.wait_for(cancelled.wait(), 1)
+        (request,) = seen
+        assert request.method == "POST"
+        assert (
+            str(request.url)
+            == f"https://graph.facebook.com/{config.version}/{config.phone_id}/messages"
+        )
+        assert request.headers["authorization"] == "Bearer synthetic-access"
+        assert json.loads(request.content) == {
+            "messaging_product": "whatsapp",
+            "status": "read",
+            "message_id": "wamid.inbound",
+            "typing_indicator": {"type": "text"},
+        }
     finally:
         client.close()
 
