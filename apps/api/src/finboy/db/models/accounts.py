@@ -1,6 +1,7 @@
 """Self-serve sign-up (docs/signup-round/contract.md). Digests and masked labels, never secrets.
 
-No login code, ID token, name, photo, phone number in clear, or message text is stored here.
+No login code, ID token, photo, phone number in clear, or message text is stored here. The Google
+email is kept only Fernet-encrypted, for the admin panel (docs/names-search-round/contract.md).
 """
 
 from datetime import date, datetime
@@ -37,6 +38,7 @@ class UserIdentity(Base):
     provider: Mapped[str] = mapped_column(Text)
     subject_sha256: Mapped[str] = mapped_column(Text)
     email_masked: Mapped[str | None] = mapped_column(Text)
+    encrypted_email: Mapped[bytes | None] = mapped_column(LargeBinary)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

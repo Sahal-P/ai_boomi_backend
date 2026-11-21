@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Brain, Check, ChevronDown, Copy, ExternalLink, Pause, Play, RotateCcw, Square, Volume2 } from "lucide-react";
+import { BookOpen, Brain, Check, ChevronDown, Copy, ExternalLink, Globe, Pause, Play, RotateCcw, Square, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { RevealText } from "@/components/assistant/reveal-text";
@@ -112,48 +112,54 @@ function MemoryNote({ changes }: { changes: MemoryChange[] }) {
 
 /**
  * What an answer rests on. An advisor answer claims the household's records only when it carries
- * their warning; one from FinBoy's guides says so; planning maths or a greeting claims neither.
+ * their warning; one from the web or FinBoy's guides says so; planning maths or a greeting claims
+ * neither.
  */
 function basis(answer: Answer, copy: ReturnType<typeof answerCopy>): string | null {
   if (answer.intent !== "advisor" || answer.policy !== "answer") return copy[answer.policy];
   if (answer.warnings.includes("incomplete_coverage")) return copy.answer;
+  if (answer.sources.some((source) => source.kind === "web")) return copy.web;
   return answer.sources.length > 0 ? copy.guides : null;
 }
 
-/** The reviewed guides an answer is based on, each linking to its official site. */
+/** The reviewed guides (each linking to its official site) and web pages an answer is based on. */
 function Sources({ sources, lang }: { sources: AnswerSource[]; lang: string | undefined }) {
+  const web = sources.some((source) => source.kind === "web");
   return (
     <div className="space-y-2">
       {sources.some((source) => source.url) && (
         <p className="text-xs font-semibold text-ink-soft" lang="en">
-          Official sites
+          {web ? "Sources" : "Official sites"}
         </p>
       )}
       <ul className="flex flex-wrap gap-2" lang={lang}>
-        {sources.map((source) => (
-          <li key={source.id}>
-            {source.url ? (
-              <a
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="surface inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm text-ink transition-[transform,background-color] duration-300 ease-out-expo hover:-translate-y-px hover:bg-white/80"
-              >
-                <BookOpen className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />
-                {source.title}
-                <ExternalLink className="size-3.5 shrink-0 text-ink-soft" aria-hidden="true" />
-                <span className="sr-only" lang="en">
-                  (official site, opens in a new tab)
+        {sources.map((source) => {
+          const Icon = source.kind === "web" ? Globe : BookOpen;
+          return (
+            <li key={source.id}>
+              {source.url ? (
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="surface inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm text-ink transition-[transform,background-color] duration-300 ease-out-expo hover:-translate-y-px hover:bg-white/80"
+                >
+                  <Icon className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />
+                  {source.title}
+                  <ExternalLink className="size-3.5 shrink-0 text-ink-soft" aria-hidden="true" />
+                  <span className="sr-only" lang="en">
+                    {source.kind === "web" ? "(opens in a new tab)" : "(official site, opens in a new tab)"}
+                  </span>
+                </a>
+              ) : (
+                <span className="surface inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm text-ink">
+                  <Icon className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />
+                  {source.title}
                 </span>
-              </a>
-            ) : (
-              <span className="surface inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm text-ink">
-                <BookOpen className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />
-                {source.title}
-              </span>
-            )}
-          </li>
-        ))}
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

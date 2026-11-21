@@ -85,6 +85,15 @@ def advisor(settings: Settings) -> Literal["off", "configured", "missing"]:
     )
 
 
+def web_search(settings: Settings) -> Literal["off", "configured", "missing"]:
+    """Public prices and rates for the advisor (docs/names-search-round/contract.md). The search
+    always runs on OpenAI, even when another provider writes the answer."""
+    if not settings.advisor_enabled or not settings.advisor_web_search_enabled:
+        return "off"
+    ready = settings.ai_key("openai") and settings.advisor_model_for("openai")
+    return "configured" if ready else "missing"
+
+
 def coach(settings: Settings) -> Literal["off", "window_only", "configured"]:
     """The coach (advisor phase 3): `window_only` until Meta approves its template, when nudges
     reach only households that wrote to FinBoy in the last day."""

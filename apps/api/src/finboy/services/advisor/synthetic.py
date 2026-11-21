@@ -17,7 +17,7 @@ from finboy.core.clock import IST, today_ist
 from finboy.core.config import LOCAL_USER_ID
 from finboy.db.base import Base
 from finboy.db.models import User
-from finboy.services.advisor import coach, history, knowledge
+from finboy.services.advisor import coach, history, knowledge, web_search
 from finboy.services.money import budgets, engine, insights
 from finboy.services.money.engine import (
     CategoryTotal,
@@ -28,6 +28,14 @@ from finboy.services.money.engine import (
 )
 
 OTHER_USER = UUID("00000000-0000-0000-0000-0000000000aa")
+# Made-up public facts behind search_web, for the eval's price and EMI questions.
+SEARCH_FOUND = web_search.Found(
+    summary=(
+        "Example Roadster 350: on-road price in Kochi about ₹2,40,000.\n"
+        "Two-wheeler loans in India usually cost 10% to 14% a year."
+    ),
+    pages=[web_search.Page(title="Example bike prices", url="https://example.com/bike-prices")],
+)
 
 
 def make_store() -> sessionmaker[Session]:
@@ -215,6 +223,10 @@ class SyntheticHousehold:
     def past_chats(self, query: str) -> list[history.ChatHit]:
         self.reads.append("past_chats")
         return list(self.chats)
+
+    def search_web(self, question: str) -> web_search.Found:
+        self.reads.append("search_web")
+        return SEARCH_FOUND
 
 
 # Phase 3: a Sunday after the 20th, when every kind of coach nudge can come up.

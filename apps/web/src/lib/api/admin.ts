@@ -2,8 +2,9 @@ import { z } from "zod";
 import { ApiError, jsonBody, query, requestJson } from "./http.ts";
 
 // The admin panel (docs/admin-round/contract.md). Every rule is enforced by the API; these
-// schemas mirror its response models, which carry activity only: no household's records,
-// contact details, names or hashes. FinBoy's own ₹299 payments are the only money.
+// schemas mirror its response models: who each household is (name, phone number and email, since
+// docs/names-search-round/contract.md) and its activity, never its records, chats, memories or
+// hashes. FinBoy's own ₹299 payments are the only money.
 
 const ADMIN = "/api/v1/admin";
 // The owner's household ID is not a random UUID, so IDs are checked as GUIDs.
@@ -13,6 +14,9 @@ const shortId = z.string().regex(/^[0-9a-f]{8}$/);
 const count = z.number().int().nonnegative();
 const counts = z.record(z.string().max(40), count);
 const language = z.enum(["en", "hi", "ml"]);
+const name = z.string().max(200).nullable();
+// Digits with the country code, like "919876543210".
+const phone = z.string().regex(/^[0-9]{7,20}$/).nullable();
 
 export const KINDS = ["owner", "pilot", "self_serve", "pending", "former_pilot"] as const;
 export const STATUSES = ["active", "suspended", "deleted"] as const;
@@ -32,6 +36,8 @@ const doneSchema = z.object({ done: z.literal(true) });
 const householdRowSchema = z.object({
   id,
   short_id: shortId,
+  name,
+  phone,
   kind: z.enum(KINDS),
   status: z.enum(STATUSES),
   whatsapp: z.boolean(),
@@ -54,6 +60,7 @@ const paymentSchema = z.object({
   id,
   household_id: id,
   short_id: shortId,
+  household_name: name,
   created_at: instant,
   amount_minor: z.number().int().positive(),
   status: z.enum(PAYMENT_STATUSES),
@@ -73,8 +80,11 @@ const householdDetailSchema = householdRowSchema.extend({
   deleted_at: instant.nullable(),
   last_message_at: instant.nullable(),
   last_record_at: instant.nullable(),
-  // Stored masked by the sign-up round ("s***@***.com"); nothing is decrypted.
-  google_email: z.string().max(120).nullable(),
+  // The full email from the household's next Google sign-in on; until then "s***@***.com".
+  google_email: z.string().max(254).nullable(),
+  // What the household typed for PayU receipts.
+  payer_email: z.string().max(254).nullable(),
+  payer_phone: phone,
   plan_detail: z.object({
     state: z.enum(PLAN_STATES),
     trial_ends_at: instant.nullable(),
@@ -198,6 +208,7 @@ const auditPageSchema = page(
     admin_email: z.string().max(254).nullable(),
     household_id: id.nullable(),
     short_id: shortId.nullable(),
+    household_name: name,
     detail: z.record(z.string().max(16), z.union([z.string().max(64), z.number().int()])),
   }),
 );

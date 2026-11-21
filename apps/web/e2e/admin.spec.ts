@@ -71,15 +71,19 @@ test("the overview shows counts, never a household's records", async ({ page }) 
   await expect(page.getByRole("region", { name: "Sign-ups" })).toContainText("84");
 });
 
-test("find a household by its exact number, then suspend and restore it", async ({ page }) => {
+test("find a household by its exact number, see who it is, then suspend and restore it", async ({ page }) => {
   await page.goto("/admin/households");
   const rows = page.getByRole("list", { name: "Households" }).getByRole("link");
   await expect(rows).toHaveCount(5);
-  await page.getByLabel("Household ID or phone number").fill("+91 98123 45670");
+  await page.getByLabel("Name, phone number or household ID").fill("+91 98123 45670");
   await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toContainText("a1b2c3d4");
+  await expect(rows.first()).toContainText("Asha Menon");
+  await expect(rows.first()).toContainText("+91 98123 45670");
   await rows.first().click();
-  await expect(page.getByRole("heading", { name: "a1b2c3d4" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Asha Menon" })).toBeVisible();
+  const contact = page.getByRole("region", { name: "Contact" });
+  await expect(contact.getByRole("link", { name: "+91 98123 45670" })).toHaveAttribute("href", "tel:+919812345670");
+  await expect(contact).toContainText("asha.menon@example.test");
   await page.getByRole("button", { name: "Suspend", exact: true }).click();
   const suspend = page.getByRole("alertdialog", { name: "Suspend this household?" });
   const confirm = suspend.getByRole("button", { name: "Suspend", exact: true });
@@ -94,23 +98,26 @@ test("find a household by its exact number, then suspend and restore it", async 
   await expect(page.getByRole("button", { name: "Suspend", exact: true })).toBeVisible();
 });
 
-test("an unknown number or a name finds nothing, and filters narrow the list", async ({ page }) => {
+test("an unknown number finds nothing, part of a name finds its household, and filters narrow the list", async ({ page }) => {
   await page.goto("/admin/households?q=9812345679");
   await expect(page.getByRole("heading", { name: "No household matches that search" })).toBeVisible();
-  await page.goto("/admin/households?kind=pilot");
   const rows = page.getByRole("list", { name: "Households" }).getByRole("link");
+  await page.goto("/admin/households?q=ravi");
   await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toContainText("c3d4e5f6");
+  await expect(rows.first()).toContainText("Ravi Kumar");
+  await page.goto("/admin/households?kind=pilot");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText("Pilot household 1");
   await page.getByRole("button", { name: /^Filters/ }).click();
   await page.getByLabel("Kind").selectOption("");
   await page.getByLabel("Status").selectOption("suspended");
   await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toContainText("d4e5f6a7");
+  await expect(rows.first()).toContainText("Ravi Kumar");
 });
 
 test("erasing a pending sign-up needs its short ID typed back", async ({ page }) => {
   await page.goto(`/admin/households?selected=${adminIds.pending}`);
-  await expect(page.getByRole("heading", { name: "b2c3d4e5" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No name yet" })).toBeVisible();
   await page.getByRole("button", { name: "Erase", exact: true }).click();
   const dialog = page.getByRole("alertdialog", { name: "Erase this household?" });
   await expect(dialog).toContainText("never agreed");
@@ -125,7 +132,7 @@ test("erasing a pending sign-up needs its short ID typed back", async ({ page })
 
 test("the owner's household can only be viewed", async ({ page }) => {
   await page.goto(`/admin/households?selected=${adminIds.owner}`);
-  await expect(page.getByRole("heading", { name: "00000000" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Arun" })).toBeVisible();
   await expect(page.getByText("The owner's household can only be viewed here.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Erase", exact: true })).toHaveCount(0);
 });
@@ -157,6 +164,7 @@ test("re-check a payment FinBoy hasn't heard back about", async ({ page }) => {
   await page.goto("/admin/payments");
   await expect(page.getByRole("heading", { level: 1, name: "Payments" })).toBeVisible();
   await expect(page.getByText("FBSYNTH0001", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Asha Menon" }).first()).toBeVisible();
   await page.getByRole("button", { name: "Re-check with PayU" }).click();
   await expect(page.getByText("PayU says FBSYNTH0001 is paid.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Re-check with PayU" })).toHaveCount(0);
@@ -204,7 +212,7 @@ test("the audit log records actions, and signing out ends the session", async ({
   await page.goto("/admin/audit");
   const first = page.getByRole("list", { name: "Audit entries" }).getByRole("listitem").first();
   await expect(first).toContainText("Signed a household out everywhere");
-  await expect(first).toContainText("a1b2c3d4");
+  await expect(first.getByRole("link", { name: "Asha Menon" })).toHaveAttribute("href", `/admin/households?selected=${adminIds.family}`);
   await page.getByRole("button", { name: /^Admin account/ }).first().click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/admin\/login$/);

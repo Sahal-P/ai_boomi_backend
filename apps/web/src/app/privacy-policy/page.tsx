@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="15 November 2026">
+    <LegalPage title="Privacy Policy" updated="21 November 2026">
       <p>
         FinBoy helps you keep track of your own money: what came in, what went out and what is due.
         This page says exactly what we keep, what we never keep, and how to delete everything.
@@ -24,10 +24,11 @@ export default function PrivacyPolicyPage() {
           category, and any dues you add. Clear diary entries are saved; FinBoy asks you to check
           some entries before counting them, such as possible duplicates.
         </li>
+        <li>The name you give FinBoy when you first sign in on the website.</li>
         <li>
           How you sign in: an encrypted copy of your WhatsApp number (shown to you masked, and used
-          only for messages you ask for, like a place opening up, a reminder or the coach&apos;s nudges), or a one-way code that identifies your Google account plus a
-          masked email like &ldquo;s***@***.com&rdquo;. We don&apos;t keep your name or photo.
+          only for messages you ask for, like a place opening up, a reminder or the coach&apos;s nudges), or a one-way code that identifies your Google account plus an
+          encrypted copy of its email address. We don&apos;t keep your photo.
         </li>
         <li>
           Your chats with FinBoy, typed or spoken: the words of each question (a voice question is
@@ -76,8 +77,9 @@ export default function PrivacyPolicyPage() {
         To understand what you say or send, FinBoy uses these services, only for that request and
         without letting them keep or train on your data where they offer that choice: OpenAI
         (reading text, screenshots and speech, answering your questions with the figures from your
-        records, the memories and the recent chat that each answer needs, and turning memories, chat
-        summaries and searches into numbers that help find the right ones), Liquid AI (quickly telling what a message, question
+        records, the memories and the recent chat that each answer needs, looking up public prices
+        and loan rates on the web with a short search that never includes your records, and turning
+        memories, chat summaries and searches into numbers that help find the right ones), Liquid AI (quickly telling what a message, question
         or photo is about, so common ones are answered sooner), DeepSeek (reading masked diary
         and Quick Add text, answering questions with relevant chat history, memories and ledger
         figures, summarizing chats, wording coach reminders, reading minimized email text and
@@ -95,11 +97,12 @@ export default function PrivacyPolicyPage() {
 
       <h2>What FinBoy&apos;s team can see</h2>
       <p>
-        The few people who run FinBoy can see account activity, to keep the service working and to
-        help you: when you joined and last used FinBoy, your plan and Premium payments, daily usage
-        counts, whether messages were delivered, and whether WhatsApp or Google is linked. They
-        never see your records, amounts, who you paid, your messages, your chats with FinBoy, what
-        it remembers about you or your phone number. They can
+        The few people who run FinBoy can see who you are and your account activity, to keep the
+        service working and to help you: your name, phone number and email address, when you joined
+        and last used FinBoy, your plan and Premium payments, daily usage counts, whether messages
+        were delivered, and whether WhatsApp or Google is linked. They never see your records,
+        amounts, who you paid, your messages, your chats with FinBoy or what it remembers about you.
+        They can
         pause or erase an account, for example when you ask, and every such step is recorded.
       </p>
 

@@ -1,15 +1,17 @@
-"""Households as an admin sees them (docs/admin-round/contract.md): kinds, dates, plans, counts.
+"""Households as an admin sees them (docs/admin-round/contract.md): who they are, kinds, dates,
+plans and counts.
 
-The owner's stored name is a real first name, so `display_name` is never read here; every
-household is its short ID. Phone search compares the typed number's keyed hash with the stored
-one, so no number is decrypted or listed.
+Each household shows its name, phone number and email (docs/names-search-round/contract.md).
+Numbers are decrypted only for the households on the page being shown. Phone search compares
+the typed number's keyed hash with the stored one; names match anywhere in the name.
 """
 
 import re
+from contextlib import suppress
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, Text, and_, cast, exists, func, select
+from sqlalchemy import ColumnElement, Text, and_, cast, exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from finboy.core.config import LOCAL_USER_ID, Settings
@@ -37,8 +39,10 @@ from finboy.services.admin.views import (
     Usage,
     WhatsAppState,
 )
+from finboy.services.billing import contact
 from finboy.services.billing.plans import Plan, State, plan_from
-from finboy.services.whatsapp.config import keyed_digest
+from finboy.services.mail.security import MailError, decrypt
+from finboy.services.whatsapp.config import ChannelUnavailable, channel_config, keyed_digest
 
 PAGE = 50
 # Households are bounded by SIGNUP_LIMIT and the pending cap, so a page is cut from one query.
@@ -77,6 +81,32 @@ def sender_digest(settings: Settings, text: str) -> str | None:
     if not 7 <= len(digits) <= 20 or settings.token_encryption_key is None:
         return None
     return keyed_digest(settings.token_encryption_key.get_secret_value().encode(), "sender", digits)
+
+
+def _open(settings: Settings, sealed: bytes | None) -> str | None:
+    if sealed is None or settings.token_encryption_key is None:
+        return None
+    with suppress(MailError):
+        return decrypt(settings.token_encryption_key.get_secret_value(), sealed)
+    return None
+
+
+def phone_numbers(session: Session, settings: Settings, ids: list[UUID]) -> dict[UUID, str]:
+    """Each household's WhatsApp number as digits: the encrypted copy a self-serve household
+    keeps, else the private allowlist that names the owner and the pilot households."""
+    numbers: dict[UUID, str] = {}
+    with suppress(ChannelUnavailable):
+        allowlist = channel_config(settings).allowlist
+        numbers = {user: sender for sender, user in allowlist.items() if user in ids}
+    sealed = session.execute(
+        select(WhatsAppBinding.user_id, WhatsAppBinding.encrypted_sender).where(
+            WhatsAppBinding.user_id.in_(ids), WhatsAppBinding.encrypted_sender.is_not(None)
+        )
+    )
+    for user_id, value in sealed:
+        if number := _open(settings, value):
+            numbers[user_id] = number
+    return numbers
 
 
 def _kind_filter(kind: Kind) -> ColumnElement[bool]:
@@ -118,6 +148,7 @@ def household_rows(session: Session, filters: list[ColumnElement[bool]]):
     )
     query = select(
         User.id,
+        User.display_name,
         User.pilot,
         User.joined_via,
         User.created_at,
@@ -161,6 +192,8 @@ def _row(row, plan: Plan) -> HouseholdRow:
     return HouseholdRow(
         id=row.id,
         short_id=short(row.id),
+        name=row.display_name,
+        phone=None,  # filled in for the page being shown
         kind=kind_of(row.id, row.pilot, row.joined_via, row.consented_at),
         status=status_of(row.deleted_at, row.suspended_at),
         whatsapp=row.whatsapp,
@@ -188,7 +221,8 @@ def search(
     filters: list[ColumnElement[bool]] = []
     text = query.strip().lower()
     if text:
-        # Ten or more digits is a phone number; anything else hex-like is a household ID.
+        # Ten or more digits is a phone number; anything else is part of a name, and hex-like
+        # text may also be the start of a household ID.
         digits = re.sub(r"[\s+()-]", "", text)
         if digits.isdigit() and len(digits) >= 10:
             digest = sender_digest(settings, digits)
@@ -199,10 +233,11 @@ def search(
                     select(WhatsAppBinding.user_id).where(WhatsAppBinding.sender_hash == digest)
                 )
             )
-        elif HEX.fullmatch(text):
-            filters.append(cast(User.id, Text).like(text.replace("-", "")[:8] + "%"))
         else:
-            return HouseholdPage(items=[], total=0, offset=0, next_offset=None)
+            match: ColumnElement[bool] = User.display_name.icontains(text, autoescape=True)
+            if HEX.fullmatch(text):
+                match = or_(match, cast(User.id, Text).like(text.replace("-", "")[:8] + "%"))
+            filters.append(match)
     if kind is not None:
         filters.append(_kind_filter(kind))
     if status is not None:
@@ -217,20 +252,22 @@ def search(
             item for item in items if item.last_active_at and item.last_active_at >= active_since
         ]
     page = items[offset : offset + PAGE]
+    numbers = phone_numbers(session, settings, [item.id for item in page])
     following = offset + PAGE
     return HouseholdPage(
-        items=page,
+        items=[item.model_copy(update={"phone": numbers.get(item.id)}) for item in page],
         total=len(items),
         offset=offset,
         next_offset=following if following < len(items) else None,
     )
 
 
-def payment_row(payment: BillingPayment) -> PaymentRow:
+def payment_row(payment: BillingPayment, name: str | None) -> PaymentRow:
     return PaymentRow(
         id=payment.id,
         household_id=payment.user_id,
         short_id=short(payment.user_id),
+        household_name=name,
         created_at=payment.created_at,
         amount_minor=payment.amount_minor,
         status=payment.status,
@@ -276,7 +313,15 @@ def detail(session: Session, settings: Settings, user_id: UUID, now: datetime) -
         raise LookupError(user_id)
     row = rows[0]
     plan = plans_by_household(session, settings, rows, now)[row.id]
-    base = _row(row, plan)
+    phone = phone_numbers(session, settings, [user_id]).get(user_id)
+    base = _row(row, plan).model_copy(update={"phone": phone})
+    identity = session.execute(
+        select(UserIdentity.email_masked, UserIdentity.encrypted_email)
+        .where(UserIdentity.user_id == user_id)
+        .limit(1)
+    ).first()
+    payer = contact.stored(session, settings, user_id)
+    typed_phone = None if payer.phone_from_whatsapp else payer.phone
     binding = session.scalar(
         select(WhatsAppBinding)
         .where(WhatsAppBinding.user_id == user_id)
@@ -315,9 +360,12 @@ def detail(session: Session, settings: Settings, user_id: UUID, now: datetime) -
         deleted_at=row.deleted_at,
         last_message_at=row.last_message,
         last_record_at=row.last_record,
-        google_email=session.scalar(
-            select(UserIdentity.email_masked).where(UserIdentity.user_id == user_id).limit(1)
-        ),
+        google_email=(_open(settings, identity.encrypted_email) or identity.email_masked)
+        if identity
+        else None,
+        payer_email=payer.email,
+        # PayU keeps an Indian mobile as 10 digits; the panel shows every number with its code.
+        payer_phone=f"91{typed_phone}" if typed_phone and len(typed_phone) == 10 else typed_phone,
         plan_detail=PlanSummary(
             state=plan.state,
             trial_ends_at=plan.trial_ends_at,
@@ -326,7 +374,7 @@ def detail(session: Session, settings: Settings, user_id: UUID, now: datetime) -
             next_charge_on=plan.next_charge_on,
             grace_until=plan.grace_until,
         ),
-        payments=[payment_row(payment) for payment in payments],
+        payments=[payment_row(payment, row.display_name) for payment in payments],
         usage=Usage(
             ai=today["ai"],
             voice=today["voice"],

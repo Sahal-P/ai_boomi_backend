@@ -69,6 +69,20 @@ test("an answer from FinBoy's guides links each guide's official site", async ({
   expect(api.requests.some((item) => item.path === "/api/v1/assistant/ask")).toBe(false);
 });
 
+test("a price from the web says so and links the page it came from", async ({ page }) => {
+  await page.goto("/assistant");
+  await page.getByLabel("Your question").fill("Can I afford the Example Roadster 350 bike?");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  const answer = page.getByRole("article", { name: /afford/ });
+  await expect(answer.getByText("costs about ₹2,40,000 on-road in Kochi")).toBeVisible();
+  await expect(answer.getByText("From the web")).toBeVisible();
+  await expect(answer.getByText("Sources", { exact: true })).toBeVisible();
+  const link = answer.getByRole("link", { name: /Example bike prices.*opens in a new tab/ });
+  await expect(link).toHaveAttribute("href", "https://example.com/bike-prices");
+  await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(answer.getByText("Official sites")).toHaveCount(0);
+});
+
 test("a failure inside the stream explains itself and can be asked again", async ({ page }) => {
   await page.goto("/assistant");
   await page.getByLabel("Your question").fill("Is the advisor unavailable?");

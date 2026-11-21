@@ -1,8 +1,10 @@
-"""Everything the admin panel can show (docs/admin-round/contract.md): fixed codes, dates, counts.
+"""Everything the admin panel can show (docs/admin-round/contract.md): who each household is,
+fixed codes, dates and counts.
 
-These models are the boundary. None has a field for an amount of a household's records, a payee,
-category, label, name, message, phone number, contact detail, hash or key, so no route can return
-one. FinBoy's own payment records (₹299 sales) are the only money shown.
+These models are the boundary. Since the names and search round (docs/names-search-round), an
+admin sees a household's name, phone number and email. None has a field for an amount of a
+household's records, a payee, category, label, message, chat, memory, hash or key, so no route
+can return one. FinBoy's own payment records (₹299 sales) are the only money shown.
 """
 
 from datetime import date, datetime
@@ -21,6 +23,8 @@ Action = Literal["sign_out", "suspend", "restore", "erase", "premium", "autopay_
 class HouseholdRow(BaseModel):
     id: UUID
     short_id: str
+    name: str | None
+    phone: str | None  # the WhatsApp number's digits, like "919876543210"
     kind: Kind
     status: Status
     whatsapp: bool
@@ -52,6 +56,7 @@ class PaymentRow(BaseModel):
     id: UUID
     household_id: UUID
     short_id: str
+    household_name: str | None
     created_at: datetime
     amount_minor: int
     status: str
@@ -115,8 +120,11 @@ class HouseholdDetail(HouseholdRow):
     deleted_at: datetime | None
     last_message_at: datetime | None
     last_record_at: datetime | None
-    # Stored already masked by the sign-up round ("s***@***.com"); nothing is decrypted.
+    # The full email once the household signs in with Google again; until then the masked one.
     google_email: str | None
+    # What the household typed for PayU receipts, when it differs from the above.
+    payer_email: str | None
+    payer_phone: str | None
     plan_detail: PlanSummary
     payments: list[PaymentRow]
     usage: Usage
@@ -197,6 +205,7 @@ class AuditRow(BaseModel):
     admin_email: str | None
     household_id: UUID | None
     short_id: str | None
+    household_name: str | None
     detail: dict[str, str | int]
 
 

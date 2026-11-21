@@ -866,3 +866,28 @@ nudges' words stay in the chats.
 
 **Acceptance:** a real nudge received on a phone inside the window and, after approval, by
 template, each with a reply that continues it, recorded separately from these checks.
+
+## Names and web search release
+
+`feat/finboy-names-web-search` ([contract](names-search-round/contract.md)) adds migration
+`0019_names` and no dependency. Released without the flag, it changes three things: self-serve
+households are asked their name once on the web, the admin panel shows names, phone numbers and
+emails, and the privacy policy says so. Web search stays off until `ADVISOR_WEB_SEARCH_ENABLED=true`.
+
+**Release:**
+1. Backend first: a validated backup, `alembic upgrade head` for `0019`, then a drift check. The
+   migration is additive and reversible; its downgrade puts back the "Household" placeholder.
+2. Push main for the web: the name step and the new privacy policy go live together.
+3. For web search, after a live check with the production advisor model and a live
+   `pnpm eval:advisor`, add to `/etc/finboy/production.env` and restart `finboy.service` only:
+
+   ```
+   ADVISOR_WEB_SEARCH_ENABLED=true
+   ```
+
+**Check:** the admin System page shows "Web search: Configured"; a question like "can I afford a
+Honda Activa?" shows "Searching the web…" and an answer with "From the web" links. The log shows
+`advisor.answered` with `search_web` among its tools, never the question or what was found.
+
+**Rollback:** set `ADVISOR_WEB_SEARCH_ENABLED=false` and restart; Ask asks for prices and rates
+again. Names stay; migration `0019` can be downgraded.

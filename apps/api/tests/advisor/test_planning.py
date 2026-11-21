@@ -15,6 +15,7 @@ BLANK = {
     "months": None,
     "monthly_rupees": None,
     "annual_interest_percent": None,
+    "down_payment_rupees": None,
 }
 
 
@@ -63,6 +64,35 @@ def test_a_rate_or_amount_nobody_gave_is_refused() -> None:
     assert "loan amount" in other["error"]
     long = plan(ctx, calculation="emi", amount_rupees=150000, months=600)
     assert "months" in long["error"]
+
+
+def test_an_emi_can_use_the_price_and_rate_a_web_search_found() -> None:
+    ctx = context("I'd take it on EMI for 3 years")
+    searched = "On-road price in Kochi about ₹2,40,000. Bike loans usually cost 10% to 14% a year."
+    ctx.known |= grounding.allowed([searched])
+    ctx.found = {value for value, _ in grounding.figures(searched)}
+    found = plan(
+        ctx, calculation="emi", amount_rupees=240000, months=36, annual_interest_percent=10
+    )
+    assert found["loan"] == "₹2,40,000" and found["emi"] == "₹7,745"
+    guessed = plan(
+        ctx, calculation="emi", amount_rupees=240000, months=36, annual_interest_percent=12
+    )
+    assert "search_web found" in guessed["error"]
+
+
+def test_a_down_payment_is_taken_off_the_price_by_code() -> None:
+    ctx = context("At 10.5% for 36 months, paying 50,000 upfront", shown='{"price":"₹2,00,000"}')
+    terms = {"calculation": "emi", "amount_rupees": 200000, "months": 36}
+    found = plan(ctx, **terms, down_payment_rupees=50000, annual_interest_percent=10.5)
+    assert found["price"] == "₹2,00,000" and found["down_payment"] == "₹50,000"
+    assert found["loan"] == "₹1,50,000" and found["emi"] == "₹4,876"  # the 1.5 lakh loan above
+    everything = plan(ctx, **terms, down_payment_rupees=200000, annual_interest_percent=10.5)
+    assert "less than" in everything["error"]
+    guessed = plan(ctx, **terms, down_payment_rupees=40000, annual_interest_percent=10.5)
+    assert "down payment" in guessed["error"]
+    nothing = plan(ctx, **terms, down_payment_rupees=0, annual_interest_percent=10.5)
+    assert nothing["loan"] == "₹2,00,000" and "down_payment" not in nothing
 
 
 def test_a_monthly_saving_for_a_target_by_a_month() -> None:

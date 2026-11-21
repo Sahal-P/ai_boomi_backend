@@ -8,6 +8,8 @@ const householdSchema = z.object({
   // A masked number ("•••• 4821"), "linked" when only the private allowlist knows it, or null.
   whatsapp: z.string().max(40).nullable(),
   google: z.string().max(80).nullable(),
+  // The name it goes by. Null asks for it once; an older server leaves it out and asks nothing.
+  name: z.string().min(1).max(60).nullable().optional(),
 });
 
 const signInSchema = z.object({
@@ -120,6 +122,12 @@ export const deleteAccount = () =>
   requestJson("/api/v1/account/delete", z.object({ deleted: z.literal(true) }), {
     method: "POST",
     ...jsonBody({ confirm: "DELETE" }),
+  });
+
+export const saveName = (name: string) =>
+  requestJson("/api/v1/account/name", z.object({ name: z.string().min(1).max(60) }), {
+    method: "POST",
+    ...jsonBody({ name }),
   });
 
 /** A wa.me link that opens FinBoy's WhatsApp chat with a greeting typed in. */

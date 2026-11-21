@@ -132,6 +132,9 @@ class Settings(BaseSettings):
     knowledge_enabled: bool = False
     openai_embedding_model: str | None = None  # set only after a live capability check
     advisor_embedding_dimensions: int = Field(default=256, ge=64, le=3072)
+    # Names and search round (docs/names-search-round/contract.md): public prices and loan rates
+    # from OpenAI's web search, whichever model answers. Off until the human releases it.
+    advisor_web_search_enabled: bool = False
     # Phase 3: the proactive coach. Opted-in WhatsApp households hear at most one nudge a day and
     # Home shows "For you". Off until the human releases it; it also needs ADVISOR_ENABLED.
     coach_enabled: bool = False

@@ -57,10 +57,13 @@ const ERASE_BODY: Record<HouseholdDetail["kind"], string> = {
   former_pilot: "",
 };
 
+/** The household as an admin knows it: its name, else its short ID. */
+const who = (detail: HouseholdDetail) => detail.name ?? detail.short_id;
+
 const COPY: Record<HouseholdAction, Copy> = {
   sign_out: {
     title: "Sign this household out everywhere?",
-    body: (detail) => `Every browser signed in to ${detail.short_id} is signed out now. Nothing in their records changes.`,
+    body: (detail) => `Every browser signed in to ${who(detail)} is signed out now. Nothing in their records changes.`,
     confirm: "Sign out everywhere",
     busy: "Signing out…",
     done: "Signed out everywhere.",
@@ -69,7 +72,7 @@ const COPY: Record<HouseholdAction, Copy> = {
   suspend: {
     title: "Suspend this household?",
     body: (detail) =>
-      `Until you restore it, ${detail.short_id} can't sign in and gets no WhatsApp replies, reminders or charges. Their web sessions end now and AutoPay is turned off at the bank.`,
+      `Until you restore it, ${who(detail)} can't sign in and gets no WhatsApp replies, reminders or charges. Their web sessions end now and AutoPay is turned off at the bank.`,
     confirm: "Suspend",
     busy: "Suspending…",
     done: "Household suspended.",
@@ -80,7 +83,7 @@ const COPY: Record<HouseholdAction, Copy> = {
   restore: {
     title: "Restore this household?",
     body: (detail) =>
-      `${detail.short_id} can sign in again. If they sent STOP on WhatsApp, replies stay off until they send START.`,
+      `${who(detail)} can sign in again. If they sent STOP on WhatsApp, replies stay off until they send START.`,
     confirm: "Restore",
     busy: "Restoring…",
     done: "Household restored.",
@@ -97,7 +100,7 @@ const COPY: Record<HouseholdAction, Copy> = {
   pay_link: {
     title: "Create a pay link?",
     body: (detail) =>
-      `The link pays ₹299 for ${detail.short_id} and works for 7 days. Anyone holding it can pay, so send it only to the household, privately. It's shown once.`,
+      `The link pays ₹299 for ${who(detail)} and works for 7 days. Anyone holding it can pay, so send it only to the household, privately. It's shown once.`,
     confirm: "Create link",
     busy: "Creating…",
     done: "Pay link created.",

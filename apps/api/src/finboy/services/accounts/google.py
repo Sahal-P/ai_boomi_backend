@@ -1,6 +1,7 @@
 """Sign in with Google: verify an ID token from Google Identity Services. Backend only.
 
-Only the account's subject (hashed) and a masked email are kept. The token itself, the name and
+Only the account's subject (hashed), a masked email and a Fernet copy of the verified email (for
+the admin panel, docs/names-search-round/contract.md) are kept. The token itself, the name and
 the photo are never stored or logged. Basic sign-in scopes need Google brand verification, not
 the restricted-scope review that Gmail access needs.
 """
@@ -10,7 +11,7 @@ import hmac
 import re
 import time
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from threading import Lock
 
 import httpx
@@ -26,6 +27,7 @@ ISSUERS = frozenset({"accounts.google.com", "https://accounts.google.com"})
 class GoogleAccount:
     subject_sha256: str
     email_masked: str | None
+    email: str | None = field(default=None, repr=False)  # verified; stored only encrypted
 
 
 class GoogleCerts:
@@ -93,4 +95,6 @@ def verify_id_token(
     except MailError:
         masked = None
     digest = hashlib.sha256(("google:" + subject).encode()).hexdigest()
-    return GoogleAccount(subject_sha256=digest, email_masked=masked)
+    return GoogleAccount(
+        subject_sha256=digest, email_masked=masked, email=email if masked is not None else None
+    )

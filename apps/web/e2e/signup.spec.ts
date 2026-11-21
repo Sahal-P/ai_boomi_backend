@@ -82,6 +82,31 @@ test.describe("when FinBoy is full", () => {
   });
 });
 
+test.describe("a new household names itself once", () => {
+  test.use({ scenario: { authRequired: true, signedIn: true, emptyLedger: true, selfServe: true, connection: "none", name: null } });
+
+  test("the app opens only after a name is saved, and the menu shows it", async ({ page, api }, testInfo) => {
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading", { name: "What should we call you?" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Add what you spent today" })).toHaveCount(0);
+    const field = page.getByLabel("Your name");
+    const go = page.getByRole("button", { name: "Continue" });
+    await expect(go).toBeDisabled();
+    await field.fill("1234");
+    await go.click();
+    await expect(page.getByText("Type your name, up to 60 letters.")).toBeVisible();
+    await field.fill("  Asha   Menon ");
+    await go.click();
+    await expect(page.getByRole("heading", { name: "Add what you spent today" })).toBeVisible();
+    const saved = api.requests.filter((item) => item.path === "/api/v1/account/name").map((item) => item.body);
+    expect(saved).toEqual([{ name: "1234" }, { name: "Asha   Menon" }]);
+    expect(api.name).toBe("Asha Menon");
+    if (testInfo.project.name === "desktop") {
+      await expect(page.getByRole("complementary").getByRole("button", { name: /^Asha Menon/ })).toBeVisible();
+    }
+  });
+});
+
 test.describe("quick add for a new household", () => {
   test.use({ scenario: { authRequired: true, signedIn: true, emptyLedger: true, selfServe: true, connection: "none" } });
 

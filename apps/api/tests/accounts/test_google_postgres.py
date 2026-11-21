@@ -14,6 +14,7 @@ from finboy.core.errors import AccessError
 from finboy.db.models.accounts import UserIdentity
 from finboy.main import create_app
 from finboy.services.accounts.google import GoogleAccount
+from finboy.services.mail.security import decrypt
 from finboy.services.whatsapp import english
 from sqlalchemy import delete, select
 
@@ -32,9 +33,8 @@ def google(monkeypatch):
         if client_id != CLIENT or not nonce or not token.startswith("token-"):
             raise AccessError("invalid_sign_in")
         verify.nonces.append(nonce)
-        return GoogleAccount(
-            hashlib.sha256(("google:" + subject).encode()).hexdigest(), "s***@***.test"
-        )
+        digest = hashlib.sha256(("google:" + subject).encode()).hexdigest()
+        return GoogleAccount(digest, "s***@***.test", f"{subject}@example.test")
 
     verify.nonces = []
     monkeypatch.setattr(auth, "verify_id_token", verify)
@@ -65,6 +65,28 @@ def test_google_sign_up_then_sign_in_reaches_the_same_household(world, google) -
     with pg() as session:
         rows = session.scalars(select(UserIdentity)).all()
         assert len([row for row in rows if row.email_masked == "s***@***.test"]) == 1
+
+
+def test_a_new_household_names_itself_and_keeps_its_google_email_encrypted(world, google) -> None:
+    _, pg, _ = world
+    settings = settings_for(google_signin_client_id=CLIENT)
+    with TestClient(create_app(settings)) as browser:
+        assert sign_in(browser, "eta")[1].status_code == 200
+        assert browser.get("/api/v1/auth/session").json()["household"]["name"] is None
+        for typed in ("   ", "12345", "x" * 61):
+            refused = browser.post("/api/v1/account/name", json={"name": typed})
+            assert (refused.status_code, refused.json()["error"]["code"]) == (422, "invalid_name")
+        saved = browser.post("/api/v1/account/name", json={"name": "  Asha   Menon "})
+        assert saved.json() == {"name": "Asha Menon"}
+        assert browser.get("/api/v1/auth/session").json()["household"]["name"] == "Asha Menon"
+    subject = hashlib.sha256(b"google:eta-padding-xx").hexdigest()  # the fake token's subject
+    with pg() as session:
+        identity = session.scalar(
+            select(UserIdentity).where(UserIdentity.subject_sha256 == subject)
+        )
+    assert identity is not None and identity.encrypted_email is not None
+    key = settings.token_encryption_key.get_secret_value()
+    assert decrypt(key, identity.encrypted_email) == "eta-padding-xx@example.test"
 
 
 def test_google_needs_this_browsers_nonce_and_open_sign_up(world, google) -> None:

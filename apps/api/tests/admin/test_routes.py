@@ -188,10 +188,9 @@ def models_in(annotation: Any) -> Iterator[type[BaseModel]]:
         yield from models_in(argument)
 
 
-# Nothing an admin sees may carry a household's content or contact details (contract).
+# Nothing an admin sees may carry a household's content (contract). Since the names and search
+# round an admin sees who a household is: its name, phone number and email.
 NEVER = (
-    "name",
-    "phone",
     "sender",
     "merchant",
     "payee",
@@ -205,7 +204,8 @@ NEVER = (
     "secret",
     "key",
     "encrypted",
-    "contact",
+    "memory",
+    "chat",
     "upi",
     "vpa",
     "card",

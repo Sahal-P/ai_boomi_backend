@@ -172,18 +172,18 @@ def pay_link(
 
 
 def payments(session: Session, *, status: str | None, offset: int) -> PaymentPage:
-    query = select(BillingPayment)
+    query = select(BillingPayment, User.display_name).join(User, User.id == BillingPayment.user_id)
     total = select(func.count()).select_from(BillingPayment)
     if status is not None:
         query = query.where(BillingPayment.status == status)
         total = total.where(BillingPayment.status == status)
-    found = session.scalars(
+    found = session.execute(
         query.order_by(BillingPayment.created_at.desc()).offset(offset).limit(PAGE)
     ).all()
     count = session.scalar(total) or 0
     following = offset + PAGE
     return PaymentPage(
-        items=[payment_row(item) for item in found],
+        items=[payment_row(item, name) for item, name in found],
         total=count,
         offset=offset,
         next_offset=following if following < count else None,
@@ -206,7 +206,8 @@ def reconcile(session: Session, settings: Settings, actor: Actor, payment_id: UU
         raise AccessError("billing_unavailable") from None
     session.commit()
     session.refresh(payment)
-    return payment_row(payment)
+    name = session.scalar(select(User.display_name).where(User.id == payment.user_id))
+    return payment_row(payment, name)
 
 
 def tidy(session: Session, actor: Actor) -> int:

@@ -56,6 +56,7 @@ type Household = {
   suspendedAt: string | null;
   deletedAt: string | null;
   phone: string | null;
+  name: string | null;
 };
 
 const envelope = (status: number, code: string): FakeResponse => ({
@@ -105,21 +106,23 @@ export class FakeAdminApi {
       suspendedAt: null,
       deletedAt: null,
       phone: null,
+      name: "Synthetic Household",
       ...values,
     });
     this.households = [
-      house({ id: adminIds.family, kind: "self_serve", google: true, plan: "active", renewal: "autopay", paidThrough: at(-20), phone: `91${PHONE}` }),
-      house({ id: adminIds.pending, kind: "pending", lastActive: null, language: null, joined: at(2) }),
-      house({ id: adminIds.pilot, kind: "pilot", plan: "included", joined: at(40) }),
-      house({ id: adminIds.paused, kind: "self_serve", status: "suspended", plan: "free", suspendedAt: at(3), joined: at(50), lastActive: at(20) }),
-      house({ id: adminIds.owner, kind: "owner", plan: "included", whatsapp: true, joined: at(60), language: "en" }),
+      house({ id: adminIds.family, kind: "self_serve", google: true, plan: "active", renewal: "autopay", paidThrough: at(-20), phone: `91${PHONE}`, name: "Asha Menon" }),
+      house({ id: adminIds.pending, kind: "pending", lastActive: null, language: null, joined: at(2), name: null }),
+      house({ id: adminIds.pilot, kind: "pilot", plan: "included", joined: at(40), name: "Pilot household 1" }),
+      house({ id: adminIds.paused, kind: "self_serve", status: "suspended", plan: "free", suspendedAt: at(3), joined: at(50), lastActive: at(20), name: "Ravi Kumar" }),
+      house({ id: adminIds.owner, kind: "owner", plan: "included", whatsapp: true, joined: at(60), language: "en", name: "Arun" }),
       ...Array.from({ length: scenario.bulk ?? 0 }, (_, index) =>
-        house({ id: uuid("e0000000", index + 1), kind: "self_serve", joined: at(5 + (index % 20)), lastActive: at(index % 40) }),
+        house({ id: uuid("e0000000", index + 1), kind: "self_serve", joined: at(5 + (index % 20)), lastActive: at(index % 40), name: `Synthetic ${index + 1}` }),
       ),
     ];
+    const family = { household_id: adminIds.family, short_id: short(adminIds.family), household_name: "Asha Menon" };
     this.payments = [
-      { id: adminIds.payment, household_id: adminIds.family, short_id: short(adminIds.family), created_at: at(0.2), amount_minor: 29900, status: "pending", kind: "checkout", mode: "UPI", txnid: "FBSYNTH0001", payu_id: null, error_code: null, covers_to: null },
-      { id: uuid("60000000", 2), household_id: adminIds.family, short_id: short(adminIds.family), created_at: at(12), amount_minor: 29900, status: "paid", kind: "checkout", mode: "CC", txnid: "FBSYNTH0002", payu_id: "403993715500000002", error_code: null, covers_to: at(-20) },
+      { id: adminIds.payment, ...family, created_at: at(0.2), amount_minor: 29900, status: "pending", kind: "checkout", mode: "UPI", txnid: "FBSYNTH0001", payu_id: null, error_code: null, covers_to: null },
+      { id: uuid("60000000", 2), ...family, created_at: at(12), amount_minor: 29900, status: "paid", kind: "checkout", mode: "CC", txnid: "FBSYNTH0002", payu_id: "403993715500000002", error_code: null, covers_to: at(-20) },
     ];
     this.admins = [
       { id: adminIds.me, email: ADMIN_EMAIL, active: true, must_change_password: this.mustChange, last_login_at: at(0), created_at: at(30), you: true },
@@ -140,6 +143,7 @@ export class FakeAdminApi {
       admin_email: ADMIN_EMAIL,
       household_id: household,
       short_id: household ? short(household) : null,
+      household_name: household ? (this.find(household)?.name ?? null) : null,
       detail,
     });
   }
@@ -148,6 +152,8 @@ export class FakeAdminApi {
     return {
       id: house.id,
       short_id: short(house.id),
+      name: house.name,
+      phone: house.phone,
       kind: house.kind,
       status: house.status,
       whatsapp: house.whatsapp,
@@ -167,7 +173,9 @@ export class FakeAdminApi {
       deleted_at: house.deletedAt,
       last_message_at: house.lastActive,
       last_record_at: house.lastActive,
-      google_email: house.google ? "s***@***.com" : null,
+      google_email: house.google ? "asha.menon@example.test" : null,
+      payer_email: house.plan === "active" ? "asha.pay@example.test" : null,
+      payer_phone: null,
       plan_detail: {
         state: house.plan,
         trial_ends_at: house.plan === "trial" ? at(-20) : null,
@@ -204,10 +212,11 @@ export class FakeAdminApi {
       if (/^\d{10,}$/.test(digits)) {
         const number = digits.length === 10 ? `91${digits}` : digits;
         found = found.filter((house) => house.phone === number);
-      } else if (/^[0-9a-f-]{4,36}$/.test(text)) {
-        found = found.filter((house) => house.id.replace(/-/g, "").startsWith(text.replace(/-/g, "").slice(0, 8)));
       } else {
-        found = [];
+        const id = /^[0-9a-f-]{4,36}$/.test(text) ? text.replace(/-/g, "").slice(0, 8) : null;
+        found = found.filter(
+          (house) => house.name?.toLowerCase().includes(text) || (id !== null && house.id.replace(/-/g, "").startsWith(id)),
+        );
       }
     }
     const kind = query.get("kind");
@@ -231,7 +240,7 @@ export class FakeAdminApi {
       this.record("household_erased", house.id, { via: house.kind });
       if (house.kind === "pending") this.households = this.households.filter((item) => item.id !== house.id);
       else if (house.kind === "pilot") Object.assign(house, { kind: "former_pilot", whatsapp: false });
-      else Object.assign(house, { status: "deleted", deletedAt: NOW, whatsapp: false, google: false });
+      else Object.assign(house, { status: "deleted", deletedAt: NOW, whatsapp: false, google: false, name: null, phone: null });
       return ok({ done: true });
     }
     if (name === "pay_link") {

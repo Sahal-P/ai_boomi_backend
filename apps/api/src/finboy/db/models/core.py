@@ -19,7 +19,9 @@ class User(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     data_version: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
-    display_name: Mapped[str] = mapped_column(Text)
+    # The name a household gives on the web (docs/names-search-round/contract.md); NULL until a
+    # self-serve household names itself. The owner's is a first name, a pilot's an operator label.
+    display_name: Mapped[str | None] = mapped_column(Text)
     # Village pilot households reach FinBoy only through WhatsApp (docs/pilot/contract.md).
     pilot: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -53,13 +53,15 @@ export const answerSchema = z.object({
     )
     .default([]),
   follow_ups: z.array(z.string()).default([]),
-  // Advisor phase 2: the reviewed FinBoy guides an answer is based on, with their official site.
+  // Advisor phase 2: the reviewed FinBoy guides an answer is based on, with their official site,
+  // and (names and search round) the web pages its public prices and rates came from.
   sources: z
     .array(
       z.object({
         id: z.string().regex(/^[a-z0-9-]{1,64}$/),
         title: z.string().min(1),
         url: z.url({ protocol: /^https$/ }).nullable().default(null),
+        kind: z.enum(["guide", "web"]).default("guide"),
       }),
     )
     .default([]),

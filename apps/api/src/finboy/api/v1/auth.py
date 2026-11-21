@@ -40,7 +40,7 @@ from finboy.services.accounts.households import (
     signup_open,
 )
 from finboy.services.billing.views import PlanView, plan_view
-from finboy.services.mail.security import decrypt
+from finboy.services.mail.security import decrypt, encrypt
 
 router = APIRouter(prefix="/auth", tags=["household access"])
 
@@ -63,6 +63,8 @@ class Household(BaseModel):
     joined_via: Literal["whatsapp", "google"] | None
     whatsapp: str | None  # masked number, or "linked" when only the private allowlist knows it
     google: str | None  # masked email
+    # The name it goes by; null asks a self-serve household for it (names-search-round).
+    name: str | None = None
 
 
 class SignInOptions(BaseModel):
@@ -125,6 +127,7 @@ def _household(session: Session, settings: Settings, user_id: UUID) -> Household
         joined_via=user.joined_via if user else None,  # type: ignore[arg-type]
         whatsapp=number,
         google=google,
+        name=user.display_name if user else None,
     )
 
 
@@ -247,6 +250,10 @@ def google_sign_in(body: GoogleInput, request: Request, session: DB) -> JSONResp
         nonce=keyed_digest(settings, "google-nonce", nonce),
         certs=request.app.state.google_certs,
     )
+    # The admin panel shows the full email (docs/names-search-round/contract.md): kept encrypted,
+    # and refreshed at every Google sign-in so households that joined earlier fill in too.
+    key = settings.token_encryption_key
+    sealed = encrypt(key.get_secret_value(), account.email) if key and account.email else None
     identity = session.scalar(
         select(UserIdentity)
         .where(
@@ -260,18 +267,19 @@ def google_sign_in(body: GoogleInput, request: Request, session: DB) -> JSONResp
         if identity is not None and identity.user_id != user_id:
             raise AccessError("already_linked")
         if identity is None:
-            session.add(
-                UserIdentity(
-                    user_id=user_id,
-                    provider="google",
-                    subject_sha256=account.subject_sha256,
-                    email_masked=account.email_masked,
-                )
+            identity = UserIdentity(
+                user_id=user_id,
+                provider="google",
+                subject_sha256=account.subject_sha256,
+                email_masked=account.email_masked,
             )
+            session.add(identity)
+        identity.encrypted_email = sealed or identity.encrypted_email
         session.commit()
         return JSONResponse({"linked": True})
     if identity is not None:
         user = _usable(session.get(User, identity.user_id))
+        identity.encrypted_email = sealed or identity.encrypted_email
         session.commit()
         return _signed_in(request, user)
     # A new Google account is a new household, while there is room.
@@ -287,6 +295,7 @@ def google_sign_in(body: GoogleInput, request: Request, session: DB) -> JSONResp
             provider="google",
             subject_sha256=account.subject_sha256,
             email_masked=account.email_masked,
+            encrypted_email=sealed,
         )
     )
     session.commit()

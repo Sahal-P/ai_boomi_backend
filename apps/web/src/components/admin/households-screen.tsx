@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useQueryUpdate } from "@/hooks/use-query-update";
 import { useResource } from "@/hooks/use-resource";
-import { kindLabels, planLabels, statusLabels } from "@/lib/admin-labels";
+import { formatPhone, kindLabels, planLabels, statusLabels } from "@/lib/admin-labels";
 import {
   KINDS,
   listHouseholds,
@@ -73,7 +73,7 @@ function Filters({ filters }: { filters: Required<HouseholdFilters> }) {
       <div className="flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <label htmlFor={`${ids}-q`} className="sr-only">
-            Household ID or phone number
+            Name, phone number or household ID
           </label>
           <Search className="pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-ink-soft" aria-hidden="true" />
           <input
@@ -83,7 +83,7 @@ function Filters({ filters }: { filters: Required<HouseholdFilters> }) {
             maxLength={64}
             autoComplete="off"
             spellCheck={false}
-            placeholder="Household ID or phone number"
+            placeholder="Name, phone number or household ID"
             aria-describedby={`${ids}-q-hint`}
             onChange={(event) => setDraft(event.target.value)}
             className="field block h-12 w-full rounded-lg pr-4 pl-11 text-sm"
@@ -108,7 +108,7 @@ function Filters({ filters }: { filters: Required<HouseholdFilters> }) {
         </Button>
       </div>
       <p id={`${ids}-q-hint`} className="text-xs text-ink-soft">
-        A phone number must be exact, with or without +91. Numbers are matched by their hash and never listed.
+        Phone numbers must be complete, with or without +91.
       </p>
       <div id={`${ids}-panel`} className={cn("surface grid gap-3 rounded-3xl p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-4", !open && "hidden")}>
         <div>
@@ -179,7 +179,10 @@ function Row({ row, href, selected }: { row: HouseholdRow; href: string; selecte
       )}
     >
       <span className="min-w-0">
-        <span className="block font-mono text-sm font-semibold">{row.short_id}</span>
+        <span className={cn("block truncate text-sm font-semibold", !row.name && "text-ink-soft")}>
+          {row.name ?? "No name yet"}
+        </span>
+        {row.phone && <span className="mt-0.5 block text-xs tabular-nums">{formatPhone(row.phone)}</span>}
         <span className="mt-0.5 block text-xs text-ink-soft">
           {kindLabels[row.kind]} · {planLabels[row.plan]} · joined {day(row.joined_at)}
         </span>
@@ -228,7 +231,7 @@ function Announcement({ text, onDismiss }: { text: string; onDismiss: () => void
   );
 }
 
-/** Find a household by ID or exact number, filter the list, and act on one beside it. */
+/** Find a household by name, number or ID, filter the list, and act on one beside it. */
 export function HouseholdsScreen() {
   const params = useSearchParams();
   const update = useQueryUpdate();
@@ -274,7 +277,7 @@ export function HouseholdsScreen() {
     <div className="space-y-5">
       <PageHeader
         title="Households"
-        description="Activity, plans and dates. Records, messages, names and numbers are never shown."
+        description="Who each household is, how they use FinBoy and their plan. Money records, chats and memories stay private."
         actions={
           <RefreshButton
             resource={{
@@ -319,7 +322,7 @@ export function HouseholdsScreen() {
           }
         >
           {filters.q
-            ? "Search takes a household ID (or its first characters) or an exact phone number."
+            ? "Search takes part of a name, a complete phone number or the start of a household ID."
             : "Try another kind, status or plan."}
         </EmptyState>
       )}

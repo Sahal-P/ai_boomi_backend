@@ -971,14 +971,19 @@ def _answer(conversation: Conversation, text: str) -> str | None:
     return conversation.done(sent)
 
 
-def with_guides(response: str, answer: AssistantAnswer, words: ModuleType) -> str:
-    """An advisor reply names the FinBoy guides it is based on, each with its official site."""
-    if not answer.sources:
-        return response
-    named = "; ".join(
-        f"{source.title} {source.url}" if source.url else source.title for source in answer.sources
-    )
-    return f"{response}\n\n{words.GUIDES.format(guides=named)}"
+def with_sources(response: str, answer: AssistantAnswer, words: ModuleType) -> str:
+    """An advisor reply names the FinBoy guides (each with its official site) and the web pages
+    it is based on."""
+    lines = [response]
+    for kind, line in (("guide", words.GUIDES), ("web", words.WEB)):
+        named = "; ".join(
+            f"{source.title} {source.url}" if source.url else source.title
+            for source in answer.sources
+            if source.kind == kind
+        )
+        if named:
+            lines.append(line.format(guides=named))
+    return "\n\n".join(lines)
 
 
 def _advise(conversation: Conversation, text: str) -> str | None:
@@ -1001,7 +1006,7 @@ def _advise(conversation: Conversation, text: str) -> str | None:
             conversation.send(conversation.words.UNAVAILABLE), "assistant_unavailable"
         )
     conversation.heard = answer.speech_language
-    response = with_guides(phone_text(answer.display_text), answer, conversation.words)
+    response = with_sources(phone_text(answer.display_text), answer, conversation.words)
     if any(change.action != "forgotten" for change in answer.memory_changes):
         response += "\n\n" + conversation.words.MEMORY_UPDATED
     sent = conversation.send(response if len(response) <= 4096 else conversation.words.UNAVAILABLE)

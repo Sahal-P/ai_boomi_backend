@@ -3,6 +3,7 @@
 import { LoaderCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { HouseholdContext } from "@/components/app-shell/household-context";
+import { NameStep } from "@/components/app-shell/name-step";
 import { SessionExpiredDialog } from "@/components/app-shell/session-expired";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { useHouseholdSession } from "@/hooks/use-household";
@@ -25,6 +26,12 @@ export function HouseholdGate({ children }: { children: ReactNode }) {
         )}
       </main>
     );
+  }
+  // A self-serve household names itself once. The owner and pilots are named already, and a
+  // household the server couldn't look up (no joined_via) is never asked.
+  const household = session.household;
+  if (household && household.joined_via !== null && household.name === null) {
+    return <NameStep onSaved={session.refresh} />;
   }
   return (
     <HouseholdContext

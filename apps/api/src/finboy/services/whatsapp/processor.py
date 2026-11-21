@@ -406,7 +406,7 @@ def process_question(
                 return
             binding.last_language = answer.speech_language  # committed with the reply below
             words = pilot.WORDS[answer.display_language]
-            response = pilot.with_guides(phone_text(answer.display_text), answer, words)
+            response = pilot.with_sources(phone_text(answer.display_text), answer, words)
             if len(response) > 4096:
                 response = (
                     "Please view this answer in FinBoy on the demo computer. "

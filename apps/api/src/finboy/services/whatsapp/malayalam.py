@@ -507,6 +507,7 @@ RENEWAL_FAILED = "⚠️ FinBoy Premium പേയ്മെന്റ് നടന
 # Advisor round (docs/advisor-round/contract.md): memory and chat commands.
 MEMORY_UPDATED = "📝 ഓർമ്മയിൽ സൂക്ഷിച്ചു"
 GUIDES = "📚 FinBoy-യുടെ പണ ഗൈഡുകളിൽ നിന്ന്: {guides}"
+WEB = "🔎 വെബിൽ നിന്ന്: {guides}"
 MEMORY_OFF = '🧠 മെമ്മറി ഓഫാണ്. ഇനി നിങ്ങളെക്കുറിച്ച് ഒന്നും ഓർത്തുവെക്കില്ല.\nവീണ്ടും ഓണാക്കാൻ "മെമ്മറി ഓൺ" എന്ന് അയയ്ക്കൂ.'
 MEMORY_ON = (
     "🧠 മെമ്മറി ഓണാണ്. നിങ്ങളുടെ ലക്ഷ്യങ്ങളും പദ്ധതികളും പോലെ ഉപകാരമുള്ളത് ഓർത്തുവെക്കും.\n"

@@ -211,6 +211,7 @@ def system(session: Session, settings: Settings) -> SystemStatus:
             "fast_decisions": providers.triage(settings),
             "advisor": providers.advisor(settings),
             "knowledge": providers.knowledge(settings),
+            "web_search": providers.web_search(settings),
             "coach": providers.coach(settings),
             "payu": configured(bool(settings.payu_merchant_key and settings.payu_merchant_salt)),
             "email": configured(settings.resend_api_key is not None),
@@ -223,8 +224,9 @@ def system(session: Session, settings: Settings) -> SystemStatus:
 
 def audit_page(session: Session, offset: int) -> AuditPage:
     found = session.execute(
-        select(AdminEvent, AdminUser.email)
+        select(AdminEvent, AdminUser.email, User.display_name)
         .outerjoin(AdminUser, AdminUser.id == AdminEvent.admin_id)
+        .outerjoin(User, User.id == AdminEvent.household_id)
         .order_by(AdminEvent.created_at.desc(), AdminEvent.id)
         .offset(offset)
         .limit(PAGE)
@@ -240,9 +242,10 @@ def audit_page(session: Session, offset: int) -> AuditPage:
                 admin_email=email,
                 household_id=event.household_id,
                 short_id=short(event.household_id) if event.household_id else None,
+                household_name=name,
                 detail={key: value for key, value in event.detail.items() if key in DETAIL},
             )
-            for event, email in found
+            for event, email, name in found
         ],
         total=total,
         offset=offset,

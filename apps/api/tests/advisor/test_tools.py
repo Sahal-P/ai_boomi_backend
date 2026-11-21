@@ -2,9 +2,11 @@
 
 import json
 from datetime import date
+from decimal import Decimal
 
 import pytest
-from finboy.services.advisor import tools
+from finboy.core.errors import ProviderUnavailable
+from finboy.services.advisor import tools, web_search
 from finboy.services.advisor.tools import ToolError, ToolPeriod, to_spec
 from finboy.services.money.engine import PeriodSpec
 
@@ -148,8 +150,58 @@ def test_budgets_show_what_is_left() -> None:
     assert found["savings_goal_per_month"] == "₹5,000"
 
 
+def offered(settings) -> list[str]:
+    return [item["function"]["name"] for item in tools.definitions(settings)]
+
+
+def test_web_search_is_offered_only_while_released_and_configured() -> None:
+    on = make_settings().model_copy(update={"advisor_web_search_enabled": True})
+    assert "search_web" in offered(on)
+    assert "search_web" not in offered(make_settings())
+    assert "search_web" not in offered(on.model_copy(update={"advisor_enabled": False}))
+    assert "search_web" not in offered(on.model_copy(update={"openai_api_key": None}))
+
+
+def test_a_web_search_keeps_amounts_out_and_numbers_its_pages() -> None:
+    ctx = tools.Context(today=TODAY)
+
+    def search(question: str) -> dict:
+        arguments = json.dumps({"question": question})
+        return json.loads(tools.run(FixtureToolbox(), "search_web", arguments, ctx).output)
+
+    assert "Leave amounts out" in search("bikes under ₹2 lakh")["error"]
+    assert ctx.pages == {} and ctx.found == set()
+    first = search("Example Roadster 350 on-road price in Kochi")
+    assert "₹2,40,000" in first["found"]
+    assert first["pages"] == [
+        {"id": "web-1", "title": "Example bike prices", "site": "example.com"}
+    ]
+    assert {Decimal(10), Decimal(14), Decimal(240000)} <= ctx.found
+    assert [page["id"] for page in search("two-wheeler loan rates in India")["pages"]] == ["web-2"]
+
+
+def test_a_web_search_that_fails_or_finds_nothing_is_said_plainly() -> None:
+    class Offline(FixtureToolbox):
+        def search_web(self, question: str) -> web_search.Found:
+            raise ProviderUnavailable
+
+    class Silent(FixtureToolbox):
+        def search_web(self, question: str) -> web_search.Found:
+            return web_search.Found(summary=None, pages=[])
+
+    arguments = json.dumps({"question": "petrol price in Delhi"})
+    failed = tools.run(Offline(), "search_web", arguments, tools.Context(today=TODAY))
+    assert "answer without it" in json.loads(failed.output)["error"]
+    blank = json.loads(
+        tools.run(Silent(), "search_web", arguments, tools.Context(today=TODAY)).output
+    )
+    assert blank["found"] is None and "couldn't find" in blank["note"]
+
+
 def test_every_tool_has_a_strict_schema() -> None:
-    settings = make_settings().model_copy(update={"knowledge_enabled": True})
+    settings = make_settings().model_copy(
+        update={"knowledge_enabled": True, "advisor_web_search_enabled": True}
+    )
     definitions = tools.definitions(settings)
     assert [item["function"]["name"] for item in definitions] == [t.name for t in tools.TOOLS]
     for item in definitions:

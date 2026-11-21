@@ -34,6 +34,7 @@ def test_whatsapp_sign_up_from_the_website_end_to_end(world) -> None:
             "joined_via": "whatsapp",
             "whatsapp": "•••• 0071",
             "google": None,
+            "name": None,  # asked on the web app's first screen
         }
         # The confirmed request is used once.
         replay = browser.post("/api/v1/auth/whatsapp/complete")
@@ -57,7 +58,7 @@ def test_whatsapp_sign_up_from_the_website_end_to_end(world) -> None:
     with pg() as session:
         user = session.get(User, phone.household())
         assert user is not None and user.joined_via == "whatsapp"
-        assert user.consented_at is not None and user.display_name == "Household"
+        assert user.consented_at is not None and user.display_name is None  # named on the web
         binding = session.scalars(
             select(WhatsAppBinding).where(WhatsAppBinding.user_id == user.id)
         ).one()

@@ -65,6 +65,8 @@ const byCode: Record<string, string> = {
   invalid_contact: "Check the email and phone number. PayU accepts letters, numbers, dots, - and _ in an email.",
   link_expired: "This payment link has expired. Send any message to FinBoy on WhatsApp for a new one.",
   billing_unavailable: "Payments aren't available right now. Nothing was charged. Try again in a minute.",
+  // Names and search round (docs/names-search-round/contract.md).
+  invalid_name: "Type your name, up to 60 letters.",
   // Admin round (docs/admin-round/contract.md).
   account_suspended: "This household is paused. Contact FinBoy support.",
   admin_required: "Your admin session ended. Sign in again to continue.",

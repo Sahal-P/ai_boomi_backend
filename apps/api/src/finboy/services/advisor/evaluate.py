@@ -30,7 +30,13 @@ from finboy.services.advisor import (
     summaries,
     tools,
 )
-from finboy.services.advisor.synthetic import NUDGE_DAY, SyntheticHousehold, make_store, nudges
+from finboy.services.advisor.synthetic import (
+    NUDGE_DAY,
+    SEARCH_FOUND,
+    SyntheticHousehold,
+    make_store,
+    nudges,
+)
 from finboy.services.assistant.intent import rule_intent
 
 FIXTURES = Path(__file__).resolve().parents[4] / "fixtures" / "advisor"
@@ -52,6 +58,7 @@ PLAN_FIELDS = (
     "months",
     "monthly_rupees",
     "annual_interest_percent",
+    "down_payment_rupees",
 )
 RUNS = 3
 # Phase 3: coach nudges the advisor words itself (the rest go out as written by code).
@@ -99,6 +106,7 @@ def available() -> set:
         arguments = {"metric": metric, "category": category, "first": last, "second": this}
         texts.append(tools.run(box, "compare", json.dumps(arguments), ctx).output)
     texts.extend(guide.body for guide in knowledge.library())
+    texts.append(SEARCH_FOUND.summary or "")
     return grounding.allowed(texts)
 
 
@@ -112,6 +120,10 @@ def _planned(case: Case) -> str | None:
     ctx = tools.Context(
         today=today_ist(), said={int(value * 100) for value in numbers}, stated=numbers
     )
+    if case.get("web"):  # the price and rate come from the synthetic web search
+        searched = SEARCH_FOUND.summary or ""
+        ctx.known = grounding.allowed([searched])
+        ctx.found = {value for value, _ in grounding.figures(searched)}
     arguments = {name: plan.get(name) for name in PLAN_FIELDS}
     return tools.run(SyntheticHousehold(), "plan_numbers", json.dumps(arguments), ctx).output
 
@@ -121,6 +133,7 @@ def check(found: list[Case]) -> list[str]:
     problems: list[str] = []
     sources = available()
     guides = {guide.id for guide in knowledge.library()}
+    guides |= {f"web-{number}" for number in range(1, len(SEARCH_FOUND.pages) + 1)}
     ids = [case["id"] for case in found]
     if len(ids) != len(set(ids)):
         problems.append("duplicate case IDs")
@@ -226,6 +239,10 @@ def run_case(case: Case, settings: Settings) -> dict[str, Any]:
     """One chat: every turn in order, scored on the last answer."""
     store, box = make_store(), SyntheticHousehold()
     expect = case["expect"]
+    if case.get("web"):  # web cases always run with search_web, whatever the flag says
+        settings = settings.model_copy(
+            update={"advisor_enabled": True, "advisor_web_search_enabled": True}
+        )
     started = perf_counter()
     thread_id = None
     with store() as session:

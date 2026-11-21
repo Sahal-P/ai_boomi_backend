@@ -243,7 +243,7 @@ def test_the_guides_an_answer_used_become_its_sources(session, settings, toolbox
     )
     assert answer.intent == "advisor" and answer.display_text.startswith("PM-KISAN pays")
     assert [source.model_dump() for source in answer.sources] == [
-        {"id": "pm-kisan", "title": "PM-KISAN", "url": "https://pmkisan.gov.in"}
+        {"id": "pm-kisan", "title": "PM-KISAN", "url": "https://pmkisan.gov.in", "kind": "guide"}
     ]
     assert stages == ["search_knowledge"] and "search_knowledge" in offered(model)
     assert answer.warnings == []  # from the guides alone, not the household's records
@@ -284,6 +284,23 @@ def test_guides_stay_off_until_released_and_unretrieved_ones_are_not_sources(
     assert "plan_numbers" in offered(model) and "search_past_chats" in offered(model)
 
 
+def test_a_searched_price_passes_the_check_and_cites_its_page(session, settings, toolbox, scripted):
+    settings = settings.model_copy(update={"advisor_web_search_enabled": True})
+    model = scripted(
+        [call("search_web", {"question": "Example Roadster 350 on-road price in Kochi"})],
+        reply("It costs about *₹2,40,000* on-road in Kochi.", sources=["web-1", "web-9"]),
+    )
+    stages: list[str] = []
+    answer = ask(
+        session, settings, toolbox, "can i afford the example roadster 350?", progress=stages.append
+    )
+    assert "₹2,40,000" in answer.display_text and len(model.calls) == 2  # no correction
+    assert [(source.id, source.kind, source.url) for source in answer.sources] == [
+        ("web-1", "web", "https://example.com/bike-prices")
+    ]
+    assert stages == ["search_web"] and answer.warnings == []  # public figures, not records
+
+
 def test_planning_figures_from_code_pass_the_check(session, settings, toolbox, scripted):
     arguments = {
         "calculation": "emi",
@@ -292,6 +309,7 @@ def test_planning_figures_from_code_pass_the_check(session, settings, toolbox, s
         "months": 12,
         "monthly_rupees": None,
         "annual_interest_percent": 12,
+        "down_payment_rupees": None,
     }
     model = scripted(
         [call("plan_numbers", arguments)],

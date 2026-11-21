@@ -185,6 +185,9 @@ export type Scenario = {
   /** Advisor phase 3: Home's "For you" (COACH_ENABLED) and whether WhatsApp gets the nudges. */
   coach?: boolean;
   coachWhatsApp?: "none" | "off" | "on";
+  /** Names and search round: the household's name. Null asks for it; unset leaves it out, as
+   * servers before that round do. */
+  name?: string | null;
 };
 
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string; language: "en" | "hi" | "ml"; created_at: string };
@@ -249,6 +252,7 @@ export class FakeFinBoyApi {
   advisor: boolean;
   coach: boolean;
   coachWhatsApp: "none" | "off" | "on";
+  name: string | null | undefined;
   chats: Chat[] = [];
   memories: MemoryRow[] = [];
   memoryEnabled = true;
@@ -275,6 +279,7 @@ export class FakeFinBoyApi {
     this.advisor = scenario.advisor ?? false;
     this.coach = scenario.coach ?? false;
     this.coachWhatsApp = scenario.coachWhatsApp ?? "off";
+    this.name = scenario.name;
     this.plan = scenario.plan ? planFixture(scenario.plan) : null;
     const status = scenario.connection ?? "active";
     this.connection =
@@ -499,9 +504,12 @@ export class FakeFinBoyApi {
         authenticated,
         required: this.authRequired,
         household: authenticated
-          ? this.selfServe
-            ? { owner: false, joined_via: "whatsapp", whatsapp: "•••• 0071", google: null }
-            : { owner: true, joined_via: null, whatsapp: null, google: null }
+          ? {
+              ...(this.selfServe
+                ? { owner: false, joined_via: "whatsapp", whatsapp: "•••• 0071", google: null }
+                : { owner: true, joined_via: null, whatsapp: null, google: null }),
+              ...(this.name === undefined ? {} : { name: this.name }),
+            }
           : null,
         sign_in: {
           whatsapp: this.whatsapp,
@@ -537,6 +545,12 @@ export class FakeFinBoyApi {
     if (path === "/api/v1/auth/logout-everywhere" && method === "POST") {
       this.signedIn = false;
       return ok({ authenticated: false });
+    }
+    if (path === "/api/v1/account/name" && method === "POST") {
+      const name = String(body.name ?? "").split(/\s+/).filter(Boolean).join(" ");
+      if (!name || name.length > 60 || !/\p{L}/u.test(name)) return envelope(422, "invalid_name");
+      this.name = name;
+      return ok({ name });
     }
     if (path === "/api/v1/account/delete" && method === "POST") {
       if (!this.selfServe) return envelope(403, "owner_household");
@@ -1431,9 +1445,10 @@ export class FakeFinBoyApi {
     }
     const event = (name: string, data: unknown) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
     const scheme = /pm-kisan/i.test(String(body.text ?? ""));
+    const price = /afford/i.test(String(body.text ?? ""));
     const steps = [
       event("progress", { stage: "thinking" }),
-      event("progress", { stage: scheme ? "search_knowledge" : "category_spending" }),
+      event("progress", { stage: scheme ? "search_knowledge" : price ? "search_web" : "category_spending" }),
     ];
     const result = this.advise(body);
     const last =
@@ -1474,11 +1489,15 @@ export class FakeFinBoyApi {
     const followUp = chat.messages.length > 0;
     const remember = /remember/i.test(text) && this.memoryEnabled;
     const scheme = /pm-kisan/i.test(text);
+    // Names and search round: a public price from a (synthetic) web page.
+    const price = /afford/i.test(text);
     const reply = remember
       ? "Got it — I'll remember that you're saving ₹40,000 for a bike."
       : scheme
         ? "PM-KISAN pays eligible farmer families ₹6,000 a year, in three instalments of ₹2,000."
-        : followUp
+        : price
+          ? "The Example Roadster 350 costs about ₹2,40,000 on-road in Kochi. Over 3 years at 10% to 14% a year, the EMI is about ₹7,745 to ₹8,203 a month."
+          : followUp
           ? "Last month you spent ₹3,000 on food and dining."
           : "You spent ₹4,200 on food and dining this month, ₹800 under your budget.";
     const memory_changes = [];
@@ -1513,8 +1532,12 @@ export class FakeFinBoyApi {
         resolved_period: null,
         thread_id: chat.id,
         memory_changes,
-        follow_ups: followUp || remember || scheme ? [] : ["And last month?"],
-        sources: scheme ? [{ id: "pm-kisan", title: "PM-KISAN", url: "https://pmkisan.gov.in" }] : [],
+        follow_ups: followUp || remember || scheme || price ? [] : ["And last month?"],
+        sources: scheme
+          ? [{ id: "pm-kisan", title: "PM-KISAN", url: "https://pmkisan.gov.in" }]
+          : price
+            ? [{ id: "web-1", title: "Example bike prices", url: "https://example.com/bike-prices", kind: "web" }]
+            : [],
       },
     };
   }

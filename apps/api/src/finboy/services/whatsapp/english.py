@@ -525,6 +525,7 @@ RENEWAL_FAILED = (
 # Advisor round (docs/advisor-round/contract.md): memory and chat commands.
 MEMORY_UPDATED = "📝 Saved to memory"
 GUIDES = "📚 From FinBoy's money guides: {guides}"
+WEB = "🔎 From the web: {guides}"
 MEMORY_OFF = (
     "🧠 Memory is off. I won't use or save anything about you.\n"
     'Send "memory on" to turn it back on.'

@@ -4,7 +4,7 @@ import pytest
 from finboy.core.clock import today_ist
 from finboy.services.advisor import memory
 from finboy.services.assistant.models import AnswerSource, AssistantAnswer, MemoryChange
-from finboy.services.whatsapp import hindi, pilot
+from finboy.services.whatsapp import english, hindi, pilot
 from finboy.services.whatsapp.capture import Capture
 from finboy.services.whatsapp.statement import Statement
 
@@ -135,4 +135,28 @@ def test_a_reply_from_the_guides_names_them_with_their_official_site(household, 
     assert household.texts()[-1] == (
         "पीएम-किसान में साल के ₹6,000 मिलते हैं।\n\n"
         + hindi.GUIDES.format(guides="पीएम-किसान https://pmkisan.gov.in")
+    )
+
+
+def test_web_pages_are_named_apart_from_the_guides() -> None:
+    answer = AssistantAnswer(
+        intent="advisor",
+        policy="answer",
+        display_text="About ₹3,65,000 on-road.",
+        speech_text="",
+        speech_language="en",
+        facts=[],
+        simulation=None,
+        evidence_transactions=[],
+        warnings=[],
+        sources=[
+            AnswerSource(id="pm-kisan", title="PM-KISAN", url="https://pmkisan.gov.in"),
+            AnswerSource(id="web-1", title="Bike prices", url="https://bikes.example", kind="web"),
+        ],
+    )
+    assert pilot.with_sources(answer.display_text, answer, english) == (
+        "About ₹3,65,000 on-road.\n\n"
+        + english.GUIDES.format(guides="PM-KISAN https://pmkisan.gov.in")
+        + "\n\n"
+        + english.WEB.format(guides="Bike prices https://bikes.example")
     )

@@ -146,28 +146,30 @@ def _stated(texts: list[str]) -> tuple[set[int], set[Decimal]]:
 
 
 def _sources(cited: list[str], ctx: tools.Context, style: str) -> list[AnswerSource]:
-    """The retrieved guides the reply says it used, titled in the reader's script."""
+    """The retrieved guides (titled in the reader's script) and web pages the reply says it
+    used, in the order it cites them."""
     language = "hi" if style == "hi" else "ml" if style == "ml" else "en"
-    found = [ctx.guides[key] for key in dict.fromkeys(cited) if key in ctx.guides]
-    return [
-        AnswerSource(
-            id=guide.id,
-            title=guide.title(language),
-            url=guide.sources[0] if guide.sources else None,
-        )
-        for guide in found[:MAX_SOURCES]
-    ]
+    sources: list[AnswerSource] = []
+    for key in dict.fromkeys(cited):
+        if guide := ctx.guides.get(key):
+            url = guide.sources[0] if guide.sources else None
+            sources.append(AnswerSource(id=guide.id, title=guide.title(language), url=url))
+        elif page := ctx.pages.get(key):
+            sources.append(AnswerSource(id=key, title=page.title, url=page.url, kind="web"))
+    return sources[:MAX_SOURCES]
 
 
 def _uses_records(
     text: str, used: list[str], cited: list[AnswerSource], ctx: tools.Context, snapshot: set
 ) -> bool:
     """Whether an answer rests on the household's records, so it carries the records warning:
-    it called a record tool, or quotes a figure from their snapshot that no cited guide gives.
-    A guide explanation, planning maths or a greeting makes no claim about their records."""
+    it called a record tool, or quotes a figure from their snapshot that no cited guide or web
+    search gives. A guide explanation, planning maths or a greeting makes no claim about their
+    records."""
     if RECORD_TOOLS.intersection(used):
         return True
-    from_guides = grounding.allowed(ctx.guides[source.id].body for source in cited)
+    guides = (ctx.guides[source.id].body for source in cited if source.kind == "guide")
+    from_guides = grounding.allowed(guides) | ctx.found
     quoted = {value for value, money_like in grounding.figures(text) if money_like or value >= 100}
     return bool((quoted - from_guides) & snapshot)
 

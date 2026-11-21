@@ -42,6 +42,7 @@ class AccessError(Exception):
         "already_linked": (409, "That account already belongs to another FinBoy household."),
         "usage_limit": (429, "You've reached today's limit. Try again tomorrow."),
         "owner_household": (403, "The owner's household can't be deleted here."),
+        "invalid_name": (422, "Type your name, up to 60 letters."),
         "try_later": (429, "Please try again in a minute."),
         "premium_required": (402, "This is part of FinBoy Premium."),
         "already_paid": (409, "Your plan is already paid or renews by itself."),

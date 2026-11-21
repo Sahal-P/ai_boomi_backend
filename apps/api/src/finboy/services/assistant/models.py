@@ -35,12 +35,14 @@ class MemoryChange(BaseModel):
 
 
 class AnswerSource(BaseModel):
-    """A reviewed FinBoy guide an advisor answer is based on (docs/advisor-round/contract.md)."""
+    """A reviewed FinBoy guide (docs/advisor-round/contract.md) or a web page
+    (docs/names-search-round/contract.md) an advisor answer is based on."""
 
     model_config = ConfigDict(extra="forbid")
     id: str
     title: str
-    url: str | None = None  # the guide's first official source
+    url: str | None = None  # a guide's first official source, or the page
+    kind: Literal["guide", "web"] = "guide"
 
 
 class AssistantAnswer(BaseModel):

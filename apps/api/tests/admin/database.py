@@ -19,6 +19,7 @@ from finboy.db.models.whatsapp import WhatsAppBinding
 from finboy.db.session import build_engine
 from finboy.services.accounts import households
 from finboy.services.admin import auth
+from finboy.services.mail.security import encrypt
 from finboy.services.whatsapp.config import keyed_digest
 from sqlalchemy import delete, or_, select
 from sqlalchemy.engine import make_url
@@ -123,13 +124,15 @@ def household(
     kind: str = "self_serve",
     joined_days_ago: int = 3,
     phone: str | None = None,
+    name: str | None = "Synthetic Household",
 ) -> UUID:
-    """A synthetic household; `phone` (digits with country code) adds a WhatsApp binding."""
+    """A synthetic household; `phone` (digits with country code) adds a WhatsApp binding, with
+    the encrypted copy a self-serve household keeps."""
     joined = datetime.now(UTC) - timedelta(days=joined_days_ago)
     with pg() as session:
         user = User(
             id=uuid4(),
-            display_name="SENSITIVE NAME",
+            display_name=name,
             pilot=kind == "pilot",
             joined_via=None if kind == "pilot" else "whatsapp",
             consented_at=None if kind == "pending" else joined,
@@ -142,6 +145,7 @@ def household(
                 WhatsAppBinding(
                     user_id=user.id,
                     sender_hash=keyed_digest(ENCRYPTION_KEY.encode(), "sender", phone),
+                    encrypted_sender=None if kind == "pilot" else encrypt(ENCRYPTION_KEY, phone),
                     language="hi",
                     last_inbound_at=joined,
                 )

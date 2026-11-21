@@ -159,7 +159,7 @@ test("a streamed question hears each step, then its answer with its guides", asy
   });
   assert.deepEqual(stages, ["thinking", "search_knowledge"]);
   assert.equal(result.display_text, "Food this month is ₹4,200.");
-  assert.deepEqual(result.sources, [source]);
+  assert.deepEqual(result.sources, [{ ...source, kind: "guide" }]);
   assert.deepEqual(calls, [
     {
       url: "/assistant/ask/stream",
@@ -207,4 +207,11 @@ test("guide links must be https", () => {
   }
   const plain = answerSchema.parse({ ...answer, sources: [{ id: "budgeting-basics", title: "Budgeting" }] });
   assert.equal(plain.sources[0]?.url, null);
+});
+
+test("web pages are sources too; a source without a kind is a guide", () => {
+  const page = { id: "web-1", title: "Bike prices", url: "https://bikes.example/gt-650", kind: "web" };
+  assert.equal(answerSchema.parse({ ...answer, sources: [page] }).sources[0]?.kind, "web");
+  assert.equal(answerSchema.parse({ ...answer, sources: [{ id: "pm-kisan", title: "PM-KISAN" }] }).sources[0]?.kind, "guide");
+  assert.equal(answerSchema.safeParse({ ...answer, sources: [{ ...page, kind: "ad" }] }).success, false);
 });

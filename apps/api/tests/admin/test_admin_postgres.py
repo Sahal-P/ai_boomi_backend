@@ -200,14 +200,14 @@ def test_admins_are_added_with_a_temporary_password_and_disabled(
     assert {"admin_created", "admin_disabled", "admin_enabled"} <= set(enabled)
 
 
-def test_households_are_found_by_id_or_exact_number_and_show_no_content(
+def test_households_are_found_by_name_number_or_id_and_show_who_but_no_content(
     world: World, api: FastAPI
 ) -> None:
     settings, pg = world
     create_admin(pg, ADMIN)
     mine = signed_in(api, ADMIN)
-    family = household(pg, phone=PHONE)
-    pending, pilot = household(pg, kind="pending"), household(pg, kind="pilot")
+    family = household(pg, phone=PHONE, name="Asha Menon")
+    pending, pilot = household(pg, kind="pending", name=None), household(pg, kind="pilot")
     web = TestClient(api, cookies=household_cookie(settings, family, epoch(pg, family)))
     entry = {
         "kind": "spent",
@@ -223,14 +223,22 @@ def test_households_are_found_by_id_or_exact_number_and_show_no_content(
         assert page.status_code == 200
         return [item["id"] for item in page.json()["items"]]
 
-    for typed in ("+91 98123 45670", "9812345670", short(family)):
+    for typed in ("+91 98123 45670", "9812345670", short(family), "asha men", "MENON"):
         assert found(q=typed) == [str(family)]
     assert found(q="9812345679") == [] and found(q="someone's name") == []
+    assert found(q="100%_") == []  # wildcards are matched as typed
     assert str(pending) in found(kind="pending") and str(family) not in found(kind="pending")
     assert str(pilot) in found(kind="pilot")
+    row = mine.get("/api/v1/admin/households", params={"q": "asha"}).json()["items"][0]
+    assert (row["name"], row["phone"]) == ("Asha Menon", PHONE)
+    unnamed = mine.get("/api/v1/admin/households", params={"kind": "pending"}).json()["items"]
+    assert {(item["name"], item["phone"]) for item in unnamed if item["id"] == str(pending)} == {
+        (None, None)
+    }
 
     detail = mine.get(f"/api/v1/admin/households/{family}")
     body = detail.json()
+    assert (body["name"], body["phone"], body["payer_phone"]) == ("Asha Menon", PHONE, None)
     assert (body["kind"], body["status"], body["whatsapp"]) == ("self_serve", "active", True)
     assert body["records"] == {"confirmed": 1} and body["language"] == "hi"
     assert body["imports"] == []  # a quick add is a record, not an import an operator follows
@@ -250,8 +258,9 @@ def test_households_are_found_by_id_or_exact_number_and_show_no_content(
             select(WhatsAppBinding.sender_hash).where(WhatsAppBinding.user_id == family)
         )
     assert 43210 not in values and stored_hash not in values
+    assert PHONE in values  # who the household is, since the names and search round
     for value in values:
-        assert not (isinstance(value, str) and ("SENSITIVE" in value or "9812345670" in value))
+        assert not (isinstance(value, str) and "SENSITIVE" in value)
     missing = mine.get(f"/api/v1/admin/households/{uuid4()}")
     assert (missing.status_code, code(missing)) == (404, "not_found")
 
@@ -315,6 +324,7 @@ def test_erase_follows_each_households_rules_and_never_touches_the_owner(
     assert erase(family).status_code == 200
     gone = mine.get(f"/api/v1/admin/households/{family}").json()
     assert (gone["status"], gone["actions"], gone["whatsapp"]) == ("deleted", [], False)
+    assert (gone["name"], gone["phone"]) == (None, None)  # erasure takes the name too
     assert erase(pilot).status_code == 200
     former = mine.get(f"/api/v1/admin/households/{pilot}").json()
     assert (former["kind"], former["actions"]) == ("former_pilot", [])
@@ -373,7 +383,9 @@ def test_premium_payments_and_tidying_sign_ups(
         session.commit()
         payment_id = payment.id
     pending = mine.get("/api/v1/admin/payments", params={"status": "pending"}).json()
-    assert str(payment_id) in [row["id"] for row in pending["items"]]
+    assert (str(payment_id), "Synthetic Household") in [
+        (row["id"], row["household_name"]) for row in pending["items"]
+    ]
 
     class PayU:
         def __init__(self, _settings: Settings) -> None:
@@ -396,6 +408,10 @@ def test_premium_payments_and_tidying_sign_ups(
     monkeypatch.setattr(actions.checkout, "reconcile", settle)
     checked = mine.post(f"/api/v1/admin/payments/{payment_id}/reconcile")
     assert checked.status_code == 200 and checked.json()["status"] == "paid"
+    assert checked.json()["household_name"] == "Synthetic Household"
+    audit = mine.get("/api/v1/admin/audit").json()["items"]
+    granted_row = next(row for row in audit if row["action"] == "premium_granted")
+    assert granted_row["household_name"] == "Synthetic Household"
 
     stale = household(pg, kind="pending", joined_days_ago=10)
     assert mine.post("/api/v1/admin/signups/tidy").status_code == 200
@@ -423,7 +439,7 @@ def test_overview_and_system_show_counts_and_settings_never_secrets(world: World
     system = mine.get("/api/v1/admin/system")
     body = system.json()
     assert (body["database"], body["schema_status"]) == ("connected", "current")
-    assert body["schema_head"] == "0017_coach" and body["flags"]["billing_enabled"] is True
+    assert body["schema_head"] == "0019_names" and body["flags"]["billing_enabled"] is True
     assert body["limits"]["admin_session_hours"] == settings.admin_session_hours
     assert set(body["providers"].values()) <= {"configured", "missing", "disabled", "off"}
     for secret in (ENCRYPTION_KEY, SESSION_KEY, "s4ltForTestsOnly", "tEsTkY", "postgresql"):

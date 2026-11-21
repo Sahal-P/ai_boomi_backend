@@ -16,6 +16,7 @@ import { paymentStatusLabels } from "@/lib/admin-labels";
 import { listAdminPayments, PAYMENT_STATUSES, reconcilePayment, type AdminPayment, type PaymentStatus } from "@/lib/api/admin";
 import { describeProblem } from "@/lib/messages";
 import { rupees } from "@/lib/plan";
+import { cn } from "@/lib/utils";
 
 const OPEN = new Set<PaymentStatus>(["started", "scheduled", "pending"]);
 const MODES: Record<string, string> = { UPI: "UPI", CC: "Credit card", DC: "Debit card", NB: "Net banking" };
@@ -52,12 +53,12 @@ function PaymentItem({
         <StatusBadge status={payment.status} />
       </div>
       <p className="mt-1 text-xs text-ink-soft">
-        {moment(payment.created_at)} · household{" "}
+        {moment(payment.created_at)} · {payment.household_name ? "" : "household "}
         <Link
           href={`/admin/households?selected=${payment.household_id}`}
-          className="font-mono font-semibold text-ink underline underline-offset-4"
+          className={cn("font-semibold text-ink underline underline-offset-4", !payment.household_name && "font-mono")}
         >
-          {payment.short_id}
+          {payment.household_name ?? payment.short_id}
         </Link>
         {payment.covers_to ? ` · covers to ${day(payment.covers_to)}` : ""}
       </p>

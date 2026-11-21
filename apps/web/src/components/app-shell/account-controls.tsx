@@ -154,7 +154,7 @@ function AccountItems({ signOut }: { signOut: ReturnType<typeof useGuardedSignOu
   return (
     <>
       <DropdownMenuLabel className="px-2 py-1.5">
-        <span className="block text-sm font-semibold text-ink">Your household</span>
+        <span className="block text-sm font-semibold break-words text-ink">{household?.name || "Your household"}</span>
         <span className="block text-xs font-normal break-words text-ink-soft">
           {householdLine(household)}
         </span>
@@ -230,7 +230,7 @@ export function AccountPanel() {
               <CircleUserRound className="size-5" aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold text-ink">Your household</span>
+              <span className="block truncate text-sm font-semibold text-ink">{household?.name || "Your household"}</span>
               <span className="block truncate text-xs text-ink-soft">{householdLine(household)}</span>
             </span>
             <ChevronsUpDown className="size-4 shrink-0 text-ink-soft" aria-hidden="true" />

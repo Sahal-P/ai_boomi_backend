@@ -1,6 +1,7 @@
 """Self-serve households (docs/signup-round/contract.md): admission, capacity and erasure.
 
-A household has no personal name. Sign-in identities are digests and masked labels only.
+A household names itself once on the web (docs/names-search-round/contract.md); erasure clears
+the name. Sign-in identities are digests, masked labels and an encrypted Google email.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -93,13 +94,22 @@ def lock_signups(session: Session) -> None:
 def new_household(session: Session, *, joined_via: str, agreed: bool) -> User:
     user = User(
         id=uuid4(),
-        display_name="Household",
+        display_name=None,  # asked on the household's first visit to the web app
         joined_via=joined_via,
         consented_at=datetime.now(UTC) if agreed else None,
     )
     session.add(user)
     session.flush()
     return user
+
+
+def clean_name(text: str) -> str | None:
+    """A name as typed, spaces tidied: 1 to 60 printable characters with at least one letter,
+    in any script. None when it isn't one."""
+    name = " ".join(text.split())
+    if not 1 <= len(name) <= 60 or not name.isprintable():
+        return None
+    return name if any(character.isalpha() for character in name) else None
 
 
 def is_self_serve(session: Session, user_id: UUID) -> bool:
@@ -199,6 +209,7 @@ def erase_household(session: Session, user_id: UUID) -> dict[str, int]:
         raise ValueError("not_found")
     counts = remove_household_data(session, user_id)
     remove_sign_in(session, user_id)
+    user.display_name = None
     user.deleted_at = datetime.now(UTC)
     user.session_epoch += 1
     user.data_version += 1

@@ -115,6 +115,7 @@ export const providerLabels: Record<string, string> = {
   fast_decisions: "Fast decisions",
   advisor: "Advisor and memory",
   knowledge: "Money guides",
+  web_search: "Web search",
   coach: "Coach nudges",
   payu: "PayU",
   email: "Email",
@@ -127,6 +128,12 @@ export const providerStateLabels: Record<string, string> = {
   off: "Off",
   window_only: "Within 24 hours only",
 };
+
+/** "919876543210" → "+91 98765 43210"; other countries' numbers keep their digits after "+". */
+export function formatPhone(digits: string): string {
+  const india = /^91(\d{5})(\d{5})$/.exec(digits);
+  return india ? `+91 ${india[1]} ${india[2]}` : `+${digits}`;
+}
 
 /** "needs_review" → "Needs review" for a code without its own label. */
 export function readable(code: string): string {

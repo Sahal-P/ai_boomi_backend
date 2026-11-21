@@ -543,5 +543,43 @@
         "monthly_rupees": 5000
       }
     }
+  },
+  {
+    "id": "en-bike-price-web",
+    "language": "en",
+    "web": true,
+    "turns": [
+      "can i afford the example roadster 350 bike?"
+    ],
+    "expect": {
+      "policy": "answer",
+      "figures": [
+        "₹2,40,000"
+      ],
+      "sources": [
+        "web-1"
+      ]
+    }
+  },
+  {
+    "id": "en-bike-emi-web",
+    "language": "en",
+    "web": true,
+    "turns": [
+      "can i afford the example roadster 350 bike?",
+      "i am considering emi for 3 years"
+    ],
+    "expect": {
+      "policy": "answer",
+      "figures": [
+        "₹7,745"
+      ],
+      "plan": {
+        "calculation": "emi",
+        "amount_rupees": 240000,
+        "months": 36,
+        "annual_interest_percent": 10
+      }
+    }
   }
 ]

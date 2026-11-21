@@ -504,6 +504,7 @@ RENEWAL_FAILED = (
 # Advisor round (docs/advisor-round/contract.md): memory and chat commands.
 MEMORY_UPDATED = "📝 याद रख लिया"
 GUIDES = "📚 FinBoy की पैसों की गाइड से: {guides}"
+WEB = "🔎 वेब से: {guides}"
 MEMORY_OFF = '🧠 मेमोरी बंद है। अब मैं आपके बारे में कुछ याद नहीं रखूँगा।\nफिर चालू करने के लिए "मेमोरी चालू" भेजें।'
 MEMORY_ON = (
     '🧠 मेमोरी चालू है। आपके लक्ष्य और योजनाएँ जैसी काम की बातें मैं याद रखूँगा।\nबंद करने के लिए "मेमोरी बंद" भेजें।'

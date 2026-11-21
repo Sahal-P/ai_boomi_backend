@@ -310,3 +310,22 @@ This supersedes "Malayalam number words are not read", the Gemini Malayalam voic
 `openai/gemini` code defaults, only as documented in `docs/voice.md` ("Malayalam amounts and
 speech") and `docs/whatsapp.md` ("Missing amounts"). One agent on feat/finboy-voice-amounts; no
 migration.
+
+## Names and search round — 21 November 2026
+
+From release f7f422f the human asked for three things:
+- **Ask** looks up public prices and loan rates on the web, the way ChatGPT does, instead of asking
+  for them.
+- **The admin panel** shows who each household is: name, full phone number, email and payment
+  contact. It still never shows money records, chats or memories.
+- **Every self-serve household** gives a name, and only a name, once on the web after signing in.
+
+`docs/names-search-round/contract.md` supersedes these statements only as documented there:
+- the sign-up round's "no personal name";
+- the admin round's "no names, phone numbers or contact details";
+- the advisor round's "interest rate: one the person gave" and "never estimate prices".
+
+One agent on feat/finboy-names-web-search, loopback 8111/3111, disposable finboy_signup, migration
+`0019_names`. `ADVISOR_WEB_SEARCH_ENABLED` stays false until a live search check and
+`pnpm eval:advisor` pass and the human approves the release. Only the search question leaves
+FinBoy, never an amount, and nothing it returns is stored or logged.

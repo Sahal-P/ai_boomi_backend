@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { chatLink, safeReturnPath, sessionSchema, startGoogle, startWhatsApp } from "./auth.ts";
+import { chatLink, safeReturnPath, saveName, sessionSchema, startGoogle, startWhatsApp } from "./auth.ts";
 
 const originalFetch = globalThis.fetch;
 afterEach(() => {
@@ -53,6 +53,29 @@ test("the session carries only masked sign-in details and public configuration",
       false,
     );
   }
+});
+
+test("a household's name is null until it names itself, and absent from older servers", () => {
+  const household = { owner: false, joined_via: "google", whatsapp: null, google: "s***@***.test" };
+  const parse = (extra: object) =>
+    sessionSchema.parse({ authenticated: true, required: true, household: { ...household, ...extra }, sign_in: signIn });
+  assert.equal(parse({ name: null }).household?.name, null);
+  assert.equal(parse({ name: "Asha Menon" }).household?.name, "Asha Menon");
+  assert.equal(parse({}).household?.name, undefined);
+  assert.equal(
+    sessionSchema.safeParse({ authenticated: true, required: true, household: { ...household, name: "" }, sign_in: signIn }).success,
+    false,
+  );
+});
+
+test("saving a name posts only the name and reads it back", async () => {
+  const sent: unknown[] = [];
+  globalThis.fetch = async (_url, init) => {
+    sent.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify({ name: "Asha Menon" }), { status: 200 });
+  };
+  assert.deepEqual(await saveName("Asha Menon"), { name: "Asha Menon" });
+  assert.deepEqual(sent, [{ name: "Asha Menon" }]);
 });
 
 test("a WhatsApp start accepts only a wa.me link carrying its code", async () => {

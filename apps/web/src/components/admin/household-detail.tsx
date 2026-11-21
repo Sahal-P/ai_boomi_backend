@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useResource } from "@/hooks/use-resource";
 import {
   dueLabels,
+  formatPhone,
   importModeLabels,
   kindLabels,
   label,
@@ -23,6 +24,7 @@ import { getHousehold, type HouseholdDetail } from "@/lib/api/admin";
 import { formatPeriod } from "@/lib/dates";
 import { describeProblem } from "@/lib/messages";
 import { rupees } from "@/lib/plan";
+import { cn } from "@/lib/utils";
 
 const yes = (value: boolean) => (value ? "Yes" : "No");
 const RENEWALS = { manual: "One month at a time", autopay: "AutoPay", off: "AutoPay off" } as const;
@@ -59,11 +61,31 @@ function Body({ detail }: { detail: HouseholdDetail }) {
         />
       </Part>
 
+      <Part title="Contact">
+        <Facts
+          items={[
+            [
+              "Phone",
+              detail.phone ? (
+                <a href={`tel:+${detail.phone}`} className="tabular-nums underline underline-offset-4">
+                  {formatPhone(detail.phone)}
+                </a>
+              ) : (
+                "Not known"
+              ),
+            ],
+            ["Email", detail.google_email ?? "Not known"],
+            ...(detail.payer_email ? ([["Payment email", detail.payer_email]] as [string, ReactNode][]) : []),
+            ...(detail.payer_phone ? ([["Payment phone", formatPhone(detail.payer_phone)]] as [string, ReactNode][]) : []),
+          ]}
+        />
+      </Part>
+
       <Part title="Sign-in">
         <Facts
           items={[
             ["WhatsApp", detail.whatsapp ? "Linked" : "Not linked"],
-            ["Google", detail.google ? (detail.google_email ?? "Linked") : "Not linked"],
+            ["Google", detail.google ? "Linked" : "Not linked"],
           ]}
         />
       </Part>
@@ -189,7 +211,7 @@ function Body({ detail }: { detail: HouseholdDetail }) {
   );
 }
 
-/** One household's activity and plan, never its records, messages or contact details. */
+/** Who one household is, its activity and plan; never its records, messages or chats. */
 export function HouseholdDetailView({
   householdId,
   version,
@@ -227,10 +249,14 @@ export function HouseholdDetailView({
         <>
           <div>
             <p className="text-xs font-semibold text-ink-soft">Household</p>
-            <h2 ref={heading} tabIndex={-1} className="font-mono text-2xl font-semibold tracking-tight outline-none">
-              {data.short_id}
+            <h2
+              ref={heading}
+              tabIndex={-1}
+              className={cn("text-2xl font-semibold tracking-tight break-words outline-none", !data.name && "text-ink-soft")}
+            >
+              {data.name ?? "No name yet"}
             </h2>
-            <p className="mt-0.5 font-mono text-[11px] break-all text-ink-soft">{data.id}</p>
+            <p className="mt-0.5 font-mono text-[11px] break-all text-ink-soft">ID {data.id}</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <Badge variant="solid">{kindLabels[data.kind]}</Badge>
               <StatusBadge status={data.status} />

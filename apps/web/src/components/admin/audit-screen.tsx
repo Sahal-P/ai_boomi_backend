@@ -11,6 +11,7 @@ import { useResource } from "@/hooks/use-resource";
 import { auditLabels, label, readable } from "@/lib/admin-labels";
 import { getAudit, type AuditRow } from "@/lib/api/admin";
 import { describeProblem } from "@/lib/messages";
+import { cn } from "@/lib/utils";
 
 const VIA: Record<string, string> = {
   server: "on the server",
@@ -81,12 +82,12 @@ export function AuditScreen() {
                     {who(row)}
                     {row.short_id && row.household_id && (
                       <>
-                        {" · household "}
+                        {row.household_name ? " · " : " · household "}
                         <Link
                           href={`/admin/households?selected=${row.household_id}`}
-                          className="font-mono font-semibold text-ink underline underline-offset-4"
+                          className={cn("font-semibold text-ink underline underline-offset-4", !row.household_name && "font-mono")}
                         >
-                          {row.short_id}
+                          {row.household_name ?? row.short_id}
                         </Link>
                       </>
                     )}

@@ -4,6 +4,8 @@ Each tool is a thin wrapper over the money engine, so every figure the model see
 own, already formatted in rupees. The household is always the signed-in one: the model chooses
 periods, categories and payees, never whose records are read. Sums, differences and percentages
 are computed here, never by the model. A bad argument returns an error the model can correct.
+search_web is the one tool that reads outside FinBoy: public prices and rates, from a question
+that carries none of the household's amounts (docs/names-search-round/contract.md).
 """
 
 import json
@@ -12,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 from typing import Any, Literal, Protocol, get_args
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from openai import pydantic_function_tool
@@ -20,8 +23,10 @@ from sqlalchemy.orm import Session
 
 from finboy.core.clock import IST
 from finboy.core.config import Settings
+from finboy.core.errors import ProviderUnavailable
 from finboy.db.models.ledger import Category
-from finboy.services.advisor import embeddings, history, knowledge
+from finboy.services import providers
+from finboy.services.advisor import embeddings, grounding, history, knowledge, web_search
 from finboy.services.assistant.language import money
 from finboy.services.money import budgets, engine, insights
 from finboy.services.money.engine import PeriodSpec, TransactionView
@@ -150,21 +155,37 @@ class SearchPastChatsArgs(BaseModel):
     query: str = Field(description="What was discussed, in any language")
 
 
+class SearchWebArgs(BaseModel):
+    """Look up a public fact on the web: a price (on-road or ex-showroom, a fee), typical loan
+    interest rates in India, fuel or gold rates. Ask in English about the public fact only, with
+    the city when the person gave one; never include their amounts, names or other details.
+    Returns a short summary and the pages it came from."""
+
+    model_config = ConfigDict(extra="forbid")
+    question: str = Field(
+        description="The public fact to find, like 'Honda Activa 6G on-road price in Pune'"
+    )
+
+
 class PlanNumbersArgs(BaseModel):
     """Work out planning figures with code, never by hand: the monthly saving for a target by a
     month, how many months a monthly saving takes, or a loan's EMI, total paid and interest from
-    a rate the person gave. Use only amounts the person said or FinBoy showed."""
+    a rate the person gave or search_web found. Use only amounts the person said or FinBoy
+    showed, including prices search_web found."""
 
     model_config = ConfigDict(extra="forbid")
     calculation: Literal["save_per_month", "months_to_goal", "emi"]
     amount_rupees: float | None = Field(
-        description="The target (save_per_month, months_to_goal) or the loan amount (emi)"
+        description="The target (save_per_month, months_to_goal) or the price or loan amount (emi)"
     )
     by_month: str | None = Field(description="save_per_month: the target month, YYYY-MM")
     months: int | None = Field(description="emi: the loan length in months")
     monthly_rupees: float | None = Field(description="months_to_goal: the monthly saving")
     annual_interest_percent: float | None = Field(
-        description="emi: the yearly interest rate the person gave"
+        description="emi: the yearly interest rate the person gave or search_web found"
+    )
+    down_payment_rupees: float | None = Field(
+        description="emi: what the person pays upfront, taken off amount_rupees"
     )
 
 
@@ -181,6 +202,9 @@ class Context:
     known: set[Decimal] = field(default_factory=set)
     # Guides returned by search_knowledge in this chat turn, for citing.
     guides: dict[str, knowledge.Guide] = field(default_factory=dict)
+    # Pages search_web cited in this chat turn ("web-1", …), for citing, and their numbers.
+    pages: dict[str, web_search.Page] = field(default_factory=dict)
+    found: set[Decimal] = field(default_factory=set)
 
 
 @dataclass
@@ -207,6 +231,7 @@ class Toolbox(Protocol):
     def simulate(self, monthly_minor: int) -> engine.CashFlowSimulation: ...
     def knowledge(self, query: str) -> list[knowledge.Hit]: ...
     def past_chats(self, query: str) -> list[history.ChatHit]: ...
+    def search_web(self, question: str) -> web_search.Found: ...
 
 
 @dataclass
@@ -288,6 +313,12 @@ class EngineToolbox:
             settings=self.settings,
             query_vector=self._vector(query),
         )
+
+    def search_web(self, question: str) -> web_search.Found:
+        if self.settings is None:
+            raise ProviderUnavailable
+        self.session.rollback()  # never hold the engine's read lock over a network call
+        return web_search.search(question, self.settings)
 
 
 def _date(value: str | None, name: str) -> date:
@@ -668,16 +699,27 @@ def _plan(box: Toolbox, args: PlanNumbersArgs, ctx: Context) -> dict[str, Any]:
             "each_month": money(int(monthly * 100)),
             "months_needed": months,
         }
-    principal = _rupees(args.amount_rupees, "amount_rupees")
-    _given(principal, ctx, "loan amount")
+    price = _rupees(args.amount_rupees, "amount_rupees")
+    _given(price, ctx, "loan amount or price")
+    upfront: dict[str, str] = {}
+    principal = price
+    if args.down_payment_rupees:  # 0 means nothing upfront
+        down = _rupees(args.down_payment_rupees, "down_payment_rupees")
+        _given(down, ctx, "down payment")
+        if down >= price:
+            raise ToolError("down_payment_rupees must be less than amount_rupees")
+        principal = price - down
+        upfront = {"price": money(int(price * 100)), "down_payment": money(int(down * 100))}
     months = args.months or 0
     if not 1 <= months <= 480:
         raise ToolError("months must be from 1 to 480")
     if args.annual_interest_percent is None:
         raise ToolError("annual_interest_percent is needed; ask the person for the rate")
     rate = Decimal(str(args.annual_interest_percent))
-    if rate not in ctx.stated or not Decimal(0) <= rate <= Decimal(60):
-        raise ToolError("Use only an interest rate the person gave; otherwise ask them")
+    if (rate not in ctx.stated and rate not in ctx.found) or not Decimal(0) <= rate <= Decimal(60):
+        raise ToolError(
+            "Use only an interest rate the person gave or search_web found; otherwise ask them"
+        )
     monthly_rate = rate / 1200
     if monthly_rate == 0:
         emi = principal / months
@@ -686,7 +728,7 @@ def _plan(box: Toolbox, args: PlanNumbersArgs, ctx: Context) -> dict[str, Any]:
         emi = principal * monthly_rate * growth / (growth - 1)
     emi_whole = _whole(emi)
     total = emi_whole * months
-    return {
+    return upfront | {
         "loan": money(int(principal * 100)),
         "annual_rate": f"{rate.normalize():f}%",
         "months": months,
@@ -728,6 +770,35 @@ def _search_past_chats(box: Toolbox, args: SearchPastChatsArgs, ctx: Context) ->
     }
 
 
+def _search_web(box: Toolbox, args: SearchWebArgs, ctx: Context) -> dict[str, Any]:
+    question = " ".join(args.question.split())
+    if not question or len(question) > 300:
+        raise ToolError("question must be 1 to 300 characters")
+    # Only the public fact leaves FinBoy: an amount in the question could be the household's own.
+    if any(money_like for _, money_like in grounding.figures(question)):
+        raise ToolError("Leave amounts out of the search and ask only about the public fact")
+    try:
+        found = box.search_web(question)
+    except ProviderUnavailable:
+        raise ToolError("Web search is unavailable right now; answer without it") from None
+    if found.summary is None:
+        return {"found": None, "note": "The web did not say; tell them you couldn't find it."}
+    cited = []
+    for page in found.pages:
+        key = f"web-{len(ctx.pages) + 1}"
+        ctx.pages[key] = page
+        cited.append({"id": key, "title": page.title, "site": urlsplit(page.url).hostname})
+    ctx.found |= {value for value, _ in grounding.figures(found.summary)}
+    return {
+        "found": found.summary,
+        "pages": cited,
+        "note": (
+            "Public figures from the web, not the person's records. They vary by city, lender "
+            "and date: say they are approximate and put the ids of the pages you used in sources."
+        ),
+    }
+
+
 @dataclass(frozen=True)
 class Tool:
     name: str
@@ -747,14 +818,20 @@ TOOLS: tuple[Tool, ...] = (
     Tool("plan_numbers", PlanNumbersArgs, _plan),
     Tool("search_past_chats", SearchPastChatsArgs, _search_past_chats),
     Tool("search_knowledge", SearchKnowledgeArgs, _search_knowledge),
+    Tool("search_web", SearchWebArgs, _search_web),
 )
 BY_NAME = {tool.name: tool for tool in TOOLS}
 
 
 def offered(settings: Settings | None) -> tuple[Tool, ...]:
-    """The tools the model may call: the guides only while the library is released."""
-    knowledge_on = settings is not None and settings.knowledge_enabled
-    return tuple(tool for tool in TOOLS if tool.name != "search_knowledge" or knowledge_on)
+    """The tools the model may call: the guides only while the library is released, and web
+    search only while it is released and configured."""
+    hidden = set()
+    if settings is None or not settings.knowledge_enabled:
+        hidden.add("search_knowledge")
+    if settings is None or providers.web_search(settings) != "configured":
+        hidden.add("search_web")
+    return tuple(tool for tool in TOOLS if tool.name not in hidden)
 
 
 def definitions(settings: Settings | None = None) -> list[Any]:
