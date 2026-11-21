@@ -9,9 +9,11 @@ test.describe("while WhatsApp sign-up is open", () => {
 
   test("every Start button opens FinBoy's chat; the code shows only on a computer", async ({ page }, testInfo) => {
     await page.goto("/?graphics=off");
+    const header = page.getByRole("banner");
+    await expect(header.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", "/dashboard");
     const starts = [
       page.getByRole("region", { name: /Keep track/ }),
-      page.getByRole("banner"),
+      header,
       page.getByRole("region", { name: /Say hi/ }),
     ].map((area) => area.getByRole("link", { name: "Start on WhatsApp" }));
     for (const start of starts) {
@@ -124,12 +126,51 @@ test.describe("while WhatsApp sign-up is open", () => {
   });
 });
 
+test.describe("the landing page for a returning household", () => {
+  test.use({ scenario: { authRequired: true, signedIn: true, whatsapp: true } });
+
+  test("offers the dashboard in place of sign-in and WhatsApp sign-up", async ({ page, api }) => {
+    await page.goto("/?graphics=off");
+    const header = page.getByRole("banner");
+    const dashboard = header.getByRole("link", { name: "Open dashboard" });
+    await expect(dashboard).toHaveAttribute("href", "/dashboard");
+    await expect(header.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Start on WhatsApp" })).toHaveCount(0);
+    const hero = page.getByRole("region", { name: /Keep track/ });
+    await expect(hero.getByRole("link", { name: "Open dashboard" })).toBeVisible();
+    expect(api.requests.filter((item) => item.path === "/api/v1/auth/session")).toHaveLength(1);
+    await dashboard.click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+  });
+
+  test("checks the session again when the browser restores the landing page", async ({ page, api }) => {
+    await page.goto("/?graphics=off");
+    const header = page.getByRole("banner");
+    await expect(header.getByRole("link", { name: "Open dashboard" })).toBeVisible();
+    api.signedIn = false;
+    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })));
+    await expect(header.getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Start on WhatsApp" })).toBeVisible();
+  });
+});
+
 test.describe("when FinBoy's API can't be reached", () => {
   test.use({ scenario: { authRequired: true, signedIn: false, whatsapp: true } });
 
   test("the main action falls back to the sign-in page", async ({ page }) => {
-    await page.route("**/api/v1/auth/session", (route) => route.abort());
-    await page.goto("/?graphics=off");
+    const { promise: waiting, resolve: finishRequest } = Promise.withResolvers<void>();
+    await page.route("**/api/v1/auth/session", async (route) => {
+      await waiting;
+      await route.abort();
+    });
+    try {
+      await page.goto("/?graphics=off");
+      const header = page.getByRole("banner");
+      await expect(header.getByRole("link", { name: "Open FinBoy" })).toHaveAttribute("href", "/dashboard");
+      await expect(header.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
+    } finally {
+      finishRequest();
+    }
     const hero = page.getByRole("region", { name: /Keep track/ });
     await expect(hero.getByRole("link", { name: "Get started" })).toHaveAttribute("href", "/login");
     await expect(page.getByRole("link", { name: "Start on WhatsApp" })).toHaveCount(0);

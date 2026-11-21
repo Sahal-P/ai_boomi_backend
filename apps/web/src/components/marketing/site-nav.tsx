@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import { Brand } from "@/components/brand";
 import { ScrollEdge } from "@/components/liquid-glass/scroll-edge";
 import { useLiquidGlass } from "@/components/liquid-glass/use-liquid-glass";
-import { StartLink } from "@/components/marketing/start-link";
+import { StartLink, useEntry } from "@/components/marketing/start-link";
 import { cn } from "@/lib/utils";
+import { DASHBOARD } from "@/lib/whatsapp-entry";
 
 const links = [
   { label: "How it works", href: "#how-it-works" },
@@ -18,6 +19,7 @@ const links = [
 ] as const;
 
 export function SiteNav() {
+  const entry = useEntry();
   const [scrolled, setScrolled] = useState(false);
   // Refracting Liquid Glass once the hero has gone; its lensing materializes as it leaves.
   const { attach, filter } = useLiquidGlass<HTMLDivElement>({ bezel: 16, thickness: 18, enabled: scrolled });
@@ -61,12 +63,14 @@ export function SiteNav() {
             ))}
           </nav>
           <div className="flex items-center gap-1 sm:gap-2">
-            <Link
-              href="/dashboard"
-              className="inline-flex h-10 items-center rounded-full px-3 text-[13px] font-semibold whitespace-nowrap text-ink/80 transition-colors hover:text-ink sm:px-4"
-            >
-              Sign in
-            </Link>
+            {entry.kind !== "dashboard" && entry.kind !== "loading" && (
+              <Link
+                href={DASHBOARD}
+                className="inline-flex h-10 items-center rounded-full px-3 text-[13px] font-semibold whitespace-nowrap text-ink/80 transition-colors hover:text-ink sm:px-4"
+              >
+                Sign in
+              </Link>
+            )}
             <StartLink
               short
               className="lg-prominent inline-flex h-10 items-center rounded-full px-4 text-[13px] font-semibold whitespace-nowrap hover:-translate-y-0.5 sm:px-5"

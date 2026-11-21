@@ -78,8 +78,11 @@ exist from `GET /api/v1/auth/session` (`sign_in`), never from build-time variabl
   back, and replaces an expired code quietly. No on the phone, a full FinBoy and failures each
   have their own state with a way to start again. On phones the options come before the
   illustration. The session-ended prompt reuses the same options.
-- **WhatsApp only:** "Prefer WhatsApp? Say hi to FinBoy" on the landing hero and `/login`, shown
-  only while sign-ups are open, opens the chat with "Hi FinBoy" typed.
+- **Landing page:** the navigation and main actions share one session check. Signed-in
+  households see **Open dashboard**. Signed-out visitors see **Sign in** in the navigation
+  and **Start on WhatsApp** while sign-ups are open, with "Hi FinBoy" typed in the chat.
+  **Get started** opens sign-in when WhatsApp sign-up is unavailable. The sign-in page also
+  offers **Say hi to FinBoy** for people who want to use WhatsApp only.
 - **Quick add** (`quick-add.tsx`): the sidebar's **Add entry**, the phone **+** and Home's empty
   state "Add what you spent today" open a sheet (right on desktop, bottom on phones). Type or **Say it** in
   English, Hindi or Malayalam, with an example in each (the Malayalam one marked `lang="ml"`);

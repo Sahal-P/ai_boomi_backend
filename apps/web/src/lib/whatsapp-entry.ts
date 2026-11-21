@@ -1,16 +1,21 @@
 import { chatLink, type SessionView } from "./api/auth.ts";
 
 /**
- * How a visitor starts FinBoy from a public page (docs/signup-round/contract.md). While sign-ups
- * are open, one tap opens FinBoy's WhatsApp chat with "Hi FinBoy" typed in. Otherwise — sign-ups
- * closed, WhatsApp off, or the API unreachable — the sign-in page, which lists every way in and
- * explains a full waitlist.
+ * Public pages send signed-in households to the dashboard. For visitors, one tap opens the
+ * WhatsApp chat while sign-ups are open, or the sign-in page with the other ways in.
  */
-export type WhatsAppEntry = { kind: "loading" } | { kind: "chat"; href: string } | { kind: "web" };
+export type WhatsAppEntry =
+  | { kind: "loading" }
+  | { kind: "dashboard" }
+  | { kind: "chat"; href: string }
+  | { kind: "web" };
 
 export const WEB_START = "/login";
+export const DASHBOARD = "/dashboard";
 
-export function entryFor(signIn: SessionView["sign_in"] | null): WhatsAppEntry {
+export function entryFor(session: Pick<SessionView, "authenticated" | "sign_in"> | null): WhatsAppEntry {
+  if (session?.authenticated) return { kind: "dashboard" };
+  const signIn = session?.sign_in;
   if (signIn?.whatsapp && signIn.signup_open && signIn.whatsapp_number) {
     return { kind: "chat", href: chatLink(signIn.whatsapp_number) };
   }

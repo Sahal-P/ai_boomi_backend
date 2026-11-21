@@ -54,12 +54,16 @@ test("the sample is read-only, clearly labelled and never touches household endp
   expect(touched.every((item) => item === "GET /api/v1/demo" || item === "GET /api/v1/health")).toBe(true);
 });
 
-test("landing CTAs keep the visitor's intent: sample vs. one-tap sign-up", async ({ page }) => {
-  await page.goto("/?graphics=off");
-  await expect(page.getByRole("link", { name: "See a sample account" }).first()).toHaveAttribute("href", "/demo");
-  // Without WhatsApp sign-up, the main action leads to every way in.
-  const hero = page.getByRole("region", { name: /Keep track/ });
-  await expect(hero.getByRole("link", { name: "Get started" })).toHaveAttribute("href", "/login");
-  await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", "/dashboard");
-  await expect(page.getByRole("link", { name: /Connect Gmail/ })).toHaveCount(0);
+test.describe("a signed-out landing visitor", () => {
+  test.use({ scenario: { authRequired: true, signedIn: false } });
+
+  test("landing CTAs keep the visitor's intent: sample vs. sign-up", async ({ page }) => {
+    await page.goto("/?graphics=off");
+    await expect(page.getByRole("link", { name: "See a sample account" }).first()).toHaveAttribute("href", "/demo");
+    // Without WhatsApp sign-up, the main action leads to every way in.
+    const hero = page.getByRole("region", { name: /Keep track/ });
+    await expect(hero.getByRole("link", { name: "Get started" })).toHaveAttribute("href", "/login");
+    await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", "/dashboard");
+    await expect(page.getByRole("link", { name: /Connect Gmail/ })).toHaveCount(0);
+  });
 });
