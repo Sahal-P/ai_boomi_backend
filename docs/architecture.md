@@ -51,8 +51,15 @@ replies, reminders, pay links and renewals. See the [admin contract](admin-round
 (`CONVERSATION_LOG_ENABLED`, off by default). `store.py` writes rows at admission, in `send_reply`
 and where speech-to-text runs; it uploads voice notes and photos to R2 after the reply and removes
 a household's R2 folder before its rows. `r2.py` builds every object key from IDs. The admin
-messages page (`services/admin/messages.py`) is the one admin view that carries content, and each
-page and file opened is audited. See the [conversation contract](conversation-round/contract.md).
+messages page (`services/admin/messages.py`) carries content, and each page and file opened is
+audited. See the [conversation contract](conversation-round/contract.md).
+
+`services/feedback` owns the problems and ideas households send from the web app. `service.py`
+checks and keeps a report, then puts its one screenshot in the same private R2 bucket under
+`finboy-feedback/`. It emails the owner a link, never the words, as a background task after the
+reply, and removes a household's screenshots before its rows. The admin report view
+(`services/admin/feedback.py`) is the other admin view that carries content; each report and
+screenshot opened is audited. See the [feedback contract](feedback-round/contract.md).
 
 ## Sources, ledger and scope
 

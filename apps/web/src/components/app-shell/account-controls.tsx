@@ -1,6 +1,17 @@
 "use client";
 
-import { Brain, ChevronsUpDown, CircleUserRound, Inbox, Keyboard, LogOut, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  Brain,
+  ChevronsUpDown,
+  CircleUserRound,
+  Inbox,
+  Keyboard,
+  LogOut,
+  MessageSquareText,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useHouseholdAccess } from "@/components/app-shell/household-context";
 import { GuardedLink } from "@/components/app-shell/guarded-link";
@@ -148,9 +159,12 @@ function GlassLookChoice() {
   );
 }
 
-/** Sources, Privacy & data, shortcuts, the glass look and sign-out: one menu on phones and desktop. */
+/** Sources, Privacy & data, feedback, shortcuts, the glass look and sign-out: one menu everywhere. */
 function AccountItems({ signOut }: { signOut: ReturnType<typeof useGuardedSignOut> }) {
   const { required, household, plan, advisor } = useHouseholdAccess();
+  // Feedback carries the screen it came from, as a path only (docs/feedback-round/contract.md).
+  const pathname = usePathname();
+  const feedback = pathname && pathname !== "/feedback" ? `/feedback?from=${encodeURIComponent(pathname)}` : "/feedback";
   return (
     <>
       <DropdownMenuLabel className="px-2 py-1.5">
@@ -187,6 +201,11 @@ function AccountItems({ signOut }: { signOut: ReturnType<typeof useGuardedSignOu
       <DropdownMenuItem asChild className="min-h-11 px-2">
         <GuardedLink href="/privacy">
           <ShieldCheck aria-hidden="true" /> Privacy &amp; data
+        </GuardedLink>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild className="min-h-11 px-2">
+        <GuardedLink href={feedback}>
+          <MessageSquareText aria-hidden="true" /> Send feedback
         </GuardedLink>
       </DropdownMenuItem>
       <DropdownMenuItem className="min-h-11 px-2" onSelect={openKeyboardHelp}>

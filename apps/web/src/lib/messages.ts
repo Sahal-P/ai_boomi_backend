@@ -79,6 +79,12 @@ const byCode: Record<string, string> = {
   action_not_allowed: "That isn't available for this household. Nothing changed. Refresh to see what is.",
   confirmation_mismatch: "The short ID didn't match, so nothing changed.",
   not_found: "It may have been removed or never existed. Nothing changed.",
+  // Feedback round (docs/feedback-round/contract.md).
+  feedback_limit: "You've sent a lot of feedback today. Please send more tomorrow.",
+  invalid_screenshot: "That picture can't be attached. Use a PNG, JPEG or WebP screenshot.",
+  screenshot_too_large: "That picture is too large. Try a smaller screenshot.",
+  feedback_not_found: "It was already deleted. Nothing changed.",
+  media_unavailable: "The screenshot can't be loaded right now. Try again in a minute.",
 };
 
 const byKind: Record<Problem["kind"], string> = {

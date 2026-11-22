@@ -25,6 +25,7 @@ from finboy.db.models.whatsapp import WhatsAppDelivery
 from finboy.services import providers
 from finboy.services.accounts import households as accounts
 from finboy.services.admin.audit import DETAIL
+from finboy.services.admin.feedback import new_count as feedback_new_count
 from finboy.services.admin.households import (
     BULK_IMPORTS,
     PAGE,
@@ -109,6 +110,7 @@ def overview(session: Session, settings: Settings, now: datetime) -> Overview:
     ).one()
     week = now - timedelta(days=7)
     return Overview(
+        feedback_new=feedback_new_count(session),
         billing_enabled=settings.billing_enabled,
         households=dict(kinds),
         signups=signups(session, settings, now),

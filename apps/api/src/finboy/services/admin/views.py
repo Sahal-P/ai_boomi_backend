@@ -198,6 +198,8 @@ class Overview(BaseModel):
     usage_today: dict[str, int]
     deliveries_week: dict[str, int]
     imports_week: dict[str, int]
+    # Household reports still marked New (docs/feedback-round/contract.md).
+    feedback_new: int = 0
 
 
 class SystemStatus(BaseModel):
@@ -294,3 +296,30 @@ class PayLink(BaseModel):
 
 class Done(BaseModel):
     done: Literal[True] = True
+
+
+# Household feedback (docs/feedback-round/contract.md): the list carries no words; the detail
+# does, and only its route returns it.
+class FeedbackRow(BaseModel):
+    id: UUID
+    household_id: UUID
+    short_id: str
+    household_name: str | None
+    kind: Literal["problem", "idea", "other"]
+    status: Literal["new", "planned", "done"]
+    has_screenshot: bool
+    created_at: datetime
+
+
+class FeedbackPage(BaseModel):
+    items: list[FeedbackRow]
+    total: int
+    offset: int
+    next_offset: int | None
+    new: int
+
+
+class FeedbackDetail(FeedbackRow):
+    message: str
+    page: str
+    status_changed_at: datetime | None

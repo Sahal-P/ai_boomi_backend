@@ -37,6 +37,10 @@ ACTIONS = (
     # Conversation round: an admin read a household's messages or opened a voice note or photo.
     "messages_viewed",
     "media_opened",
+    # Feedback round: an admin read a report, opened its screenshot or set its status.
+    "feedback_viewed",
+    "feedback_screenshot_opened",
+    "feedback_status_changed",
 )
 
 

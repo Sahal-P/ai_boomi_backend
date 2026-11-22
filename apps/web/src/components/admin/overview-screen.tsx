@@ -85,6 +85,22 @@ function OverviewBody({ data }: { data: Overview }) {
           </Panel>
         </div>
         <div className="space-y-5">
+          <Panel
+            title="Feedback"
+            description="Problems and ideas households sent from the web app."
+            actions={
+              <Button asChild variant="ghost" size="sm">
+                <Link href={data.feedback_new ? "/admin/feedback?status=new" : "/admin/feedback"}>
+                  Feedback <ChevronRight aria-hidden="true" />
+                </Link>
+              </Button>
+            }
+          >
+            <p className="text-3xl font-semibold tracking-[-0.02em] tabular-nums">{count(data.feedback_new)}</p>
+            <p className="mt-1 text-xs text-ink-soft">
+              {data.feedback_new === 1 ? "new report, not yet planned or done" : "new reports, not yet planned or done"}
+            </p>
+          </Panel>
           <Panel title="Households" description="Active households by kind, then paused and deleted ones.">
             <CountTable
               caption="Households by kind"

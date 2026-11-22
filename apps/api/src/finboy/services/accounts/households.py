@@ -35,6 +35,7 @@ from finboy.db.models.money import Budget, MerchantCategory
 from finboy.db.models.statements import StatementImport
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt
 from finboy.services.conversations import store as conversation_log
+from finboy.services.feedback import service as feedback
 
 # Households that started on WhatsApp but have not agreed yet; newer unknown numbers wait.
 PENDING_LIMIT = 200
@@ -149,6 +150,7 @@ def remove_household_data(
 
     # The message log and its files (docs/conversation-round/contract.md), before anything else.
     counts["conversation_messages"] = conversation_log.remove(session, settings, user_id)
+    counts["feedback"] = feedback.remove_all(session, settings, user_id)
 
     # The coach's sent-nudge claims (advisor phase 3); the bindings would cascade to them too.
     remove("advisor_nudges", delete(AdvisorNudge).where(AdvisorNudge.user_id == user_id))

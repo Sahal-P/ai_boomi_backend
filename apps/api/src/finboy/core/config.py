@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     cors_origins: list[AnyHttpUrl] = []
     openai_api_key: SecretStr | None = None
     resend_api_key: SecretStr | None = None
+    # Where a new household feedback report is announced (docs/feedback-round/contract.md).
+    feedback_email: str | None = Field(default=None, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
     openai_extraction_model: str | None = None
     openai_assistant_model: str | None = None
@@ -211,6 +213,7 @@ class Settings(BaseSettings):
         "openai_api_key",
         "deepseek_api_key",
         "resend_api_key",
+        "feedback_email",
         "openai_extraction_model",
         "openai_assistant_model",
         "openai_transcribe_model",
@@ -359,6 +362,11 @@ class Settings(BaseSettings):
             return self.r2_prefix
         production = self.environment == "production"
         return "finboy-conversations/" if production else "finboy-conversations-dev/"
+
+    @property
+    def feedback_prefix(self) -> str:
+        """Feedback screenshots sit in their own folder of the same private R2 bucket."""
+        return "finboy-feedback/" if self.environment == "production" else "finboy-feedback-dev/"
 
     @property
     def payu_return_url(self) -> str:

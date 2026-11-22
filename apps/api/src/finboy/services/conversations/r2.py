@@ -23,6 +23,7 @@ EXTENSIONS = {
     "audio/ogg": "ogg",
     "image/jpeg": "jpg",
     "image/png": "png",
+    "image/webp": "webp",
 }
 # The largest media FinBoy downloads from WhatsApp: photos up to 5 MB, voice notes up to 3 MB.
 MAX_BYTES = 5 * 1024 * 1024
@@ -109,13 +110,23 @@ def get(settings: Settings, key: str) -> bytes:
     return data
 
 
-def delete_folder(settings: Settings, user_id: UUID) -> int:
-    """Every file in one household's folder, kept or orphaned by a failed write."""
+def delete(settings: Settings, key: str) -> None:
+    """One file, like a feedback screenshot its household deleted."""
+    client, bucket = _client(settings)
+    try:
+        client.delete_object(Bucket=bucket, Key=key)
+    except BotoCoreError, ClientError:
+        raise StoreUnavailable from None
+
+
+def delete_folder(settings: Settings, user_id: UUID, prefix: str | None = None) -> int:
+    """Every file in one household's folder, kept or orphaned by a failed write. `prefix` picks
+    another FinBoy folder of the same bucket (feedback screenshots)."""
     client, bucket = _client(settings)
     removed = 0
     try:
         pages = client.get_paginator("list_objects_v2").paginate(
-            Bucket=bucket, Prefix=folder(settings, user_id)
+            Bucket=bucket, Prefix=f"{prefix}{user_id}/" if prefix else folder(settings, user_id)
         )
         for page in pages:
             keys = [{"Key": item["Key"]} for item in page.get("Contents", [])]

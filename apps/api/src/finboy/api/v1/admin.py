@@ -12,6 +12,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import update
 
 from finboy.api.deps import DB, AdminAccess, CurrentAdmin
@@ -20,6 +21,7 @@ from finboy.db.models.admin import AdminSession, AdminUser
 from finboy.services.accounts.login import device_label
 from finboy.services.admin import actions, audit, households, messages, overview
 from finboy.services.admin import auth as admin_auth
+from finboy.services.admin import feedback as feedback_admin
 from finboy.services.admin.actions import Actor
 from finboy.services.admin.views import (
     AdminRow,
@@ -232,6 +234,86 @@ def message_media(message_id: UUID, request: Request, session: DB, admin: Curren
     return Response(
         content=found.data,
         media_type=found.content_type,
+        headers={
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": f'inline; filename="{name}"',
+        },
+    )
+
+
+class FeedbackStatus(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: feedback_admin.Status
+
+
+@router.get("/feedback", response_model=feedback_admin.FeedbackPage)
+def feedback_list(
+    session: DB,
+    _admin: CurrentAdmin,
+    status: Annotated[feedback_admin.Status | None, Query()] = None,
+    offset: Offset = 0,
+) -> feedback_admin.FeedbackPage:
+    """Reports, newest first, without their words (docs/feedback-round/contract.md)."""
+    found = feedback_admin.page(session, status, offset)
+    session.rollback()
+    return found
+
+
+@router.get("/feedback/{feedback_id}", response_model=feedback_admin.FeedbackDetail)
+def feedback_view(
+    feedback_id: UUID, request: Request, session: DB, admin: CurrentAdmin
+) -> feedback_admin.FeedbackDetail:
+    """One report with its words; each open is recorded in the audit log."""
+    found = feedback_admin.detail(session, feedback_id)
+    audit.record(
+        session,
+        "feedback_viewed",
+        admin_id=admin.id,
+        household_id=found.household_id,
+        request_id=_actor(request, admin).request_id,
+    )
+    session.commit()
+    return found
+
+
+@router.patch("/feedback/{feedback_id}", response_model=feedback_admin.FeedbackDetail)
+def feedback_status(
+    feedback_id: UUID, body: FeedbackStatus, request: Request, session: DB, admin: CurrentAdmin
+) -> feedback_admin.FeedbackDetail:
+    """New, Planned or Done; the household sees it on its feedback page."""
+    found = feedback_admin.set_status(session, feedback_id, body.status)
+    audit.record(
+        session,
+        "feedback_status_changed",
+        admin_id=admin.id,
+        household_id=found.household_id,
+        request_id=_actor(request, admin).request_id,
+    )
+    session.commit()
+    return found
+
+
+@router.get("/feedback/{feedback_id}/screenshot", include_in_schema=False)
+def feedback_screenshot(
+    feedback_id: UUID, request: Request, session: DB, admin: CurrentAdmin
+) -> Response:
+    """A report's screenshot, through the API so each open is an admin's and recorded."""
+    household_id, content_type, data = feedback_admin.screenshot(
+        session, request.app.state.settings, feedback_id
+    )
+    audit.record(
+        session,
+        "feedback_screenshot_opened",
+        admin_id=admin.id,
+        household_id=household_id,
+        request_id=_actor(request, admin).request_id,
+    )
+    session.commit()
+    name = f"finboy-feedback-{feedback_id}.{r2.EXTENSIONS[content_type]}"
+    return Response(
+        content=data,
+        media_type=content_type,
         headers={
             "Cache-Control": "no-store",
             "X-Content-Type-Options": "nosniff",

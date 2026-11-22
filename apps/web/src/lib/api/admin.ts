@@ -177,6 +177,31 @@ const messagePageSchema = z.object({
   next_before: z.string().max(100).nullable(),
 });
 export type MessagePage = z.infer<typeof messagePageSchema>;
+// Household feedback (docs/feedback-round/contract.md): lists carry no words; opening one does.
+export const FEEDBACK_STATUSES = ["new", "planned", "done"] as const;
+export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
+const feedbackRowSchema = z.object({
+  id,
+  household_id: id,
+  short_id: shortId,
+  household_name: name,
+  kind: z.enum(["problem", "idea", "other"]),
+  status: z.enum(FEEDBACK_STATUSES),
+  has_screenshot: z.boolean(),
+  created_at: instant,
+});
+export type FeedbackRow = z.infer<typeof feedbackRowSchema>;
+const feedbackPageSchema = page(feedbackRowSchema).extend({ new: count });
+export type FeedbackPage = z.infer<typeof feedbackPageSchema>;
+const feedbackDetailSchema = feedbackRowSchema.extend({
+  message: z.string().min(1).max(2000),
+  page: z.string().max(200),
+  status_changed_at: instant.nullable(),
+});
+export type FeedbackDetail = z.infer<typeof feedbackDetailSchema>;
+// A screenshot is redrawn in the browser to at most 1.5 MB before it is sent.
+export const SCREENSHOT_LIMIT = 1_500_000;
+
 // The largest voice note or photo FinBoy keeps (WhatsApp photos are at most 5 MB).
 export const MEDIA_LIMIT = 5 * 1024 * 1024;
 
@@ -203,6 +228,7 @@ const overviewSchema = z.object({
   received_this_month_minor: count,
   open_payments: count,
   usage_today: counts,
+  feedback_new: count,
   deliveries_week: counts,
   imports_week: counts,
 });
@@ -336,6 +362,33 @@ export async function getMessageMedia(messageId: string, signal?: AbortSignal): 
   return data;
 }
 
+export const listAdminFeedback = (status: FeedbackStatus | null, offset: number, signal?: AbortSignal) =>
+  requestJson(`${ADMIN}/feedback${query({ status, offset: offset || null })}`, feedbackPageSchema, { signal });
+/** One report with its words; each open is recorded in the audit log. */
+export const getAdminFeedback = async (feedbackId: string, signal?: AbortSignal) =>
+  requestJson(`${ADMIN}/feedback/${segment(feedbackId)}`, feedbackDetailSchema, { signal });
+export const setFeedbackStatus = async (feedbackId: string, status: FeedbackStatus) =>
+  requestJson(`${ADMIN}/feedback/${segment(feedbackId)}`, feedbackDetailSchema, {
+    method: "PATCH",
+    ...jsonBody({ status }),
+  });
+
+/** A report's screenshot, through the API so each open is signed in and recorded. */
+export async function getFeedbackScreenshot(feedbackId: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await apiFetch(`${ADMIN}/feedback/${segment(feedbackId)}/screenshot`, {
+    headers: { Accept: "image/*" },
+    signal,
+    timeoutMs: 30_000,
+  });
+  if (!response.ok) throw await failure(response);
+  const type = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
+  const data = ["image/png", "image/jpeg", "image/webp"].includes(type) ? await response.blob() : null;
+  if (!data || !data.size || data.size > SCREENSHOT_LIMIT) {
+    throw new ApiError("FinBoy received an unexpected file.", response.status, { kind: "invalid_response" });
+  }
+  return data;
+}
+
 export const listAdminPayments = (status: PaymentStatus | null, offset: number, signal?: AbortSignal) =>
   requestJson(`${ADMIN}/payments${query({ status, offset: offset || null })}`, paymentPageSchema, { signal });
 export const reconcilePayment = async (paymentId: string) =>
@@ -362,6 +415,7 @@ const ADMIN_PATHS = [
   "/admin/households/messages",
   "/admin/payments",
   "/admin/signups",
+  "/admin/feedback",
   "/admin/system",
   "/admin/admins",
   "/admin/audit",

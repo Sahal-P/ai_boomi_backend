@@ -1,4 +1,4 @@
-import type { HouseholdAction, HouseholdStatus, Kind, PaymentStatus, PlanState } from "@/lib/api/admin";
+import type { FeedbackStatus, HouseholdAction, HouseholdStatus, Kind, PaymentStatus, PlanState } from "@/lib/api/admin";
 
 // Words for the admin panel's fixed codes (docs/admin-round/contract.md). Unknown codes fall back
 // to a readable form of the code itself, so a new backend state never shows blank.
@@ -67,7 +67,13 @@ export const auditLabels: Record<string, string> = {
   signups_tidied: "Tidied sign-ups",
   messages_viewed: "Read a household's messages",
   media_opened: "Opened a voice note or photo",
+  feedback_viewed: "Read a household's feedback",
+  feedback_screenshot_opened: "Opened a feedback screenshot",
+  feedback_status_changed: "Changed a feedback status",
 };
+
+export const feedbackKindLabels: Record<string, string> = { problem: "Problem", idea: "Idea", other: "Other" };
+export const feedbackStatusLabels: Record<FeedbackStatus, string> = { new: "New", planned: "Planned", done: "Done" };
 
 export const recordLabels: Record<string, string> = {
   confirmed: "Confirmed",

@@ -58,6 +58,12 @@ export default function PrivacyPolicyPage() {
           names or messages.
         </li>
         <li>
+          If you send feedback: your message, whether it&apos;s a problem, an idea or something
+          else, the FinBoy screen you sent it from, its status and, if you add one, one screenshot.
+          The screenshot is redrawn on your device first, so the file&apos;s location and camera
+          details never reach us, and it is stored privately.
+        </li>
+        <li>
           If you connect Gmail: read-only access, an encrypted access token, and short snippets
           (at most 80 characters per field) that show where a figure came from.
         </li>
@@ -98,7 +104,7 @@ export default function PrivacyPolicyPage() {
         reading payment screenshots and bills, when enabled), Sarvam AI (speech in English, Hindi
         and Malayalam, and spoken Malayalam replies), Groq (speech in English and Hindi), Resemble
         (spoken English and Hindi replies), Meta (delivering WhatsApp messages), Cloudflare
-        (storing the voice notes and photos FinBoy keeps, if you agree) and Google (sign-in and, if
+        (storing the voice notes and photos FinBoy keeps, if you agree, and feedback screenshots) and Google (sign-in and, if
         you connect it, Gmail). If you pay for Premium, PayU processes the payment and
         receives your email address and phone number for the receipt. FinBoy never sells your data
         and never shows ads.
@@ -117,15 +123,17 @@ export default function PrivacyPolicyPage() {
         your messages, they can also read them, listen to your voice notes, see your photos and
         read your chats with Ask FinBoy from that day on, to help you, fix mistakes and make FinBoy
         better and more personal. Each time one of them opens your messages, a voice note or a
-        photo, it is recorded. Apart from what you wrote or said in those messages, they don&apos;t
-        see your records, amounts, who you paid or what FinBoy remembers about you. They can pause
+        photo, it is recorded. They read the feedback you send and see its screenshot, and each
+        time one of them opens it, that is recorded too. Apart from what you wrote or said in those
+        messages and your feedback, they don&apos;t see your records, amounts, who you paid or what FinBoy remembers about you. They can pause
         or erase an account, for example when you ask, and every such step is recorded.
       </p>
 
       <h2>How long we keep it</h2>
       <p>
         As long as you have an account. Kept messages, voice notes and photos stay until you clear
-        your chat history or delete your account. A WhatsApp sign-up that never says yes is
+        your chat history or delete your account. Feedback and its screenshot stay until you delete
+        it on the Send feedback page or delete your account. A WhatsApp sign-up that never says yes is
         forgotten after seven days. Private server backups are kept for seven days and then overwritten. When you
         delete your account, payment records stay as FinBoy&apos;s sales records, as tax and
         accounting law requires, without your email address or phone number.
@@ -150,8 +158,12 @@ export default function PrivacyPolicyPage() {
         </li>
         <li>Send STOP on WhatsApp to stop all messages; send START to turn them back on.</li>
         <li>
+          See what happened to the feedback you sent, or delete it, on the Send feedback page in
+          the account menu.
+        </li>
+        <li>
           Delete your account from Privacy &amp; data → Delete my account. Your records, dues,
-          chats, kept messages, voice notes and photos, memories, sign-ins, Gmail access, receipt
+          chats, kept messages, voice notes and photos, feedback, memories, sign-ins, Gmail access, receipt
           contact details and AutoPay go at once; only a count of account events and your payment
           records remain.
         </li>

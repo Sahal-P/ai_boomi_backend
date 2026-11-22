@@ -100,6 +100,10 @@ async def test_expired_tampered_tokens_and_login_limits(private_app):
             await client.post("/api/v1/auth/login", json={"password": "wrong"})
         ).status_code == 429
         assert (await client.post("/api/v1/auth/login", content=b"x" * 4097)).status_code == 413
+        # A screenshot fits; anything larger is refused before it is read. Reads have no body.
+        too_large = await client.post("/api/v1/feedback", content=b"x" * 2_200_001)
+        assert too_large.status_code == 413
+        assert (await client.get("/api/v1/feedback")).status_code == 401
 
 
 def test_production_refuses_to_start_without_private_access():

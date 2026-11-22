@@ -10,6 +10,7 @@ from finboy.api.v1.coach import router as coach_router
 from finboy.api.v1.connections import router as connections_router
 from finboy.api.v1.demo import router as demo_router
 from finboy.api.v1.entries import router as entries_router
+from finboy.api.v1.feedback import router as feedback_router
 from finboy.api.v1.health import router as health_router
 from finboy.api.v1.imports import router as imports_router
 from finboy.api.v1.memory import router as memory_router
@@ -27,6 +28,7 @@ api_router.include_router(imports_router)
 api_router.include_router(privacy_router)
 api_router.include_router(assistant_router)
 api_router.include_router(memory_router)
+api_router.include_router(feedback_router)
 api_router.include_router(coach_router)
 api_router.include_router(money_router)
 api_router.include_router(budgets_router)

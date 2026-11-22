@@ -368,3 +368,18 @@ fixing it trapped the chat.
 feat/finboy-diary-dates, loopback 8131/3131, disposable finboy_signup, migration
 `0021_card_replies`. `pnpm eval:diary` gates the reader. The only new stored value is each card's
 WhatsApp message ID.
+
+## Feedback round — 22 November 2026
+
+From main fc5b4e2 the human asked for a feedback section in the web app.
+- "Send feedback" in the account menu opens a page where a household reports a problem, an idea
+  or anything else, with the screen it came from and one optional screenshot.
+- The household sees each item as New, Planned or Done, and can delete it.
+- Admins read reports on a Feedback page, and each report or screenshot opened is audited.
+- The owner gets an email for each new report, with a link, never the words.
+
+`docs/feedback-round/contract.md` supersedes "admins never see messages", "images are never stored"
+and "PostgreSQL is the only persistent service" only for feedback, as documented there. One agent
+on feat/finboy-feedback, loopback 8141/3141, disposable finboy_signup, migration `0022_feedback`.
+Screenshots are redrawn in the browser and kept in the private R2 bucket. Feedback text is never
+logged or emailed. `FEEDBACK_EMAIL` stays out of the repository.

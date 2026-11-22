@@ -213,10 +213,11 @@ NEVER = (
 )
 # FinBoy's own ₹299 sales are the only money shown.
 OWN_MONEY = {("PaymentRow", "amount_minor"), ("Overview", "received_this_month_minor")}
-# The one exception: the kept messages of households that agreed (docs/conversation-round),
-# returned only by the household's messages route.
-CONTENT = {views.MessageRow, views.MessagePage}
-CONTENT_ROUTES = {"/admin/households/{household_id}/messages"}
+# The exceptions: the kept messages of households that agreed (docs/conversation-round), returned
+# only by the household's messages route, and a feedback report written for the team
+# (docs/feedback-round), returned only by its own route.
+CONTENT = {views.MessageRow, views.MessagePage, views.FeedbackDetail}
+CONTENT_ROUTES = {"/admin/households/{household_id}/messages", "/admin/feedback/{feedback_id}"}
 
 
 def test_admin_responses_have_no_field_for_household_content() -> None:
@@ -310,5 +311,6 @@ def test_every_path_id_is_a_uuid() -> None:
         "payment_id",
         "admin_id",
         "message_id",
+        "feedback_id",
     }
     assert all(param.field_info.annotation is UUID for param in params)

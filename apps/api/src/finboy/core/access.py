@@ -68,12 +68,14 @@ ORIGIN_EXEMPT = {
 ADMIN_PREFIX = "/api/v1/admin/"
 ADMIN_BODY_LIMIT = 8192
 # Small JSON bodies only; an ID token is about 1-2 KB. PayU's posts are capped while being read.
+# Feedback carries at most one screenshot, about 2 MB as base64 (docs/feedback-round/contract.md).
 BODY_LIMITS = {
     "/api/v1/auth/login": 4096,
     "/api/v1/auth/google": 8192,
     "/api/v1/billing/link": 2048,
     "/api/v1/billing/link/checkout": 2048,
     "/api/v1/billing/receipt": 1024,
+    "/api/v1/feedback": 2_200_000,
 }
 
 
@@ -290,7 +292,7 @@ class HouseholdAccessMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         admin = path.startswith(ADMIN_PREFIX)
         writes = request.method in {"POST", "PATCH", "DELETE", "PUT"}
-        if path in BODY_LIMITS or (admin and writes):
+        if writes and (path in BODY_LIMITS or admin):
             length = request.headers.get("content-length", "")
             if not length.isdigit() or int(length) > BODY_LIMITS.get(path, ADMIN_BODY_LIMIT):
                 return error_response(request, 413, "invalid_request", "Request is too large.")

@@ -932,3 +932,39 @@ kept for households that agree.
 stay until cleared. Keep the R2 values while any
 file remains: erasure deletes the files before their rows and answers `try_later` without them.
 Migration `0020` downgrades only once no messages remain.
+
+## Feedback release
+
+`feat/finboy-feedback` ([contract](feedback-round/contract.md)) adds migration `0022_feedback`,
+the household `/feedback` page, the admin Feedback page and the owner's email. There is no flag:
+the page is live once the web is pushed. Screenshots need the R2 values already in production for
+the conversation log; without them the page hides the screenshot picker.
+
+**Release** (with the human's approval at the time):
+1. Backend first:
+   - a validated backup, `alembic upgrade head` for `0022`, then a drift check;
+   - switch and check health.
+2. Push main for the web. The menu item, the page, the admin page and the privacy policy go live
+   together.
+3. Add the owner's address after the human confirms it. Send it over SSH stdin, never echoed,
+   typed into chat or committed, then restart `finboy.service` only:
+
+   ```
+   FEEDBACK_EMAIL=<the owner's address, confirmed at release time>
+   ```
+
+   `RESEND_API_KEY` must already be set; without it, reports still reach the admin page.
+
+**Check:**
+- From the owner's household, send a Problem with a screenshot. The page shows it as New.
+- The admin overview counts it under Feedback. Opening it shows the words and the screenshot.
+- Set it to Done; the household page shows Done.
+- The audit log shows "Read a household's feedback", "Opened a feedback screenshot" and
+  "Changed a feedback status".
+- The email arrived, with a link and no words.
+- Logs show only `feedback.screenshot_failed` or `feedback.notify_failed` with a report ID if
+  anything fails.
+
+**Rollback:** redeploy the previous web and backend releases. Migration `0022` downgrades only
+once no feedback rows remain. Keep the R2 values while any screenshot remains: erasure deletes the
+files before their rows and answers `try_later` without them.
