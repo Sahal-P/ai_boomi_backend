@@ -69,7 +69,8 @@ class WhatsAppReceipt(Base):
             "'invalid_image','capture_unavailable','capture_busy','prompt_expired',"
             "'record_changed','amount_unclear','statement_unavailable','signup_full',"
             "'login_expired','usage_limit','web_not_available','invalid_document',"
-            "'document_unavailable','premium_required')",
+            "'document_unavailable','premium_required','date_unclear','reply_unclear',"
+            "'prompt_answered','prompt_replaced')",
             name="error_code",
         ),
         Index("ix_whatsapp_receipts_state_received_at", "state", "received_at"),
@@ -143,6 +144,8 @@ class WhatsAppPrompt(Base):
         ForeignKey("whatsapp_prompts.id", ondelete="CASCADE"), index=True
     )
     fingerprint: Mapped[str | None] = mapped_column(Text)
+    # The WhatsApp message that carried this card, so a swipe-reply to it finds it.
+    outbound_message_id: Mapped[str | None] = mapped_column(Text, index=True)
     state: Mapped[str] = mapped_column(Text, server_default="open")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

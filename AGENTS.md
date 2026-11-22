@@ -352,3 +352,19 @@ One agent on feat/finboy-conversation-log, loopback 8121/3121, disposable finboy
 human releases it. Statement PDFs
 and login codes are never kept; typed card, account and phone numbers and UPI IDs are masked; logs
 never carry message text; and every admin view and file opened is audited.
+
+## Diary dates round — 22 November 2026
+
+From release ba1ad3f the human asked that the WhatsApp diary understand every way people write
+dates, amounts and replies. A household's "january 1" due had been saved for 1 December, and
+fixing it trapped the chat.
+- Dates are read by rules in English, Hindi and Malayalam (also romanised), forward for dues and
+  back for payments.
+- ✏️ Change fixes the amount, date or name while the card keeps working.
+- Typed yes, no, dates and amounts, and swipe-replies, answer cards; nothing waits unseen.
+
+`docs/whatsapp.md` ("Dates and card replies") supersedes "a due needs a day of the month" and
+"बदलें changes a pending amount" (docs/pilot/contract.md) only as documented there. One agent on
+feat/finboy-diary-dates, loopback 8131/3131, disposable finboy_signup, migration
+`0021_card_replies`. `pnpm eval:diary` gates the reader. The only new stored value is each card's
+WhatsApp message ID.

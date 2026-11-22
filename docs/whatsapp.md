@@ -565,3 +565,60 @@ conversation of every household that agrees, for the admin panel's Messages page
   messages and their files. A stored decline is not overwritten.
 - **Timing:** files go to R2 after the reply has gone, so replies are never slower. A failed write
   is logged as `conversation.log_failed` with its stage and nothing else.
+
+## Dates and card replies (22 November 2026)
+
+A new household sent "264.51 to pay later on january 1" and got a card dated **1 December**. The
+diary reader could only hold a day of the month, so the month was dropped. Its only fix button,
+"Change amount", closed the card, so "No" then said the button no longer worked. For ten minutes
+every message was then read as the new amount, so questions got "I didn't get the amount", and
+the due was left `pending` with no card. This round fixes all of it.
+
+- **Dates** are read by rules in `services/ingestion/dates.py`, in English, Hindi and Malayalam
+  and in romanised text:
+  - month names in either order, with ordinals and typos ("jan 1st", "1st of January",
+    "janurary 5", "1 जनवरी", "5 janvari", "ജനുവരി ഒന്നിന്");
+  - numeric dates, day first ("01/01", "1-1-27", "2027-01-01");
+  - a day alone ("on the 10th", "10 तारीख", "പത്താം തീയതി"), relative words ("tomorrow",
+    "in 10 days", "next friday", "month end", "next month 5th") and weekdays.
+- **Direction:** a due looks forward and a payment looks back, so Hindi कल is tomorrow for a due
+  and yesterday for a payment.
+- **Which year:**
+  - a named date without a year that passed within the last 31 days is overdue ("was due 20
+    November"); an older one is next year;
+  - a day of the month alone is the next one (monthly instalments);
+  - cards show the year when it is not this year.
+- **When FinBoy asks instead:** a month without its day, an impossible date, two dates, or one
+  more than 400 days ahead. The entry waits for one message ("Which day in January?").
+- **Amounts:** a number that is part of a date is never an amount ("january 1" is not ₹1).
+- **✏️ Change** asks for the right amount, date or name, and the card's ✅ and ❌ keep working.
+  - A reply that is only an amount and/or a date corrects the card; a month alone keeps the
+    card's day.
+  - A short name renames a due.
+  - A question or a new entry is handled as usual, and its reply says the card above is still
+    waiting.
+  - Something unclear asks again and says how to drop the card.
+  - A saved entry's "Amount" button still asks for the amount only.
+- **Typed replies** act on the newest open card (from the last 30 minutes), or on the card a
+  swipe-reply quotes:
+  - yes words ("ok", "haan", "हाँ", "ശരി", 👍) confirm;
+  - no words ("galat", "नहीं", "അല്ല") ask what is wrong; cancel words drop;
+  - undo words undo a saved entry.
+  - Each card's WhatsApp message ID is kept on its prompt (`whatsapp_prompts.outbound_message_id`,
+    migration `0021_card_replies`), so a swipe-reply to an older card acts on that card.
+- **No duplicates, nothing unseen:**
+  - the same amount sent again before it was confirmed replaces the unconfirmed due;
+  - a saved due of the same amount within 20 days is flagged on the new card;
+  - a pending due whose card is gone is offered again after the household's next reply.
+- **Old buttons** say what happened: already saved, already dropped, replaced by a newer card, or
+  too old. Receipts record `prompt_answered`, `prompt_replaced` and `prompt_expired`, plus
+  `date_unclear` and `reply_unclear`.
+- **Several dues** in one message: the first gets its card, with "send the others one by one".
+  Payments sent with a due are saved, and the due is asked for on its own.
+- **Ask:** the advisor's dues tool looks up to 366 days ahead, so "any payment for jan" works.
+- **Website:** quick add leaves a due's date empty when it couldn't be read, instead of today.
+- **Gate:** `pnpm eval:diary` runs 62 phrasing cases (EN, HI, ML, Hinglish, Manglish) through the
+  reader with the configured model; `--check` runs without the network.
+  - A wrong date or amount fails the run, and 95% must be exact.
+  - On 22 Nov 2026, OpenAI read 62/62 exactly. DeepSeek, production's reader, runs on the server.
+- **Still to do:** a native speaker checks the new Hindi and Malayalam wording.

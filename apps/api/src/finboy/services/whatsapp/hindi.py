@@ -7,6 +7,7 @@ script ("फ़िनबॉय", not "FinBoy") so Hindi voices pronounce it.
 
 from datetime import date
 
+from finboy.core.clock import today_ist
 from finboy.services.assistant.language import money, spoken_money
 from finboy.services.money.budgets import BudgetStatus
 
@@ -55,7 +56,7 @@ CATEGORY = {
 }
 
 # Reply-button titles (Meta allows 20 characters; these stay well under).
-YES, CHANGE, NO = "✅ हाँ, सही", "✏️ रकम बदलें", "❌ नहीं"
+YES, CHANGE, NO = "✅ हाँ, सही", "✏️ बदलें", "❌ नहीं"
 UNDO = "↩️ वापस लें"
 PAID, LATER = "✅ भर दिया", "⏰ अभी नहीं"
 REMIND, AGAIN = "🔔 हाँ, याद दिलाएँ", "✅ हाँ, अगले महीने"
@@ -84,7 +85,7 @@ VOICE_UNCLEAR = "आवाज़ साफ़ नहीं आई। फिर �
 ADDED_SPEECH, NOT_ADDED_SPEECH = "जोड़ दिया।", "नहीं जोड़ा।"
 REMEMBERED_SPEECH = "याद रख लिया।"
 PAID_REPEAT_SPEECH = "जोड़ दिया। अगले महीने भी यही देना है?"
-DUE_LABEL = "किस्त"
+DUE_LABEL = "भुगतान"
 STOP_REPLY = 'FinBoy के जवाब बंद कर दिए। फिर से शुरू करने के लिए "शुरू" लिखिए।'
 START_REPLY = 'FinBoy फिर से शुरू हो गया। बोलकर बताइए, जैसे: "दूधवाले को 500 दिए"।'
 LANGUAGE_CHOSEN = 'हिंदी चुन ली। बोलकर बताइए, जैसे: "दूधवाले को 500 दिए"।'
@@ -142,7 +143,14 @@ REMINDERS_ON = "🔔 ठीक है, तारीख से 2 दिन पह
 
 
 def date_label(day: date) -> str:
-    return f"{day.day} {MONTHS[day.month - 1]}"
+    """A date, with its year when that is not this year ("1 January 2027")."""
+    year = f" {day.year}" if day.year != today_ist().year else ""
+    return f"{day.day} {MONTHS[day.month - 1]}{year}"
+
+
+def due_on(due: date) -> str:
+    """A due's date, or that it has passed."""
+    return date_label(due) if due >= today_ist() else f"{date_label(due)} को देना था"
 
 
 def due_card(*, amount_minor: int, label: str, due: date) -> tuple[str, str]:
@@ -151,7 +159,7 @@ def due_card(*, amount_minor: int, label: str, due: date) -> tuple[str, str]:
         [
             f"📌 {money(amount_minor)} देना है",
             f"🏷️ {label}",
-            f"📅 {date_label(due)}",
+            f"📅 {due_on(due)}",
             "",
             "सही है?",
             "हाँ दबाने पर ही याद रखूँगा।",
@@ -525,3 +533,34 @@ COACH_TEMPLATE = 'FinBoy कोच: {line} बात करने के लि�
 
 def days(count: int) -> str:
     return f"{count} दिन"
+
+
+# Dates and card replies (docs/whatsapp.md, "Dates and card replies").
+FIX_DUE_ASK = "✏️ क्या बदलना है? सही रकम, तारीख या नाम भेजिए।\nजैसे: 300 · 5 जनवरी · किराया"
+FIX_DUE_ASK_SPEECH = "सही रकम, तारीख या नाम बोलिए। जैसे, पाँच जनवरी।"
+FIX_RECORD_ASK = "✏️ क्या बदलना है? सही रकम या तारीख भेजिए।\nजैसे: 300 · कल"
+FIX_RECORD_ASK_SPEECH = "सही रकम या तारीख बोलिए।"
+FIX_UNCLEAR = "समझ नहीं आया। सही रकम, तारीख या नाम भेजिए, जैसे 300 या 5 जनवरी। या कार्ड पर ❌ नहीं दबाइए।"
+FIX_CANCELLED = "ठीक है, कुछ नहीं बदला। ऊपर वाला कार्ड अभी भी काम करता है।"
+CARD_WAITING = "ऊपर वाला कार्ड अभी भी ✅ या ❌ का इंतज़ार कर रहा है।"
+WHAT_WRONG = "क्या गलत है? सही रकम, तारीख या नाम भेजिए, जैसे 300 या 5 जनवरी। या ❌ नहीं दबाकर हटा दीजिए।"
+TAP_SAVED = "✅ यह पहले ही सेव हो चुका है।"
+TAP_DROPPED = "❌ यह पहले ही हटा दिया गया है।"
+TAP_ANSWERED = "इस कार्ड का जवाब पहले ही दे दिया गया है।"
+TAP_REPLACED = "इसकी जगह नया कार्ड आ गया है। सबसे नया कार्ड इस्तेमाल कीजिए।"
+TAP_OLD = "यह कार्ड अब पुराना हो गया है। फिर से भेजिए।"
+DATE_CHANGED = "📅 तारीख बदल दी।"
+DUE_DATE_ASK = "किस तारीख को देना है? जैसे: 5 जनवरी"
+DUE_DATE_ASK_SPEECH = "किस तारीख को देना है? जैसे, पाँच जनवरी।"
+DUE_DAY_ASK = "{month} में कौन सी तारीख? जैसे: 5 {month}"
+DUE_DATE_INVALID = "यह तारीख होती ही नहीं। किस तारीख को देना है? जैसे: 28 फ़रवरी"
+DUE_DATE_FAR = "यह तारीख बहुत दूर है। किस तारीख को देना है? जैसे: 5 जनवरी"
+DUE_DATE_UNSURE = "दो तारीखें मिलीं। किस तारीख को देना है? जैसे: 5 जनवरी"
+DUE_REPLACED = "↩️ यह आपके पिछले कार्ड की जगह है।"
+DUE_PENDING = "📌 आपने इसे अभी पक्का नहीं किया:"
+DUES_ONE_AT_A_TIME = "पहला बकाया ले लिया। बाकी एक-एक करके भेजिए।"
+DUE_ON_ITS_OWN = "बकाया अलग से भेजिए, जैसे: किराया 5000, 5 जनवरी को।"
+
+
+def due_already(amount_minor: int, due: date) -> str:
+    return f"⚠️ आपने {money(amount_minor)} {date_label(due)} के लिए पहले ही सेव किया है।"

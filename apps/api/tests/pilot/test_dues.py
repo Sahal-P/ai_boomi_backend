@@ -234,7 +234,7 @@ def test_paid_records_a_confirmed_payment_and_marks_the_due_paid(home, monkeypat
     assert recorded["line"].startswith(f"Rs. 1200.00 paid to {LABEL} on ")
     assert home.texts()[-1] == hindi.paid_done(120000, LABEL) + "\n\n" + hindi.REPEAT_ASK
     assert [title for _, title in home.buttons()] == [hindi.AGAIN, hindi.NO]
-    assert home.tap("paid", button=paid_button) == "prompt_expired", "never paid twice"
+    assert home.tap("paid", button=paid_button) == "prompt_answered", "never paid twice"
     assert len(home.decided) == 1
 
 

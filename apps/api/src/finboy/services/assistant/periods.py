@@ -6,77 +6,24 @@ Future dates are not records, and a question naming two periods is left to the a
 """
 
 import re
-import unicodedata
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Literal
 
+from finboy.services.ingestion.months import (  # noqa: F401 (re-exported)
+    AMBIGUOUS,
+    CHILLU,
+    ENGLISH,
+    NATIVE,
+    NATIVE_NORMALIZED,
+    normalized,
+)
 from finboy.services.money.engine import PeriodSpec
 
 MAX_DAYS = 731
 Problem = Literal["future", "ambiguous", "too_long"]
 
-ENGLISH: dict[str, int] = {
-    "january": 1,
-    "february": 2,
-    "march": 3,
-    "april": 4,
-    "may": 5,
-    "june": 6,
-    "july": 7,
-    "august": 8,
-    "september": 9,
-    "sept": 9,
-    "october": 10,
-    "november": 11,
-    "december": 12,
-    "jan": 1,
-    "feb": 2,
-    "mar": 3,
-    "apr": 4,
-    "jun": 6,
-    "jul": 7,
-    "aug": 8,
-    "sep": 9,
-    "oct": 10,
-    "nov": 11,
-    "dec": 12,
-}
 # Words that are also everyday words ("may I", "march on", "Jan Dhan") count only in date context.
-AMBIGUOUS = {"may", "march", "jan", "mar", "dec"}
-NATIVE: dict[str, int] = {
-    "जनवरी": 1,
-    "फरवरी": 2,
-    "फ़रवरी": 2,
-    "मार्च": 3,
-    "अप्रैल": 4,
-    "मई": 5,
-    "जून": 6,
-    "जुलाई": 7,
-    "अगस्त": 8,
-    "सितंबर": 9,
-    "सितम्बर": 9,
-    "अक्टूबर": 10,
-    "अक्तूबर": 10,
-    "नवंबर": 11,
-    "नवम्बर": 11,
-    "दिसंबर": 12,
-    "दिसम्बर": 12,
-    "ജനുവരി": 1,
-    "ഫെബ്രുവരി": 2,
-    "മാർച്ച്": 3,
-    "ഏപ്രിൽ": 4,
-    "മേയ്": 5,
-    "മെയ്": 5,
-    "ജൂൺ": 6,
-    "ജൂലൈ": 7,
-    "ഓഗസ്റ്റ്": 8,
-    "ആഗസ്റ്റ്": 8,
-    "സെപ്റ്റംബർ": 9,
-    "ഒക്ടോബർ": 10,
-    "നവംബർ": 11,
-    "ഡിസംബർ": 12,
-}
 CONTEXT = (
     r"(?:in|for|during|of|since|from|to|till|until|between|and|through|thru|last|this|on|"
     r"till|upto|up to|-|–)"
@@ -122,29 +69,6 @@ FUTURE = re.compile(
     rf"पिछले (?:{_NATIVE_MONTH_NAMES})|നാളെ|अടുത്ത (?:ആഴ്ച|മാസം|വർഷം|{_NATIVE_MONTH_NAMES})|"
     rf"കഴിഞ്ഞ (?:{_NATIVE_MONTH_NAMES})"
 )
-
-
-def normalized(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text).casefold()
-    return "".join(str(unicodedata.decimal(c)) if c.isdecimal() else c for c in text)
-
-
-# Malayalam inflects a month's last letter ("ഓഗസ്റ്റിൽ", "സെപ്റ്റംബറിൽ"): match the stem too, with a
-# final virama dropped or a chillu written as its consonant.
-CHILLU = {"ൻ": "ന", "ർ": "റ", "ൽ": "ല", "ൾ": "ള", "ൺ": "ണ"}
-
-
-def _stems(name: str) -> tuple[str, ...]:
-    if name.endswith("്"):
-        return (name, name[:-1])
-    if name[-1:] in CHILLU:
-        return (name, name[:-1] + CHILLU[name[-1]])
-    return (name,)
-
-
-NATIVE_NORMALIZED = {
-    stem: month for name, month in NATIVE.items() for stem in _stems(normalized(name))
-}
 
 
 @dataclass(frozen=True)

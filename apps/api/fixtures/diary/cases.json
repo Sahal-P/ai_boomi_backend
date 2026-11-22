@@ -1,0 +1,433 @@
+[
+ {
+  "id": "due-en-incident",
+  "text": "264.51 to pay later on january 1",
+  "kind": "due",
+  "amount": 26451,
+  "date": "2027-01-01"
+ },
+ {
+  "id": "due-en-5th-jan",
+  "text": "rent 5000 due on 5th jan",
+  "kind": "due",
+  "amount": 500000,
+  "date": "2027-01-05"
+ },
+ {
+  "id": "due-en-15-dec",
+  "text": "SBI card bill 12400 on 15 December",
+  "kind": "due",
+  "amount": 1240000,
+  "date": "2026-12-15"
+ },
+ {
+  "id": "due-en-1st-of-feb",
+  "text": "have to pay 3000 school fees on 1st of February",
+  "kind": "due",
+  "amount": 300000,
+  "date": "2027-02-01"
+ },
+ {
+  "id": "due-en-numeric",
+  "text": "emi 4500 due 10/12",
+  "kind": "due",
+  "amount": 450000,
+  "date": "2026-12-10"
+ },
+ {
+  "id": "due-en-tomorrow",
+  "text": "electricity bill 1800 due tomorrow",
+  "kind": "due",
+  "amount": 180000,
+  "date": "2026-11-23"
+ },
+ {
+  "id": "due-en-next-friday",
+  "text": "have to pay 700 to the plumber next friday",
+  "kind": "due",
+  "amount": 70000,
+  "date": "2026-11-27"
+ },
+ {
+  "id": "due-en-monthly",
+  "text": "loan instalment 2500 every month on the 10th",
+  "kind": "due",
+  "amount": 250000,
+  "date": "2026-12-10"
+ },
+ {
+  "id": "due-en-year",
+  "text": "insurance premium 8000 due on 3rd March 2027",
+  "kind": "due",
+  "amount": 800000,
+  "date": "2027-03-03"
+ },
+ {
+  "id": "due-en-this-week",
+  "text": "credit card 6200 due 25 nov",
+  "kind": "due",
+  "amount": 620000,
+  "date": "2026-11-25"
+ },
+ {
+  "id": "due-en-overdue",
+  "text": "phone bill 499 was due on 20 Nov, still to pay",
+  "kind": "due",
+  "amount": 49900,
+  "date": "2026-11-20"
+ },
+ {
+  "id": "due-en-month-end",
+  "text": "maintenance 1500 due at month end",
+  "kind": "due",
+  "amount": 150000,
+  "date": "2026-11-30"
+ },
+ {
+  "id": "due-en-in-days",
+  "text": "have to pay 300 in 10 days",
+  "kind": "due",
+  "amount": 30000,
+  "date": "2026-12-02"
+ },
+ {
+  "id": "due-en-may-word",
+  "text": "may i pay 500 rent on 5th",
+  "kind": "due",
+  "amount": 50000,
+  "date": "2026-12-05",
+  "kinds": [
+   "due",
+   "question"
+  ]
+ },
+ {
+  "id": "due-en-2-5k",
+  "text": "2.5k rent due on 1st",
+  "kind": "due",
+  "amount": 250000,
+  "date": "2026-12-01"
+ },
+ {
+  "id": "due-en-typo",
+  "text": "rent 9000 due on janurary 5",
+  "kind": "due",
+  "amount": 900000,
+  "date": "2027-01-05"
+ },
+ {
+  "id": "due-en-month-only",
+  "text": "rent 15000 due in january",
+  "kind": "due",
+  "amount": 1500000,
+  "ask": "month_only"
+ },
+ {
+  "id": "due-en-next-month",
+  "text": "have to pay 2000 to Ramesh next month",
+  "kind": "due",
+  "amount": 200000,
+  "ask": "month_only"
+ },
+ {
+  "id": "due-en-invalid",
+  "text": "gas cylinder 1100 due on 31 feb",
+  "kind": "due",
+  "amount": 110000,
+  "ask": "invalid"
+ },
+ {
+  "id": "due-en-two-dates",
+  "text": "pay 400 on 5 jan or 10 jan",
+  "kind": "due",
+  "amount": 40000,
+  "ask": "ambiguous"
+ },
+ {
+  "id": "due-hi-jan-1",
+  "text": "1 जनवरी को 500 देना है",
+  "kind": "due",
+  "amount": 50000,
+  "date": "2027-01-01"
+ },
+ {
+  "id": "due-hi-village",
+  "text": "समूह की किस्त 1200, हर महीने 10 तारीख",
+  "kind": "due",
+  "amount": 120000,
+  "date": "2026-12-10"
+ },
+ {
+  "id": "due-hi-kal",
+  "text": "कल बिजली का बिल 900 भरना है",
+  "kind": "due",
+  "amount": 90000,
+  "date": "2026-11-23"
+ },
+ {
+  "id": "due-hi-15-dec",
+  "text": "15 दिसंबर को स्कूल फीस 2500 देनी है",
+  "kind": "due",
+  "amount": 250000,
+  "date": "2026-12-15"
+ },
+ {
+  "id": "due-hi-next-month",
+  "text": "अगले महीने 5 तारीख को किराया 6000 देना है",
+  "kind": "due",
+  "amount": 600000,
+  "date": "2026-12-05"
+ },
+ {
+  "id": "due-hi-month-only",
+  "text": "जनवरी में 3000 की किस्त देनी है",
+  "kind": "due",
+  "amount": 300000,
+  "ask": "month_only"
+ },
+ {
+  "id": "due-hi-pehli",
+  "text": "पहली तारीख को 800 देना है",
+  "kind": "due",
+  "amount": 80000,
+  "date": "2026-12-01"
+ },
+ {
+  "id": "due-hinglish-jan",
+  "text": "1 jan ko 500 dena hai",
+  "kind": "due",
+  "amount": 50000,
+  "date": "2027-01-01"
+ },
+ {
+  "id": "due-hinglish-kal",
+  "text": "kal 300 dena hai doodhwale ko",
+  "kind": "due",
+  "amount": 30000,
+  "date": "2026-11-23"
+ },
+ {
+  "id": "due-hinglish-next-month",
+  "text": "agle mahine 10 tarikh ko 2000 kist bharni hai",
+  "kind": "due",
+  "amount": 200000,
+  "date": "2026-12-10"
+ },
+ {
+  "id": "due-hinglish-janvari",
+  "text": "5 janvari ko 1500 bharna hai",
+  "kind": "due",
+  "amount": 150000,
+  "date": "2027-01-05"
+ },
+ {
+  "id": "due-ml-jan-1",
+  "text": "ജനുവരി 1ന് 500 അടയ്ക്കണം",
+  "kind": "due",
+  "amount": 50000,
+  "date": "2027-01-01"
+ },
+ {
+  "id": "due-ml-monthly",
+  "text": "ലോൺ തവണ 2500, എല്ലാ മാസവും 10-ാം തീയതി",
+  "kind": "due",
+  "amount": 250000,
+  "date": "2026-12-10"
+ },
+ {
+  "id": "due-ml-tomorrow",
+  "text": "നാളെ കറന്റ് ബിൽ 700 അടയ്ക്കണം",
+  "kind": "due",
+  "amount": 70000,
+  "date": "2026-11-23"
+ },
+ {
+  "id": "due-ml-15-dec",
+  "text": "ഡിസംബർ 15ന് സ്കൂൾ ഫീസ് 3000 കൊടുക്കണം",
+  "kind": "due",
+  "amount": 300000,
+  "date": "2026-12-15"
+ },
+ {
+  "id": "due-manglish-jan",
+  "text": "january 5nu 1000 adakkanam",
+  "kind": "due",
+  "amount": 100000,
+  "date": "2027-01-05"
+ },
+ {
+  "id": "due-manglish-naale",
+  "text": "naale 400 kodukkanam",
+  "kind": "due",
+  "amount": 40000,
+  "date": "2026-11-23"
+ },
+ {
+  "id": "spent-en-jan-1",
+  "text": "paid 500 to the milkman on january 1",
+  "kind": "spent",
+  "amount": 50000,
+  "date": "2026-01-01"
+ },
+ {
+  "id": "spent-en-today",
+  "text": "chai 20",
+  "kind": "spent",
+  "amount": 2000,
+  "date": "2026-11-22"
+ },
+ {
+  "id": "spent-en-yesterday",
+  "text": "yesterday auto 80",
+  "kind": "spent",
+  "amount": 8000,
+  "date": "2026-11-21"
+ },
+ {
+  "id": "received-en-salary",
+  "text": "got salary 45000 on 1st nov",
+  "kind": "received",
+  "amount": 4500000,
+  "date": "2026-11-01"
+ },
+ {
+  "id": "spent-en-15th",
+  "text": "paid electricity 1450 on 15th",
+  "kind": "spent",
+  "amount": 145000,
+  "date": "2026-11-15"
+ },
+ {
+  "id": "spent-en-numeric",
+  "text": "paid 300 on 20/11",
+  "kind": "spent",
+  "amount": 30000,
+  "date": "2026-11-20"
+ },
+ {
+  "id": "spent-en-days-ago",
+  "text": "paid 240 for vegetables 3 days ago",
+  "kind": "spent",
+  "amount": 24000,
+  "date": "2026-11-19"
+ },
+ {
+  "id": "spent-en-weekday",
+  "text": "recharge 299 last monday",
+  "kind": "spent",
+  "amount": 29900,
+  "date": "2026-11-16"
+ },
+ {
+  "id": "spent-en-comma",
+  "text": "paid 1,250 for gas on 1st",
+  "kind": "spent",
+  "amount": 125000,
+  "date": "2026-11-01"
+ },
+ {
+  "id": "received-en-jan-dhan",
+  "text": "2000 came into my jan dhan account",
+  "kind": "received",
+  "amount": 200000,
+  "date": "2026-11-22"
+ },
+ {
+  "id": "spent-hi-today",
+  "text": "दूधवाले को 500 दिए",
+  "kind": "spent",
+  "amount": 50000,
+  "date": "2026-11-22"
+ },
+ {
+  "id": "spent-hi-kal",
+  "text": "कल सब्ज़ी 120",
+  "kind": "spent",
+  "amount": 12000,
+  "date": "2026-11-21"
+ },
+ {
+  "id": "received-hi-1-nov",
+  "text": "1 नवंबर को 2000 मिले",
+  "kind": "received",
+  "amount": 200000,
+  "date": "2026-11-01"
+ },
+ {
+  "id": "spent-hinglish-kal",
+  "text": "kal petrol 500 diya",
+  "kind": "spent",
+  "amount": 50000,
+  "date": "2026-11-21"
+ },
+ {
+  "id": "spent-ml-today",
+  "text": "പാൽക്കാരന് 500 കൊടുത്തു",
+  "kind": "spent",
+  "amount": 50000,
+  "date": "2026-11-22"
+ },
+ {
+  "id": "spent-ml-yesterday",
+  "text": "ഇന്നലെ 200 ചെലവായി",
+  "kind": "spent",
+  "amount": 20000,
+  "date": "2026-11-21"
+ },
+ {
+  "id": "spent-manglish-innale",
+  "text": "innale 300 koduthu",
+  "kind": "spent",
+  "amount": 30000,
+  "date": "2026-11-21"
+ },
+ {
+  "id": "q-en-jan",
+  "text": "Any payment for jan",
+  "kind": "question"
+ },
+ {
+  "id": "q-en-january",
+  "text": "Any payment for January",
+  "kind": "question"
+ },
+ {
+  "id": "q-en-week",
+  "text": "how much did I spend this week",
+  "kind": "question"
+ },
+ {
+  "id": "q-en-march",
+  "text": "dues in march?",
+  "kind": "question"
+ },
+ {
+  "id": "q-hi-jan",
+  "text": "क्या जनवरी में कोई किस्त है",
+  "kind": "question"
+ },
+ {
+  "id": "q-ml-jan",
+  "text": "ജനുവരിയിൽ എന്തെങ്കിലും അടയ്ക്കാനുണ്ടോ",
+  "kind": "question"
+ },
+ {
+  "id": "no-amount-date",
+  "text": "the date is january 1",
+  "kind": "unclear",
+  "kinds": [
+   "unclear",
+   "due",
+   "question"
+  ]
+ },
+ {
+  "id": "no-amount-year",
+  "text": "pay later in jan 2027",
+  "kind": "unclear",
+  "kinds": [
+   "unclear",
+   "due"
+  ]
+ }
+]

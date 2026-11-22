@@ -8,6 +8,7 @@ uses only Malayalam script ("ഫിൻബോയ്", not "FinBoy") so the Malaya
 
 from datetime import date
 
+from finboy.core.clock import today_ist
 from finboy.services.assistant.language import money, spoken_money
 from finboy.services.money.budgets import BudgetStatus
 
@@ -56,7 +57,7 @@ CATEGORY = {
 }
 
 # Reply-button titles (Meta allows 20 characters; these stay under).
-YES, CHANGE, NO = "✅ ശരിയാണ്", "✏️ തുക മാറ്റുക", "❌ വേണ്ട"
+YES, CHANGE, NO = "✅ ശരിയാണ്", "✏️ മാറ്റുക", "❌ വേണ്ട"
 UNDO = "↩️ തിരിച്ചെടുക്കുക"
 PAID, LATER = "✅ അടച്ചു", "⏰ ഇതുവരെ ഇല്ല"
 REMIND, AGAIN = "🔔 ഓർമ്മിപ്പിക്കൂ", "✅ അടുത്ത മാസവും"
@@ -85,7 +86,7 @@ VOICE_UNCLEAR = "ശബ്ദം വ്യക്തമായില്ല. വീ
 ADDED_SPEECH, NOT_ADDED_SPEECH = "ചേർത്തു.", "ചേർത്തില്ല."
 REMEMBERED_SPEECH = "ഓർത്തുവച്ചു."
 PAID_REPEAT_SPEECH = "ചേർത്തു. അടുത്ത മാസവും ഇതുതന്നെ അടയ്ക്കണോ?"
-DUE_LABEL = "തവണ"
+DUE_LABEL = "പണമടവ്"
 STOP_REPLY = 'FinBoy മറുപടികൾ നിർത്തി. വീണ്ടും തുടങ്ങാൻ "തുടങ്ങുക" എന്ന് അയക്കൂ.'
 START_REPLY = 'FinBoy വീണ്ടും തുടങ്ങി. പറഞ്ഞാൽ മതി, ഇങ്ങനെ: "പാൽക്കാരന് 500 കൊടുത്തു".'
 LANGUAGE_CHOSEN = 'മലയാളം തിരഞ്ഞെടുത്തു. ഇനി പറഞ്ഞാൽ മതി, ഇങ്ങനെ: "പാൽക്കാരന് 500 കൊടുത്തു".'
@@ -143,7 +144,14 @@ REMINDERS_ON = "🔔 ശരി, തീയതിക്ക് 2 ദിവസം �
 
 
 def date_label(day: date) -> str:
-    return f"{day.day} {MONTHS[day.month - 1]}"
+    """A date, with its year when that is not this year ("1 January 2027")."""
+    year = f" {day.year}" if day.year != today_ist().year else ""
+    return f"{day.day} {MONTHS[day.month - 1]}{year}"
+
+
+def due_on(due: date) -> str:
+    """A due's date, or that it has passed."""
+    return date_label(due) if due >= today_ist() else f"{date_label(due)}-ന് അടയ്ക്കേണ്ടതായിരുന്നു"
 
 
 def due_card(*, amount_minor: int, label: str, due: date) -> tuple[str, str]:
@@ -152,7 +160,7 @@ def due_card(*, amount_minor: int, label: str, due: date) -> tuple[str, str]:
         [
             f"📌 {money(amount_minor)} അടയ്ക്കണം",
             f"🏷️ {label}",
-            f"📅 {date_label(due)}",
+            f"📅 {due_on(due)}",
             "",
             "ശരിയാണോ?",
             "ശരിയാണ് അമർത്തിയാൽ മാത്രമേ ഓർത്തുവയ്ക്കൂ.",
@@ -530,3 +538,39 @@ COACH_TEMPLATE = (
 
 def days(count: int) -> str:
     return f"{count} ദിവസം"
+
+
+# Dates and card replies (docs/whatsapp.md, "Dates and card replies").
+FIX_DUE_ASK = "✏️ എന്താണ് മാറ്റേണ്ടത്? ശരിയായ തുകയോ തീയതിയോ പേരോ അയക്കൂ.\nഉദാഹരണം: 300 · ജനുവരി 5 · വാടക"
+FIX_DUE_ASK_SPEECH = "ശരിയായ തുകയോ തീയതിയോ പേരോ പറയൂ."
+FIX_RECORD_ASK = "✏️ എന്താണ് മാറ്റേണ്ടത്? ശരിയായ തുകയോ തീയതിയോ അയക്കൂ.\nഉദാഹരണം: 300 · ഇന്നലെ"
+FIX_RECORD_ASK_SPEECH = "ശരിയായ തുകയോ തീയതിയോ പറയൂ."
+FIX_UNCLEAR = (
+    "മനസ്സിലായില്ല. ശരിയായ തുകയോ തീയതിയോ പേരോ അയക്കൂ, ഉദാഹരണം 300 അല്ലെങ്കിൽ ജനുവരി 5. "
+    "അല്ലെങ്കിൽ കാർഡിൽ ❌ വേണ്ട അമർത്തൂ."
+)
+FIX_CANCELLED = "ശരി, ഒന്നും മാറ്റിയില്ല. മുകളിലെ കാർഡ് ഇപ്പോഴും പ്രവർത്തിക്കും."
+CARD_WAITING = "മുകളിലെ കാർഡ് ഇപ്പോഴും ✅ അല്ലെങ്കിൽ ❌ കാത്തിരിക്കുന്നു."
+WHAT_WRONG = (
+    "എന്താണ് തെറ്റ്? ശരിയായ തുകയോ തീയതിയോ പേരോ അയക്കൂ, ഉദാഹരണം 300 അല്ലെങ്കിൽ ജനുവരി 5. ഒഴിവാക്കാൻ ❌ വേണ്ട അമർത്തൂ."
+)
+TAP_SAVED = "✅ ഇത് ഇതിനകം സേവ് ചെയ്തു."
+TAP_DROPPED = "❌ ഇത് ഇതിനകം ഒഴിവാക്കി."
+TAP_ANSWERED = "ഈ കാർഡിന് ഇതിനകം മറുപടി നൽകി."
+TAP_REPLACED = "ഇതിന് പകരം പുതിയ കാർഡ് വന്നു. ഏറ്റവും പുതിയ കാർഡ് ഉപയോഗിക്കൂ."
+TAP_OLD = "ഈ കാർഡ് ഇപ്പോൾ പഴയതാണ്. വീണ്ടും അയക്കൂ."
+DATE_CHANGED = "📅 തീയതി മാറ്റി."
+DUE_DATE_ASK = "ഏത് തീയതിക്കാണ് അടയ്ക്കേണ്ടത്? ഉദാഹരണം: ജനുവരി 5"
+DUE_DATE_ASK_SPEECH = "ഏത് തീയതിക്കാണ് അടയ്ക്കേണ്ടത്?"
+DUE_DAY_ASK = "{month}-ൽ ഏത് തീയതി? ഉദാഹരണം: {month} 5"
+DUE_DATE_INVALID = "ആ തീയതി നിലവിലില്ല. ഏത് തീയതിക്കാണ് അടയ്ക്കേണ്ടത്? ഉദാഹരണം: ഫെബ്രുവരി 28"
+DUE_DATE_FAR = "ആ തീയതി വളരെ ദൂരെയാണ്. ഏത് തീയതിക്കാണ് അടയ്ക്കേണ്ടത്? ഉദാഹരണം: ജനുവരി 5"
+DUE_DATE_UNSURE = "രണ്ട് തീയതികൾ കണ്ടു. ഏത് തീയതിക്കാണ് അടയ്ക്കേണ്ടത്? ഉദാഹരണം: ജനുവരി 5"
+DUE_REPLACED = "↩️ ഇത് നിങ്ങളുടെ മുമ്പത്തെ കാർഡിന് പകരമാണ്."
+DUE_PENDING = "📌 ഇത് ഇതുവരെ ഉറപ്പിച്ചിട്ടില്ല:"
+DUES_ONE_AT_A_TIME = "ആദ്യത്തേത് എടുത്തു. ബാക്കിയുള്ളവ ഓരോന്നായി അയക്കൂ."
+DUE_ON_ITS_OWN = "അടയ്ക്കാനുള്ളത് വേറെ അയക്കൂ, ഉദാഹരണം: വാടക 5000, ജനുവരി 5-ന്."
+
+
+def due_already(amount_minor: int, due: date) -> str:
+    return f"⚠️ {money(amount_minor)} {date_label(due)}-ന് ഇതിനകം സേവ് ചെയ്തിട്ടുണ്ട്."

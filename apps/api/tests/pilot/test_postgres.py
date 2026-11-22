@@ -260,7 +260,7 @@ def test_a_pilot_household_end_to_end(pg, phone: Phone) -> None:
         assert summary.overdue_commitments_minor == summary.upcoming_commitments_minor == 0
     (following,) = phone.tap([paid], "again")
     assert following["text"].startswith("📌 याद रख लिया: ₹1,200")
-    assert phone.tap([reminder], "paid")[0]["text"] == hindi.EXPIRED
+    assert phone.tap([reminder], "paid")[0]["text"] == hindi.TAP_SAVED  # already paid
 
     with pg() as session:
         kinds = session.scalars(
@@ -278,7 +278,7 @@ def test_a_pilot_household_end_to_end(pg, phone: Phone) -> None:
             and row["records"]["voice_or_text"] == 3
         ]
         assert row["records"]["voice_or_text"] == 3 and row["messages"]["button"] >= 8
-    assert phone.receipt_errors()[-1] == "prompt_expired"
+    assert phone.receipt_errors()[-1] == "prompt_answered"
 
 
 def test_numbers_of_households_that_are_not_enrolled_are_ignored(

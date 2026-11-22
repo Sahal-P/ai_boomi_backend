@@ -28,7 +28,12 @@ from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import Language
 from finboy.db.models.core import User
 from finboy.db.models.ledger import Commitment, EmailSource, SourceEvent, Transaction
-from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt, WhatsAppReceipt
+from finboy.db.models.whatsapp import (
+    WhatsAppBinding,
+    WhatsAppDelivery,
+    WhatsAppPrompt,
+    WhatsAppReceipt,
+)
 from finboy.services.accounts import households
 from finboy.services.advisor import memory as advisor_memory
 from finboy.services.advisor import service as advisor
@@ -36,7 +41,8 @@ from finboy.services.assistant import service as assistant
 from finboy.services.assistant.language import money
 from finboy.services.assistant.models import AssistantAnswer
 from finboy.services.conversations import store
-from finboy.services.ingestion.hindi_numbers import only_amount, parse_amount
+from finboy.services.ingestion import dates
+from finboy.services.ingestion.hindi_numbers import only_amount
 from finboy.services.ingestion.types import Category
 from finboy.services.money import budgets, merchants
 from finboy.services.money.models import Correction
@@ -56,6 +62,7 @@ from finboy.services.whatsapp import (
     premium,
     prompts,
     reminders,
+    replies,
     statement,
 )
 from finboy.services.whatsapp import coach as coaching
@@ -120,6 +127,8 @@ class Conversation:
     heard: Language | None = None
     # A line added once to the next written reply, like "📝 Saved to memory".
     note: str | None = None
+    # A card (buttons or a list) went out for this message: one interactive reply per message.
+    carded: bool = False
 
     @property
     def language(self) -> Language:
@@ -150,7 +159,7 @@ class Conversation:
         limit = 1024 if buttons or listing else 4096  # an interactive body holds 1,024
         if self.note and len(text) + len(self.note) + 2 <= limit:
             text, self.note = f"{text}\n\n{self.note}", None
-        return self.reply(
+        sent = self.reply(
             self.session,
             self.config,
             self.client,
@@ -160,6 +169,25 @@ class Conversation:
             buttons=buttons,
             **({"listing": listing} if listing is not None else {}),
         )
+        if sent and (buttons or listing):
+            self.carded = True
+            self._stamp(
+                [key for key, _ in (listing.rows if listing is not None else buttons or [])]
+            )
+        return sent
+
+    def _stamp(self, keys: list[str]) -> None:
+        """Which WhatsApp message carried these cards, so a swipe-reply to it finds them."""
+        ids = {parsed[0] for key in keys if (parsed := prompts.parse(key))}
+        outbound = self.session.scalar(
+            select(WhatsAppDelivery.outbound_message_id).where(
+                WhatsAppDelivery.receipt_id == self.receipt.id,
+                WhatsAppDelivery.kind == "interactive",
+            )
+        )
+        if ids and outbound:
+            prompts.stamp(self.session, self.binding, ids, outbound)
+            self.session.commit()
 
     def speak(self, text: str, language: Language | None = None) -> None:
         """Best effort after the written reply; never fabricate or retry audio."""
@@ -264,6 +292,7 @@ def handle(conversation: Conversation) -> str | None:
         _note_kept(conversation)
     error = _handle(conversation)
     if conversation.binding.consented_at is not None:
+        _offer_waiting_due(conversation)
         _remind(conversation)
         premium.nudge(conversation)
     return error
@@ -271,7 +300,7 @@ def handle(conversation: Conversation) -> str | None:
 
 def _handle(conversation: Conversation) -> str | None:
     question, binding = conversation.question, conversation.binding
-    # Only the very next message can answer "how many rupees?" (missing_amount.py).
+    # Only the very next message can answer "how many rupees?" or "which date?".
     waiting = missing_amount.take(binding.id)
     if question.kind == "button":
         return _tap(conversation)
@@ -289,8 +318,10 @@ def _handle(conversation: Conversation) -> str | None:
         conversation.session.rollback()
         sent = conversation.send(conversation.words.VOICE_UNCLEAR)
         return conversation.done(sent, "invalid_audio")
-    if waiting is not None and (amount := only_amount(text)) is not None:
-        return _save(conversation, [replace(waiting, amount_minor=amount)])
+    if waiting is not None:
+        finished, error = _finish_waiting(conversation, waiting, text)
+        if finished:
+            return error
     summary = cfo.asked(text)
     if summary is not None:
         return summary(conversation)
@@ -302,9 +333,9 @@ def _handle(conversation: Conversation) -> str | None:
         command = coaching.command(text)  # "coach on" / "coach off" (advisor phase 3)
     if command is not None:
         return command(conversation)
-    change = prompts.pending_change(conversation.session, binding)
-    if change is not None:
-        return _changed_amount(conversation, change, text)
+    answered, error, fixing = _reply_to_card(conversation, text)
+    if answered:
+        return error
     picking = prompts.pending(conversation.session, binding, "pick_category")
     typed = categories.exact(text) if picking is not None else None
     if picking is not None and typed is not None:
@@ -316,6 +347,10 @@ def _handle(conversation: Conversation) -> str | None:
         sent = conversation.send(conversation.words.UNAVAILABLE)
         return conversation.done(sent, "statement_unavailable")
     reading = readings[0]
+    if fixing is not None:
+        settled, error = _settle_fix(conversation, fixing, reading, text)
+        if settled:
+            return error
     if reading.kind == "question" and reading.checkup is not None:
         return cfo.CHECKUPS[reading.checkup](conversation)
     if advising and reading.kind in {"question", "unclear"}:
@@ -343,18 +378,55 @@ def _handle(conversation: Conversation) -> str | None:
     return _save(conversation, readings)
 
 
+def _finish_waiting(
+    conversation: Conversation, waiting: statement.Statement, text: str
+) -> tuple[bool, str | None]:
+    """The message after "how many rupees?" or "which date?": only that answer completes the
+    entry; anything else is read as usual and the entry is forgotten."""
+    if waiting.kind == "due" and waiting.amount_minor is not None and waiting.due_date is None:
+        today = today_ist()
+        reply = replies.read_reply(text, today, "future")
+        day = reply.day
+        if reply.kind == "fix" and day is None and reply.amount_minor and not reply.month:
+            number = reply.amount_minor // 100  # "5" answers "which day?"
+            if reply.amount_minor % 100 == 0 and 1 <= number <= 31:
+                day = (
+                    dates.place(waiting.date_month, number, None, today, "future")
+                    if waiting.date_problem == "month_only" and waiting.date_month
+                    else dates.day_of_month(number, today, "future")
+                )
+        if reply.kind == "fix" and day is not None:
+            return True, _save(conversation, [replace(waiting, due_date=day, date_problem=None)])
+        if reply.kind == "fix" and reply.month is not None and reply.amount_minor is None:
+            asked = replace(waiting, date_problem="month_only", date_month=reply.month)
+            return True, _ask_date(conversation, asked)
+        return False, None
+    amount = only_amount(text)
+    if amount is None:
+        return False, None
+    return True, _save(conversation, [replace(waiting, amount_minor=amount)])
+
+
 def _save(conversation: Conversation, readings: list[statement.Statement]) -> str | None:
-    """Money, a due, a budget or a goal whose amount is known."""
+    """Money, a due, a budget or a goal whose amount is known. Payments and dues sent together
+    save the payments and ask for the due on its own; several dues take the first, and say so."""
     reading = readings[0]
     if reading.kind == "budget":
         return cfo.set_budget(conversation, reading)
     if reading.kind == "goal":
         return cfo.set_goal(conversation, reading)
-    if reading.kind == "due":
-        return _save_due(conversation, reading)
+    dues = [item for item in readings if item.kind == "due"]
+    payments = [item for item in readings if item.kind in {"spent", "received"}]
+    if dues and payments:
+        conversation.note = conversation.words.DUE_ON_ITS_OWN
+        readings = payments
+    elif dues:
+        if len(dues) > 1:
+            conversation.note = conversation.words.DUES_ONE_AT_A_TIME
+        return _save_due(conversation, dues[0])
     if len(readings) > 1:
         return _record_many(conversation, readings)
-    return _record_money(conversation, reading)
+    return _record_money(conversation, readings[0])
 
 
 def _learn(conversation: Conversation, reading: statement.Statement) -> None:
@@ -419,8 +491,37 @@ def _tap(conversation: Conversation) -> str | None:
     handler = HANDLERS.get((prompt.purpose, parsed[1])) if prompt and parsed else None
     if prompt is None or parsed is None or handler is None:
         session.rollback()
-        return conversation.done(conversation.send(conversation.words.EXPIRED), "prompt_expired")
+        return _closed_tap(conversation, parsed[0] if parsed else None)
     return handler(conversation, prompt, parsed[1])
+
+
+def _closed_tap(conversation: Conversation, prompt_id: UUID | None) -> str | None:
+    """Say what became of a card whose buttons no longer act: saved, dropped, replaced by a
+    newer card, or too old."""
+    words = conversation.words
+    old = prompts.find(conversation.session, conversation.binding, prompt_id) if prompt_id else None
+    if old is not None and old.state == "superseded":
+        return conversation.done(conversation.send(words.TAP_REPLACED), "prompt_replaced")
+    if old is not None and old.state == "answered":
+        status = _status_of(conversation, old)
+        text = (
+            words.TAP_SAVED
+            if status in {"confirmed", "upcoming", "paid"}
+            else words.TAP_DROPPED
+            if status in {"rejected", "dismissed", "merged"}
+            else words.TAP_ANSWERED
+        )
+        return conversation.done(conversation.send(text), "prompt_answered")
+    text = words.TAP_OLD if old is not None else words.EXPIRED
+    return conversation.done(conversation.send(text), "prompt_expired")
+
+
+def _status_of(conversation: Conversation, prompt: WhatsAppPrompt) -> str | None:
+    due = _due_row(conversation, prompt.commitment_id)
+    if due is not None:
+        return due.status
+    row = _record(conversation, prompt.transaction_id)
+    return row.status if row is not None else None
 
 
 def _record(conversation: Conversation, transaction_id: UUID | None) -> Transaction | None:
@@ -843,6 +944,7 @@ def _decide(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> 
         return _changed(conversation, prompt.id, "record")
     prompt_id, transaction_id = prompt.id, row.id
     prompts.answer(prompt)
+    prompts.close_changes(session, binding, transaction_id=transaction_id)
     if choice == "yes":
         # Checked and saved: the same card as an entry saved at once, with Undo, Amount, Category.
         decision_id = _confirm(conversation, row)
@@ -873,6 +975,8 @@ def _decide(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> 
 
 
 def _ask_amount(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str) -> str | None:
+    """✏️ on a card. The card keeps working (✅ and ❌ still act) while FinBoy waits for the
+    right amount, date or name; a saved entry's "Amount" asks for the amount."""
     if prompt.commitment_id is not None:
         due = _due_row(conversation, prompt.commitment_id)
         current = prompts.due_fingerprint(conversation.config, due) if due else None
@@ -881,8 +985,13 @@ def _ask_amount(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str
         current = prompts.record_fingerprint(conversation.config, row) if row else None
     if current is None or current != prompt.fingerprint:
         return _changed(conversation, prompt.id, "record")
-    if prompt.purpose != "saved":
-        prompts.answer(prompt)  # a saved entry's Undo keeps working until the amount arrives
+    words = conversation.words
+    if prompt.purpose == "saved":
+        text, spoken = words.CHANGE_ASK, words.CHANGE_ASK_SPEECH
+    elif prompt.commitment_id is not None:
+        text, spoken = words.FIX_DUE_ASK, words.FIX_DUE_ASK_SPEECH
+    else:
+        text, spoken = words.FIX_RECORD_ASK, words.FIX_RECORD_ASK_SPEECH
     prompts.open_prompt(
         conversation.session,
         conversation.binding,
@@ -893,50 +1002,10 @@ def _ask_amount(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str
         group_id=prompt.group_id,
     )
     conversation.session.commit()
-    sent = conversation.send(conversation.words.CHANGE_ASK)
+    sent = conversation.send(text)
     if sent:
-        conversation.speak(conversation.words.CHANGE_ASK_SPEECH)
+        conversation.speak(spoken)
     return conversation.done(sent)
-
-
-def _changed_amount(conversation: Conversation, change: WhatsAppPrompt, text: str) -> str | None:
-    """The reply after "रकम बदलें" is read only as an amount, then the card comes back: the saved
-    entry's card if it was saved, else the card asking for a check."""
-    session, binding = conversation.session, conversation.binding
-    amount = parse_amount(text)
-    if amount is None or amount > budgets.MAX_MINOR:
-        session.rollback()
-        return conversation.done(
-            conversation.send(conversation.words.AMOUNT_UNCLEAR), "amount_unclear"
-        )
-    if change.commitment_id is not None:
-        return _changed_due_amount(conversation, change, amount)
-    row = _record(conversation, change.transaction_id)
-    if row is None or prompts.record_fingerprint(conversation.config, row) != change.fingerprint:
-        return _changed(conversation, change.id, "record")
-    change_id, transaction_id, group_id = change.id, row.id, change.group_id
-    saved = row.status == "confirmed"
-    prompts.answer(change)
-    if amount != row.amount_minor:
-        try:
-            decisions.decide(
-                session,
-                user_id=binding.user_id,
-                transaction_id=transaction_id,
-                request=decisions.DecisionRequest(
-                    action="correct",
-                    correction=Correction(amount_minor=amount),
-                    expected_version=data_version(session, binding.user_id),
-                ),
-            )
-        except TaskError:
-            return _changed(conversation, change_id, "record")
-    else:
-        session.commit()
-    if saved:
-        prefix = conversation.words.AMOUNT_CHANGED + "\n\n"
-        return saved_card(conversation, transaction_id, prefix=prefix, group_id=group_id)
-    return offer_card(conversation, transaction_id)
 
 
 def _undo(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str) -> str | None:
@@ -1157,27 +1226,82 @@ def _due_row(conversation: Conversation, commitment_id: UUID | None) -> Commitme
 
 
 def _save_due(conversation: Conversation, reading: statement.Statement) -> str | None:
-    """A spoken due is kept as `pending` (never counted) until the household taps हाँ."""
-    if reading.due_date is None or reading.amount_minor is None:
-        return _say(
-            conversation,
-            conversation.words.DUE_DAY_MISSING,
-            conversation.words.DUE_DAY_MISSING_SPEECH,
-        )
+    """A spoken due is kept as `pending` (never counted) until the household taps yes. Sent
+    again with the same amount before then, it replaces that unconfirmed one."""
+    if reading.amount_minor is None or reading.due_date is None:
+        return _ask_date(conversation, reading)
+    session, words = conversation.session, conversation.words
+    earlier = _unconfirmed(conversation, reading.amount_minor)
+    if earlier is not None:
+        earlier.due_date = reading.due_date
+        if reading.label:
+            earlier.label = reading.label
+        session.flush()
+        return offer_due_card(conversation, earlier.id, prefix=words.DUE_REPLACED + "\n\n")
+    twin = _already_saved(conversation, reading.amount_minor, reading.due_date)
     row = Commitment(
         id=uuid4(),
         user_id=conversation.binding.user_id,
         kind="loan",
-        label=reading.label or conversation.words.DUE_LABEL,
+        label=reading.label or words.DUE_LABEL,
         amount_minor=reading.amount_minor,
         due_date=reading.due_date,
         status="pending",
         confidence=Decimal("1.000"),
         user_resolved=False,
     )
-    conversation.session.add(row)
-    conversation.session.flush()
-    return offer_due_card(conversation, row.id)
+    session.add(row)
+    session.flush()
+    prefix = words.due_already(twin.amount_minor, twin.due_date) + "\n\n" if twin else ""
+    return offer_due_card(conversation, row.id, prefix=prefix)
+
+
+def _ask_date(conversation: Conversation, reading: statement.Statement) -> str | None:
+    """A due whose date can't be used waits (one message) for it, and FinBoy says what it needs:
+    the day in the month named, a real date, a nearer date, or one of two dates."""
+    words = conversation.words
+    missing_amount.hold(conversation.binding.id, replace(reading, remember=None))
+    if reading.date_problem == "month_only" and reading.date_month:
+        text = words.DUE_DAY_ASK.format(month=words.MONTHS[reading.date_month - 1])
+    else:
+        text = {
+            "invalid": words.DUE_DATE_INVALID,
+            "out_of_range": words.DUE_DATE_FAR,
+            "ambiguous": words.DUE_DATE_UNSURE,
+        }.get(reading.date_problem or "", words.DUE_DATE_ASK)
+    return _say(conversation, text, words.DUE_DATE_ASK_SPEECH, "date_unclear")
+
+
+def _unconfirmed(conversation: Conversation, amount_minor: int) -> Commitment | None:
+    """The household's due of this amount from the last day that still waits for its yes."""
+    return conversation.session.scalar(
+        select(Commitment)
+        .where(
+            Commitment.user_id == conversation.binding.user_id,
+            Commitment.dataset == "household",
+            Commitment.status == "pending",
+            Commitment.amount_minor == amount_minor,
+            Commitment.created_at >= datetime.now(UTC) - timedelta(days=1),
+        )
+        .order_by(Commitment.created_at.desc())
+        .limit(1)
+    )
+
+
+def _already_saved(conversation: Conversation, amount_minor: int, due: date) -> Commitment | None:
+    """A saved due of the same amount near the same date: the card warns before a second one."""
+    return conversation.session.scalar(
+        select(Commitment)
+        .where(
+            Commitment.user_id == conversation.binding.user_id,
+            Commitment.dataset == "household",
+            Commitment.status == "upcoming",
+            Commitment.amount_minor == amount_minor,
+            Commitment.due_date.between(due - timedelta(days=20), due + timedelta(days=20)),
+        )
+        .order_by(Commitment.due_date)
+        .limit(1)
+    )
 
 
 def offer_due_card(conversation: Conversation, commitment_id: UUID, prefix: str = "") -> str | None:
@@ -1222,6 +1346,7 @@ def _decide_due(conversation: Conversation, prompt: WhatsAppPrompt, choice: str)
     ):
         return _changed(conversation, prompt.id, "record")
     prompts.answer(prompt)
+    prompts.close_changes(session, binding, commitment_id=row.id)
     row.status = "upcoming" if choice == "yes" else "dismissed"
     row.user_resolved = choice != "yes"
     session.flush()
@@ -1251,20 +1376,6 @@ def _decide_due(conversation: Conversation, prompt: WhatsAppPrompt, choice: str)
             else conversation.words.NOT_ADDED_SPEECH
         )
     return conversation.done(sent)
-
-
-def _changed_due_amount(conversation: Conversation, change: WhatsAppPrompt, amount: int):
-    row = _due_row(conversation, change.commitment_id)
-    if (
-        row is None
-        or row.status != "pending"
-        or prompts.due_fingerprint(conversation.config, row) != change.fingerprint
-    ):
-        return _changed(conversation, change.id, "record")
-    prompts.answer(change)
-    row.amount_minor = amount  # still pending: nothing counts until हाँ
-    conversation.session.flush()
-    return offer_due_card(conversation, row.id)
 
 
 def _undo_due(conversation: Conversation, prompt: WhatsAppPrompt) -> str | None:
@@ -1463,6 +1574,348 @@ def _repeat(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> 
     if sent:
         conversation.speak(conversation.words.REMEMBERED_SPEECH)
     return conversation.done(sent)
+
+
+# Replies typed to a card (docs/whatsapp.md, "Dates and card replies"): "yes", "galat", "5 jan".
+CARD_WINDOW = timedelta(minutes=30)
+
+
+def _reply_to_card(
+    conversation: Conversation, text: str
+) -> tuple[bool, str | None, WhatsAppPrompt | None]:
+    """A typed answer to the card the household is looking at: the one it swiped to reply to,
+    else the newest open card from the last half hour. Returns whether it was one, the receipt
+    error, and an open correction that the message may still be answering."""
+    session, binding = conversation.session, conversation.binding
+    card = prompts.target(session, binding, conversation.question.context_id, CARD_WINDOW)
+    if card is None:
+        return False, None, None
+    due = _due_row(conversation, card.commitment_id)
+    row = _record(conversation, card.transaction_id)
+    if due is None and row is None:
+        return False, None, None
+    fixing = card if card.purpose == "change_amount" else None
+    reply = replies.read_reply(text, today_ist(), "future" if due is not None else "past")
+    if reply.kind == "other":
+        return False, None, fixing
+    waiting = (due is not None and due.status == "pending") or (
+        row is not None and row.status == "needs_review"
+    )
+    if waiting and card.purpose in {"confirm", "change_amount"}:
+        return True, _answer_waiting(conversation, card, due, row, reply), None
+    if fixing is not None and row is not None and row.status == "confirmed":
+        return True, _answer_amount(conversation, fixing, row, reply), None
+    dated = reply.kind == "fix" and reply.amount_minor is None
+    if card.purpose == "saved" and row is not None and row.status == "confirmed":
+        if reply.kind == "undo":
+            return True, _remove(conversation, card, "undo"), None
+        if dated:
+            return True, _fix_saved(conversation, card, row, None, reply), None
+    if card.purpose == "undo" and due is not None and due.status == "upcoming":
+        if reply.kind == "undo":
+            return True, _undo_due(conversation, card), None
+        if dated:
+            return True, _fix_upcoming(conversation, card, due, reply), None
+    return False, None, fixing
+
+
+def _answer_waiting(
+    conversation: Conversation,
+    card: WhatsAppPrompt,
+    due: Commitment | None,
+    row: Transaction | None,
+    reply: replies.Reply,
+) -> str | None:
+    """Yes, no, cancel or a correction typed to a card that waits for a check."""
+    session, binding, words = conversation.session, conversation.binding, conversation.words
+    confirm = prompts.card_for(session, binding, card)
+    correcting = card.purpose == "change_amount"
+    if reply.kind in {"no", "cancel"} and correcting:
+        prompts.answer(card)
+        session.commit()
+        return conversation.done(conversation.send(words.FIX_CANCELLED))
+    if reply.kind in {"yes", "cancel", "undo"}:
+        if confirm is None:  # its card is gone: show it again rather than guess
+            prompts.close_changes(
+                session,
+                binding,
+                transaction_id=card.transaction_id,
+                commitment_id=card.commitment_id,
+            )
+            return _card_again(conversation, due, row)
+        return _decide(conversation, confirm, "yes" if reply.kind == "yes" else "no")
+    if reply.kind == "no":
+        # "No" typed to the card itself: ask what is wrong rather than drop it.
+        prompts.open_prompt(
+            session,
+            binding,
+            "change_amount",
+            transaction_id=card.transaction_id,
+            commitment_id=card.commitment_id,
+            fingerprint=card.fingerprint,
+        )
+        session.commit()
+        return conversation.done(conversation.send(words.WHAT_WRONG))
+    if due is not None:
+        day = _day_for(reply, due.due_date, "future")
+        if day is None and reply.amount_minor is None:
+            return _unclear_fix(conversation)
+        return _fix_due(conversation, due, amount=reply.amount_minor, day=day)
+    assert row is not None
+    day = _day_for(reply, _day(row), "past")
+    if day is None and reply.amount_minor is None:
+        return _unclear_fix(conversation)
+    return _fix_record(conversation, card, row, reply.amount_minor, day)
+
+
+def _answer_amount(
+    conversation: Conversation, change: WhatsAppPrompt, row: Transaction, reply: replies.Reply
+) -> str | None:
+    """The saved entry's "Amount" question: an amount or date corrects it, undo takes it out,
+    and anything else that only answers (yes, no, cancel) ends the question."""
+    session, binding = conversation.session, conversation.binding
+    if reply.kind == "fix":
+        return _fix_saved(conversation, change, row, reply.amount_minor, reply)
+    if reply.kind == "undo":
+        saved = session.scalar(
+            select(WhatsAppPrompt)
+            .where(
+                WhatsAppPrompt.binding_id == binding.id,
+                WhatsAppPrompt.purpose == "saved",
+                WhatsAppPrompt.state == "open",
+                WhatsAppPrompt.transaction_id == row.id,
+                WhatsAppPrompt.expires_at > datetime.now(UTC),
+            )
+            .order_by(WhatsAppPrompt.created_at.desc())
+            .limit(1)
+        )
+        if saved is not None:
+            prompts.answer(change)
+            return _remove(conversation, saved, "undo")
+    prompts.answer(change)
+    session.commit()
+    return conversation.done(conversation.send(conversation.words.FIX_CANCELLED))
+
+
+def _settle_fix(
+    conversation: Conversation, change: WhatsAppPrompt, reading: statement.Statement, text: str
+) -> tuple[bool, str | None]:
+    """A message during a correction that was not a plain amount, date or answer. A question or
+    a new entry ends the correction (the card keeps working, and the reply says so); the same
+    due sent again, or a new name for it, corrects it; anything unclear asks again."""
+    session, words = conversation.session, conversation.words
+    due = _due_row(conversation, change.commitment_id)
+    row = _record(conversation, change.transaction_id)
+    pending = due is not None and due.status == "pending"
+    if reading.kind == "unclear":
+        if pending and _looks_like_name(text):
+            return True, _fix_due(conversation, due, label=" ".join(text.split()))
+        session.rollback()
+        if row is not None and row.status == "confirmed":
+            return True, conversation.done(
+                conversation.send(words.AMOUNT_UNCLEAR), "amount_unclear"
+            )
+        return True, _unclear_fix(conversation)
+    if (
+        reading.kind == "due"
+        and pending
+        and reading.amount_minor in {None, due.amount_minor}
+        and (reading.due_date is not None or reading.label)
+    ):
+        return True, _fix_due(conversation, due, day=reading.due_date, label=reading.label)
+    prompts.answer(change)
+    session.commit()
+    if pending or (row is not None and row.status == "needs_review"):
+        conversation.note = words.CARD_WAITING
+    return False, None
+
+
+def _unclear_fix(conversation: Conversation) -> str | None:
+    conversation.session.rollback()
+    return conversation.done(conversation.send(conversation.words.FIX_UNCLEAR), "reply_unclear")
+
+
+def _looks_like_name(text: str) -> bool:
+    """A short reply without numbers or a question, like "SBI card" or "rent"."""
+    clean = " ".join(text.split())
+    return (
+        0 < len(clean) <= 40
+        and len(clean.split()) <= 5
+        and not any(character.isdigit() or character in "?？" for character in clean)
+    )
+
+
+def _day_for(reply: replies.Reply, base: date, direction: dates.Direction) -> date | None:
+    """A corrected date; a month alone keeps the card's day ("january" after 1 December)."""
+    if reply.day is not None:
+        return reply.day
+    if reply.month is not None:
+        return dates.place(reply.month, base.day, None, today_ist(), direction)
+    return None
+
+
+def _card_again(
+    conversation: Conversation, due: Commitment | None, row: Transaction | None
+) -> str | None:
+    if due is not None:
+        return offer_due_card(conversation, due.id)
+    assert row is not None
+    return offer_card(conversation, row.id)
+
+
+def _fix_due(
+    conversation: Conversation,
+    due: Commitment,
+    *,
+    amount: int | None = None,
+    day: date | None = None,
+    label: str | None = None,
+) -> str | None:
+    """A pending due takes the corrected amount, date or name, then shows its card again;
+    nothing counts until yes."""
+    prompts.close_changes(conversation.session, conversation.binding, commitment_id=due.id)
+    if amount is not None and 0 < amount <= budgets.MAX_MINOR:
+        due.amount_minor = amount
+    if day is not None:
+        due.due_date = day
+    if label:
+        due.label = label[:160]
+    conversation.session.flush()
+    return offer_due_card(conversation, due.id)
+
+
+def _correction(row: Transaction, amount: int | None, day: date | None) -> Correction | None:
+    fields: dict[str, object] = {}
+    if amount is not None and amount != row.amount_minor and 0 < amount <= budgets.MAX_MINOR:
+        fields["amount_minor"] = amount
+    if day is not None and day != _day(row):
+        clock = (row.occurred_at or datetime.now(UTC)).astimezone(IST).timetz()
+        fields["occurred_at"] = datetime.combine(day, clock)
+    return Correction(**fields) if fields else None  # type: ignore[arg-type]
+
+
+def _correct(conversation: Conversation, row: Transaction, correction: Correction) -> bool:
+    session, user_id = conversation.session, conversation.binding.user_id
+    try:
+        decisions.decide(
+            session,
+            user_id=user_id,
+            transaction_id=row.id,
+            request=decisions.DecisionRequest(
+                action="correct",
+                correction=correction,
+                expected_version=data_version(session, user_id),
+            ),
+        )
+    except TaskError:
+        return False
+    return True
+
+
+def _fix_record(
+    conversation: Conversation,
+    card: WhatsAppPrompt,
+    row: Transaction,
+    amount: int | None,
+    day: date | None,
+) -> str | None:
+    """A record waiting for a check takes the corrected amount or date; its card comes back."""
+    transaction_id, card_id = row.id, card.id
+    prompts.close_changes(conversation.session, conversation.binding, transaction_id=row.id)
+    correction = _correction(row, amount, day)
+    if correction is None:
+        conversation.session.commit()
+    elif not _correct(conversation, row, correction):
+        return _changed(conversation, card_id, "record")
+    return offer_card(conversation, transaction_id)
+
+
+def _fix_saved(
+    conversation: Conversation,
+    card: WhatsAppPrompt,
+    row: Transaction,
+    amount: int | None,
+    reply: replies.Reply,
+) -> str | None:
+    """A saved entry takes the corrected amount or date at once, with its card and Undo."""
+    words = conversation.words
+    transaction_id, card_id, group_id = row.id, card.id, card.group_id
+    prompts.close_changes(conversation.session, conversation.binding, transaction_id=row.id)
+    correction = _correction(row, amount, _day_for(reply, _day(row), "past"))
+    if correction is None:
+        conversation.session.commit()
+        return saved_card(conversation, transaction_id, group_id=group_id)
+    if not _correct(conversation, row, correction):
+        return _changed(conversation, card_id, "record")
+    prefix = (words.AMOUNT_CHANGED if correction.amount_minor else words.DATE_CHANGED) + "\n\n"
+    return saved_card(conversation, transaction_id, prefix=prefix, group_id=group_id)
+
+
+def _fix_upcoming(
+    conversation: Conversation, card: WhatsAppPrompt, due: Commitment, reply: replies.Reply
+) -> str | None:
+    """A saved due's date typed after its card, corrected like the website's edit, with Undo."""
+    session, binding, words = conversation.session, conversation.binding, conversation.words
+    day = _day_for(reply, due.due_date, "future")
+    if day is None:
+        return _unclear_fix(conversation)
+    due_id, card_id = due.id, card.id
+    try:
+        correct_obligation(
+            session,
+            user_id=binding.user_id,
+            obligation_id=due_id,
+            request=ObligationCorrection(
+                expected_version=data_version(session, binding.user_id), due_date=day
+            ),
+        )
+    except TaskError:
+        return _changed(conversation, card_id, "record")
+    row = _due_row(conversation, due_id)
+    if row is None:
+        return _changed(conversation, card_id, "record")
+    undo = prompts.open_prompt(
+        session,
+        binding,
+        "undo",
+        commitment_id=row.id,
+        fingerprint=prompts.due_fingerprint(conversation.config, row),
+    )
+    text = words.DATE_CHANGED + "\n\n" + words.due_saved(row.amount_minor, row.label, row.due_date)
+    session.commit()
+    return conversation.done(conversation.send(text, [(prompts.button(undo, "undo"), words.UNDO)]))
+
+
+def _offer_waiting_due(conversation: Conversation) -> None:
+    """A due still waiting for its yes with no working card is shown again after this
+    message's reply (its new card lasts a week), so nothing waits unseen."""
+    if conversation.carded:
+        return
+    session, binding = conversation.session, conversation.binding
+    session.rollback()
+    now = datetime.now(UTC)
+    live = select(WhatsAppPrompt.commitment_id).where(
+        WhatsAppPrompt.binding_id == binding.id,
+        WhatsAppPrompt.state == "open",
+        WhatsAppPrompt.expires_at > now,
+        WhatsAppPrompt.commitment_id.is_not(None),
+    )
+    row = session.scalar(
+        select(Commitment)
+        .where(
+            Commitment.user_id == binding.user_id,
+            Commitment.dataset == "household",
+            Commitment.status == "pending",
+            Commitment.created_at < now - timedelta(minutes=2),
+            Commitment.id.not_in(live),
+        )
+        .order_by(Commitment.created_at.desc())
+        .limit(1)
+    )
+    if row is None:
+        session.rollback()
+        return
+    offer_due_card(conversation, row.id, prefix=conversation.words.DUE_PENDING + "\n\n")
 
 
 HANDLERS: dict[tuple[str, str], Callable[[Conversation, WhatsAppPrompt, str], str | None]] = {

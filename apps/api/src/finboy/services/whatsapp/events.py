@@ -4,6 +4,7 @@ are kept only in the message log of a household that agreed (docs/conversation-r
 import hashlib
 import hmac
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Literal
@@ -50,10 +51,15 @@ class InboundQuestion:
     mime_type: str | None = None
     # Our own opaque reply-button ID (fb1:<prompt>:<choice>); never the button's title.
     button_id: str | None = None
+    # The FinBoy message a swipe-reply quotes (WhatsApp `context.id`), to find that card.
+    context_id: str | None = None
 
     @property
     def command(self) -> str | None:
         return COMMANDS.get(self.text.strip().lower())
+
+
+MESSAGE_ID = re.compile(r"[A-Za-z0-9_.=+/-]{1,256}")
 
 
 class TextBody(BaseModel):
@@ -95,6 +101,16 @@ class TemplateButton(BaseModel):
     payload: str = Field(pattern=BUTTON_ID)
 
 
+class Context(BaseModel):
+    """Only the quoted message's ID is read; one that doesn't look like an ID is ignored."""
+
+    id: str | None = Field(default=None, max_length=256)
+
+    @property
+    def message_id(self) -> str | None:
+        return self.id if self.id and MESSAGE_ID.fullmatch(self.id) else None
+
+
 class Message(BaseModel):
     id: str = Field(min_length=1, max_length=256, pattern=r"^[A-Za-z0-9_.=+/-]+$")
     from_: str = Field(alias="from", pattern=r"^[0-9]{7,20}$", repr=False)
@@ -106,6 +122,7 @@ class Message(BaseModel):
     document: DocumentBody | None = None
     interactive: InteractiveBody | None = None
     button: TemplateButton | None = None
+    context: Context | None = None
 
 
 class Status(BaseModel):
@@ -175,9 +192,12 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                         continue
                     msg = Message.model_validate(item)
                     when = datetime.fromtimestamp(int(msg.timestamp), UTC)
+                    quoted = msg.context.message_id if msg.context else None
                     if msg.type == "text" and msg.text is not None:
                         questions.append(
-                            InboundQuestion(msg.id, msg.from_, when, "text", msg.text.body)
+                            InboundQuestion(
+                                msg.id, msg.from_, when, "text", msg.text.body, context_id=quoted
+                            )
                         )
                     elif msg.type == "audio" and msg.audio is not None:
                         questions.append(
@@ -188,6 +208,7 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                                 "audio",
                                 media_id=msg.audio.id,
                                 mime_type=msg.audio.mime_type,
+                                context_id=quoted,
                             )
                         )
                     elif msg.type == "image" and msg.image is not None:

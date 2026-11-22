@@ -30,6 +30,10 @@ FAILURES = (
     "invalid_image",
     "prompt_expired",
     "record_changed",
+    "date_unclear",
+    "reply_unclear",
+    "prompt_answered",
+    "prompt_replaced",
 )
 
 

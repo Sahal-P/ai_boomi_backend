@@ -6,6 +6,7 @@ amounts written the way they are said, and a spoken twin for every card.
 
 from datetime import date
 
+from finboy.core.clock import today_ist
 from finboy.services.assistant.language import money, spoken_money
 from finboy.services.money.budgets import BudgetStatus
 
@@ -54,7 +55,7 @@ CATEGORY = {
 }
 
 # Reply-button titles (Meta allows 20 characters; these stay under).
-YES, CHANGE, NO = "✅ Yes, correct", "✏️ Change amount", "❌ No"
+YES, CHANGE, NO = "✅ Yes, correct", "✏️ Change", "❌ No"
 UNDO = "↩️ Undo"
 PAID, LATER = "✅ Paid", "⏰ Not yet"
 REMIND, AGAIN = "🔔 Yes, remind me", "✅ Yes, next month"
@@ -84,7 +85,7 @@ VOICE_UNCLEAR = "I couldn't hear that clearly. Please say it again or type it."
 ADDED_SPEECH, NOT_ADDED_SPEECH = "Added.", "Not added."
 REMEMBERED_SPEECH = "I'll remember it."
 PAID_REPEAT_SPEECH = "Added. Is the same due next month too?"
-DUE_LABEL = "Instalment"
+DUE_LABEL = "Payment"
 STOP_REPLY = 'FinBoy replies are off. Send "START" to turn them back on.'
 START_REPLY = 'FinBoy is back on. Just tell me, like: "Paid the milkman 500".'
 LANGUAGE_CHOSEN = 'English it is. Just tell me, like: "Paid the milkman 500".'
@@ -147,7 +148,14 @@ REMINDERS_ON = "🔔 OK, I'll remind you 2 days before and on the day."
 
 
 def date_label(day: date) -> str:
-    return f"{day.day} {MONTHS[day.month - 1]}"
+    """A date, with its year when that is not this year ("1 January 2027")."""
+    year = f" {day.year}" if day.year != today_ist().year else ""
+    return f"{day.day} {MONTHS[day.month - 1]}{year}"
+
+
+def due_on(due: date) -> str:
+    """A due's date, or that it has passed."""
+    return date_label(due) if due >= today_ist() else f"Was due {date_label(due)}"
 
 
 def due_card(*, amount_minor: int, label: str, due: date) -> tuple[str, str]:
@@ -156,7 +164,7 @@ def due_card(*, amount_minor: int, label: str, due: date) -> tuple[str, str]:
         [
             f"📌 {money(amount_minor)} to pay",
             f"🏷️ {label}",
-            f"📅 {date_label(due)}",
+            f"📅 {due_on(due)}",
             "",
             "Is this right?",
             "I only remember it when you tap yes.",
@@ -559,3 +567,42 @@ COACH_TEMPLATE = (
 
 def days(count: int) -> str:
     return f"{count} day" if count == 1 else f"{count} days"
+
+
+# Dates and card replies (docs/whatsapp.md, "Dates and card replies").
+FIX_DUE_ASK = (
+    "✏️ What should change? Send the right amount, date or name.\nLike: 300 · 5 January · Rent"
+)
+FIX_DUE_ASK_SPEECH = "Say the right amount, date or name. Like, fifth January."
+FIX_RECORD_ASK = "✏️ What should change? Send the right amount or date.\nLike: 300 · yesterday"
+FIX_RECORD_ASK_SPEECH = "Say the right amount or date."
+FIX_UNCLEAR = (
+    "I didn't get that. Send the right amount, date or name, like 300 or 5 January. "
+    "Or tap ❌ No on the card."
+)
+FIX_CANCELLED = "OK, nothing changed. The card above still works."
+CARD_WAITING = "Your card above is still waiting for ✅ or ❌."
+WHAT_WRONG = (
+    "What's wrong? Send the right amount, date or name, like 300 or 5 January. "
+    "Or tap ❌ No to drop it."
+)
+TAP_SAVED = "✅ You already saved this."
+TAP_DROPPED = "❌ You already dropped this."
+TAP_ANSWERED = "You already answered this card."
+TAP_REPLACED = "A newer card replaced this one. Use the newest card."
+TAP_OLD = "This card is too old now. Send it again."
+DATE_CHANGED = "📅 Date changed."
+DUE_DATE_ASK = "Which date is it due? Like: 5 January"
+DUE_DATE_ASK_SPEECH = "Which date is it due? Say it like, fifth January."
+DUE_DAY_ASK = "Which day in {month}? Like: 5 {month}"
+DUE_DATE_INVALID = "That date doesn't exist. Which date is it due? Like: 28 February"
+DUE_DATE_FAR = "That date is too far away. Which date is it due? Like: 5 January"
+DUE_DATE_UNSURE = "I found two dates. Which date is it due? Like: 5 January"
+DUE_REPLACED = "↩️ This replaces your earlier card."
+DUE_PENDING = "📌 You haven't confirmed this yet:"
+DUES_ONE_AT_A_TIME = "I've taken the first due. Send the others one by one."
+DUE_ON_ITS_OWN = "Send the due on its own, like: Rent 5000 on 5 January."
+
+
+def due_already(amount_minor: int, due: date) -> str:
+    return f"⚠️ You already saved {money(amount_minor)} for {date_label(due)}."

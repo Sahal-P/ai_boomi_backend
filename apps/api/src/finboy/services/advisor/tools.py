@@ -44,7 +44,7 @@ PeriodKind = Literal[
 ]
 CATEGORIES: tuple[str, ...] = get_args(Category)
 MAX_PAYMENTS = 20
-MAX_DAYS_AHEAD = 90
+MAX_DAYS_AHEAD = 366  # a due next March or next year's January is still a due
 
 
 class ToolError(ValueError):
@@ -108,7 +108,12 @@ class DuesArgs(BaseModel):
     """Bills, instalments and other dues still to pay in the coming days, with overdue ones."""
 
     model_config = ConfigDict(extra="forbid")
-    days_ahead: int | None = Field(description="How many days ahead, 1 to 90 (default 30)")
+    days_ahead: int | None = Field(
+        description=(
+            "How many days ahead, 1 to 366 (default 30). For a named month, like dues in "
+            "January, count the days to that month's end."
+        )
+    )
 
 
 class BudgetsAndGoalArgs(BaseModel):

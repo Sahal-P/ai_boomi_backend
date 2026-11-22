@@ -147,7 +147,8 @@ def test_old_answered_expired_and_foreign_buttons_do_nothing(household) -> None:
     assert household.tap("yes", button=yes, binding=neighbour) == "prompt_expired"
     assert household.decided == []
     assert household.tap("yes", button=yes) is None
-    assert household.tap("yes", button=yes) == "prompt_expired", "a second tap does nothing"
+    assert household.tap("yes", button=yes) == "prompt_answered", "a second tap does nothing"
+    assert household.texts()[-1] == hindi.TAP_SAVED
     household.card(household.record())
     late = next(key for key, _ in household.buttons() if key.endswith(":yes"))
     prompt = household.session.get(WhatsAppPrompt, UUID(hex=late.split(":")[1]))
@@ -157,13 +158,13 @@ def test_old_answered_expired_and_foreign_buttons_do_nothing(household) -> None:
     assert household.session.get(WhatsAppPrompt, prompt.id).state == "expired"
 
 
-def test_change_reads_only_an_amount_then_shows_the_card_again(household) -> None:
+def test_change_asks_for_the_amount_or_date_then_shows_the_card_again(household) -> None:
     record = household.record()
     household.card(record)
     assert household.tap("change") is None
-    assert household.texts()[-1] == hindi.CHANGE_ASK
-    assert household.say("पता नहीं") == "amount_unclear"
-    assert household.texts()[-1] == hindi.AMOUNT_UNCLEAR and household.decided == []
+    assert household.texts()[-1] == hindi.FIX_RECORD_ASK
+    assert household.say("पता नहीं") == "reply_unclear"
+    assert household.texts()[-1] == hindi.FIX_UNCLEAR and household.decided == []
     assert household.say("चार सौ") is None
     assert [(r.action, r.correction.amount_minor) for r in household.decided] == [
         ("correct", 40000)
@@ -410,7 +411,7 @@ def test_a_due_can_be_rejected_undone_and_its_amount_changed(household, monkeypa
     assert household.tap("undo") is None
     assert household.session.get(Commitment, due_id).status == "pending"
     assert household.texts()[-1].startswith(hindi.UNDONE)
-    assert household.tap("change") is None and household.texts()[-1] == hindi.CHANGE_ASK
+    assert household.tap("change") is None and household.texts()[-1] == hindi.FIX_DUE_ASK
     assert household.say("पंद्रह सौ") is None
     assert household.session.get(Commitment, due_id).amount_minor == 150000
     assert "₹1,500 देना है" in household.texts()[-1]
@@ -425,6 +426,11 @@ def test_a_due_without_a_day_asks_for_it(household, monkeypatch) -> None:
         "read_statements",
         lambda *_args: [Statement("due", 120000, category="loan_emi", label="किस्त")],
     )
-    assert household.say("किस्त 1200 देनी है") is None
-    assert household.texts()[-1] == hindi.DUE_DAY_MISSING
+    assert household.say("किस्त 1200 देनी है") == "date_unclear"
+    assert household.texts()[-1] == hindi.DUE_DATE_ASK
     assert household.session.scalars(select(Commitment)).all() == []
+    # The due waits for its date: the next message that is only a date completes it.
+    assert household.say("15 तारीख") is None
+    (due,) = household.session.scalars(select(Commitment)).all()
+    assert due.status == "pending" and due.amount_minor == 120000 and due.due_date.day == 15
+    assert "₹1,200 देना है" in household.texts()[-1]

@@ -12,7 +12,7 @@ docs/money-manager-round/contract.md).
 import re
 import unicodedata
 from dataclasses import dataclass, replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from email.message import EmailMessage
 from email.utils import format_datetime
 from typing import Literal
@@ -25,6 +25,7 @@ from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.services import model_response
 from finboy.services.assistant.language import resolve_style
+from finboy.services.ingestion import dates
 from finboy.services.ingestion.amounts import AMOUNT_PATTERN
 from finboy.services.ingestion.amounts import parse_amount as rupees
 from finboy.services.ingestion.hindi_numbers import parse_amount
@@ -50,13 +51,6 @@ MAX_ITEMS = 10
 LONG_NUMBER = re.compile(r"(?<![\d,])\d{9,}(?!\d)")
 SMS_AMOUNT = re.compile(AMOUNT_PATTERN, re.IGNORECASE)
 MASKED_ACCOUNT = re.compile(r"(?i)(?:[x*]{2,}|\bending\s+(?:with\s+)?)\d{2,8}\b")
-NUMERIC_DATE = re.compile(r"\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2}|\d{4})\b")
-MONTH_DATE = re.compile(
-    r"\b(\d{1,2})[- ]?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*"
-    r"[- ,]*(\d{2}|\d{4})?\b",
-    re.IGNORECASE,
-)
-MONTH_NAMES = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
 BANK_SMS = re.compile(
     r"\b(?:debited|credited|a/c|acct|avl\.? bal|available balance|upi ref|ref no|vpa|neft|imps)\b",
     re.IGNORECASE,
@@ -101,7 +95,9 @@ type:
 
 A message may list several payments, like "chai 20, auto 50, lunch 120" or one per line: put
 the first in the main fields and each further one in more (at most 9), each with its own
-amount_phrase; otherwise more is null. A pasted bank or UPI SMS is spent when money was
+amount_phrase; otherwise more is null. Several dues ("rent 5000 on 1st, school fee 2000 on 10th")
+are listed the same way: each further due goes in more with type due and its own day_phrase
+and due_label. A pasted bank or UPI SMS is spent when money was
 debited, sent or paid and received when it was credited; its amount is the debited or credited
 amount, never the available balance. [number] and [account] hide numbers: never copy them.
 
@@ -110,7 +106,9 @@ use null when absent: amount_phrase (the rupee amount in words or digits, like "
 "500", "five hundred" or "₹500"), counterparty (who was paid or who paid, like "दूधवाले",
 "milkman", "Swiggy" or "പാൽക്കാരന്"), day_phrase (when, like "कल", "आज", "10 तारीख",
 "yesterday", "on the 10th", "28-10-26", "ഇന്നലെ", "10-ാം തീയതി"), due_label (for due only: what
-it is for, like "समूह की किस्त", "school fees" or "ലോൺ തവണ").
+it is for, like "समूह की किस्त", "school fees" or "ലോൺ തവണ"). For a due, day_phrase is the whole
+due date exactly as said, with its month and year when said ("on january 1", "1st of Jan",
+"1 जनवरी", "ജനുവരി 1ന്", "next month 5th", "कल", "tomorrow").
 remember: a lasting fact about the household that the message itself states and that would help
 their money coach later, in English, short and in the third person: who a regular payee is
 ("Ramesh is the milkman"), a family member and their role ("Riya is in school"), how income comes
@@ -130,11 +128,12 @@ class MoreItem(BaseModel):
     """A further payment in a message that lists several."""
 
     model_config = ConfigDict(extra="forbid")
-    type: Literal["spent", "received"]
+    type: Literal["spent", "received", "due"]
     amount_phrase: str | None = Field(max_length=60)
     counterparty: str | None = Field(max_length=80)
     day_phrase: str | None = Field(max_length=40)
     category: Category | None
+    due_label: str | None = Field(default=None, max_length=60)
 
 
 class StatementReading(BaseModel):
@@ -167,6 +166,10 @@ class Statement:
     checkup: Checkup | None = None  # a question d1-ultra recognised as a today/week/month check-up
     remember: str | None = None  # a lasting fact the message states, for the advisor's memory
     remember_kind: MemoryKind = "note"
+    # A due whose date can't be used: why (month_only, invalid, ambiguous, out_of_range) and
+    # the month it named, so FinBoy asks for just what is missing.
+    date_problem: str | None = None
+    date_month: int | None = None
 
 
 def mask(text: str) -> str:
@@ -209,79 +212,52 @@ DATE_WORD = r"(?:तारीख|tarikh|tareekh|തീയതി|തിയതി|
 
 
 def _past_day(phrase: str | None, text: str, today: date) -> date:
-    """When money moved: आज/today/ഇന്ന്, कल/yesterday/ഇന്നലെ, परसों/മിനിഞ്ഞാന്ന്, or
-    "N तारीख"/"on the Nth"/"N-ാം തീയതി" this month (never in the future)."""
-    spoken = (_literal(phrase, text) or "").casefold()
-    if re.search(r"परसों|parso|day before yesterday|മിനിഞ്ഞാന്ന്|മിനിയാന്ന്", spoken):
-        return today - timedelta(days=2)
-    if re.search(r"कल|kal\b|yesterday|ഇന്നലെ|innale", spoken):
-        return today - timedelta(days=1)
-    written = _calendar_day(spoken, today)
-    if written is not None:
-        return written
-    found = re.search(
-        rf"(\d{{1,2}})(?:\s*-?\s*ാം)?\s*{DATE_WORD}|\bon\s+(?:the\s+)?(\d{{1,2}})(?:st|nd|rd|th)?\b",
-        spoken,
-    )
-    number = int(found[1] or found[2]) if found else 0
-    if 1 <= number <= 31:
-        try:
-            day = today.replace(day=number)
-        except ValueError:
-            return today
-        if day > today:
-            month = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
-            try:
-                return month.replace(day=number)
-            except ValueError:
-                return today
-        return day
+    """When money moved: the date the day phrase says, else one the message says, else today.
+    Payments look back, so Hindi कल is yesterday here, and they are never in the future."""
+    for candidate in (_literal(phrase, text), text):
+        said = dates.read_date(candidate, today, "past")
+        if said.day is not None:
+            return said.day
     return today
-
-
-def _calendar_day(spoken: str, today: date) -> date | None:
-    """A written date, day first as in Indian bank SMS (28-10-26, 28/10/2026, 28 Oct), within
-    the last year and never in the future."""
-    numeric = NUMERIC_DATE.search(spoken)
-    named = None if numeric else MONTH_DATE.search(spoken)
-    try:
-        if numeric:
-            year = int(numeric[3])
-            day = date(year + 2000 if year < 100 else year, int(numeric[2]), int(numeric[1]))
-        elif named:
-            year = int(named[3]) if named[3] else today.year
-            month = MONTH_NAMES.index(named[2].lower()[:3]) + 1
-            day = date(year + 2000 if year < 100 else year, month, int(named[1]))
-            if not named[3] and day > today:
-                day = day.replace(year=day.year - 1)
-        else:
-            return None
-    except ValueError:
-        return None
-    return day if today - timedelta(days=366) <= day <= today else None
 
 
 def _due_date(due_day: int | None, today: date) -> date | None:
     """The next date with that day of the month (this month if still ahead, else next)."""
-    if due_day is None:
+    return None if due_day is None else dates.day_of_month(due_day, today, "future")
+
+
+def _due_when(reading: StatementReading, text: str, today: date) -> dates.DateRead:
+    """A due's date: the model's copied day phrase, else the message, else its day number."""
+    said = dates.read_date(_literal(reading.day_phrase, text), today, "future")
+    if not said.said:
+        said = dates.read_date(text, today, "future")
+    if said.said or reading.due_day is None:
+        return said
+    if re.search(rf"\b{reading.due_day}(?:st|nd|rd|th)?\b|{DATE_WORD}", text):
+        return dates.DateRead(day=_due_date(reading.due_day, today))
+    return said
+
+
+def _amount_phrase(phrase: str | None, text: str) -> str | None:
+    """An amount phrase counts only where the message says it outside a date ("1" from
+    "january 1" is not an amount); `text` has its dates blanked out."""
+    clean = _plain(phrase or "")
+    if not clean:
         return None
-    month = today.replace(day=1)
-    for _ in range(3):
-        try:
-            candidate = month.replace(day=due_day)
-        except ValueError:
-            candidate = None
-        if candidate and candidate >= today:
-            return candidate
-        month = (month + timedelta(days=32)).replace(day=1)
-    return None
+    pattern = rf"(?<![\w.]){re.escape(clean)}(?!\w|\.\d)"
+    return clean if re.search(pattern, _plain(text), re.IGNORECASE) else None
+
+
+def _without_dates(text: str, today: date, direction: dates.Direction) -> str:
+    return dates.strip(text, dates.read_date(text, today, direction).spans)
 
 
 def _ground(reading: StatementReading, text: str, today: date) -> Statement:
     if reading.type in {"question", "unclear"}:
         return Statement(reading.type)
-    phrase = _literal(reading.amount_phrase, text)
-    amount = (parse_amount(phrase) if phrase else None) or _whole_amount(text)
+    plain = _without_dates(text, today, "future" if reading.type == "due" else "past")
+    phrase = _amount_phrase(reading.amount_phrase, plain)
+    amount = (parse_amount(phrase) if phrase else None) or _whole_amount(plain)
     if reading.type == "budget":
         spending = reading.category is not None and reading.category not in NOT_BUDGETED
         return Statement(
@@ -293,17 +269,15 @@ def _ground(reading: StatementReading, text: str, today: date) -> Statement:
     if reading.type == "goal":
         return Statement("goal", amount)
     if reading.type == "due":
-        due_day = reading.due_day
-        if due_day is not None and not re.search(
-            rf"\b{due_day}(?:st|nd|rd|th)?\b|{DATE_WORD}", text
-        ):
-            due_day = None  # a day of the month must actually be said
+        when = _due_when(reading, text, today)
         return Statement(
             "due",
             amount,
             category=reading.category or "loan_emi",
-            due_date=_due_date(due_day, today),
+            due_date=when.day,
             label=_name(reading.due_label, text) or _name(reading.counterparty, text),
+            date_problem=when.problem,
+            date_month=when.month,
         )
     return Statement(
         reading.type,
@@ -316,15 +290,30 @@ def _ground(reading: StatementReading, text: str, today: date) -> Statement:
 
 
 def _ground_all(reading: StatementReading, text: str, today: date) -> list[Statement]:
-    """Every payment in the message. With several, each amount must be said for that item:
-    there is no whole-message fallback, and an item without its own amount is left out."""
-    if not reading.more or reading.type not in {"spent", "received"}:
+    """Every payment and due in the message. With several, each amount must be said for that
+    item: there is no whole-message fallback, and an item without its own amount is left out."""
+    if not reading.more or reading.type not in {"spent", "received", "due"}:
         return [_ground(reading, text, today)]
+    plain = _without_dates(_without_dates(text, today, "past"), today, "future")
     items: list[Statement] = []
     for item in [reading, *reading.more][:MAX_ITEMS]:
-        phrase = _literal(item.amount_phrase, text)
+        phrase = _amount_phrase(item.amount_phrase, plain)
         amount = parse_amount(phrase) if phrase else None
         if amount is None:
+            continue
+        if item.type == "due":
+            when = dates.read_date(_literal(item.day_phrase, text), today, "future")
+            items.append(
+                Statement(
+                    "due",
+                    amount,
+                    category=item.category or "loan_emi",
+                    due_date=when.day,
+                    label=_name(item.due_label, text) or _name(item.counterparty, text),
+                    date_problem=when.problem,
+                    date_month=when.month,
+                )
+            )
             continue
         items.append(
             Statement(
@@ -351,7 +340,7 @@ def _remembering(reading: StatementReading, items: list[Statement]) -> list[Stat
 def _rules(text: str, today: date) -> Statement:
     """Development fallback without a model: verbs and one amount only, no names."""
     lowered = text.casefold()
-    amount = _whole_amount(text)
+    amount = _whole_amount(_without_dates(text, today, "past"))
     if BUDGET_WORD.search(text):
         named = categories.named(text)
         spending = named is not None and named not in NOT_BUDGETED
@@ -367,16 +356,16 @@ def _rules(text: str, today: date) -> Statement:
         r"|തവണ|കുടിശ്ശിക|കുടിശിക|അടയ്ക്കണം|അടക്കണം|കൊടുക്കണം",
         lowered,
     ):
-        due = re.search(
-            rf"(\d{{1,2}})(?:\s*-?\s*ാം)?\s*(?:{DATE_WORD}|st\b|nd\b|rd\b|th\b)",
-            text,
-            re.IGNORECASE,
+        # "10 तारीख 1200 किस्त": the day of the month is not a second amount.
+        said = dates.read_date(text, today, "future")
+        return Statement(
+            "due",
+            parse_amount(dates.strip(text, said.spans)),
+            category="loan_emi",
+            due_date=said.day,
+            date_problem=said.problem,
+            date_month=said.month,
         )
-        if due:
-            # "10 तारीख 1200 किस्त": the day of the month is not a second amount.
-            amount = parse_amount(f"{text[: due.start()]} {text[due.end() :]}")
-        day = _due_date(int(due[1]), today) if due and 1 <= int(due[1]) <= 31 else None
-        return Statement("due", amount, category="loan_emi", due_date=day)
     if re.search(
         r"आए|आया|मिले|मिला|aaye|mile|\breceived\b|\bgot\b|credited|കിട്ടി|ലഭിച്ചു|വന്നു|kitti",
         lowered,
@@ -427,7 +416,8 @@ def _fast(sort: triage.Sorted, text: str, today: date) -> list[Statement] | None
         return [Statement("question", checkup=CHECKUPS[kind])]
     if kind in {"question", "other"}:
         return [Statement("question" if kind == "question" else "unclear")]
-    amount = parse_amount(text)
+    said = dates.read_date(text, today, "past")
+    amount = parse_amount(dates.strip(text, said.spans))
     if amount is None or BANK_SMS.search(text):
         return None
     chosen = sort.pick("category")
@@ -454,7 +444,7 @@ def _fast(sort: triage.Sorted, text: str, today: date) -> list[Statement] | None
             PAYMENTS[kind],
             amount,
             mode=MODES.get(sort.pick("mode") or "", "unknown"),
-            day=_past_day(text, text, today),
+            day=said.day or today,
             category=triage.CATEGORIES.get(chosen, "other"),
         )
     ]

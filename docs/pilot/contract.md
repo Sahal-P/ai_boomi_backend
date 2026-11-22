@@ -71,9 +71,10 @@ the records, how to stop, and that the helper or operator deletes everything on 
   received become one notification line through the existing import pipeline with source
   `whatsapp_voice`, always landing in review. Questions use the existing assistant. Unclear
   messages get a short example of how to say it; nothing is kept to retry later.
-- **Dues:** a due needs a day of the month ("10 तारीख"), otherwise FinBoy asks for it. It becomes
-  a `commitments` row with kind `loan` and status `pending` (never counted) until हाँ makes it
-  `upcoming`; नहीं makes it `dismissed`; both can be undone, and बदलें changes a pending amount.
+- **Dues:** a due needs a date ("10 तारीख", "1 जनवरी", "कल", "next month 5th"), otherwise FinBoy
+  asks for it. It becomes a `commitments` row with kind `loan` and status `pending` (never
+  counted) until हाँ makes it `upcoming`; नहीं makes it `dismissed`; both can be undone, and बदलें
+  changes a pending due's amount, date or name (docs/whatsapp.md, "Dates and card replies").
 - **Paid:** a reminder's [✅ भर दिया] records the instalment as one `whatsapp_voice` line paid to the
   due's label (category `loan_emi`), confirms it through `decide`, and links it with
   `obligations.correct_obligation`, so money left falls only by what was paid. An already-paid due

@@ -184,3 +184,120 @@ def group(session: Session, binding: WhatsAppBinding, group_id: UUID) -> list[Wh
 def answer(prompt: WhatsAppPrompt) -> None:
     prompt.state = "answered"
     prompt.answered_at = datetime.now(UTC)
+
+
+# Cards a typed reply can answer (docs/whatsapp.md, "Dates and card replies").
+CARDS = frozenset({"confirm", "change_amount", "saved", "undo"})
+SAME_MESSAGE = timedelta(seconds=5)
+# Other open choices: when one of these is newer, a typed reply is not for an older card.
+_CHOICES = frozenset(
+    {"due_paid", "due_repeat", "reminder_opt_in", "pick_item", "pick_category"}
+    | {"checkin_opt_in", "coach_opt_in"}
+)
+
+
+def find(session: Session, binding: WhatsAppBinding, prompt_id: UUID) -> WhatsAppPrompt | None:
+    """A prompt in any state, only for its own binding: to say why a tap did nothing."""
+    return session.scalar(
+        select(WhatsAppPrompt).where(
+            WhatsAppPrompt.id == prompt_id, WhatsAppPrompt.binding_id == binding.id
+        )
+    )
+
+
+def target(
+    session: Session, binding: WhatsAppBinding, context_id: str | None, within: timedelta
+) -> WhatsAppPrompt | None:
+    """The open card a typed reply answers: the one the person swiped to reply to, else the
+    newest open card from the last `within`, unless a newer choice of another kind is open."""
+    now = datetime.now(UTC)
+    usable = select(WhatsAppPrompt).where(
+        WhatsAppPrompt.binding_id == binding.id,
+        WhatsAppPrompt.state == "open",
+        WhatsAppPrompt.expires_at > now,
+    )
+    if context_id:
+        quoted = session.scalars(
+            usable.where(
+                WhatsAppPrompt.outbound_message_id == context_id,
+                WhatsAppPrompt.purpose.in_(CARDS),
+                WhatsAppPrompt.group_id.is_(None),
+            ).order_by(WhatsAppPrompt.created_at.desc())
+        ).all()
+        if quoted:
+            # A correction opened from that card is newer than the card itself.
+            change = pending_change(session, binding)
+            records = {(quoted[0].transaction_id, quoted[0].commitment_id)}
+            if change is not None and (change.transaction_id, change.commitment_id) in records:
+                return change
+            return quoted[0]
+    card = session.scalar(
+        usable.where(
+            WhatsAppPrompt.purpose.in_(CARDS),
+            WhatsAppPrompt.group_id.is_(None),
+            WhatsAppPrompt.created_at >= now - within,
+        )
+        .order_by(WhatsAppPrompt.created_at.desc())
+        .limit(1)
+    )
+    if card is None:
+        return None
+    # A choice sent with the same message (a due's Undo with "remind me") doesn't hide the
+    # card; one from a later message means the reply may be for that instead.
+    later = session.scalar(
+        usable.where(
+            WhatsAppPrompt.purpose.in_(_CHOICES),
+            WhatsAppPrompt.created_at > _aware(card.created_at) + SAME_MESSAGE,
+        ).limit(1)
+    )
+    return None if later is not None else card
+
+
+def card_for(session: Session, binding: WhatsAppBinding, prompt: WhatsAppPrompt):
+    """The open confirm card of the record a correction belongs to, if it is still open."""
+    if prompt.purpose == "confirm":
+        return prompt
+    return session.scalar(
+        select(WhatsAppPrompt)
+        .where(
+            WhatsAppPrompt.binding_id == binding.id,
+            WhatsAppPrompt.purpose == "confirm",
+            WhatsAppPrompt.state == "open",
+            WhatsAppPrompt.expires_at > datetime.now(UTC),
+            WhatsAppPrompt.transaction_id.is_not_distinct_from(prompt.transaction_id),
+            WhatsAppPrompt.commitment_id.is_not_distinct_from(prompt.commitment_id),
+        )
+        .order_by(WhatsAppPrompt.created_at.desc())
+        .limit(1)
+    )
+
+
+def close_changes(
+    session: Session,
+    binding: WhatsAppBinding,
+    *,
+    transaction_id: UUID | None = None,
+    commitment_id: UUID | None = None,
+) -> None:
+    """End an open correction of one record: it was answered on its card instead."""
+    session.execute(
+        update(WhatsAppPrompt)
+        .where(
+            WhatsAppPrompt.binding_id == binding.id,
+            WhatsAppPrompt.purpose == "change_amount",
+            WhatsAppPrompt.state == "open",
+            WhatsAppPrompt.transaction_id.is_not_distinct_from(transaction_id),
+            WhatsAppPrompt.commitment_id.is_not_distinct_from(commitment_id),
+        )
+        .values(state="answered", answered_at=datetime.now(UTC))
+    )
+
+
+def stamp(session: Session, binding: WhatsAppBinding, ids: set[UUID], outbound_id: str) -> None:
+    """Remember which WhatsApp message carried these cards, so a swipe-reply finds them."""
+    if ids:
+        session.execute(
+            update(WhatsAppPrompt)
+            .where(WhatsAppPrompt.binding_id == binding.id, WhatsAppPrompt.id.in_(ids))
+            .values(outbound_message_id=outbound_id)
+        )

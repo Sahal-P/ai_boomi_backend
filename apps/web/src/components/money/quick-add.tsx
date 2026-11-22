@@ -55,7 +55,8 @@ function draftFrom(preview: EntryPreview): Draft {
     amount: preview.amount_minor ? String(preview.amount_minor / 100) : "",
     who: (kind === "due" ? preview.label ?? preview.counterparty : preview.counterparty) ?? "",
     category: preview.category,
-    date: (kind === "due" ? preview.due_date : preview.day) ?? istDate(new Date()),
+    // A due whose date wasn't read stays empty, so it is chosen rather than silently today.
+    date: (kind === "due" ? preview.due_date ?? "" : preview.day ?? istDate(new Date())),
   };
 }
 
