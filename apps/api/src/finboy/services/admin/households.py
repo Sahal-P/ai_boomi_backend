@@ -24,6 +24,7 @@ from finboy.db.models.money import Budget
 from finboy.db.models.statements import StatementImport
 from finboy.db.models.whatsapp import WhatsAppBinding
 from finboy.services.accounts import usage
+from finboy.services.admin import messages
 from finboy.services.admin.views import (
     Action,
     GmailState,
@@ -437,5 +438,6 @@ def detail(session: Session, settings: Settings, user_id: UUID, now: datetime) -
         )
         if binding
         else None,
+        messages=messages.state(session, user_id),
         actions=allowed(base.kind, base.status, plan, settings),
     )

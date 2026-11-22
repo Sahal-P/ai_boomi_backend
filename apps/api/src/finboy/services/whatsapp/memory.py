@@ -9,7 +9,9 @@ import re
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from finboy.core.errors import AccessError
 from finboy.services.advisor import history, memory
+from finboy.services.conversations import store
 
 if TYPE_CHECKING:
     from finboy.services.whatsapp.pilot import Conversation
@@ -54,9 +56,23 @@ def _forget_all(conversation: Conversation) -> str | None:
 
 
 def _clear_chats(conversation: Conversation) -> str | None:
-    history.delete_all(conversation.session, conversation.binding.user_id)
-    conversation.session.commit()
+    """The advisor's chats and, for a household that agreed, its kept messages and their files
+    (docs/conversation-round/contract.md)."""
+    session, user_id = conversation.session, conversation.binding.user_id
+    try:
+        store.remove(session, conversation.settings, user_id)
+    except AccessError:
+        session.rollback()  # R2 can't be reached: nothing is cleared, so asking again works
+        sent = conversation.send(conversation.words.UNAVAILABLE)
+        return conversation.done(sent, "provider_unavailable")
+    history.delete_all(session, user_id)
+    session.commit()
     return conversation.done(conversation.send(conversation.words.CHATS_CLEARED))
+
+
+def clearing(text: str) -> Callable[[Conversation], str | None] | None:
+    """Only "clear chat history", which works whenever messages are kept, advisor on or off."""
+    return _clear_chats if CLEAR_CHATS.fullmatch(text) else None
 
 
 def command(text: str) -> Callable[[Conversation], str | None] | None:

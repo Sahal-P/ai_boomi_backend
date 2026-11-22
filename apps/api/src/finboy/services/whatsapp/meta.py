@@ -101,6 +101,9 @@ class MetaClient:
         )
         # Self-serve numbers the caller matched to their own binding for this message.
         self.vouched: set[str] = set()
+        # What this message's client downloaded, held in memory until the reply worker hands a
+        # voice note or photo to the log of a household that agreed (services/conversations).
+        self.downloads: list[DownloadedMedia] = []
 
     def allow(self, recipient: str) -> None:
         """A self-serve household's own number, only after its binding was checked."""
@@ -198,7 +201,9 @@ class MetaClient:
                 raise InvalidMedia
             if not hmac.compare_digest(hashlib.sha256(data).hexdigest(), info.sha256.lower()):
                 raise InvalidMedia
-            return DownloadedMedia(data, mime)
+            media = DownloadedMedia(data, mime)
+            self.downloads.append(media)
+            return media
         except ValidationError:
             raise InvalidMedia from None
 

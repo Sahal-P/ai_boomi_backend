@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from finboy.core.config import LOCAL_USER_ID
+from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.db.models.core import User
 from finboy.services.accounts.households import remove_household_data
 from finboy.services.privacy.audit import audit
@@ -54,7 +54,7 @@ def set_owner_pilot(session: Session, *, enabled: bool) -> None:
     session.commit()
 
 
-def erase(session: Session, user_id: UUID) -> dict[str, int]:
+def erase(session: Session, user_id: UUID, settings: Settings | None = None) -> dict[str, int]:
     """Delete one pilot household's records and WhatsApp state; keep the audit trail.
 
     The household row stays (audit events reference it) with `pilot` cleared, so its number
@@ -66,7 +66,7 @@ def erase(session: Session, user_id: UUID) -> dict[str, int]:
     user = session.get(User, user_id, with_for_update=True)
     if user is None:
         raise PilotError("not_found")
-    counts = remove_household_data(session, user_id)
+    counts = remove_household_data(session, user_id, settings)
     user.pilot = False
     user.data_version += 1
     audit(session, "pilot.erased", "user", user_id, user_id=user_id)

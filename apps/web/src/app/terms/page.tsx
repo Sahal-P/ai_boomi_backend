@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms" updated="15 November 2026">
+    <LegalPage title="Terms" updated="22 November 2026">
       <p>
         FinBoy helps you track your own money by WhatsApp, voice or the web.{" "}
         {BUSINESS.name ? `It is run by ${BUSINESS.name} and is still in beta.` : "It is still in beta."}{" "}
@@ -43,6 +43,20 @@ export default function TermsPage() {
           send a code someone else gave you.
         </li>
         <li>You are responsible for checking records before you confirm them.</li>
+      </ul>
+
+      <h2>Messages, voice notes and photos</h2>
+      <ul>
+        <li>
+          Using FinBoy means your WhatsApp messages, voice notes (the recording and the words
+          heard) and photos are kept.
+        </li>
+        <li>
+          The FinBoy team can see them, to help you and to fix mistakes. A photo is kept as you
+          sent it.
+        </li>
+        <li>Card numbers, UPI IDs and login codes that you type are hidden before a message is kept.</li>
+        <li>Clear chat history, or delete your account, to remove them.</li>
       </ul>
 
       <h2>Premium and payments</h2>

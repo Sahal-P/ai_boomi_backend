@@ -129,7 +129,7 @@ def erase(
 
     try:
         if kind == "pilot":
-            erasure.erase_pilot(session, engine, user_id, also=entry)
+            erasure.erase_pilot(session, engine, user_id, also=entry, settings=settings)
         elif kind == "pending":
             erasure.discard(session, user_id, also=entry)
         else:

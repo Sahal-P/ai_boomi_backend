@@ -11,14 +11,14 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import update
 
 from finboy.api.deps import DB, AdminAccess, CurrentAdmin
 from finboy.core.errors import AccessError
 from finboy.db.models.admin import AdminSession, AdminUser
 from finboy.services.accounts.login import device_label
-from finboy.services.admin import actions, audit, households, overview
+from finboy.services.admin import actions, audit, households, messages, overview
 from finboy.services.admin import auth as admin_auth
 from finboy.services.admin.actions import Actor
 from finboy.services.admin.views import (
@@ -31,6 +31,7 @@ from finboy.services.admin.views import (
     HouseholdPage,
     Kind,
     LoginInput,
+    MessagePage,
     NewAdmin,
     Overview,
     PasswordInput,
@@ -45,10 +46,13 @@ from finboy.services.admin.views import (
 )
 from finboy.services.admin.views import AdminSession as AdminSessionView
 from finboy.services.billing.plans import State
+from finboy.services.conversations import r2
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 logger = logging.getLogger(__name__)
 Offset = Annotated[int, Query(ge=0, le=households.MAX_ROWS)]
+# A messages page's `next_before`: the oldest message shown, as "<ISO time>|<UUID>".
+CURSOR = r"^\d{4}-\d{2}-\d{2}T[0-9:.]{8,15}(Z|[+-]\d{2}:\d{2})\|[0-9a-f-]{36}$"
 
 
 def _now() -> datetime:
@@ -184,6 +188,56 @@ def household_view(
     household_id: UUID, request: Request, session: DB, _admin: CurrentAdmin
 ) -> HouseholdDetail:
     return _detail(request, session, household_id)
+
+
+@router.get("/households/{household_id}/messages", response_model=MessagePage)
+def household_messages(
+    household_id: UUID,
+    request: Request,
+    session: DB,
+    admin: CurrentAdmin,
+    before: Annotated[str | None, Query(max_length=100, pattern=CURSOR)] = None,
+) -> MessagePage:
+    """Kept messages, newest first (docs/conversation-round/contract.md). Opening the first page
+    is recorded in the audit log."""
+    try:
+        found = messages.page(session, household_id, before)
+    except LookupError:
+        raise AccessError("not_found") from None
+    if before is None:
+        audit.record(
+            session,
+            "messages_viewed",
+            admin_id=admin.id,
+            household_id=household_id,
+            request_id=_actor(request, admin).request_id,
+        )
+        session.commit()
+    return found
+
+
+@router.get("/messages/{message_id}/media", include_in_schema=False)
+def message_media(message_id: UUID, request: Request, session: DB, admin: CurrentAdmin) -> Response:
+    """A kept voice note or photo, through the API so each open is an admin's and recorded."""
+    found = messages.media(session, request.app.state.settings, message_id)
+    audit.record(
+        session,
+        "media_opened",
+        admin_id=admin.id,
+        household_id=found.user_id,
+        request_id=_actor(request, admin).request_id,
+    )
+    session.commit()
+    name = f"finboy-{message_id}.{r2.EXTENSIONS[found.content_type]}"
+    return Response(
+        content=found.data,
+        media_type=found.content_type,
+        headers={
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": f'inline; filename="{name}"',
+        },
+    )
 
 
 @router.post("/households/{household_id}/sign-out", response_model=HouseholdDetail)

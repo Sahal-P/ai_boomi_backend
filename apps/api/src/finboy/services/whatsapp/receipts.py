@@ -19,6 +19,7 @@ from finboy.db.models.whatsapp import (
     WhatsAppReminder,
 )
 from finboy.services.accounts import households
+from finboy.services.conversations import store
 from finboy.services.mail.security import encrypt
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion, Status
@@ -31,7 +32,8 @@ class Admission:
 
 
 def interrupt_stale(session: Session, *, before: datetime) -> None:
-    """No replay is possible: raw questions/audio were never retained."""
+    """No replay: a message is answered once, and only the log of a household that agreed keeps
+    its words (docs/conversation-round/contract.md)."""
     session.execute(
         update(WhatsAppReceipt)
         .where(
@@ -182,6 +184,14 @@ def admit(
             elif command in {"en", "hi", "ml"} and binding.enabled:
                 binding.language = command
         if state == "admitted":
+            # Only for households that agreed (docs/conversation-round/contract.md).
+            store.add_inbound(
+                session,
+                config.messages,
+                user_id=binding.user_id,
+                receipt_id=receipt_id,
+                question=question,
+            )
             admitted.append(Admission(receipt_id, question))
     for status in statuses:
         # Provider status can only touch a known outbound message for this approved binding.

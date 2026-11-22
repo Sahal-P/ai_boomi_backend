@@ -544,3 +544,24 @@ asks for just the amount ("Say or type just the amount, like: 500", in the house
   read the voice note's transcript as spent, where before they read it as received; with the
   Malayalam amount reader it is saved as ₹700. Salary, cashback and money people send are still
   received.
+
+## Kept messages (22 November 2026)
+
+With `CONVERSATION_LOG_ENABLED` on ([contract](conversation-round/contract.md)), FinBoy keeps the
+conversation of every household that agrees, for the admin panel's Messages page:
+- **What is kept:**
+  - every admitted message, with its words masked (card, account, reference and phone numbers, UPI
+    IDs and login codes);
+  - taps, as their choice;
+  - voice notes, as the recording in R2 plus the words heard;
+  - photos, in R2;
+  - FinBoy's replies with their buttons, delivery and read state, and the words of spoken
+    replies;
+  - reminders, check-ins and coach messages.
+- **What isn't:** statement PDFs, or messages ignored after STOP.
+- **Continuing:** the first message agrees. A greeting gets the welcome; an expense, photo,
+  voice note or statement is handled at once. There is no consent card. The landing hero links
+  the terms. "clear chat history" (`चैट हिस्ट्री मिटाओ`, `ചാറ്റ് മായ്ക്കൂ`) deletes the kept
+  messages and their files. A stored decline is not overwritten.
+- **Timing:** files go to R2 after the reply has gone, so replies are never slower. A failed write
+  is logged as `conversation.log_failed` with its stage and nothing else.

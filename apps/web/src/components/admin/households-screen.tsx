@@ -277,7 +277,7 @@ export function HouseholdsScreen() {
     <div className="space-y-5">
       <PageHeader
         title="Households"
-        description="Who each household is, how they use FinBoy and their plan. Money records, chats and memories stay private."
+        description="Who each household is, how they use FinBoy and their plan. Money records and memories stay private; messages open only for households that agreed to keep them."
         actions={
           <RefreshButton
             resource={{

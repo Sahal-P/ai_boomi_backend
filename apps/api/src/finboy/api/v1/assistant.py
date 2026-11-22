@@ -27,6 +27,7 @@ from finboy.services.advisor.suggestions import suggestions
 from finboy.services.advisor.tools import EngineToolbox
 from finboy.services.assistant.models import AskRequest, AssistantAnswer, SpeakRequest
 from finboy.services.assistant.service import answer_question
+from finboy.services.conversations import store
 from finboy.services.money.compat import simulation_response
 from finboy.services.speech.media import InvalidAudio
 from finboy.services.speech.models import Transcript
@@ -324,8 +325,10 @@ def delete_thread(thread_id: UUID, request: Request, session: DB, user_id: Curre
 
 
 @router.delete("/threads", response_model=Deleted)
-def delete_threads(session: DB, user_id: CurrentUser) -> Deleted:
-    """Clear chat history. Memories stay; they are removed on the Memory page."""
+def delete_threads(request: Request, session: DB, user_id: CurrentUser) -> Deleted:
+    """Clear chat history, with any kept WhatsApp messages and their files (conversation round;
+    `try_later` while R2 can't be reached). Memories stay; they are removed on the Memory page."""
+    store.remove(session, request.app.state.settings, user_id)
     deleted = history.delete_all(session, user_id)
     session.commit()
     return Deleted(deleted=deleted)

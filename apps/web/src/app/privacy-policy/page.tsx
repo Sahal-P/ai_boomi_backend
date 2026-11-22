@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="21 November 2026">
+    <LegalPage title="Privacy Policy" updated="22 November 2026">
       <p>
         FinBoy helps you keep track of your own money: what came in, what went out and what is due.
         This page says exactly what we keep, what we never keep, and how to delete everything.
@@ -31,10 +31,18 @@ export default function PrivacyPolicyPage() {
           encrypted copy of its email address. We don&apos;t keep your photo.
         </li>
         <li>
-          Your chats with FinBoy, typed or spoken: the words of each question (a voice question is
-          kept as its text, never as audio) and FinBoy&apos;s answer, so you can pick up where you
-          left off on the website or WhatsApp. If you turn on the coach&apos;s WhatsApp messages,
-          each one FinBoy sends is kept in the same chat.
+          Your chats with FinBoy, typed or spoken: the words of each question (on the website a
+          voice question is kept as its text, never as audio) and FinBoy&apos;s answer, so you can
+          pick up where you left off on the website or WhatsApp. If you turn on the coach&apos;s
+          WhatsApp messages, each one FinBoy sends is kept in the same chat.
+        </li>
+        <li>
+          If you agree when FinBoy asks on WhatsApp: your WhatsApp messages to FinBoy and its
+          replies, your voice notes (the recording and the words FinBoy heard) and the photos you
+          send, with when each was sent and whether it was delivered and read. Card, account and
+          phone numbers, UPI IDs and login codes that you type are hidden before a message is kept;
+          a photo is kept as you sent it. Statement PDFs are never kept as files. FinBoy&apos;s
+          spoken replies are kept as the words it said.
         </li>
         <li>
           What FinBoy remembers about you to give more personal answers, like your goals, who
@@ -64,12 +72,16 @@ export default function PrivacyPolicyPage() {
       <h2>What we never keep</h2>
       <ul>
         <li>
-          Your voice notes, photos or screenshots. Diary messages like &ldquo;chai 20&rdquo; are
-          kept only as the record you save, not as messages.
+          Your WhatsApp messages, voice notes and photos, unless you agree that FinBoy keeps them.
+          Until then, diary messages like &ldquo;chai 20&rdquo; are kept only as the record you
+          save.
         </li>
         <li>What you type or say to quick add — only the record you save.</li>
-        <li>Full emails, login codes, Google sign-in tokens or passwords.</li>
-        <li>Card numbers, UPI IDs, bank account details, PINs or OTPs. These stay with PayU and your bank.</li>
+        <li>Statement PDFs, full emails, login codes, Google sign-in tokens or passwords.</li>
+        <li>
+          The card numbers, UPI IDs, bank account details, PINs or OTPs that payments to FinBoy
+          need. These stay with PayU and your bank. Never send FinBoy a PIN or OTP.
+        </li>
       </ul>
 
       <h2>Who helps us process it</h2>
@@ -85,8 +97,9 @@ export default function PrivacyPolicyPage() {
         figures, summarizing chats, wording coach reminders, reading minimized email text and
         reading payment screenshots and bills, when enabled), Sarvam AI (speech in English, Hindi
         and Malayalam, and spoken Malayalam replies), Groq (speech in English and Hindi), Resemble
-        (spoken English and Hindi replies), Meta (delivering WhatsApp messages) and Google (sign-in
-        and, if you connect it, Gmail). If you pay for Premium, PayU processes the payment and
+        (spoken English and Hindi replies), Meta (delivering WhatsApp messages), Cloudflare
+        (storing the voice notes and photos FinBoy keeps, if you agree) and Google (sign-in and, if
+        you connect it, Gmail). If you pay for Premium, PayU processes the payment and
         receives your email address and phone number for the receipt. FinBoy never sells your data
         and never shows ads.
       </p>
@@ -100,16 +113,20 @@ export default function PrivacyPolicyPage() {
         The few people who run FinBoy can see who you are and your account activity, to keep the
         service working and to help you: your name, phone number and email address, when you joined
         and last used FinBoy, your plan and Premium payments, daily usage counts, whether messages
-        were delivered, and whether WhatsApp or Google is linked. They never see your records,
-        amounts, who you paid, your messages, your chats with FinBoy or what it remembers about you.
-        They can
-        pause or erase an account, for example when you ask, and every such step is recorded.
+        were delivered, and whether WhatsApp or Google is linked. If you agreed that FinBoy keeps
+        your messages, they can also read them, listen to your voice notes, see your photos and
+        read your chats with Ask FinBoy from that day on, to help you, fix mistakes and make FinBoy
+        better and more personal. Each time one of them opens your messages, a voice note or a
+        photo, it is recorded. Apart from what you wrote or said in those messages, they don&apos;t
+        see your records, amounts, who you paid or what FinBoy remembers about you. They can pause
+        or erase an account, for example when you ask, and every such step is recorded.
       </p>
 
       <h2>How long we keep it</h2>
       <p>
-        As long as you have an account. A WhatsApp sign-up that never says yes is forgotten after
-        seven days. Private server backups are kept for seven days and then overwritten. When you
+        As long as you have an account. Kept messages, voice notes and photos stay until you clear
+        your chat history or delete your account. A WhatsApp sign-up that never says yes is
+        forgotten after seven days. Private server backups are kept for seven days and then overwritten. When you
         delete your account, payment records stay as FinBoy&apos;s sales records, as tax and
         accounting law requires, without your email address or phone number.
       </p>
@@ -126,11 +143,17 @@ export default function PrivacyPolicyPage() {
           The coach&apos;s WhatsApp messages come only if you ask for them, at most one a day: send
           &ldquo;coach on&rdquo; or &ldquo;coach off&rdquo;.
         </li>
+        <li>
+          When FinBoy asks on WhatsApp whether it may keep your messages, you can say No thanks;
+          FinBoy works the same either way. To delete the messages, voice notes and photos it kept,
+          send &ldquo;clear chat history&rdquo; or clear it on the Memory page.
+        </li>
         <li>Send STOP on WhatsApp to stop all messages; send START to turn them back on.</li>
         <li>
           Delete your account from Privacy &amp; data → Delete my account. Your records, dues,
-          chats, memories, sign-ins, Gmail access, receipt contact details and AutoPay go at once; only a count of
-          account events and your payment records remain.
+          chats, kept messages, voice notes and photos, memories, sign-ins, Gmail access, receipt
+          contact details and AutoPay go at once; only a count of account events and your payment
+          records remain.
         </li>
       </ul>
 

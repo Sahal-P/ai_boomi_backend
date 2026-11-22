@@ -186,6 +186,7 @@ def system(session: Session, settings: Settings) -> SystemStatus:
             "triage_enabled": settings.triage_enabled,
             "statement_import_enabled": settings.statement_import_enabled,
             "gmail_for_new_accounts": settings.gmail_for_new_accounts,
+            "conversation_log_enabled": settings.conversation_log_enabled,
         },
         limits={
             "signup_limit": settings.signup_limit,
@@ -213,6 +214,7 @@ def system(session: Session, settings: Settings) -> SystemStatus:
             "knowledge": providers.knowledge(settings),
             "web_search": providers.web_search(settings),
             "coach": providers.coach(settings),
+            "media_store": providers.media_store(settings),
             "payu": configured(bool(settings.payu_merchant_key and settings.payu_merchant_salt)),
             "email": configured(settings.resend_api_key is not None),
         },

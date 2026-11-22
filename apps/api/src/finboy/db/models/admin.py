@@ -34,6 +34,9 @@ ACTIONS = (
     "pay_link_created",
     "payment_reconciled",
     "signups_tidied",
+    # Conversation round: an admin read a household's messages or opened a voice note or photo.
+    "messages_viewed",
+    "media_opened",
 )
 
 

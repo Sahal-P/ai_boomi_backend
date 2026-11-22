@@ -72,19 +72,16 @@ def test_diary_households_hear_their_chosen_language(
     assert send.call_args.kwargs["text"] == reply
 
 
-def test_a_language_chosen_before_agreeing_brings_the_consent_card_in_it(
+def test_a_language_chosen_on_the_first_message_welcomes_in_it(
     monkeypatch: pytest.MonkeyPatch, config: ChannelConfig, wa_settings: Settings
 ) -> None:
-    factory, receipt, _, _, send, _, _, _, finish = harness(monkeypatch, preferred="ml")
+    factory, receipt, binding, _, send, _, _, _, finish = harness(monkeypatch, preferred="ml")
     session = factory.return_value.__enter__.return_value
-    session.execute.return_value.one_or_none.return_value = household(
-        joined_via="whatsapp", agreed=False
-    )
-    consent = MagicMock(return_value=None)
-    monkeypatch.setattr(processor.pilot, "ask_consent", consent)
+    session.execute.return_value.one_or_none.return_value = household(pilot=True, agreed=False)
     processor.process_question(factory, wa_settings, config, receipt.id, question("ml"))
-    assert consent.call_args.args[0].words is malayalam
-    assert send.call_count == 0 and finish.call_args.kwargs["error"] is None
+    assert send.call_args_list[0].kwargs["text"] == malayalam.WELCOME
+    assert binding.consented_at is not None and binding.language == "ml"
+    assert finish.call_args.kwargs["error"] is None
 
 
 def test_the_owners_language_commands_are_unchanged(

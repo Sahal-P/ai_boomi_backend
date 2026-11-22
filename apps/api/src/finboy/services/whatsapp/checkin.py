@@ -18,6 +18,7 @@ from finboy.core.config import Settings
 from finboy.db.models.core import User
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppCheckin
 from finboy.services.assistant.language import money
+from finboy.services.conversations import store
 from finboy.services.mail.security import MailError, decrypt
 from finboy.services.money import budgets
 from finboy.services.money.engine import PeriodSpec
@@ -151,6 +152,15 @@ def send_checkins(
                 except MetaUnavailable:
                     checkin.state = "failed"
             checkin.updated_at = datetime.now(UTC)
+            store.add_sent(
+                session,
+                config.messages,
+                user_id=binding.user_id,
+                kind="template",
+                text=f"{template}: " + " · ".join(values),
+                outcome=checkin.state,
+                language=language,
+            )
             session.commit()
             counts[checkin.state] += 1
     return counts

@@ -8,21 +8,15 @@ import { ChatCode } from "./chat-code";
 import { ChatPreview } from "./chat-preview";
 import { SectionHeading } from "./section-heading";
 
-// What a new number actually sees (docs/signup-round/contract.md, english.py SELF_CONSENT/WELCOME).
+// What a new number actually sees (docs/signup-round/contract.md, english.py WELCOME).
 const steps: { title: string; body: ReactNode }[] = [
   {
     title: "Send “Hi FinBoy”",
     body: "Tap Start on WhatsApp. The chat opens with the message typed in; tap send.",
   },
   {
-    title: "Agree once",
-    body: (
-      <>
-        FinBoy tells you what it writes down — the amount, the date, who you paid and what it was
-        for — and that it doesn’t keep your voice notes, photos or diary messages. Tap ✅ Yes, I agree.
-        Tap ❌ No and nothing is kept.
-      </>
-    ),
+    title: "FinBoy replies",
+    body: "You send the typed “Hi FinBoy”. FinBoy replies with how to record what you spent or got.",
   },
   {
     title: "Send what you spent",

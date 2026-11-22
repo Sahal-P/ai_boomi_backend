@@ -1,4 +1,6 @@
-"""Consent and transport metadata only. Never add message/answer/audio/image columns."""
+"""Consent and transport metadata only. Never add message/answer/audio/image columns: what a
+household and FinBoy said lives in `conversation_messages` (docs/conversation-round/contract.md),
+only for a household that agreed."""
 
 from datetime import date, datetime
 from uuid import UUID, uuid4

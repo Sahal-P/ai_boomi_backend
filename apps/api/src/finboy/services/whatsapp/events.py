@@ -1,4 +1,5 @@
-"""Bounded Meta event validation; bodies and questions live only in request memory."""
+"""Bounded Meta event validation. Webhook bodies live only in request memory; a question's words
+are kept only in the message log of a household that agreed (docs/conversation-round)."""
 
 import hashlib
 import hmac

@@ -3,6 +3,7 @@
  * only: invented households, numbers and admins. It drives browser journeys; it proves nothing
  * about the real API, which has its own unit and database tests.
  */
+import { readFileSync } from "node:fs";
 import type { FakeRequest, FakeResponse } from "./fake-api.ts";
 
 type Json = Record<string, unknown>;
@@ -39,7 +40,40 @@ export const adminIds = {
   payment: uuid("60000000", 1),
   me: uuid("70000000", 1),
   colleague: uuid("70000000", 2),
+  voice: uuid("90000000", 1),
+  photo: uuid("90000000", 2),
 };
+
+/** Asha Menon's kept WhatsApp conversation (docs/conversation-round/contract.md), newest first. */
+const message = (index: number, values: Json) => ({
+  id: uuid("90000000", index),
+  at: at(3 - index / 24),
+  channel: "whatsapp",
+  text: null,
+  transcript: null,
+  language: "en",
+  choices: [],
+  media: null,
+  media_bytes: null,
+  status: null,
+  outcome: null,
+  ...values,
+});
+const MESSAGES = [
+  message(7, { direction: "out", kind: "template", text: "finboy_due_reminder: Milk · ₹500 · 25 Nov 2026", status: "delivered" }),
+  message(6, { direction: "in", kind: "tap", choices: ["undo"] }),
+  message(5, { direction: "out", kind: "text", channel: "web", text: "You kept about ₹6,200 a month lately." }),
+  message(4, { direction: "in", kind: "text", channel: "web", text: "can i afford a bike this year?" }),
+  message(3, { direction: "out", kind: "buttons", text: "✅ Saved ₹500 · Milkman", choices: ["↩️ Undo", "✏️ Amount"], status: "read" }),
+  message(2, { direction: "in", kind: "photo", media: "image", media_bytes: 68 }),
+  message(1, { direction: "in", kind: "voice", transcript: "Paid the milkman 500 rupees", media: "audio", media_bytes: 2048 }),
+  message(0, { direction: "in", kind: "text", text: "chai 20, auto 50" }),
+];
+// A 1×1 synthetic PNG, so the photo button has a real image to open.
+const PIXEL = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64",
+);
 
 type Household = {
   id: string;
@@ -196,6 +230,9 @@ export class FakeAdminApi {
       whatsapp_state: house.whatsapp && house.status !== "deleted"
         ? { replies_on: house.id !== adminIds.paused, agreed_at: null, reminders: true, checkins: false, language: house.language, last_message_at: house.lastActive }
         : null,
+      messages: house.id === adminIds.family
+        ? { kept_from: at(4), declined_at: null, count: MESSAGES.length }
+        : { kept_from: null, declined_at: house.id === adminIds.pilot ? at(2) : null, count: 0 },
       actions: allowed(house),
     };
   }
@@ -342,6 +379,25 @@ export class FakeAdminApi {
     if ((match = path.match(/^\/api\/v1\/admin\/households\/([0-9a-f-]{36})$/))) {
       const house = this.find(match[1] ?? "");
       return house ? ok(this.detail(house)) : envelope(404, "not_found");
+    }
+    if ((match = path.match(/^\/api\/v1\/admin\/households\/([0-9a-f-]{36})\/messages$/)) && method === "GET") {
+      const house = this.find(match[1] ?? "");
+      if (!house) return envelope(404, "not_found");
+      if (!query.get("before")) this.record("messages_viewed", house.id);
+      const kept = house.id === adminIds.family;
+      return ok({
+        kept_from: kept ? at(4) : null,
+        declined_at: house.id === adminIds.pilot ? at(2) : null,
+        items: kept ? MESSAGES : [],
+        next_before: null,
+      });
+    }
+    if ((match = path.match(/^\/api\/v1\/admin\/messages\/([0-9a-f-]{36})\/media$/)) && method === "GET") {
+      if (match[1] !== adminIds.voice && match[1] !== adminIds.photo) return envelope(404, "not_found");
+      this.record("media_opened", adminIds.family);
+      return match[1] === adminIds.voice
+        ? { status: 200, headers: { "content-type": "audio/mpeg" }, raw: readFileSync(new URL("../fixtures/synthetic-tone.mp3", import.meta.url)) }
+        : { status: 200, headers: { "content-type": "image/png" }, raw: PIXEL };
     }
     if ((match = path.match(/^\/api\/v1\/admin\/households\/([0-9a-f-]{36})\/(.+)$/)) && method === "POST") {
       const house = this.find(match[1] ?? "");

@@ -1,10 +1,12 @@
 import { z } from "zod";
-import { ApiError, jsonBody, query, requestJson } from "./http.ts";
+import { ApiError, apiFetch, failure, jsonBody, query, requestJson } from "./http.ts";
 
 // The admin panel (docs/admin-round/contract.md). Every rule is enforced by the API; these
 // schemas mirror its response models: who each household is (name, phone number and email, since
-// docs/names-search-round/contract.md) and its activity, never its records, chats, memories or
-// hashes. FinBoy's own ₹299 payments are the only money.
+// docs/names-search-round/contract.md) and its activity, never its records, memories or hashes.
+// The one exception is the messages page (docs/conversation-round/contract.md): what a household
+// that agreed and FinBoy said, with its voice notes and photos. FinBoy's own ₹299 payments are the
+// only money.
 
 const ADMIN = "/api/v1/admin";
 // The owner's household ID is not a random UUID, so IDs are checked as GUIDs.
@@ -131,9 +133,52 @@ const householdDetailSchema = householdRowSchema.extend({
       last_message_at: instant.nullable(),
     })
     .nullable(),
+  // Absent from an API older than the conversation round.
+  messages: z.object({ kept_from: instant.nullable(), declined_at: instant.nullable(), count }).optional(),
   actions: z.array(z.enum(ACTIONS)),
 });
 export type HouseholdDetail = z.infer<typeof householdDetailSchema>;
+
+export const MESSAGE_KINDS = [
+  "text",
+  "voice",
+  "photo",
+  "document",
+  "tap",
+  "command",
+  "buttons",
+  "list",
+  "voice_reply",
+  "template",
+] as const;
+export type MessageKind = (typeof MESSAGE_KINDS)[number];
+const messageRowSchema = z.object({
+  id,
+  at: instant,
+  channel: z.enum(["whatsapp", "web"]),
+  direction: z.enum(["in", "out"]),
+  kind: z.enum(MESSAGE_KINDS),
+  text: z.string().max(4096).nullable(),
+  transcript: z.string().max(4096).nullable(),
+  language: language.nullable(),
+  // Titles FinBoy offered, or the choice a tap made.
+  choices: z.array(z.string().max(64)).max(10),
+  media: z.enum(["audio", "image"]).nullable(),
+  media_bytes: count.nullable(),
+  status: z.enum(["sending", "sent", "delivered", "read", "failed", "unknown"]).nullable(),
+  outcome: z.string().max(64).nullable(),
+});
+export type MessageRow = z.infer<typeof messageRowSchema>;
+const messagePageSchema = z.object({
+  kept_from: instant.nullable(),
+  declined_at: instant.nullable(),
+  items: z.array(messageRowSchema).max(50), // newest first
+  // The oldest message shown ("<time>|<id>"), passed back as `before` for the page before it.
+  next_before: z.string().max(100).nullable(),
+});
+export type MessagePage = z.infer<typeof messagePageSchema>;
+// The largest voice note or photo FinBoy keeps (WhatsApp photos are at most 5 MB).
+export const MEDIA_LIMIT = 5 * 1024 * 1024;
 
 const signupSchema = z.object({
   enabled: z.boolean(),
@@ -268,6 +313,29 @@ export const createPayLink = async (householdId: string) =>
 export const eraseHousehold = async (householdId: string, confirm: string) =>
   requestJson(`${ADMIN}/households/${segment(householdId)}/erase`, doneSchema, post({ confirm }));
 
+export const getMessages = async (householdId: string, before: string | null, signal?: AbortSignal) =>
+  requestJson(
+    `${ADMIN}/households/${segment(householdId)}/messages${query({ before })}`,
+    messagePageSchema,
+    { signal },
+  );
+
+/** A kept voice note or photo, through the API so each open is signed in and recorded. */
+export async function getMessageMedia(messageId: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await apiFetch(`${ADMIN}/messages/${segment(messageId)}/media`, {
+    headers: { Accept: "audio/*, image/*" },
+    signal,
+    timeoutMs: 30_000,
+  });
+  if (!response.ok) throw await failure(response);
+  const type = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
+  const data = /^(audio|image)\/[a-z0-9.+-]+$/.test(type) ? await response.blob() : null;
+  if (!data || !data.size || data.size > MEDIA_LIMIT) {
+    throw new ApiError("FinBoy received an unexpected file.", response.status, { kind: "invalid_response" });
+  }
+  return data;
+}
+
 export const listAdminPayments = (status: PaymentStatus | null, offset: number, signal?: AbortSignal) =>
   requestJson(`${ADMIN}/payments${query({ status, offset: offset || null })}`, paymentPageSchema, { signal });
 export const reconcilePayment = async (paymentId: string) =>
@@ -291,6 +359,7 @@ export const getAudit = (offset: number, signal?: AbortSignal) =>
 const ADMIN_PATHS = [
   "/admin",
   "/admin/households",
+  "/admin/households/messages",
   "/admin/payments",
   "/admin/signups",
   "/admin/system",

@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { actOnHousehold, adminSignIn, getHousehold, listHouseholds, safeAdminReturnPath } from "./admin.ts";
+import {
+  actOnHousehold,
+  adminSignIn,
+  getHousehold,
+  getMessageMedia,
+  getMessages,
+  listHouseholds,
+  MEDIA_LIMIT,
+  safeAdminReturnPath,
+} from "./admin.ts";
 import { ApiError } from "./http.ts";
 import { formatPhone } from "../admin-labels.ts";
 import { onSessionEvent } from "../session-events.ts";
@@ -104,4 +113,48 @@ test("household search keeps empty filters out of the URL", async () => {
   const result = await listHouseholds({ q: "  98123 45670  ", kind: null, status: "suspended", offset: 0 });
   assert.equal(result.total, 0);
   assert.match(seen[0]?.url ?? "", /\/api\/v1\/admin\/households\?q=98123\+45670&status=suspended$/);
+});
+
+const HOUSEHOLD = "10000000-0000-4000-8000-000000000001";
+const MESSAGE = "20000000-0000-4000-8000-000000000002";
+const kept = {
+  id: MESSAGE,
+  at: "2026-11-22T09:30:00+00:00",
+  channel: "whatsapp",
+  direction: "in",
+  kind: "voice",
+  text: null,
+  transcript: "doodhwale ko 500 diye",
+  language: "hi",
+  choices: [],
+  media: "audio",
+  media_bytes: 4096,
+  status: null,
+  outcome: null,
+};
+const invalid = (kind: string) => (error: unknown) => error instanceof ApiError && error.kind === kind;
+const file = (body: BodyInit, type: string) =>
+  (async () => new Response(body, { headers: { "content-type": type } })) as typeof fetch;
+
+test("kept messages are validated and continue from the oldest one shown", async () => {
+  const cursor = `${kept.at}|${MESSAGE}`;
+  const seen = answer(200, { kept_from: kept.at, declined_at: null, items: [kept], next_before: cursor });
+  const page = await getMessages(HOUSEHOLD, cursor);
+  assert.equal(page.items[0]?.transcript, "doodhwale ko 500 diye");
+  assert.equal(page.next_before, cursor);
+  assert.match(seen[0]?.url ?? "", /\/households\/10000000-0000-4000-8000-000000000001\/messages\?before=2026-11-22T09%3A30%3A00%2B00%3A00%7C20000000-/);
+  answer(200, { kept_from: null, declined_at: null, items: [{ ...kept, kind: "secret" }], next_before: null });
+  await assert.rejects(getMessages(HOUSEHOLD, null), invalid("invalid_response"));
+  await assert.rejects(getMessages("../admins", null), invalid("validation"));
+});
+
+test("a kept file opens only as audio or an image within the size limit", async () => {
+  globalThis.fetch = file(new Uint8Array([1, 2, 3]), "audio/ogg");
+  assert.equal((await getMessageMedia(MESSAGE)).size, 3);
+  globalThis.fetch = file("<html>", "text/html");
+  await assert.rejects(getMessageMedia(MESSAGE), invalid("invalid_response"));
+  globalThis.fetch = file(new Uint8Array(MEDIA_LIMIT + 1), "image/jpeg");
+  await assert.rejects(getMessageMedia(MESSAGE), invalid("invalid_response"));
+  answer(503, { error: { code: "media_unavailable", request_id: "r3" } });
+  await assert.rejects(getMessageMedia(MESSAGE), (error: unknown) => error instanceof ApiError && error.code === "media_unavailable");
 });

@@ -2,7 +2,8 @@
 
 A household's chats with FinBoy and the facts it chose to remember are kept until the household
 deletes them (Memory page, WhatsApp commands) or its account; erasure removes them with its
-records (services/accounts/households.py). Audio, photos and diary messages are still never kept.
+records (services/accounts/households.py). Audio, photos and diary messages are kept only in the
+message log of a household that agreed (docs/conversation-round/contract.md).
 """
 
 from datetime import date, datetime

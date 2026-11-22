@@ -179,6 +179,18 @@ class Settings(BaseSettings):
     # live in the database, so no admin secret is configured here.
     admin_session_hours: int = Field(default=8, ge=1, le=24)
 
+    # Conversation round (docs/conversation-round/contract.md): for households that agreed, every
+    # WhatsApp message in and out is kept, with voice notes and photos in a private Cloudflare R2
+    # bucket, and admins can read and open them. Off until the human releases it.
+    conversation_log_enabled: bool = False
+    r2_account_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{32}$")
+    r2_access_key_id: SecretStr | None = None
+    r2_secret_access_key: SecretStr | None = None
+    r2_bucket: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$")
+    # The folder every key starts with. Unset means one per environment, so local development
+    # never writes beside production's files.
+    r2_prefix: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9-]{0,62}/$")
+
     @field_validator(
         "resemble_api_key",
         "resemble_project_uuid",
@@ -228,6 +240,11 @@ class Settings(BaseSettings):
         "payu_merchant_key",
         "payu_merchant_salt",
         "api_public_url",
+        "r2_account_id",
+        "r2_access_key_id",
+        "r2_secret_access_key",
+        "r2_bucket",
+        "r2_prefix",
         mode="before",
     )
     @classmethod
@@ -324,6 +341,24 @@ class Settings(BaseSettings):
                 "Production billing requires live PayU, an HTTPS API_PUBLIC_URL and a launch date"
             )
         return self
+
+    @model_validator(mode="after")
+    def require_conversation_store(self) -> Settings:
+        if self.conversation_log_enabled and not (
+            self.r2_account_id
+            and self.r2_access_key_id
+            and self.r2_secret_access_key
+            and self.r2_bucket
+        ):
+            raise ValueError("CONVERSATION_LOG_ENABLED requires the R2 account, keys and bucket")
+        return self
+
+    @property
+    def media_prefix(self) -> str:
+        if self.r2_prefix:
+            return self.r2_prefix
+        production = self.environment == "production"
+        return "finboy-conversations/" if production else "finboy-conversations-dev/"
 
     @property
     def payu_return_url(self) -> str:

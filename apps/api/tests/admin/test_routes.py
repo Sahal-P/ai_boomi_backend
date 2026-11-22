@@ -213,6 +213,10 @@ NEVER = (
 )
 # FinBoy's own ₹299 sales are the only money shown.
 OWN_MONEY = {("PaymentRow", "amount_minor"), ("Overview", "received_this_month_minor")}
+# The one exception: the kept messages of households that agreed (docs/conversation-round),
+# returned only by the household's messages route.
+CONTENT = {views.MessageRow, views.MessagePage}
+CONTENT_ROUTES = {"/admin/households/{household_id}/messages"}
 
 
 def test_admin_responses_have_no_field_for_household_content() -> None:
@@ -220,10 +224,12 @@ def test_admin_responses_have_no_field_for_household_content() -> None:
     for route in admin_routes():
         found = set(models_in(route.response_model))
         assert all(model.__module__ == views.__name__ for model in found), route.path
+        assert not found & CONTENT or route.path in CONTENT_ROUTES, route.path
         returned |= found
     returned |= {views.AdminSession, views.Done}  # sign-in and sign-out build their own reply
     assert len(returned) >= 20
-    for model in returned:
+    assert returned >= CONTENT
+    for model in returned - CONTENT:
         for field in model.model_fields:
             assert not any(word in field for word in NEVER), (model.__name__, field)
             if "amount" in field or field.endswith("_minor"):
@@ -299,5 +305,10 @@ def test_phone_search_uses_the_stored_sender_hash_and_never_the_number(
 
 def test_every_path_id_is_a_uuid() -> None:
     params = [param for route in admin_routes() for param in route.dependant.path_params]
-    assert {param.name for param in params} == {"household_id", "payment_id", "admin_id"}
+    assert {param.name for param in params} == {
+        "household_id",
+        "payment_id",
+        "admin_id",
+        "message_id",
+    }
     assert all(param.field_info.annotation is UUID for param in params)

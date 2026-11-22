@@ -58,7 +58,9 @@ test.describe("one-tap sign-in with WhatsApp", () => {
     await page.goto("/login");
     await page.getByRole("link", { name: "Privacy Policy" }).click();
     await expect(page.getByRole("heading", { name: "Privacy Policy", level: 1 })).toBeVisible();
-    await expect(page.getByText("Your voice notes, photos or screenshots")).toBeVisible();
+    // Conversation round: what is kept if you agree, and that the team can see it.
+    await expect(page.getByText("Your WhatsApp messages, voice notes and photos, unless you agree")).toBeVisible();
+    await expect(page.getByText(/can also read them, listen to your voice notes, see your photos/)).toBeVisible();
     await page.goto("/terms");
     await expect(page.getByRole("heading", { name: "Terms", level: 1 })).toBeVisible();
   });

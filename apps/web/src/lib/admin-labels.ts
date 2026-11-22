@@ -65,6 +65,8 @@ export const auditLabels: Record<string, string> = {
   pay_link_created: "Created a pay link",
   payment_reconciled: "Re-checked a payment with PayU",
   signups_tidied: "Tidied sign-ups",
+  messages_viewed: "Read a household's messages",
+  media_opened: "Opened a voice note or photo",
 };
 
 export const recordLabels: Record<string, string> = {
@@ -95,6 +97,7 @@ export const flagLabels: Record<string, string> = {
   triage_enabled: "Fast decisions",
   statement_import_enabled: "Statement import",
   gmail_for_new_accounts: "Gmail for new accounts",
+  conversation_log_enabled: "Message log",
 };
 
 export const limitLabels: Record<string, { label: string; unit: string }> = {
@@ -117,6 +120,7 @@ export const providerLabels: Record<string, string> = {
   knowledge: "Money guides",
   web_search: "Web search",
   coach: "Coach nudges",
+  media_store: "Voice notes and photos (R2)",
   payu: "PayU",
   email: "Email",
 };
@@ -127,6 +131,30 @@ export const providerStateLabels: Record<string, string> = {
   disabled: "Off",
   off: "Off",
   window_only: "Within 24 hours only",
+};
+
+// Kept messages (docs/conversation-round/contract.md): what each kind of message is, and what
+// happened to FinBoy's sends.
+export const messageKindLabels: Record<string, string> = {
+  text: "Message",
+  voice: "Voice note",
+  photo: "Photo",
+  document: "PDF statement",
+  tap: "Tapped a button",
+  command: "Command",
+  buttons: "Message with buttons",
+  list: "Message with a list",
+  voice_reply: "Spoken reply",
+  template: "Template message",
+};
+
+export const messageStatusLabels: Record<string, string> = {
+  sending: "Sending",
+  sent: "Sent",
+  delivered: "Delivered",
+  read: "Read",
+  failed: "Not delivered",
+  unknown: "Delivery unknown",
 };
 
 /** "919876543210" → "+91 98765 43210"; other countries' numbers keep their digits after "+". */

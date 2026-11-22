@@ -113,39 +113,26 @@ def test_a_voice_note_gets_a_hint_only_for_a_chosen_language(
 
 
 @pytest.mark.parametrize(
-    "new_household",
-    [{"joined_via": "whatsapp", "agreed": False}, {"pilot": True}],
-    ids=["self-serve", "pilot"],
+    ("words", "module"),
+    [("Hi", english), ("नमस्ते", hindi), ("നമസ്കാരം", malayalam)],
 )
-@pytest.mark.parametrize(
-    ("words", "kind", "module"),
-    [
-        ("Hi", "text", english),
-        ("नमस्ते", "text", hindi),
-        ("നമസ്കാരം", "text", malayalam),
-        ("", "audio", english),  # nothing is transcribed before agreeing
-    ],
-)
-def test_the_consent_card_follows_the_first_message_and_otherwise_english(
+def test_a_first_greeting_welcomes_in_the_language_it_shows(
     monkeypatch: pytest.MonkeyPatch,
     config: ChannelConfig,
     wa_settings: Settings,
-    new_household: dict,
     words: str,
-    kind: str,
     module: ModuleType,
 ) -> None:
-    factory, receipt, _, meta, _, _, transcribe, _, _ = harness(monkeypatch)
+    factory, receipt, binding, meta, send, _, transcribe, _, finish = harness(monkeypatch)
     session = factory.return_value.__enter__.return_value
-    session.execute.return_value.one_or_none.return_value = household(**new_household)
-    consent = MagicMock(return_value=None)
-    monkeypatch.setattr(processor.pilot, "ask_consent", consent)
-    inbound = question(words, kind)
+    session.execute.return_value.one_or_none.return_value = household(pilot=True, agreed=False)
+    inbound = question(words)
     loop = MagicMock()
     processor.process_question(factory, wa_settings, config, receipt.id, inbound, typing_loop=loop)
     meta.start_typing.assert_called_once_with(loop, inbound.message_id)
-    assert consent.call_args.args[0].words is module
-    assert not transcribe.called
+    assert send.call_args_list[0].kwargs["text"] == module.WELCOME
+    assert binding.consented_at is not None and not transcribe.called
+    assert finish.call_args.kwargs["error"] is None
 
 
 @pytest.mark.parametrize(("last", "module"), [(None, english), ("hi", hindi)])

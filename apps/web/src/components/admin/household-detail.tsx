@@ -1,11 +1,14 @@
 "use client";
 
+import { MessagesSquare } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, type ReactNode } from "react";
 import { CountTable, count, day, Facts, Meter, moment } from "@/components/admin/admin-bits";
 import { HouseholdActions } from "@/components/admin/household-actions";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useResource } from "@/hooks/use-resource";
 import {
   dueLabels,
@@ -207,11 +210,36 @@ function Body({ detail }: { detail: HouseholdDetail }) {
           <p className="text-sm text-ink-soft">No WhatsApp number linked.</p>
         )}
       </Part>
+
+      {detail.messages && (
+        <Part title="Messages">
+          <Facts
+            items={[
+              [
+                "Kept",
+                detail.messages.kept_from
+                  ? `Since ${day(detail.messages.kept_from)}`
+                  : detail.messages.declined_at
+                    ? `No: they said No thanks on ${day(detail.messages.declined_at)}`
+                    : "Not agreed yet",
+              ],
+              ["Messages kept", count(detail.messages.count)],
+            ]}
+          />
+          <Button asChild variant="outline" size="sm" className="mt-3">
+            <Link href={`/admin/households/messages?household=${detail.id}`}>
+              <MessagesSquare aria-hidden="true" />
+              Open messages
+            </Link>
+          </Button>
+        </Part>
+      )}
     </div>
   );
 }
 
-/** Who one household is, its activity and plan; never its records, messages or chats. */
+/** Who one household is, its activity and plan; never its records. Kept messages open on their
+ * own page (docs/conversation-round/contract.md). */
 export function HouseholdDetailView({
   householdId,
   version,

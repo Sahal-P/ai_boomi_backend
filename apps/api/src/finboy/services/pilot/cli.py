@@ -88,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
                 print("Refused: add --confirm to erase this household permanently.")
                 return 2
             with import_lock(engine, args.household), factory() as session:
-                counts = households.erase(session, args.household)
+                counts = households.erase(session, args.household, settings)
             print("Erased:", ", ".join(f"{name} {count}" for name, count in counts.items()))
     except households.PilotError as error:
         print(f"Refused: {error.code}")

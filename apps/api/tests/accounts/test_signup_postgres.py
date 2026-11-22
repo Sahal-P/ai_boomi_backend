@@ -22,8 +22,9 @@ def test_whatsapp_sign_up_from_the_website_end_to_end(world) -> None:
     phone = Phone(pg, settings, config, FIRST)
     with TestClient(create_app(settings)) as browser:
         card, done = sign_in_with_whatsapp(browser, phone)
-        # A new number gets the English consent in the card, then the account is created.
-        assert card["text"].startswith(english.SELF_CONSENT) and "Chrome" not in card["text"]
+        # The card only confirms the sign-in. Terms are on the website.
+        assert card["text"].startswith("🔐 Create your account and sign in")
+        assert "Chrome" not in card["text"]
         assert done["text"] == english.SIGNED_IN
         assert browser.get("/api/v1/auth/whatsapp/status").json()["state"] == "confirmed"
         assert browser.post("/api/v1/auth/whatsapp/complete").status_code == 200
@@ -109,9 +110,8 @@ def test_no_on_the_card_keeps_nothing(world) -> None:
 def test_sign_up_inside_whatsapp_in_hindi(world) -> None:
     settings, pg, config = world
     phone = Phone(pg, settings, config, FIRST)
-    (consent,) = phone.say("नमस्ते FinBoy")
-    assert consent["text"] == hindi.SELF_CONSENT
-    assert phone.tap([consent], "agree")[0]["text"] == hindi.WELCOME
+    (welcome,) = phone.say("नमस्ते FinBoy")
+    assert welcome["text"] == hindi.WELCOME
     with pg() as session:
         user = session.get(User, phone.household())
         assert user is not None and user.consented_at is not None

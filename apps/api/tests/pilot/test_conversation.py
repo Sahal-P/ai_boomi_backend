@@ -14,19 +14,60 @@ from sqlalchemy import select
 from .conftest import Household, make_household
 
 
-def test_nothing_is_recorded_or_answered_before_consent(
+def test_the_log_starts_on_the_first_message_unless_they_declined(
     pilot_factory, settings, channel, monkeypatch
 ) -> None:
+    from dataclasses import replace
+
+    from finboy.db.models.core import User
+    from finboy.services.whatsapp.statement import Statement
+
+    logged = replace(channel, messages=True)
+    home = Household(pilot_factory, settings, logged, monkeypatch, consented=False)
+    assert home.say("नमस्ते") is None
+    assert home.session.get(User, home.user_id).messages_kept_from is not None
+
+    quiet = Household(pilot_factory, settings, channel, monkeypatch, consented=False)
+    assert quiet.say("Hi FinBoy") is None
+    assert quiet.session.get(User, quiet.user_id).messages_kept_from is None
+
+    declined = Household(pilot_factory, settings, logged, monkeypatch)
+    row = declined.session.get(User, declined.user_id)
+    row.messages_declined_at = datetime.now(UTC)
+    declined.session.commit()
+    monkeypatch.setattr(pilot.statement, "read_statements", lambda *_args: [Statement("unclear")])
+    assert declined.say("नमस्ते") is None
+    assert declined.session.get(User, declined.user_id).messages_kept_from is None
+
+
+def test_a_greeting_agrees_and_welcomes(pilot_factory, settings, channel, monkeypatch) -> None:
     home = Household(pilot_factory, settings, channel, monkeypatch, consented=False)
-    monkeypatch.setattr(pilot.assistant, "answer_question", MagicMock(side_effect=AssertionError))
+    assert home.say("नमस्ते") is None
+    assert home.texts() == [hindi.WELCOME] and home.spoke() == 1
+    assert home.binding.consented_at is not None
+
+
+def test_the_first_expense_is_saved_without_a_card(
+    pilot_factory, settings, channel, monkeypatch
+) -> None:
+    from finboy.core.clock import today_ist
+    from finboy.services.whatsapp.statement import Statement
+
+    home = Household(pilot_factory, settings, channel, monkeypatch, consented=False)
+    record = home.record()
+    monkeypatch.setattr(
+        pilot.statement,
+        "read_statements",
+        lambda *_args: [Statement("spent", 50000, "दूधवाले", "cash", today_ist(), "groceries")],
+    )
+    monkeypatch.setattr(
+        pilot.capture,
+        "record_voice",
+        lambda *_args, **_kwargs: Capture("saved", 50000, "दूधवाला", record),
+    )
     assert home.say("दूधवाले को 500 दिए") is None
-    assert home.texts() == [hindi.CONSENT] and home.spoke() == 1
-    assert [title for _, title in home.buttons()] == [hindi.AGREE, hindi.DECLINE]
-    assert home.tap("decline") is None
-    assert home.binding.consented_at is None and home.texts()[-1] == hindi.DECLINED
-    home.say("नमस्ते")
-    assert home.tap("agree") is None
-    assert home.binding.consented_at is not None and home.texts()[-1] == hindi.WELCOME
+    assert home.binding.consented_at is not None
+    assert home.texts()[-1].startswith("✅ जोड़ दिया")
 
 
 def test_yes_confirms_through_the_versioned_decision_and_offers_undo(household) -> None:

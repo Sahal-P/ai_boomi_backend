@@ -34,6 +34,7 @@ from finboy.db.models.mail import ImportRun, MailConnection, OAuthState
 from finboy.db.models.money import Budget, MerchantCategory
 from finboy.db.models.statements import StatementImport
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt
+from finboy.services.conversations import store as conversation_log
 
 # Households that started on WhatsApp but have not agreed yet; newer unknown numbers wait.
 PENDING_LIMIT = 200
@@ -134,14 +135,20 @@ def mask_number(number: str) -> str:
     return "•••• " + number[-4:] if len(number) >= 4 else "••••"
 
 
-def remove_household_data(session: Session, user_id: UUID) -> dict[str, int]:
-    """Delete one household's records, sources, dues, chats, memories and WhatsApp state. Audit
-    history stays."""
+def remove_household_data(
+    session: Session, user_id: UUID, settings: Settings | None = None
+) -> dict[str, int]:
+    """Delete one household's records, sources, dues, chats, memories, kept messages and WhatsApp
+    state. Audit history stays. Kept voice notes and photos go from R2 first, which needs
+    `settings`; without it a household with kept files raises AccessError("try_later")."""
     transactions = select(Transaction.id).where(Transaction.user_id == user_id)
     counts: dict[str, int] = {}
 
     def remove(name: str, statement) -> None:
         counts[name] = session.execute(statement).rowcount or 0
+
+    # The message log and its files (docs/conversation-round/contract.md), before anything else.
+    counts["conversation_messages"] = conversation_log.remove(session, settings, user_id)
 
     # The coach's sent-nudge claims (advisor phase 3); the bindings would cascade to them too.
     remove("advisor_nudges", delete(AdvisorNudge).where(AdvisorNudge.user_id == user_id))
@@ -200,14 +207,16 @@ def discard_pending(session: Session, user_id: UUID) -> None:
     session.delete(user)
 
 
-def erase_household(session: Session, user_id: UUID) -> dict[str, int]:
+def erase_household(
+    session: Session, user_id: UUID, settings: Settings | None = None
+) -> dict[str, int]:
     """Delete my account: everything goes except the numbered row and audit counts."""
     if user_id == LOCAL_USER_ID:
         raise ValueError("owner_household")
     user = session.get(User, user_id, with_for_update=True)
     if user is None or user.joined_via is None or user.deleted_at is not None:
         raise ValueError("not_found")
-    counts = remove_household_data(session, user_id)
+    counts = remove_household_data(session, user_id, settings)
     remove_sign_in(session, user_id)
     user.display_name = None
     user.deleted_at = datetime.now(UTC)

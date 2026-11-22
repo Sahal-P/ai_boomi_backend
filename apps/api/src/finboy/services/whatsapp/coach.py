@@ -29,6 +29,7 @@ from finboy.db.models.core import User
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppCheckin, WhatsAppReminder
 from finboy.services.advisor import coach, history
 from finboy.services.advisor.tools import EngineToolbox, Toolbox
+from finboy.services.conversations import store
 from finboy.services.whatsapp import checkin, prompts, reminders
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.meta import MetaClient, MetaUnavailable, SendUnknown
@@ -294,6 +295,16 @@ def send_nudges(
                 except MetaUnavailable:
                     row.state = "failed"
             row.updated_at = datetime.now(UTC)
+            store.add_sent(
+                session,
+                config.messages,
+                user_id=binding.user_id,
+                kind="buttons" if stop is not None else "template",
+                text=text,
+                choices=[words.COACH_NO] if stop is not None else [],
+                outcome=row.state,
+                language=language,
+            )
             if row.state in {"sent", "unknown"}:
                 # What the household was sent joins its chat, so a reply continues it.
                 history.save_nudge(

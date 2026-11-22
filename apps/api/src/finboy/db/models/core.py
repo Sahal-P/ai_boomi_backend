@@ -37,3 +37,8 @@ class User(Base):
     monthly_savings_goal_minor: Mapped[int | None] = mapped_column(BigInteger)
     # The advisor reads and writes its memory only while this is on (docs/advisor-round).
     memory_enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    # Conversation round (docs/conversation-round/contract.md): from when FinBoy keeps this
+    # household's messages, voice notes and photos. The owner always has it.
+    messages_kept_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set when a household declined keeping them. Recording stays off.
+    messages_declined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

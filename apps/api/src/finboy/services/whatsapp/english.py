@@ -56,27 +56,10 @@ CATEGORY = {
 # Reply-button titles (Meta allows 20 characters; these stay under).
 YES, CHANGE, NO = "✅ Yes, correct", "✏️ Change amount", "❌ No"
 UNDO = "↩️ Undo"
-AGREE, DECLINE = "✅ Yes, I agree", "❌ No"
 PAID, LATER = "✅ Paid", "⏰ Not yet"
 REMIND, AGAIN = "🔔 Yes, remind me", "✅ Yes, next month"
 SIGN_IN_YES, CREATE_YES, LINK_YES = "✅ Yes, it's me", "✅ Yes, create it", "✅ Yes, link it"
 
-CONSENT = (
-    "Hi! I'm FinBoy. 🙏\n"
-    "Keep track of your money just by talking.\n\n"
-    "I only write down: the amount, the date, who you paid or who paid you, and what it was for.\n"
-    "I don't keep your voice notes, photos or messages.\n"
-    "Only you can see your records. You can delete everything on the FinBoy website "
-    "(Privacy → Delete my account).\n"
-    'Send "STOP" any time to stop.\n'
-    "हिंदी: hindi · മലയാളം: ml\n\n"
-    "Do you agree?"
-)
-CONSENT_SPEECH = (
-    "Hi! I'm FinBoy. You can keep track of your money just by talking. I don't keep your voice "
-    "notes, photos or messages, only the amount, the date and who it was for. If you agree, "
-    "tap yes."
-)
 WELCOME = (
     "Thank you! 🙏\n"
     "Now just send what you spent or got:\n"
@@ -90,7 +73,6 @@ WELCOME_SPEECH = (
     "Thank you! Now just send what you spent, like, paid the milkman five hundred. "
     "I save it at once. Send this month to see your month."
 )
-DECLINED = 'OK. Nothing was kept. If you change your mind, send "Hi".'
 EXPIRED = "This button doesn't work any more. Send a new message."
 CHANGED = "This record has already changed. Send a new message."
 UNDO_REFUSED = "This can't be undone now — something else changed after it."
@@ -263,17 +245,6 @@ SAFETY = (
     "Only tap yes if you started this yourself on the FinBoy website just now. "
     "Never send a code that someone else gave you."
 )
-SELF_CONSENT = (
-    "Hi! I'm FinBoy. 🙏\n"
-    "Keep track of your money just by talking.\n\n"
-    "I only write down: the amount, the date, who you paid or who paid you, and what it was for.\n"
-    "I don't keep your voice notes, photos or messages.\n"
-    "Only you can see your records. You can delete everything on the FinBoy website "
-    "(Privacy → Delete my account).\n"
-    'Send "STOP" any time to stop.\n'
-    "हिंदी: hindi · മലയാളം: ml\n\n"
-    "Do you agree?"
-)
 
 
 def sign_in_card(device: str) -> str:
@@ -281,7 +252,7 @@ def sign_in_card(device: str) -> str:
 
 
 def signup_card(device: str) -> str:
-    return f"{SELF_CONSENT}\n\n🔐 Create your account and sign in on {device}?\n{SAFETY}"
+    return f"🔐 Create your account and sign in on {device}?\n{SAFETY}"
 
 
 def link_card(device: str) -> str:

@@ -76,7 +76,7 @@ def erase_self_serve(
         mandates.revoke_before_erasure(session, settings, user_id)
         revoke_gmail(session, settings, user_id)
         try:
-            counts = erase_household(session, user_id)
+            counts = erase_household(session, user_id, settings)
         except ValueError:
             session.rollback()
             raise
@@ -87,13 +87,18 @@ def erase_self_serve(
 
 
 def erase_pilot(
-    session: Session, engine: Engine, user_id: UUID, *, also: Callable[[], None] = _nothing
+    session: Session,
+    engine: Engine,
+    user_id: UUID,
+    *,
+    also: Callable[[], None] = _nothing,
+    settings: Settings | None = None,
 ) -> dict[str, int]:
     """A pilot household's records and WhatsApp state, as `pilot.cli erase` does. Raises
     PilotError or MailError("import_busy"); `pilot_households.erase` commits `also` with it."""
     with import_lock(engine, user_id):
         also()
-        return pilot_households.erase(session, user_id)
+        return pilot_households.erase(session, user_id, settings)
 
 
 def discard(session: Session, user_id: UUID, *, also: Callable[[], None] = _nothing) -> None:

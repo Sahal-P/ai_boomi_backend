@@ -57,7 +57,11 @@ export function Hero() {
           </div>
           <p className="mt-5 max-w-[30rem] text-sm leading-relaxed text-sunflower-ink">
             Text entries and typed questions are free. Voice and photo reading are Premium: {PREMIUM_PRICE} a month after{" "}
-            {TRIAL_DAYS} free days. No card needed.
+            {TRIAL_DAYS} free days. No card needed. By continuing, you agree to our{" "}
+            <Link href="/terms" className="font-semibold text-ink underline underline-offset-4">
+              terms and conditions
+            </Link>
+            .
           </p>
           <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[13px] font-semibold text-sunflower-ink">
             {assurances.map((item) => (

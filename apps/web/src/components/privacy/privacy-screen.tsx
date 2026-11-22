@@ -197,12 +197,20 @@ export function PrivacyScreen() {
           <p className="mt-1 text-ink-soft">
             Financial emails are never used to train models. Relevant content may be processed by the
             backend&apos;s extraction provider to create structured records. Voice is transcribed by
-            the configured speech provider (Sarvam AI, Groq or OpenAI) and never stored. Questions
+            the configured speech provider (Sarvam AI, Groq or OpenAI). Questions
             are sent to OpenAI to understand and word the reply; household
             record amounts are calculated by FinBoy and are not sent for answer wording.
             Liquid AI quickly tells what a message, question or photo is about, so common ones are
             answered sooner; it gets no record amounts.
-            Where WhatsApp is enabled, payment screenshots are read by OpenAI and never stored.
+            Where WhatsApp is enabled, payment screenshots are read by OpenAI.
+          </p>
+          <h3 className="mt-5 font-semibold">Kept messages</h3>
+          <p className="mt-1 text-ink-soft">
+            If you agreed on WhatsApp that FinBoy keeps your messages, your messages, voice notes and
+            photos and FinBoy&apos;s replies are kept, and the FinBoy team can see them to help you
+            and fix mistakes. Typed card, account and phone numbers, UPI IDs and login codes are
+            hidden first. Clear chat history on the Memory page, or send &ldquo;clear chat
+            history&rdquo; on WhatsApp, to delete them.
           </p>
         </aside>
       </div>

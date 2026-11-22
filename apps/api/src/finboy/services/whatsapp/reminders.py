@@ -20,6 +20,7 @@ from finboy.db.models.core import User
 from finboy.db.models.ledger import Commitment
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppReminder
 from finboy.services.assistant.language import money
+from finboy.services.conversations import store
 from finboy.services.whatsapp import hindi, prompts
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.meta import MetaClient, MetaUnavailable, SendUnknown
@@ -184,6 +185,15 @@ def send_reminders(
                 except MetaUnavailable:
                     reminder.state = "failed"
             reminder.updated_at = datetime.now(UTC)
+            store.add_sent(
+                session,
+                config.messages,
+                user_id=due.binding.user_id,
+                kind="template",
+                text=f"{template}: " + " · ".join(parameters),
+                outcome=reminder.state,
+                language="hi",
+            )
             session.commit()
             counts[reminder.state] += 1
     return counts

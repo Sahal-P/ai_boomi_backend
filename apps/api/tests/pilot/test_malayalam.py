@@ -22,8 +22,6 @@ BUTTONS = [
     "CHANGE",
     "NO",
     "UNDO",
-    "AGREE",
-    "DECLINE",
     "PAID",
     "LATER",
     "REMIND",
@@ -96,17 +94,13 @@ def kerala(pilot_factory, settings, channel, monkeypatch) -> Household:
     return home
 
 
-def test_consent_and_welcome_are_in_malayalam(pilot_factory, settings, channel, monkeypatch):
+def test_a_greeting_welcomes_in_malayalam(pilot_factory, settings, channel, monkeypatch):
     home = Household(pilot_factory, settings, channel, monkeypatch, consented=False)
     home.binding.language = "ml"
     home.session.commit()
-    assert home.say("പാൽക്കാരന് 500 കൊടുത്തു") is None
-    assert home.texts() == [malayalam.CONSENT] and home.spoke() == 1
-    assert [title for _, title in home.buttons()] == [malayalam.AGREE, malayalam.DECLINE]
-    assert home.tap("decline") is None and home.texts()[-1] == malayalam.DECLINED
-    home.say("നമസ്കാരം")
-    assert home.tap("agree") is None
-    assert home.binding.consented_at is not None and home.texts()[-1] == malayalam.WELCOME
+    assert home.say("നമസ്കാരം") is None
+    assert home.texts() == [malayalam.WELCOME] and home.spoke() == 1
+    assert home.binding.consented_at is not None
 
 
 def test_a_record_card_yes_and_undo_in_malayalam(kerala: Household) -> None:

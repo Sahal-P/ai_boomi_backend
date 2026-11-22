@@ -41,16 +41,16 @@ production and access rule stays binding.
 - **Sign-up inside WhatsApp:** a link or QR opens WhatsApp with "Hi FinBoy" typed. The website
   shows "Prefer WhatsApp? Say hi to FinBoy" on the landing page and `/login` while sign-ups are
   open; a printed QR can carry "नमस्ते" instead. When `SIGNUP_ENABLED` is on, a message from an
-  unknown number creates a household that has not yet agreed, plus its binding. Replies start
+  unknown number creates a household, plus its binding. Replies start
   in English and follow each message (since 29 October 2026,
-  [Reply language](../whatsapp.md#reply-language-29-october-2026)). The existing consent card
-  follows, in that language. Nothing else
-  works until "Yes", and "No" erases the new household and keeps nothing.
+  [Reply language](../whatsapp.md#reply-language-29-october-2026)). The first message continues:
+  a greeting gets the welcome, and anything else is a diary message. The conversation round
+  removed the agree card.
 - **Limits:** at most 200 households that haven't agreed exist at once; a newer unknown number is
   ignored. Households that never agree are removed after 7 days: each new admission tidies a
   bounded batch, and `python -m finboy.services.accounts.cli tidy` does the same on demand
   (`counts` prints only the agreed, pending, limit and waitlist counts). When `SIGNUP_LIMIT`
-  households have agreed, a new number gets the "full" reply instead of the consent card. JOIN
+  households have agreed, a new number gets the "full" reply instead of a welcome. JOIN
   adds it to `signup_waitlist` and then removes the household.
 - **Web sign-in with WhatsApp:**
   1. "Continue with WhatsApp" creates a login request bound to that browser by a random nonce

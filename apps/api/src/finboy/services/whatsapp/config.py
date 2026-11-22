@@ -32,6 +32,9 @@ class ChannelConfig:
     # Google Pay statement PDFs (docs/statement-round/contract.md); while off, documents are
     # acknowledged and ignored exactly as before the statement round.
     statements: bool = False
+    # Conversation round (docs/conversation-round/contract.md): keep the messages of households
+    # that use FinBoy. While off nothing is written.
+    messages: bool = False
 
     def digest(self, purpose: str, value: str | bytes) -> str:
         return keyed_digest(self.hash_key, purpose, value)
@@ -88,4 +91,5 @@ def channel_config(settings: Settings) -> ChannelConfig:
         timeout=settings.whatsapp_timeout_seconds,
         max_body=settings.whatsapp_max_webhook_bytes,
         statements=settings.statement_import_enabled,
+        messages=settings.conversation_log_enabled,
     )

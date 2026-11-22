@@ -38,8 +38,7 @@ def billing(settings):
 def joined(pg, settings, config, number: str, *, days_ago: int) -> Phone:
     """A household that signed up on WhatsApp `days_ago` days ago."""
     phone = Phone(pg, settings, config, number)
-    (consent,) = phone.say("Hi FinBoy")
-    phone.tap([consent], "agree")
+    phone.say("Hi FinBoy")
     with pg() as session:
         user = session.get(User, phone.household())
         user.consented_at = datetime.now(UTC) - timedelta(days=days_ago)

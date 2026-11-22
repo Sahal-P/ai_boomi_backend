@@ -63,6 +63,8 @@ class AccessError(Exception):
         "action_not_allowed": (409, "That action isn't available for this household."),
         "confirmation_mismatch": (422, "The confirmation doesn't match. Nothing changed."),
         "not_found": (404, "That wasn't found."),
+        # Conversation round: a kept voice note or photo while R2 can't be reached.
+        "media_unavailable": (503, "That file can't be opened right now. Please try again soon."),
     }
 
     def __init__(self, code: str) -> None:

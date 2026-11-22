@@ -98,6 +98,32 @@ test("find a household by its exact number, see who it is, then suspend and rest
   await expect(page.getByRole("button", { name: "Suspend", exact: true })).toBeVisible();
 });
 
+test("a household's kept messages read like its WhatsApp chat, with files opened on request", async ({ page }) => {
+  await page.goto(`/admin/households?selected=${adminIds.family}`);
+  const part = page.getByRole("region", { name: "Messages" });
+  await expect(part).toContainText("Since");
+  await part.getByRole("link", { name: "Open messages" }).click();
+  await expect(page).toHaveTitle("Messages · FinBoy admin");
+  await expect(page.getByRole("heading", { level: 1, name: "Messages" })).toBeVisible();
+  await expect(page.getByText("chai 20, auto 50")).toBeVisible();
+  await expect(page.getByText("Paid the milkman 500 rupees")).toBeVisible();
+  await expect(page.getByText("Tapped a button: Undo")).toBeVisible();
+  await expect(page.getByText("can i afford a bike this year?")).toBeVisible();
+  await page.getByRole("button", { name: /Play voice note/ }).click();
+  await expect(page.locator("audio")).toHaveAttribute("src", /^blob:/);
+  await page.getByRole("button", { name: /Show photo/ }).click();
+  await expect(page.getByRole("img", { name: "Photo the household sent" })).toBeVisible();
+  await page.goto("/admin/audit");
+  await expect(page.getByText("Opened a voice note or photo").first()).toBeVisible();
+  await expect(page.getByText("Read a household's messages").first()).toBeVisible();
+});
+
+test("a household that said No thanks has no kept messages", async ({ page }) => {
+  await page.goto(`/admin/households/messages?household=${adminIds.pilot}`);
+  await expect(page.getByText(/said No thanks to keeping its messages/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Play voice note/ })).toHaveCount(0);
+});
+
 test("an unknown number finds nothing, part of a name finds its household, and filters narrow the list", async ({ page }) => {
   await page.goto("/admin/households?q=9812345679");
   await expect(page.getByRole("heading", { name: "No household matches that search" })).toBeVisible();
@@ -239,6 +265,7 @@ test("every admin page has a task title, one heading and no sideways scroll", as
   for (const [path, title] of [
     ["/admin", "Overview · FinBoy admin"],
     ["/admin/households", "Households · FinBoy admin"],
+    [`/admin/households/messages?household=${adminIds.family}`, "Messages · FinBoy admin"],
     ["/admin/payments", "Payments · FinBoy admin"],
     ["/admin/signups", "Sign-ups · FinBoy admin"],
     ["/admin/system", "System · FinBoy admin"],

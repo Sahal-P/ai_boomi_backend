@@ -50,8 +50,9 @@ type Copy = {
 
 const ERASE_BODY: Record<HouseholdDetail["kind"], string> = {
   self_serve:
-    "This deletes the household's records, sign-in and plan, turns AutoPay off at the bank and revokes Gmail, exactly as “Delete my account” does. FinBoy's own payment records stay.",
-  pilot: "This erases the household's records and WhatsApp state, as the pilot eraser does. Its row stays as a former pilot.",
+    "This deletes the household's records, kept messages, voice notes and photos, sign-in and plan, turns AutoPay off at the bank and revokes Gmail, exactly as “Delete my account” does. FinBoy's own payment records stay.",
+  pilot:
+    "This erases the household's records, kept messages, voice notes and photos and WhatsApp state, as the pilot eraser does. Its row stays as a former pilot.",
   pending: "This sign-up never agreed, so nothing of it is kept.",
   owner: "",
   former_pilot: "",

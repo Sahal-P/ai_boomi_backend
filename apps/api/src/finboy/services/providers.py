@@ -94,6 +94,19 @@ def web_search(settings: Settings) -> Literal["off", "configured", "missing"]:
     return "configured" if ready else "missing"
 
 
+def media_store(settings: Settings) -> Literal["off", "configured", "missing"]:
+    """Cloudflare R2 for kept voice notes and photos (docs/conversation-round/contract.md)."""
+    if not settings.conversation_log_enabled:
+        return "off"
+    ready = (
+        settings.r2_account_id
+        and settings.r2_access_key_id
+        and settings.r2_secret_access_key
+        and settings.r2_bucket
+    )
+    return "configured" if ready else "missing"
+
+
 def coach(settings: Settings) -> Literal["off", "window_only", "configured"]:
     """The coach (advisor phase 3): `window_only` until Meta approves its template, when nudges
     reach only households that wrote to FinBoy in the last day."""

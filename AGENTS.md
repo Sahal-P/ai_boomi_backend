@@ -329,3 +329,26 @@ One agent on feat/finboy-names-web-search, loopback 8111/3111, disposable finboy
 `0019_names`. `ADVISOR_WEB_SEARCH_ENABLED` stays false until a live search check and
 `pnpm eval:advisor` pass and the human approves the release. Only the search question leaves
 FinBoy, never an amount, and nothing it returns is stored or logged.
+
+## Conversation round — 22 November 2026
+
+From main 53749df the human asked for the WhatsApp conversation to be kept for the admin panel:
+messages in and out, voice notes with their transcripts, and photos, playable and viewable by
+admins. The first WhatsApp message continues, with no agree card. The landing hero says that
+continuing agrees to the terms, which say messages, voice notes and photos are kept and that the
+FinBoy team can see them. Replies carry no other notice.
+
+Files go to Cloudflare R2 (the marketing app's existing keys and private bucket, in their own
+`finboy-conversations/` folder), with no app-level encryption. Everything is kept until "clear chat
+history", "Delete my account" or an admin's erase.
+
+`docs/conversation-round/contract.md` supersedes these statements only as documented there:
+- the "never store messages, audio, images or transcripts" statements;
+- "admins never see chats";
+- "PostgreSQL is the only persistent service".
+
+One agent on feat/finboy-conversation-log, loopback 8121/3121, disposable finboy_signup, migration
+`0020_conversations`, new dependency `boto3`. `CONVERSATION_LOG_ENABLED` stays false until the
+human releases it. Statement PDFs
+and login codes are never kept; typed card, account and phone numbers and UPI IDs are masked; logs
+never carry message text; and every admin view and file opened is audited.

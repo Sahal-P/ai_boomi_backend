@@ -18,6 +18,7 @@ from finboy.db.models.ledger import (
 )
 from finboy.db.models.mail import MailConnection
 from finboy.services.advisor import memory
+from finboy.services.conversations import store
 from finboy.services.money.engine import commitment_view, transaction_views
 from finboy.services.money.models import RevisionView
 from finboy.services.privacy.audit import audit
@@ -209,6 +210,8 @@ def export_records(session: Session, *, user_id: UUID) -> dict:
             memory.view(row).model_dump(mode="json") for row in memory.listed(session, user_id)
         ],
         "chats": _chats(session, user_id),
+        # Conversation round: kept WhatsApp messages and transcripts (the files stay in R2).
+        "messages": store.exported(session, user_id),
     }
     audit(session, "data.exported", "user", user_id, user_id=user_id)
     session.commit()

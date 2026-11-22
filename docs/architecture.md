@@ -1,7 +1,8 @@
 # FinBoy architecture
 
 FinBoy is one FastAPI service for private households in `apps/api`, one Next.js App Router
-application in `apps/web`, and PostgreSQL. HTTP routes validate contracts; synchronous
+application in `apps/web`, and PostgreSQL. Kept voice notes and photos of households that agreed
+are files in a private Cloudflare R2 bucket (conversation round). HTTP routes validate contracts; synchronous
 services own blocking work and write transactions; `db` owns SQLAlchemy metadata and
 sessions; `core` owns settings, access, errors, clocks and redacted logging. There is
 no startup `create_all`, queue service, payment execution or external analytics.
@@ -45,6 +46,13 @@ environment; the household cookie never opens them. Responses are the models in
 `services/admin/views.py`: activity only, never a household's records or contact details. A
 suspended household (`users.suspended_at`) is refused by `CurrentUser`, sign-in, WhatsApp
 replies, reminders, pay links and renewals. See the [admin contract](admin-round/contract.md).
+
+`services/conversations` owns the message log of households that agreed
+(`CONVERSATION_LOG_ENABLED`, off by default). `store.py` writes rows at admission, in `send_reply`
+and where speech-to-text runs; it uploads voice notes and photos to R2 after the reply and removes
+a household's R2 folder before its rows. `r2.py` builds every object key from IDs. The admin
+messages page (`services/admin/messages.py`) is the one admin view that carries content, and each
+page and file opened is audited. See the [conversation contract](conversation-round/contract.md).
 
 ## Sources, ledger and scope
 

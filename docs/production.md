@@ -891,3 +891,44 @@ Honda Activa?" shows "Searching the web…" and an answer with "From the web" li
 
 **Rollback:** set `ADVISOR_WEB_SEARCH_ENABLED=false` and restart; Ask asks for prices and rates
 again. Names stay; migration `0019` can be downgraded.
+
+## Conversation log release
+
+`feat/finboy-conversation-log` ([contract](conversation-round/contract.md)) adds migration
+`0020_conversations` and the `boto3` dependency. Released with the flag off, nothing changes for
+households. The admin household panel gains a "Messages" part, and the privacy notice says what is
+kept for households that agree.
+
+**Release** (with the human's approval at the time):
+1. Backend first:
+   - a validated backup, `alembic upgrade head` for `0020`, then a drift check;
+   - `df -h /var/lib/finboy` for free disk. Files go to R2, but backups still grow with text.
+2. Push main for the web. The privacy policy, Privacy & data, the landing and the admin Messages
+   page go live together.
+3. When the human turns the log on:
+   - add the R2 values to `/etc/finboy/production.env` over SSH stdin, never echoed or typed into
+     chat;
+   - check egress to `<account>.r2.cloudflarestorage.com`;
+   - restart `finboy.service` only.
+
+   ```
+   CONVERSATION_LOG_ENABLED=true
+   R2_ACCOUNT_ID=<from the marketing app's private grant>
+   R2_ACCESS_KEY_ID=<from the marketing app's private grant>
+   R2_SECRET_ACCESS_KEY=<from the marketing app's private grant>
+   R2_BUCKET=finboy-growth-media
+   ```
+
+   `R2_PREFIX` stays unset, so production writes under `finboy-conversations/`.
+
+**Check:**
+- The admin System page shows "Message log: On" and "Voice notes and photos (R2): Configured".
+- A household's next voice note shows under Messages with a playable recording and what was
+  heard. The first message did not ask them to agree again.
+- The audit log shows "Read a household's messages" and "Opened a voice note or photo".
+- Logs show `conversation.log_failed` (stage only) if anything fails, never words or file names.
+
+**Rollback:** set `CONVERSATION_LOG_ENABLED=false` and restart. Recording stops. Kept messages
+stay until cleared. Keep the R2 values while any
+file remains: erasure deletes the files before their rows and answers `try_later` without them.
+Migration `0020` downgrades only once no messages remain.

@@ -15,7 +15,7 @@ const FACTS = [
   {
     icon: EyeOff,
     title: "Know what is kept",
-    body: "Diary messages are kept as records, not as messages; voice notes, photos and statement PDFs aren’t kept. Questions to Ask FinBoy and its answers are saved as chats, which you can delete.",
+    body: "Diary messages are kept as records. Statement PDFs are never kept. Questions to Ask FinBoy and its answers are saved as chats, which you can delete.",
   },
   {
     icon: ScanText,
@@ -37,7 +37,7 @@ export function TrustSection() {
           id="privacy-title"
           eyebrow="Privacy"
           title="Know what FinBoy keeps."
-          description="Only you can see your records. This is what FinBoy sees, keeps and lets you remove."
+          description="This is what FinBoy sees, keeps and lets you remove."
         />
         <ul className="mt-8 grid gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           {FACTS.map(({ icon: Icon, title, body }, index) => (

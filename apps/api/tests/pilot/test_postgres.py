@@ -162,9 +162,8 @@ def phone(pg, channel: ChannelConfig, monkeypatch) -> Iterator[Phone]:
 
 
 def test_a_pilot_household_end_to_end(pg, phone: Phone) -> None:
-    (consent,) = phone.say("नमस्ते")
-    assert consent["text"] == hindi.CONSENT and consent["to"] == NUMBER
-    assert phone.tap([consent], "agree")[0]["text"] == hindi.WELCOME
+    (welcome,) = phone.say("नमस्ते")
+    assert welcome["text"] == hindi.WELCOME and welcome["to"] == NUMBER
 
     # Spoken money goes through the real pipeline and is saved at once by a versioned decision.
     (saved,) = phone.say("दूधवाले को 500 नकद दिए")
@@ -310,8 +309,7 @@ def test_numbers_of_households_that_are_not_enrolled_are_ignored(
 def test_template_statuses_reach_only_the_matching_households_reminder(
     pg, phone: Phone, channel: ChannelConfig
 ) -> None:
-    (consent,) = phone.say("नमस्ते")
-    phone.tap([consent], "agree")
+    phone.say("नमस्ते")
     with pg() as session:
         binding = session.scalars(
             select(WhatsAppBinding).where(WhatsAppBinding.user_id == phone.user_id)
@@ -359,8 +357,7 @@ def test_template_statuses_reach_only_the_matching_households_reminder(
 def test_erasure_leaves_nothing_of_the_household_and_never_touches_the_owner(
     pg, phone: Phone
 ) -> None:
-    (consent,) = phone.say("नमस्ते")
-    phone.tap([consent], "agree")
+    phone.say("नमस्ते")
     phone.say("दूधवाले को 500 नकद दिए")
     with pg() as session:
         owner_records = session.scalar(

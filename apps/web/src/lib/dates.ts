@@ -16,6 +16,7 @@ const dayTime = new Intl.DateTimeFormat("en-IN", {
   minute: "2-digit",
   timeZone: IST,
 });
+const time = new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", timeZone: IST });
 const monthYear = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" });
 
 const isDateOnly = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -33,6 +34,11 @@ export function formatDay(value: string): string {
 /** "24 Oct 2026, 9:00 am IST" — for instants where the time matters. */
 export function formatDayTime(value: string): string {
   return isDateOnly(value) ? formatDay(value) : `${dayTime.format(new Date(value))} IST`;
+}
+
+/** "9:00 am" — an instant's time of day in IST, beside a day shown elsewhere. */
+export function formatTime(value: string): string {
+  return time.format(new Date(value));
 }
 
 export function formatRange(start: string | null, end: string | null): string | null {

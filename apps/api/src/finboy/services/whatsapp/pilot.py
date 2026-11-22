@@ -4,8 +4,9 @@ Runs for pilot households (`users.pilot`, docs/pilot/contract.md) and for self-s
 (docs/signup-round/contract.md), in the person's language (services/whatsapp/language.py). Money
 a household sends is saved at once and can be undone, changed or re-categorised by button; FinBoy
 asks first only when it is unsure (docs/money-manager-round/contract.md). Each inbound message gets
-at most one text-or-buttons reply plus one spoken reply. Nothing a household says is stored:
-records go through the existing review decisions, and prompts keep only IDs and fingerprints.
+at most one text-or-buttons reply plus one spoken reply. Records go through the existing review
+decisions and prompts keep only IDs and fingerprints; what a household says is kept only in the
+message log of a household that agreed (docs/conversation-round/contract.md).
 """
 
 import logging
@@ -18,7 +19,7 @@ from typing import get_args
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from finboy.core.clock import today_ist
@@ -34,6 +35,7 @@ from finboy.services.advisor import service as advisor
 from finboy.services.assistant import service as assistant
 from finboy.services.assistant.language import money
 from finboy.services.assistant.models import AssistantAnswer
+from finboy.services.conversations import store
 from finboy.services.ingestion.hindi_numbers import only_amount, parse_amount
 from finboy.services.ingestion.types import Category
 from finboy.services.money import budgets, merchants
@@ -177,6 +179,7 @@ class Conversation:
                 self.receipt,
                 self.question,
                 media_id=media_id,
+                spoken=text,
             )
         except ProviderUnavailable, MetaUnavailable, InvalidAudio:
             logger.info("whatsapp.pilot_audio_unavailable", extra={"outcome": "text_only"})
@@ -185,8 +188,80 @@ class Conversation:
         return error or (None if sent else "provider_unavailable")
 
 
+# A first "Hi FinBoy" (the website's prefilled send) is a greeting, not an expense.
+_GREETINGS = frozenset(
+    {
+        "hi",
+        "hi finboy",
+        "hello",
+        "hello finboy",
+        "hey",
+        "namaste",
+        "नमस्ते",
+        "नमस्ते finboy",
+        "namaskaram",
+        "നമസ്കാരം",
+    }
+)
+
+
+def _greeting(question: InboundQuestion) -> bool:
+    if question.kind != "text":
+        return False
+    return " ".join(question.text.split()).casefold() in _GREETINGS
+
+
+def _note_kept(conversation: Conversation) -> None:
+    """With the log on, keep messages from now. A household that declined stays declined."""
+    if not conversation.config.messages:
+        return
+    conversation.session.execute(
+        update(User)
+        .where(
+            User.id == conversation.binding.user_id,
+            User.messages_kept_from.is_(None),
+            User.messages_declined_at.is_(None),
+        )
+        .values(messages_kept_from=datetime.now(UTC))
+    )
+
+
+def begin(conversation: Conversation, *, welcome: bool) -> tuple[bool, str | None]:
+    """The first message agrees and continues. A greeting gets the welcome and stops.
+
+    Returns whether the caller should keep handling this message, and the receipt error when
+    the reply is already done.
+    """
+    binding = conversation.binding
+    if binding.consented_at is not None:
+        _note_kept(conversation)
+        return True, None
+    words = conversation.words
+    if conversation.self_serve and not households.signup_open(
+        conversation.session, conversation.settings
+    ):
+        conversation.session.rollback()
+        return False, conversation.done(conversation.send(words.FULL), "signup_full")
+    if conversation.self_serve:
+        user = conversation.session.get(User, binding.user_id, with_for_update=True)
+        if user is None or not households.agree(conversation.session, conversation.settings, user):
+            conversation.session.rollback()
+            return False, conversation.done(conversation.send(words.FULL), "signup_full")
+    binding.consented_at = datetime.now(UTC)
+    _note_kept(conversation)
+    conversation.session.commit()
+    if not welcome:
+        return True, None
+    sent = conversation.send(words.WELCOME)
+    if sent:
+        conversation.speak(words.WELCOME_SPEECH)
+    return False, conversation.done(sent)
+
+
 def handle(conversation: Conversation) -> str | None:
     """Returns the receipt error code (None when the household got a correct reply)."""
+    if conversation.binding.consented_at is not None:
+        _note_kept(conversation)
     error = _handle(conversation)
     if conversation.binding.consented_at is not None:
         _remind(conversation)
@@ -201,7 +276,9 @@ def _handle(conversation: Conversation) -> str | None:
     if question.kind == "button":
         return _tap(conversation)
     if binding.consented_at is None:
-        return ask_consent(conversation)
+        keep, error = begin(conversation, welcome=_greeting(question))
+        if not keep:
+            return error
     if question.kind == "image":
         return _screenshot(conversation)
     try:
@@ -219,6 +296,8 @@ def _handle(conversation: Conversation) -> str | None:
         return summary(conversation)
     advising = conversation.settings.advisor_enabled
     command = memory_commands.command(text) if advising else None
+    if command is None and conversation.config.messages:
+        command = memory_commands.clearing(text)  # kept messages can always be cleared
     if command is None and conversation.settings.coach_active:
         command = coaching.command(text)  # "coach on" / "coach off" (advisor phase 3)
     if command is not None:
@@ -320,33 +399,17 @@ def _heard(conversation: Conversation) -> str:
             language_hint=conversation.binding.language,
         )
         text = heard.transcript
+        store.note_transcript(
+            conversation.session.get_bind(),
+            conversation.receipt.id,
+            text,
+            heard.detected_language,
+        )
         if heard.detected_language in WORDS:
             conversation.heard = heard.detected_language
     if not 1 <= len(text.strip()) <= 2000:
         raise ProviderUnavailable("invalid_audio")
     return text
-
-
-def ask_consent(conversation: Conversation) -> str | None:
-    words = conversation.words
-    if conversation.self_serve and not households.signup_open(
-        conversation.session, conversation.settings
-    ):
-        # FinBoy is full: no consent card, only the waitlist (JOIN is handled by the processor).
-        conversation.session.rollback()
-        return conversation.done(conversation.send(words.FULL), "signup_full")
-    prompt = prompts.open_prompt(conversation.session, conversation.binding, "consent")
-    conversation.session.commit()
-    sent = conversation.send(
-        words.SELF_CONSENT if conversation.self_serve else words.CONSENT,
-        [
-            (prompts.button(prompt, "agree"), conversation.words.AGREE),
-            (prompts.button(prompt, "decline"), conversation.words.DECLINE),
-        ],
-    )
-    if sent:
-        conversation.speak(conversation.words.CONSENT_SPEECH)
-    return conversation.done(sent)
 
 
 def _tap(conversation: Conversation) -> str | None:
@@ -357,34 +420,7 @@ def _tap(conversation: Conversation) -> str | None:
     if prompt is None or parsed is None or handler is None:
         session.rollback()
         return conversation.done(conversation.send(conversation.words.EXPIRED), "prompt_expired")
-    if prompt.purpose != "consent" and binding.consented_at is None:
-        session.rollback()
-        return ask_consent(conversation)
     return handler(conversation, prompt, parsed[1])
-
-
-def _consent(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> str | None:
-    session, binding, words = conversation.session, conversation.binding, conversation.words
-    prompts.answer(prompt)
-    if choice == "agree" and conversation.self_serve:
-        user = session.get(User, binding.user_id, with_for_update=True)
-        if user is None or not households.agree(session, conversation.settings, user):
-            session.rollback()
-            return conversation.done(conversation.send(words.FULL), "signup_full")
-    if choice == "agree":
-        binding.consented_at = datetime.now(UTC)
-    session.commit()
-    if choice != "agree":
-        sent = conversation.send(words.DECLINED)
-        if conversation.self_serve:
-            # A household that never agreed keeps nothing (docs/signup-round/contract.md).
-            households.discard_pending(session, binding.user_id)
-            session.commit()
-        return conversation.done(sent)
-    sent = conversation.send(conversation.words.WELCOME)
-    if sent:
-        conversation.speak(conversation.words.WELCOME_SPEECH)
-    return conversation.done(sent)
 
 
 def _record(conversation: Conversation, transaction_id: UUID | None) -> Transaction | None:
@@ -1430,8 +1466,6 @@ def _repeat(conversation: Conversation, prompt: WhatsAppPrompt, choice: str) -> 
 
 
 HANDLERS: dict[tuple[str, str], Callable[[Conversation, WhatsAppPrompt, str], str | None]] = {
-    ("consent", "agree"): _consent,
-    ("consent", "decline"): _consent,
     ("confirm", "yes"): _decide,
     ("confirm", "no"): _decide,
     ("confirm", "change"): _ask_amount,

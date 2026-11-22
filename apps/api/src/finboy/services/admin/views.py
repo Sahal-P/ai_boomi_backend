@@ -2,9 +2,12 @@
 fixed codes, dates and counts.
 
 These models are the boundary. Since the names and search round (docs/names-search-round), an
-admin sees a household's name, phone number and email. None has a field for an amount of a
-household's records, a payee, category, label, message, chat, memory, hash or key, so no route
-can return one. FinBoy's own payment records (₹299 sales) are the only money shown.
+admin sees a household's name, phone number and email. Since the conversation round
+(docs/conversation-round/contract.md), `MessageRow` and `MessagePage` carry the kept messages of
+households that agreed: what they and FinBoy said, transcripts, and whether a voice note or photo
+can be opened. No other model has a field for an amount of a household's records, a payee,
+category, label, message, chat, memory, hash or key. FinBoy's own payment records (₹299 sales)
+are the only money shown.
 """
 
 from datetime import date, datetime
@@ -115,6 +118,12 @@ class WhatsAppState(BaseModel):
     last_message_at: datetime | None
 
 
+class MessageState(BaseModel):
+    kept_from: datetime | None  # when FinBoy started keeping its messages (it agreed)
+    declined_at: datetime | None  # it answered "No thanks"
+    count: int
+
+
 class HouseholdDetail(HouseholdRow):
     suspended_at: datetime | None
     deleted_at: datetime | None
@@ -136,7 +145,33 @@ class HouseholdDetail(HouseholdRow):
     statements: list[StatementRow]
     gmail: GmailState | None
     whatsapp_state: WhatsAppState | None
+    messages: MessageState
     actions: list[Action]
+
+
+class MessageRow(BaseModel):
+    """One kept message: the household's (`in`) or FinBoy's (`out`), on WhatsApp or the web."""
+
+    id: UUID
+    at: datetime
+    channel: Literal["whatsapp", "web"]
+    direction: Literal["in", "out"]
+    kind: str  # text, voice, photo, document, tap, command, buttons, list, voice_reply, template
+    text: str | None
+    transcript: str | None
+    language: str | None
+    choices: list[str]  # titles FinBoy offered, or the choice a tap made
+    media: Literal["audio", "image"] | None  # a voice note or photo that can be opened
+    media_bytes: int | None
+    status: str | None  # FinBoy's sends: sent, delivered, read, failed, unknown
+    outcome: str | None  # the household's messages: a fixed code when FinBoy couldn't help
+
+
+class MessagePage(BaseModel):
+    kept_from: datetime | None
+    declined_at: datetime | None
+    items: list[MessageRow]  # newest first
+    next_before: str | None  # "<time>|<id>" of the oldest one shown, to pass back as `before`
 
 
 class SignupCounts(BaseModel):

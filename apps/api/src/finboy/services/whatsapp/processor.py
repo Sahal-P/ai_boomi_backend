@@ -24,6 +24,7 @@ from finboy.db.models.whatsapp import (
 from finboy.services.accounts import households, login, usage
 from finboy.services.advisor import service as advisor
 from finboy.services.assistant import service as assistant
+from finboy.services.conversations import store
 from finboy.services.speech import service as speech
 from finboy.services.speech.media import InvalidAudio
 from finboy.services.whatsapp import capture, documents, pilot, premium, prompts, receipts, signup
@@ -69,6 +70,7 @@ def send_reply(
     listing: Listing | None = None,
     allow_disabled: bool = False,
     reminder: bool = False,
+    spoken: str | None = None,
 ) -> bool:
     # Lock consent while admitting a send. A STOP that commits first blocks the send.
     binding = session.scalar(
@@ -142,6 +144,28 @@ def send_reply(
     except MetaUnavailable:
         delivery.state = "failed"
     delivery.updated_at = datetime.now(UTC)
+    # The words of a spoken reply are kept, not its audio (docs/conversation-round/contract.md).
+    offered = listing.rows if listing is not None else buttons or []
+    store.add_sent(
+        session,
+        config.messages,
+        user_id=binding.user_id,
+        kind=(
+            "list"
+            if listing is not None
+            else "buttons"
+            if buttons
+            else "voice_reply"
+            if media_id is not None
+            else "text"
+        ),
+        text=spoken if media_id is not None else text,
+        choices=[title for _, title in offered],
+        outcome=delivery.state,
+        receipt_id=receipt.id,
+        delivery_id=delivery.id,
+        language=binding.last_language,
+    )
     session.commit()
     return delivery.state == "sent"
 
@@ -213,8 +237,9 @@ def process_question(
             )
             if question.command:
                 if diary and question.command in {"en", "hi", "ml"} and not binding.consented_at:
-                    # Choosing a language before agreeing shows the consent card in it.
-                    receipts.finish(session, receipt_id, error=pilot.ask_consent(conversation))
+                    # The language sticks (receipts.admit). The first message agrees and welcomes.
+                    _, error = pilot.begin(conversation, welcome=True)
+                    receipts.finish(session, receipt_id, error=error)
                     return
                 response = {
                     "stop": (
@@ -276,10 +301,12 @@ def process_question(
                 return
             if question.kind == "document":
                 # A Google Pay statement PDF (docs/statement-round/contract.md), for every
-                # household; diary households agree to FinBoy's terms first. No AI is used.
+                # household. A first message agrees, then the import runs. No AI is used.
                 if diary and binding.consented_at is None:
-                    receipts.finish(session, receipt_id, error=pilot.ask_consent(conversation))
-                    return
+                    keep, error = pilot.begin(conversation, welcome=False)
+                    if not keep:
+                        receipts.finish(session, receipt_id, error=error)
+                        return
                 if self_serve and not premium.allowed(conversation):
                     error = premium.refuse(conversation, "PREMIUM_STATEMENT")
                     receipts.finish(session, receipt_id, error=error)
@@ -367,6 +394,9 @@ def process_question(
                         language_hint=preferred,
                     )
                     text = transcript.transcript
+                    store.note_transcript(
+                        session.get_bind(), receipt.id, text, transcript.detected_language
+                    )
                 if not 1 <= len(text.strip()) <= 2000:
                     raise ProviderUnavailable("invalid_audio")
                 answer = (
@@ -426,7 +456,15 @@ def process_question(
                     if audio_reply.media_type != "audio/mpeg":
                         raise InvalidMedia
                     media_id = client.upload_audio(audio_reply.data)
-                    send_reply(session, config, client, receipt, question, media_id=media_id)
+                    send_reply(
+                        session,
+                        config,
+                        client,
+                        receipt,
+                        question,
+                        media_id=media_id,
+                        spoken=answer.speech_text,
+                    )
                 except ProviderUnavailable, MetaUnavailable, InvalidAudio:
                     # Correct text has already been sent. Never fabricate an audio attachment.
                     logger.info("whatsapp.audio_unavailable", extra={"outcome": "text_only"})
@@ -452,3 +490,21 @@ def process_question(
             "whatsapp.processed",
             extra={"stage": question.kind, "duration_ms": round((perf_counter() - started) * 1000)},
         )
+        keep_media(factory, settings, receipt_id, client)
+
+
+def keep_media(
+    factory: sessionmaker[Session], settings: Settings, receipt_id: UUID, client: MetaClient
+) -> None:
+    """After the reply: the voice note or photo of a household that agreed goes to R2. Never
+    raises: the reply has gone, and a failed copy only means the file isn't kept."""
+    if not settings.conversation_log_enabled:
+        return
+    try:
+        downloads = list(client.downloads)
+        client.downloads.clear()
+        if downloads:
+            with factory() as session:
+                store.keep_downloads(session, settings, receipt_id, downloads)
+    except Exception:
+        logger.warning("conversation.log_failed", extra={"stage": "media"})

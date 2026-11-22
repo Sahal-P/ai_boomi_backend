@@ -60,6 +60,8 @@ def test_authenticated_media_and_upload(config: ChannelConfig) -> None:
     try:
         result = client.download_audio("1234", "audio/ogg; codecs=opus")
         assert result.data == audio and "synthetic bounded audio" not in repr(result)
+        # Held for this message only, for the log of a household that agreed (conversation round).
+        assert client.downloads == [result]
         assert client.upload_audio(b"synthetic mp3") == "12345"
         assert len(seen) == 3
     finally:
