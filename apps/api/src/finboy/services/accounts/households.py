@@ -34,6 +34,7 @@ from finboy.db.models.mail import ImportRun, MailConnection, OAuthState
 from finboy.db.models.money import Budget, MerchantCategory
 from finboy.db.models.statements import StatementImport
 from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppPrompt
+from finboy.services.accounts import visits
 from finboy.services.conversations import store as conversation_log
 from finboy.services.feedback import service as feedback
 
@@ -151,6 +152,8 @@ def remove_household_data(
     # The message log and its files (docs/conversation-round/contract.md), before anything else.
     counts["conversation_messages"] = conversation_log.remove(session, settings, user_id)
     counts["feedback"] = feedback.remove_all(session, settings, user_id)
+    # Where it came from stays only as an anonymous count (docs/ad-journey-round/contract.md).
+    counts["signup_visits"] = visits.unlink(session, user_id)
 
     # The coach's sent-nudge claims (advisor phase 3); the bindings would cascade to them too.
     remove("advisor_nudges", delete(AdvisorNudge).where(AdvisorNudge.user_id == user_id))
@@ -243,4 +246,5 @@ def tidy(session: Session) -> int:
     for user_id in stale:
         discard_pending(session, user_id)
     session.execute(delete(LoginRequest).where(LoginRequest.created_at < now - timedelta(days=1)))
+    visits.tidy(session)
     return len(stale)

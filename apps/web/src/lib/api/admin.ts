@@ -77,6 +77,25 @@ export type AdminPayment = z.infer<typeof paymentSchema>;
 const paymentPageSchema = page(paymentSchema);
 export type PaymentPage = z.infer<typeof paymentPageSchema>;
 
+// A link's campaign tags as FinBoy keeps them, and the coarse browser and phone classes.
+const tag = z.string().regex(/^[a-z0-9._-]{1,64}$/).nullable();
+const journeySchema = z.object({
+  source: tag,
+  medium: tag,
+  campaign: tag,
+  content: tag,
+  landing: z.string().regex(/^\/[a-z0-9/-]{0,63}$/).nullable(),
+  browser: z.enum(["instagram", "facebook", "other"]).nullable(),
+  platform: z.enum(["android", "ios", "desktop", "other"]).nullable(),
+  opened: instant.nullable(),
+  tapped: instant.nullable(),
+  first_message: instant.nullable(),
+  agreed: instant.nullable(),
+  whatsapp_linked: instant.nullable(),
+  first_record: instant.nullable(),
+});
+export type Journey = z.infer<typeof journeySchema>;
+
 const householdDetailSchema = householdRowSchema.extend({
   suspended_at: instant.nullable(),
   deleted_at: instant.nullable(),
@@ -135,6 +154,8 @@ const householdDetailSchema = householdRowSchema.extend({
     .nullable(),
   // Absent from an API older than the conversation round.
   messages: z.object({ kept_from: instant.nullable(), declined_at: instant.nullable(), count }).optional(),
+  // How a self-serve household came in (docs/ad-journey-round/contract.md); absent from older APIs.
+  journey: journeySchema.nullable().optional(),
   actions: z.array(z.enum(ACTIONS)),
 });
 export type HouseholdDetail = z.infer<typeof householdDetailSchema>;
@@ -205,6 +226,25 @@ export const SCREENSHOT_LIMIT = 1_500_000;
 // The largest voice note or photo FinBoy keeps (WhatsApp photos are at most 5 MB).
 export const MEDIA_LIMIT = 5 * 1024 * 1024;
 
+const minutes = z.number().nonnegative().nullable();
+const sourceSchema = z.object({
+  source: tag,
+  medium: tag,
+  campaign: tag,
+  direct: z.boolean(),
+  opened: count,
+  tapped: count,
+  signed_up: count,
+  agreed: count,
+  first_record: count,
+  minutes_to_tap: minutes,
+  minutes_to_sign_up: minutes,
+  minutes_to_record: minutes,
+});
+export type SourceRow = z.infer<typeof sourceSchema>;
+export const SOURCE_DAYS = [7, 30, 90] as const;
+export type SourceDays = (typeof SOURCE_DAYS)[number];
+
 const signupSchema = z.object({
   enabled: z.boolean(),
   open: z.boolean(),
@@ -215,6 +255,9 @@ const signupSchema = z.object({
   waitlist_languages: counts,
   oldest_waiting_since: instant.nullable(),
   stale_pending: count,
+  // Where sign-ups came from (docs/ad-journey-round/contract.md); absent from older APIs.
+  sources: z.array(sourceSchema).max(500).default([]),
+  sources_days: z.union([z.literal(7), z.literal(30), z.literal(90)]).nullable().default(null),
 });
 export type SignupCounts = z.infer<typeof signupSchema>;
 
@@ -394,8 +437,10 @@ export const listAdminPayments = (status: PaymentStatus | null, offset: number, 
 export const reconcilePayment = async (paymentId: string) =>
   requestJson(`${ADMIN}/payments/${segment(paymentId)}/reconcile`, paymentSchema, post());
 
-export const getSignups = (signal?: AbortSignal) => requestJson(`${ADMIN}/signups`, signupSchema, { signal });
-export const tidySignups = () => requestJson(`${ADMIN}/signups/tidy`, signupSchema, post());
+export const getSignups = (signal?: AbortSignal, days: SourceDays = 30) =>
+  requestJson(`${ADMIN}/signups${query({ days })}`, signupSchema, { signal });
+export const tidySignups = (days: SourceDays = 30) =>
+  requestJson(`${ADMIN}/signups/tidy${query({ days })}`, signupSchema, post());
 
 export const listAdmins = (signal?: AbortSignal) => requestJson(`${ADMIN}/admins`, z.array(adminRowSchema), { signal });
 export const addAdmin = (email: string) => requestJson(`${ADMIN}/admins`, createdAdminSchema, post({ email }));

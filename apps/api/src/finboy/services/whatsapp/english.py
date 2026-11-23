@@ -61,18 +61,21 @@ PAID, LATER = "✅ Paid", "⏰ Not yet"
 REMIND, AGAIN = "🔔 Yes, remind me", "✅ Yes, next month"
 SIGN_IN_YES, CREATE_YES, LINK_YES = "✅ Yes, it's me", "✅ Yes, create it", "✅ Yes, link it"
 
+# One task first (docs/ad-journey-round/contract.md); the month and budget hints follow the first
+# saved entry (FIRST_SAVED).
 WELCOME = (
-    "Thank you! 🙏\n"
-    "Now just send what you spent or got:\n"
-    '✍️ "chai 20, auto 50, lunch 120"\n'
-    '🎤 a voice note: "Paid the milkman 500"\n'
-    "📸 a photo of a bill, or a UPI screenshot\n"
-    "I save it at once and sort it into categories.\n"
-    'Send "this month" to see your month, or "food budget 5000" to set a budget.'
+    "Thank you! 🙏 Now just send me what you spend.\n"
+    "👉 Try it now: send *chai 20*\n"
+    "🎤 Or say it in a voice note\n"
+    "📸 A bill photo or UPI screenshot works too\n"
+    "I'll save it at once and show you ✅"
 )
 WELCOME_SPEECH = (
-    "Thank you! Now just send what you spent, like, paid the milkman five hundred. "
-    "I save it at once. Send this month to see your month."
+    "Thank you! Try it now: send chai twenty, or just say what you spent. I save it at once."
+)
+FIRST_SAVED = (
+    "🎉 Your first entry is saved! Send each spend like this.\n"
+    'Send "this month" to see your month, or "food budget 5000" to set a budget.'
 )
 EXPIRED = "This button doesn't work any more. Send a new message."
 CHANGED = "This record has already changed. Send a new message."
@@ -88,7 +91,7 @@ PAID_REPEAT_SPEECH = "Added. Is the same due next month too?"
 DUE_LABEL = "Payment"
 STOP_REPLY = 'FinBoy replies are off. Send "START" to turn them back on.'
 START_REPLY = 'FinBoy is back on. Just tell me, like: "Paid the milkman 500".'
-LANGUAGE_CHOSEN = 'English it is. Just tell me, like: "Paid the milkman 500".'
+LANGUAGE_CHOSEN = "English it is ✅\nJust send what you spend, like: *chai 20* ✍️ or a voice note 🎤"
 
 
 def day_label(day: date, today: date) -> str:

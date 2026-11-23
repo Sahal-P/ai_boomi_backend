@@ -30,8 +30,9 @@ from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.core.errors import AccessError, error_response
 from finboy.db.models.accounts import UserIdentity
 from finboy.db.models.core import User
+from finboy.db.models.visits import REF_PATTERN
 from finboy.db.models.whatsapp import WhatsAppBinding
-from finboy.services.accounts import login
+from finboy.services.accounts import login, visits
 from finboy.services.accounts.google import verify_id_token
 from finboy.services.accounts.households import (
     active,
@@ -52,10 +53,13 @@ class LoginInput(BaseModel):
 class GoogleInput(BaseModel):
     credential: SecretStr = Field(min_length=20, max_length=4096)
     link: bool = False
+    # The page visit this sign-up started from (docs/ad-journey-round/contract.md).
+    ref: str | None = Field(default=None, pattern=REF_PATTERN)
 
 
 class WhatsAppStart(BaseModel):
     purpose: Literal["sign_in", "link"] = "sign_in"
+    ref: str | None = Field(default=None, pattern=REF_PATTERN)
 
 
 class Household(BaseModel):
@@ -298,6 +302,7 @@ def google_sign_in(body: GoogleInput, request: Request, session: DB) -> JSONResp
             encrypted_email=sealed,
         )
     )
+    visits.claim(session, body.ref, user.id)
     session.commit()
     return _signed_in(request, user)
 
@@ -321,6 +326,7 @@ def whatsapp_start(
         device=login.device_label(request.headers.get("user-agent", "")),
         purpose=body.purpose,
         user_id=user_id,
+        ref=body.ref if body.purpose == "sign_in" else None,
     )
     return Started(code=started.code, link=started.link, expires_at=started.expires_at)
 

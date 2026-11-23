@@ -1,23 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { useVisit } from "@/hooks/use-visit";
 import { useWhatsAppEntry } from "@/hooks/use-whatsapp-entry";
+import { greeting, tapVisit, type PageLanguage } from "@/lib/api/visits";
 import { DASHBOARD, WEB_START, type WhatsAppEntry } from "@/lib/whatsapp-entry";
 
-const EntryContext = createContext<WhatsAppEntry>({ kind: "loading" });
+type Entry = { entry: WhatsAppEntry; ref: string | null };
+const EntryContext = createContext<Entry>({ entry: { kind: "loading" }, ref: null });
 
-/** One shared session check for the public page's actions and chat QR. */
-export function WhatsAppEntryProvider({ children }: { children: ReactNode }) {
-  const entry = useWhatsAppEntry();
-  return <EntryContext value={entry}>{children}</EntryContext>;
+/**
+ * One shared session check for the public page's actions and chat QR, and the page's visit
+ * (docs/ad-journey-round/contract.md): its ref rides in the greeting the chat link types in.
+ */
+export function WhatsAppEntryProvider({
+  children,
+  language = "en",
+  number = null,
+}: {
+  children: ReactNode;
+  language?: PageLanguage;
+  number?: string | null;
+}) {
+  const ref = useVisit(language);
+  const entry = useWhatsAppEntry(greeting(language, ref), number);
+  const value = useMemo(() => ({ entry, ref }), [entry, ref]);
+  return <EntryContext value={value}>{children}</EntryContext>;
 }
 
 export function useEntry(): WhatsAppEntry {
-  return useContext(EntryContext);
+  return useContext(EntryContext).entry;
 }
 
-const labels = {
+type Labels = Record<WhatsAppEntry["kind"], string>;
+const ENGLISH: Labels = {
   chat: "Start on WhatsApp",
   dashboard: "Open dashboard",
   loading: "Open FinBoy",
@@ -33,13 +50,15 @@ export function StartLink({
   before,
   after,
   short = false,
+  labels = ENGLISH,
 }: {
   className?: string;
   before?: ReactNode;
   after?: ReactNode;
   short?: boolean;
+  labels?: Labels;
 }) {
-  const entry = useEntry();
+  const { entry, ref } = useContext(EntryContext);
   const label = labels[entry.kind];
   const text = short && entry.kind === "chat" ? (
     <>
@@ -64,6 +83,7 @@ export function StartLink({
         rel="noopener noreferrer"
         aria-label={short ? label : undefined}
         className={className}
+        onClick={() => tapVisit(ref)}
       >
         {content}
       </a>

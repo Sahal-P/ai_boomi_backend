@@ -18,7 +18,7 @@ from finboy.db.models.whatsapp import (
     WhatsAppReceipt,
     WhatsAppReminder,
 )
-from finboy.services.accounts import households
+from finboy.services.accounts import households, visits
 from finboy.services.conversations import store
 from finboy.services.mail.security import encrypt
 from finboy.services.whatsapp.config import ChannelConfig
@@ -97,6 +97,8 @@ def _self_serve(
         return session.scalar(
             select(WhatsAppBinding.user_id).where(WhatsAppBinding.sender_hash == sender_hash)
         )
+    # The page visit its prefilled greeting came from (docs/ad-journey-round/contract.md).
+    visits.claim(session, question.ref, user.id)
     return user.id
 
 

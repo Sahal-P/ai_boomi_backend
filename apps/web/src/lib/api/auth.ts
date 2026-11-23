@@ -63,6 +63,7 @@ export const signOutEverywhere = () =>
 
 const startedSchema = z.object({
   code: z.string().regex(/^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/),
+  // The API percent-encodes the whole message, a visit's " (ref …)" included.
   link: z
     .string()
     .regex(/^https:\/\/wa\.me\/[0-9]{7,20}\?text=[A-Za-z0-9%._~-]+$/)
@@ -83,12 +84,19 @@ function startWithLoginCookie<T>(start: () => Promise<T>): Promise<T> {
   return result;
 }
 
-/** A one-time code to send from the person's own WhatsApp; bound to this browser by a cookie. */
-export const startWhatsApp = (purpose: "sign_in" | "link" = "sign_in", signal?: AbortSignal) =>
+/**
+ * A one-time code to send from the person's own WhatsApp; bound to this browser by a cookie. A
+ * page visit's ref rides in the prefilled message (docs/ad-journey-round/contract.md).
+ */
+export const startWhatsApp = (
+  purpose: "sign_in" | "link" = "sign_in",
+  signal?: AbortSignal,
+  ref: string | null = null,
+) =>
   startWithLoginCookie(() => requestJson("/api/v1/auth/whatsapp/start", startedSchema, {
     method: "POST",
     signal,
-    ...jsonBody({ purpose }),
+    ...jsonBody(ref && purpose === "sign_in" ? { purpose, ref } : { purpose }),
   }));
 export const whatsAppStatus = (signal?: AbortSignal) =>
   requestJson(
@@ -111,11 +119,11 @@ export const startGoogle = (signal?: AbortSignal) =>
     { method: "POST", signal },
   ));
 /** The ID token goes once to the backend, which verifies it; the browser keeps nothing. */
-export const signInWithGoogle = (credential: string, link = false) =>
+export const signInWithGoogle = (credential: string, link = false, ref: string | null = null) =>
   requestJson(
     "/api/v1/auth/google",
     z.union([z.object({ authenticated: z.literal(true) }), z.object({ linked: z.literal(true) })]),
-    { method: "POST", ...jsonBody({ credential, link }) },
+    { method: "POST", ...jsonBody(ref && !link ? { credential, link, ref } : { credential, link }) },
   );
 
 export const deleteAccount = () =>

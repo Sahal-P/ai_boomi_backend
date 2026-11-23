@@ -622,3 +622,21 @@ the due was left `pending` with no card. This round fixes all of it.
   - A wrong date or amount fails the run, and 95% must be exact.
   - On 22 Nov 2026, OpenAI read 62/62 exactly. DeepSeek, production's reader, runs on the server.
 - **Still to do:** a native speaker checks the new Hindi and Malayalam wording.
+
+## Page visits and the first entry (23 November 2026)
+
+See [the ad journey contract](ad-journey-round/contract.md).
+
+- **The ref.** A page's WhatsApp button types its greeting plus ` (ref XXXXXX)`: "Hi FinBoy" on
+  `/`, "നമസ്കാരം FinBoy" on `/ml`. Login-code links carry the ref too.
+  - `events.parse_events` splits off a trailing ref, so everything after it sees the text alone.
+    A ref inside a sentence stays text, and a message that is only the ref reads as "hi".
+  - The new household's first message claims the visit (`visits.claim` in
+    `receipts._self_serve`). Existing households never do.
+- **Malayalam from the first message.** "നമസ്കാരം FinBoy" is a greeting, and its script makes the
+  welcome Malayalam. "Hi FinBoy" still shows no language, so it gets English.
+- **The welcome** asks for one entry first ("👉 Try it now: send *chai 20*"), and the
+  language-chosen reply ends with the same example.
+- **The first saved card** of a household with no earlier records adds `FIRST_SAVED` once: the
+  "this month" and budget hints. A later card or a household with earlier records gets none.
+

@@ -314,3 +314,45 @@ def test_every_path_id_is_a_uuid() -> None:
         "feedback_id",
     }
     assert all(param.field_info.annotation is UUID for param in params)
+
+
+@pytest.mark.anyio
+async def test_day_filters_arrive_as_text_and_are_read_as_numbers(
+    client: httpx.AsyncClient, session: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from finboy.api.v1 import admin as routes
+
+    admin = admin_row()
+    session.execute.return_value.one_or_none.return_value = (
+        admin,
+        live_session(admin, "synthetic-token"),
+    )
+    client.cookies.set(auth.DEV_COOKIE, "synthetic-token")
+    asked: list[object] = []
+    counts = views.SignupCounts(
+        enabled=True,
+        open=True,
+        agreed=0,
+        pending=0,
+        limit=100,
+        waitlist=0,
+        waitlist_languages={},
+        oldest_waiting_since=None,
+        stale_pending=0,
+    )
+
+    def signups(_session, _settings, _now, days=None):
+        asked.append(days)
+        return counts.model_copy(update={"sources_days": days})
+
+    def search(_session, _settings, **filters):
+        asked.append((filters["now"] - filters["active_since"]).days)
+        return views.HouseholdPage(items=[], total=0, offset=0, next_offset=None)
+
+    monkeypatch.setattr(routes.overview, "signups", signups)
+    monkeypatch.setattr(routes.households, "search", search)
+    assert (await client.get("/api/v1/admin/signups?days=7")).json()["sources_days"] == 7
+    assert (await client.get("/api/v1/admin/signups")).status_code == 200
+    assert (await client.get("/api/v1/admin/households?active=30")).status_code == 200
+    assert asked == [7, 30, 30]
+    assert (await client.get("/api/v1/admin/signups?days=400")).status_code == 422

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { signInWithGoogle, startGoogle } from "@/lib/api/auth";
+import { savedRef } from "@/lib/api/visits";
 import { isAbort } from "@/lib/api/http";
 import { describeProblem, type Problem } from "@/lib/messages";
 
@@ -106,7 +107,7 @@ export function useGoogleSignIn({
             if (!credential) return;
             setBusy(true);
             setProblem(null);
-            signInWithGoogle(credential, link).then(
+            signInWithGoogle(credential, link, savedRef()).then(
               (result) => done.current("linked" in result ? "linked" : "signed_in"),
               (error: unknown) => {
                 setBusy(false);

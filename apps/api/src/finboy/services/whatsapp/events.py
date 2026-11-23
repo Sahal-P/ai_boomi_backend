@@ -11,6 +11,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
+from finboy.services.accounts import visits
 from finboy.services.whatsapp.config import ChannelConfig
 
 
@@ -53,6 +54,9 @@ class InboundQuestion:
     button_id: str | None = None
     # The FinBoy message a swipe-reply quotes (WhatsApp `context.id`), to find that card.
     context_id: str | None = None
+    # The page visit a prefilled greeting came from (docs/ad-journey-round/contract.md); the
+    # " (ref XXXXXX)" it arrived with is already gone from `text`.
+    ref: str | None = None
 
     @property
     def command(self) -> str | None:
@@ -194,9 +198,10 @@ def parse_events(raw: bytes, config: ChannelConfig) -> tuple[list[InboundQuestio
                     when = datetime.fromtimestamp(int(msg.timestamp), UTC)
                     quoted = msg.context.message_id if msg.context else None
                     if msg.type == "text" and msg.text is not None:
+                        body, ref = visits.split_ref(msg.text.body)
                         questions.append(
                             InboundQuestion(
-                                msg.id, msg.from_, when, "text", msg.text.body, context_id=quoted
+                                msg.id, msg.from_, when, "text", body, context_id=quoted, ref=ref
                             )
                         )
                     elif msg.type == "audio" and msg.audio is not None:

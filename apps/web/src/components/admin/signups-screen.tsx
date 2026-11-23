@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CountTable, count, Facts, Meter, moment, Panel, RefreshButton } from "@/components/admin/admin-bits";
+import { SignupSources } from "@/components/admin/signup-sources";
 import { PageHeader } from "@/components/app-shell/page-header";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
@@ -18,12 +19,16 @@ import { Button } from "@/components/ui/button";
 import { useAction } from "@/hooks/use-action";
 import { useResource } from "@/hooks/use-resource";
 import { label, languageLabels } from "@/lib/admin-labels";
-import { getSignups, tidySignups } from "@/lib/api/admin";
+import { getSignups, tidySignups, type SourceDays } from "@/lib/api/admin";
 import { describeProblem } from "@/lib/messages";
 
-/** Places against SIGNUP_LIMIT, the WhatsApp waitlist, and tidying sign-ups that never agreed. */
+/**
+ * Places against SIGNUP_LIMIT, the WhatsApp waitlist, tidying sign-ups that never agreed, and
+ * where sign-ups came from (docs/ad-journey-round/contract.md).
+ */
 export function SignupsScreen() {
-  const signups = useResource("admin-signups", (signal) => getSignups(signal));
+  const [days, setDays] = useState<SourceDays>(30);
+  const signups = useResource(`admin-signups:${days}`, (signal) => getSignups(signal, days));
   const tidy = useAction();
   const [confirming, setConfirming] = useState(false);
   const [announcement, setAnnouncement] = useState("");
@@ -32,7 +37,7 @@ export function SignupsScreen() {
   async function run() {
     if (!data) return;
     const before = data.stale_pending;
-    const next = await tidy.run("tidy", "Sign-ups weren't tidied", () => tidySignups());
+    const next = await tidy.run("tidy", "Sign-ups weren't tidied", () => tidySignups(days));
     if (!next) return;
     signups.replace(next);
     setConfirming(false);
@@ -44,7 +49,7 @@ export function SignupsScreen() {
     <div className="space-y-5">
       <PageHeader
         title="Sign-ups"
-        description="Self-serve places against the limit, and the WhatsApp waitlist. No numbers or names."
+        description="Self-serve places against the limit, the WhatsApp waitlist and where sign-ups came from. No numbers or names."
         actions={<RefreshButton resource={signups} />}
       />
       <div role="status" aria-live="polite" className="text-sm font-medium">
@@ -88,6 +93,14 @@ export function SignupsScreen() {
                   : `Tidy ${count(data.stale_pending)} ${data.stale_pending === 1 ? "sign-up" : "sign-ups"}`}
               </Button>
             </Panel>
+          </div>
+          <div className="lg:col-span-2">
+            <SignupSources
+              rows={data.sources}
+              days={days}
+              onDays={setDays}
+              busy={signups.status === "loading" || signups.status === "refreshing"}
+            />
           </div>
           <Panel title="Waitlist" description="People who sent JOIN while FinBoy was full.">
             <p className="text-[1.75rem] leading-none font-semibold tracking-[-0.025em]">{count(data.waitlist)}</p>

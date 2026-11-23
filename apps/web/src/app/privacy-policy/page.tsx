@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="22 November 2026">
+    <LegalPage title="Privacy Policy" updated="23 November 2026">
       <p>
         FinBoy helps you keep track of your own money: what came in, what went out and what is due.
         This page says exactly what we keep, what we never keep, and how to delete everything.
@@ -62,6 +62,15 @@ export default function PrivacyPolicyPage() {
           else, the FinBoy screen you sent it from, its status and, if you add one, one screenshot.
           The screenshot is redrawn on your device first, so the file&apos;s location and camera
           details never reach us, and it is stored privately.
+        </li>
+        <li>
+          Where you found FinBoy: when you open a FinBoy page with the WhatsApp button, the
+          link&apos;s campaign tags (like &ldquo;instagram&rdquo;), the page, its language, whether
+          it opened in Instagram&apos;s, Facebook&apos;s or another browser, on Android, iPhone or a
+          computer, and when you opened it and tapped the button. The message the button types in
+          ends with a short random code, like &ldquo;(ref K7Q2MX)&rdquo;, so a sign-up can be
+          matched to that visit; your browser keeps the code only until you close that tab. No IP
+          address, cookie, device ID or ad click ID is kept.
         </li>
         <li>
           If you connect Gmail: read-only access, an encrypted access token, and short snippets
@@ -134,7 +143,8 @@ export default function PrivacyPolicyPage() {
         As long as you have an account. Kept messages, voice notes and photos stay until you clear
         your chat history or delete your account. Feedback and its screenshot stay until you delete
         it on the Send feedback page or delete your account. A WhatsApp sign-up that never says yes is
-        forgotten after seven days. Private server backups are kept for seven days and then overwritten. When you
+        forgotten after seven days. A page visit that leads to no sign-up is deleted after 90 days;
+        when you delete your account, your visit stays only as an anonymous count. Private server backups are kept for seven days and then overwritten. When you
         delete your account, payment records stay as FinBoy&apos;s sales records, as tax and
         accounting law requires, without your email address or phone number.
       </p>

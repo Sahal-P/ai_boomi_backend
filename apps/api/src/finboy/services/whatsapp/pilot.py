@@ -19,7 +19,7 @@ from typing import get_args
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from finboy.core.clock import today_ist
@@ -228,7 +228,11 @@ _GREETINGS = frozenset(
         "नमस्ते",
         "नमस्ते finboy",
         "namaskaram",
+        "namaskaram finboy",
         "നമസ്കാരം",
+        # The Malayalam ad page prefills this (docs/ad-journey-round/contract.md).
+        "നമസ്കാരം finboy",
+        "നമസ്കാരം ഫിൻബോയ്",
     }
 )
 
@@ -701,6 +705,7 @@ def saved_card(
         today=today,
         budget=budget,
     )
+    text += _first_saved(conversation, cards=1, saved=1, length=len(prefix + text))
     session.commit()
     sent = conversation.send(
         prefix + text,
@@ -713,6 +718,29 @@ def saved_card(
     if sent:
         conversation.speak(spoken)
     return conversation.done(sent)
+
+
+def _first_saved(conversation: Conversation, *, cards: int, saved: int, length: int) -> str:
+    """The one line after a household's very first saved entries (docs/ad-journey-round): only
+    when the saved cards just opened are its first ever and it had no records before them."""
+    session, user_id = conversation.session, conversation.binding.user_id
+    if saved < 1:
+        return ""
+    shown = session.scalar(
+        select(func.count())
+        .select_from(WhatsAppPrompt)
+        .where(WhatsAppPrompt.user_id == user_id, WhatsAppPrompt.purpose == "saved")
+    )
+    if shown != cards:
+        return ""
+    confirmed = session.scalar(
+        select(func.count())
+        .select_from(Transaction)
+        .where(Transaction.user_id == user_id, Transaction.status == "confirmed")
+    )
+    line = "\n\n" + conversation.words.FIRST_SAVED
+    # A card with buttons holds at most 1,024 characters.
+    return line if confirmed == saved and length + len(line) <= 1024 else ""
 
 
 def _remove(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str) -> str | None:
@@ -1203,6 +1231,9 @@ def _record_many(conversation: Conversation, readings: list[statement.Statement]
         if out and plan and (status := plan.budget_for(category)) and status.level != "ok"
     }
     text, spoken = words.saved_many(saved=saved, unsure=unsure, budgets=list(warnings.values())[:2])
+    text += _first_saved(
+        conversation, cards=len(saved) + len(unsure), saved=len(saved), length=len(text)
+    )
     session.commit()
     buttons = [(prompts.button(group, "fixone"), words.FIX_ONE)]
     if saved:

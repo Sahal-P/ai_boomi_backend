@@ -7,6 +7,7 @@ import {
   type WhatsAppStart,
   whatsAppStatus,
 } from "@/lib/api/auth";
+import { savedRef } from "@/lib/api/visits";
 import { isAbort } from "@/lib/api/http";
 import { describeProblem, type Problem } from "@/lib/messages";
 
@@ -45,7 +46,7 @@ export function useWhatsAppSignIn({
   useEffect(() => {
     if (!enabled) return;
     const controller = new AbortController();
-    startWhatsApp(purpose, controller.signal).then(
+    startWhatsApp(purpose, controller.signal, savedRef()).then(
       (start) => {
         if (!controller.signal.aborted) setPhase({ step: "ready", start, opened: false });
       },

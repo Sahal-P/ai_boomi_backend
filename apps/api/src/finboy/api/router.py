@@ -18,11 +18,13 @@ from finboy.api.v1.money import router as money_router
 from finboy.api.v1.privacy import router as privacy_router
 from finboy.api.v1.readiness import router as readiness_router
 from finboy.api.v1.transactions import router as transactions_router
+from finboy.api.v1.visits import router as visits_router
 from finboy.api.v1.whatsapp import router as whatsapp_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth_router)
 api_router.include_router(health_router)
+api_router.include_router(visits_router)
 api_router.include_router(connections_router)
 api_router.include_router(imports_router)
 api_router.include_router(privacy_router)

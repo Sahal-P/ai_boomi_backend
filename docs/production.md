@@ -968,3 +968,39 @@ the conversation log; without them the page hides the screenshot picker.
 **Rollback:** redeploy the previous web and backend releases. Migration `0022` downgrades only
 once no feedback rows remain. Keep the R2 values while any screenshot remains: erasure deletes the
 files before their rows and answers `try_later` without them.
+
+## Ad journey release
+
+`feat/finboy-ad-journey` ([contract](ad-journey-round/contract.md)) adds:
+- migration `0023_signup_visits`;
+- the public `/api/v1/visits` routes;
+- the Malayalam page `/ml`;
+- the new welcome copy;
+- the admin "Where sign-ups came from" table.
+
+There is no flag: visits are recorded once the web is pushed.
+
+**Release** (with the human's approval at the time):
+1. Backend first:
+   - a validated backup, `alembic upgrade head` for `0023`, then a drift check;
+   - switch and check health.
+   The new welcome and the ref handling go live here. An old page's "Hi FinBoy" link still works.
+   Before the switch, run `pnpm eval:diary` with production's DeepSeek entry parser: the local run used
+   OpenAI only (64/65, 0 wrong; the miss was "ചായ ഇരുപത്" written without "രൂപ").
+2. The web workflow sets `FINBOY_WHATSAPP_NUMBER` to `916282392247` when it builds `/ml`. Digits
+   only, the same as the API's `WHATSAPP_PUBLIC_NUMBER`, and not a secret. Push main. "FinBoy fast
+   deploy" builds the page with it and deploys the standalone web to voxpay.
+3. Give the next ad
+   `https://finboy.io/ml?utm_source=instagram&utm_medium=paid_social&utm_campaign=<yyyy-mm>-<name>&utm_content=<creative>`.
+   The Instagram bio link can point at `https://finboy.io/ml` too; Instagram adds its own `ig` tags.
+
+**Check:**
+- Open the tagged `/ml` link inside Instagram, on Android and on iPhone. The Malayalam screen shows
+  at once, and the button opens FinBoy's chat with "നമസ്കാരം FinBoy (ref …)" typed in.
+- From a number that isn't a household yet, send it, then "ചായ 20". The welcome is Malayalam, and the
+  saved card ends with the first-entry line.
+- Admin Sign-ups shows the visit under its campaign, with times. Erase the test household after.
+
+**Rollback:** redeploy the previous release. The `signup_visits` table can stay. Migration `0023`
+downgrades by dropping it, since visits are anonymous counts.
+

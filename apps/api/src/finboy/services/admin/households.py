@@ -8,6 +8,7 @@ the typed number's keyed hash with the stored one; names match anywhere in the n
 
 import re
 from contextlib import suppress
+from dataclasses import asdict
 from datetime import datetime
 from uuid import UUID
 
@@ -23,7 +24,7 @@ from finboy.db.models.mail import ImportRun, MailConnection
 from finboy.db.models.money import Budget
 from finboy.db.models.statements import StatementImport
 from finboy.db.models.whatsapp import WhatsAppBinding
-from finboy.services.accounts import usage
+from finboy.services.accounts import usage, visits
 from finboy.services.admin import messages
 from finboy.services.admin.views import (
     Action,
@@ -32,6 +33,7 @@ from finboy.services.admin.views import (
     HouseholdPage,
     HouseholdRow,
     ImportRow,
+    Journey,
     Kind,
     PaymentRow,
     PlanSummary,
@@ -439,5 +441,13 @@ def detail(session: Session, settings: Settings, user_id: UUID, now: datetime) -
         if binding
         else None,
         messages=messages.state(session, user_id),
+        journey=_journey(session, user_id),
         actions=allowed(base.kind, base.status, plan, settings),
     )
+
+
+def _journey(session: Session, user_id: UUID) -> Journey | None:
+    user = session.get(User, user_id)
+    if user is None or user.joined_via is None:
+        return None
+    return Journey(**asdict(visits.journey(session, user)))

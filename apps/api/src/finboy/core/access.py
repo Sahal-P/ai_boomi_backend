@@ -43,6 +43,9 @@ PUBLIC = {
     "/api/v1/auth/whatsapp/status",
     "/api/v1/auth/whatsapp/complete",
     "/api/v1/whatsapp/webhook",
+    # Page visits and WhatsApp taps from public pages (docs/ad-journey-round/contract.md).
+    "/api/v1/visits",
+    "/api/v1/visits/tap",
     # One-use, expiring OAuth state is validated by the callback, independently of cookies.
     "/api/v1/connections/gmail/callback",
     # A short-lived, single-use capability issued only by authenticated authorization.
@@ -76,6 +79,8 @@ BODY_LIMITS = {
     "/api/v1/billing/link/checkout": 2048,
     "/api/v1/billing/receipt": 1024,
     "/api/v1/feedback": 2_200_000,
+    "/api/v1/visits": 2048,
+    "/api/v1/visits/tap": 256,
 }
 
 

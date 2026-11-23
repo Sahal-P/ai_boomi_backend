@@ -383,3 +383,19 @@ and "PostgreSQL is the only persistent service" only for feedback, as documented
 on feat/finboy-feedback, loopback 8141/3141, disposable finboy_signup, migration `0022_feedback`.
 Screenshots are redrawn in the browser and kept in the private R2 bucket. Feedback text is never
 logged or emailed. `FEEDBACK_EMAIL` stays out of the repository.
+
+## Ad journey round — 23 November 2026
+
+From release 6c2b261 the human asked to track the journey from an ad to a household's first record,
+and to make the first entry easy:
+- A Malayalam ad page `/ml`.
+- A short random ref at the end of the prefilled WhatsApp greeting, removed on arrival.
+- Times for page open, WhatsApp tap, first message, agreement, WhatsApp link and first record.
+- A welcome that asks for one entry, with a one-time line after the first saved one.
+
+`docs/ad-journey-round/contract.md` supersedes the "Hi FinBoy"-only greeting and the earlier welcome
+copy only as documented there. One agent on feat/finboy-ad-journey, loopback 8151/3151, disposable
+finboy_signup, migration `0023_signup_visits`. A visit keeps only cleaned utm tags, the page, its
+language, coarse browser and phone classes and times: no IP address, cookie, device ID, User-Agent or
+click ID. Visits that lead nowhere go after 90 days, and erasure unlinks them. Logs never carry a ref.
+

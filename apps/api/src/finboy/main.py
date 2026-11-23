@@ -59,6 +59,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.signin_throttle = Throttle(limit=120, seconds=60)
     # Admin sign-in and password checks, per address and per account (docs/admin-round).
     app.state.admin_throttle = KeyedThrottle(limit=10, seconds=60)
+    # Public page visits and taps (docs/ad-journey-round): per address, and a cap for bursts.
+    app.state.visit_throttle = KeyedThrottle(limit=30, seconds=60)
+    app.state.visit_burst = Throttle(limit=1200, seconds=60)
     app.state.google_certs = GoogleCerts()
     register_error_handlers(app)
     app.add_middleware(HouseholdAccessMiddleware)

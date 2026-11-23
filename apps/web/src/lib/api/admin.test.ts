@@ -6,6 +6,7 @@ import {
   getHousehold,
   getMessageMedia,
   getMessages,
+  getSignups,
   listHouseholds,
   MEDIA_LIMIT,
   safeAdminReturnPath,
@@ -157,4 +158,42 @@ test("a kept file opens only as audio or an image within the size limit", async 
   await assert.rejects(getMessageMedia(MESSAGE), invalid("invalid_response"));
   answer(503, { error: { code: "media_unavailable", request_id: "r3" } });
   await assert.rejects(getMessageMedia(MESSAGE), (error: unknown) => error instanceof ApiError && error.code === "media_unavailable");
+});
+
+const signups = {
+  enabled: true,
+  open: true,
+  agreed: 14,
+  pending: 4,
+  limit: 100,
+  waitlist: 0,
+  waitlist_languages: {},
+  oldest_waiting_since: null,
+  stale_pending: 0,
+};
+const reel = {
+  source: "instagram",
+  medium: "paid_social",
+  campaign: "2026-11-ml-reel",
+  direct: false,
+  opened: 283,
+  tapped: 40,
+  signed_up: 15,
+  agreed: 11,
+  first_record: 6,
+  minutes_to_tap: 0.8,
+  minutes_to_sign_up: 1.5,
+  minutes_to_record: 7,
+};
+
+test("where sign-ups came from is read for the chosen period, and an older API shows none", async () => {
+  const seen = answer(200, { ...signups, sources: [reel], sources_days: 7 });
+  const result = await getSignups(undefined, 7);
+  assert.match(seen[0]?.url ?? "", /\/api\/v1\/admin\/signups\?days=7$/);
+  assert.deepEqual(result.sources, [reel]);
+  answer(200, signups);
+  assert.deepEqual((await getSignups()).sources, []);
+  // Tags are only what FinBoy keeps: no click IDs or free text.
+  answer(200, { ...signups, sources: [{ ...reel, campaign: "IwAR0 click id" }], sources_days: 30 });
+  await assert.rejects(getSignups(), invalid("invalid_response"));
 });

@@ -146,6 +146,8 @@ class HouseholdDetail(HouseholdRow):
     gmail: GmailState | None
     whatsapp_state: WhatsAppState | None
     messages: MessageState
+    # Self-serve households only; the owner and pilots were added by hand.
+    journey: Journey | None = None
     actions: list[Action]
 
 
@@ -174,6 +176,24 @@ class MessagePage(BaseModel):
     next_before: str | None  # "<time>|<id>" of the oldest one shown, to pass back as `before`
 
 
+class SourceRow(BaseModel):
+    """Visits from one campaign and what came of them (docs/ad-journey-round/contract.md);
+    `direct` is the sign-ups that came with no page visit. Counts and times only."""
+
+    source: str | None
+    medium: str | None
+    campaign: str | None
+    direct: bool
+    opened: int
+    tapped: int
+    signed_up: int
+    agreed: int
+    first_record: int
+    minutes_to_tap: float | None  # medians
+    minutes_to_sign_up: float | None
+    minutes_to_record: float | None
+
+
 class SignupCounts(BaseModel):
     enabled: bool
     open: bool
@@ -184,6 +204,27 @@ class SignupCounts(BaseModel):
     waitlist_languages: dict[str, int]
     oldest_waiting_since: datetime | None
     stale_pending: int
+    # Where sign-ups came from, over `sources_days`; empty on the overview.
+    sources: list[SourceRow] = []
+    sources_days: int | None = None
+
+
+class Journey(BaseModel):
+    """How a self-serve household came in and when it took each step (ad-journey round)."""
+
+    source: str | None
+    medium: str | None
+    campaign: str | None
+    content: str | None
+    landing: str | None
+    browser: str | None
+    platform: str | None
+    opened: datetime | None
+    tapped: datetime | None
+    first_message: datetime | None
+    agreed: datetime | None
+    whatsapp_linked: datetime | None
+    first_record: datetime | None
 
 
 class Overview(BaseModel):

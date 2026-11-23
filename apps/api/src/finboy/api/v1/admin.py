@@ -161,7 +161,8 @@ def household_list(
     kind: Kind | None = None,
     status: Status | None = None,
     plan: State | None = None,
-    active: Literal[7, 30] | None = None,
+    # Query values arrive as text, which an integer Literal refuses ("30" is not 30).
+    active: Annotated[int | None, Query(ge=1, le=30)] = None,
     offset: Offset = 0,
 ) -> HouseholdPage:
     now = _now()
@@ -413,15 +414,24 @@ def payment_reconcile(
     )
 
 
+# How far back "Where sign-ups came from" looks (docs/ad-journey-round/contract.md); the panel
+# offers 7, 30 and 90 days.
+SourceDays = Annotated[int, Query(ge=1, le=90)]
+
+
 @router.get("/signups", response_model=SignupCounts)
-def signup_view(request: Request, session: DB, _admin: CurrentAdmin) -> SignupCounts:
-    return overview.signups(session, request.app.state.settings, _now())
+def signup_view(
+    request: Request, session: DB, _admin: CurrentAdmin, days: SourceDays = 30
+) -> SignupCounts:
+    return overview.signups(session, request.app.state.settings, _now(), days)
 
 
 @router.post("/signups/tidy", response_model=SignupCounts)
-def signup_tidy(request: Request, session: DB, admin: CurrentAdmin) -> SignupCounts:
+def signup_tidy(
+    request: Request, session: DB, admin: CurrentAdmin, days: SourceDays = 30
+) -> SignupCounts:
     actions.tidy(session, _actor(request, admin))
-    return overview.signups(session, request.app.state.settings, _now())
+    return overview.signups(session, request.app.state.settings, _now(), days)
 
 
 @router.get("/admins", response_model=list[AdminRow])

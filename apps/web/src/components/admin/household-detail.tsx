@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, type ReactNode } from "react";
 import { CountTable, count, day, Facts, Meter, moment } from "@/components/admin/admin-bits";
 import { HouseholdActions } from "@/components/admin/household-actions";
+import { journeyFacts } from "@/components/admin/signup-sources";
 import { ProblemNotice } from "@/components/feedback/problem-notice";
 import { LoadingPanel, RefreshingLabel } from "@/components/feedback/states";
 import { Badge } from "@/components/ui/badge";
@@ -194,6 +195,12 @@ function Body({ detail }: { detail: HouseholdDetail }) {
           </ul>
         )}
       </Part>
+
+      {detail.journey && (
+        <Part title="Came from">
+          <Facts items={journeyFacts(detail.journey)} />
+        </Part>
+      )}
 
       <Part title="WhatsApp">
         {detail.whatsapp_state ? (

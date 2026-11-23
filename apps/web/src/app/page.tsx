@@ -17,8 +17,11 @@ import { SmoothScroll } from "@/components/motion/smooth-scroll";
 import { SceneLayerMount } from "@/components/three/scene-slot";
 
 // The page opens on the yellow hero.
+const home = publicMetadata("/", SITE_TITLE, SITE_DESCRIPTION);
 export const metadata = {
-  ...publicMetadata("/", SITE_TITLE, SITE_DESCRIPTION),
+  ...home,
+  // The Malayalam page is the same offer in Malayalam (docs/ad-journey-round/contract.md).
+  alternates: { canonical: "/", languages: { "en-IN": "/", "ml-IN": "/ml" } },
   ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
 };
 export const viewport: Viewport = { themeColor: "#fed234" };

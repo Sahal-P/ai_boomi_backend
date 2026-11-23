@@ -53,6 +53,9 @@ jobs:
           NEXT_PUBLIC_API_URL: /
           FINBOY_API_ORIGIN: ''
           GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
+          # FinBoy's public WhatsApp number, so /ml's button opens the chat from the first paint
+          # (docs/ad-journey-round/contract.md). Digits only; unset, the page asks the API first.
+          FINBOY_WHATSAPP_NUMBER: "916282392247"
         run: pnpm build
       - name: Package immutable release
         run: python3 scripts/web-release.py "$GITHUB_SHA" /tmp/finboy-artifact

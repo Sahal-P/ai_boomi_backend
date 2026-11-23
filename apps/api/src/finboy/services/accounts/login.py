@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from finboy.core.access import keyed_digest
 from finboy.core.config import Settings
 from finboy.db.models.accounts import LoginRequest
+from finboy.services.accounts import visits
 
 ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"  # no 0/O or 1/I to misread
 LIFETIME = timedelta(minutes=10)
@@ -98,11 +99,14 @@ def device_label(user_agent: str) -> str:
     return f"{browser} · {system}" if system else browser
 
 
-def message_link(settings: Settings, code: str) -> str | None:
+def message_link(settings: Settings, code: str, ref: str | None = None) -> str | None:
+    """The prefilled login message; a page visit's ref rides at its end and is removed on
+    arrival (docs/ad-journey-round/contract.md)."""
     if not settings.whatsapp_public_number:
         return None
+    suffix = f" (ref {ref})" if ref else ""
     return f"https://wa.me/{settings.whatsapp_public_number}?text=" + quote(
-        f"FinBoy login code {code}"
+        f"FinBoy login code {code}{suffix}", safe=""
     )
 
 
@@ -114,8 +118,10 @@ def start(
     device: str,
     purpose: Literal["sign_in", "link"] = "sign_in",
     user_id: UUID | None = None,
+    ref: str | None = None,
 ) -> Started:
     code = new_code()
+    visits.tap(session, ref)  # signing in or up from a page counts as its tap
     expires = datetime.now(UTC) + LIFETIME
     session.add(
         LoginRequest(
@@ -130,7 +136,7 @@ def start(
         )
     )
     session.commit()
-    return Started(code=code, link=message_link(settings, code), expires_at=expires)
+    return Started(code=code, link=message_link(settings, code, ref), expires_at=expires)
 
 
 def latest(session: Session, settings: Settings, nonce: str) -> LoginRequest | None:

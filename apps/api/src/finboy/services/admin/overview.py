@@ -6,6 +6,7 @@ Households page lists, so the two always agree.
 
 import re
 from collections import Counter
+from dataclasses import asdict
 from datetime import datetime, time, timedelta
 from uuid import UUID
 
@@ -24,6 +25,7 @@ from finboy.db.models.mail import ImportRun
 from finboy.db.models.whatsapp import WhatsAppDelivery
 from finboy.services import providers
 from finboy.services.accounts import households as accounts
+from finboy.services.accounts import visits
 from finboy.services.admin.audit import DETAIL
 from finboy.services.admin.feedback import new_count as feedback_new_count
 from finboy.services.admin.households import (
@@ -42,6 +44,7 @@ from finboy.services.admin.views import (
     Overview,
     SessionRow,
     SignupCounts,
+    SourceRow,
     SystemStatus,
 )
 from finboy.services.billing import renewals
@@ -50,7 +53,10 @@ SCHEMA_HEAD = ScriptDirectory(str(API_ROOT / "alembic")).get_current_head()
 RELEASE = re.compile(r"^[0-9a-f]{7,40}$")
 
 
-def signups(session: Session, settings: Settings, now: datetime) -> SignupCounts:
+def signups(
+    session: Session, settings: Settings, now: datetime, days: int | None = None
+) -> SignupCounts:
+    """Sign-up counts; with `days`, also where the sign-ups of those days came from."""
     waiting = session.execute(
         select(SignupWaitlist.language, func.count(), func.min(SignupWaitlist.joined_at)).group_by(
             SignupWaitlist.language
@@ -77,6 +83,11 @@ def signups(session: Session, settings: Settings, now: datetime) -> SignupCounts
         waitlist_languages={language or "unknown": count for language, count, _since in waiting},
         oldest_waiting_since=min(oldest) if oldest else None,
         stale_pending=stale or 0,
+        sources=[
+            SourceRow(**asdict(row))
+            for row in (visits.funnel(session, now - timedelta(days=days)) if days else [])
+        ],
+        sources_days=days,
     )
 
 

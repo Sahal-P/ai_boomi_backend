@@ -89,6 +89,17 @@ test("a WhatsApp start accepts only a wa.me link carrying its code", async () =>
   };
   reply(good);
   assert.deepEqual(await startWhatsApp(), good);
+  // A page visit's ref is percent-encoded into the same message (docs/ad-journey-round).
+  const visit = { ...good, link: `${good.link}%20%28ref%20K7Q2MX%29` };
+  let body: unknown;
+  globalThis.fetch = async (_url, init) => {
+    body = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify(visit), { status: 200 });
+  };
+  assert.deepEqual(await startWhatsApp("sign_in", undefined, "K7Q2MX"), visit);
+  assert.deepEqual(body, { purpose: "sign_in", ref: "K7Q2MX" });
+  await startWhatsApp("link", undefined, "K7Q2MX");
+  assert.deepEqual(body, { purpose: "link" });
   for (const link of ["javascript:alert(1)", "https://evil.example/?text=x", "https://wa.me/12?text=<b>"]) {
     reply({ ...good, link });
     await assert.rejects(startWhatsApp(), { kind: "invalid_response" });

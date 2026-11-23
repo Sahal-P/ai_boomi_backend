@@ -375,6 +375,27 @@
   "date": "2026-11-21"
  },
  {
+  "id": "spent-ml-chai",
+  "text": "ചായ 20",
+  "kind": "spent",
+  "amount": 2000,
+  "date": "2026-11-22"
+ },
+ {
+  "id": "spent-ml-chai-words",
+  "text": "ചായ ഇരുപത്",
+  "kind": "spent",
+  "amount": 2000,
+  "date": "2026-11-22"
+ },
+ {
+  "id": "spent-hi-chai",
+  "text": "चाय 20",
+  "kind": "spent",
+  "amount": 2000,
+  "date": "2026-11-22"
+ },
+ {
   "id": "spent-manglish-innale",
   "text": "innale 300 koduthu",
   "kind": "spent",
