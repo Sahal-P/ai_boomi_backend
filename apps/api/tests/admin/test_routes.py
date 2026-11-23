@@ -356,3 +356,32 @@ async def test_day_filters_arrive_as_text_and_are_read_as_numbers(
     assert (await client.get("/api/v1/admin/households?active=30")).status_code == 200
     assert asked == [7, 30, 30]
     assert (await client.get("/api/v1/admin/signups?days=400")).status_code == 422
+
+
+@pytest.mark.anyio
+async def test_growth_reads_its_period_and_refuses_others(
+    client: httpx.AsyncClient, session: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from finboy.api.v1 import admin as routes
+    from finboy.services.admin import growth
+
+    admin = admin_row()
+    session.execute.return_value.one_or_none.return_value = (
+        admin,
+        live_session(admin, "synthetic-token"),
+    )
+    client.cookies.set(auth.DEV_COOKIE, "synthetic-token")
+    asked: list[str] = []
+
+    def build(_session, period, now):
+        asked.append(period)
+        return growth.assemble(period, now.date(), [], {}, [], growth.funnel_totals([]))
+
+    monkeypatch.setattr(routes.growth, "growth", build)
+    response = await client.get("/api/v1/admin/growth?period=12w")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert (response.json()["period"], response.json()["unit"]) == ("12w", "week")
+    assert (await client.get("/api/v1/admin/growth")).json()["period"] == "30d"
+    assert (await client.get("/api/v1/admin/growth?period=7d")).status_code == 422
+    assert asked == ["12w", "30d"]

@@ -12,6 +12,7 @@ import {
   ScrollText,
   Server,
   ShieldCheck,
+  TrendingUp,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -35,6 +36,7 @@ import { cn } from "@/lib/utils";
 
 export const ADMIN_NAVIGATION = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
+  { label: "Growth", href: "/admin/growth", icon: TrendingUp },
   { label: "Households", href: "/admin/households", icon: Users },
   { label: "Payments", href: "/admin/payments", icon: CreditCard },
   { label: "Feedback", href: "/admin/feedback", icon: MessageSquareText },

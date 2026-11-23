@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { compactMoney, daysCounted, donutArcs, foldSlices, niceTicks, sharePercent } from "./charts.ts";
+import {
+  compactMoney,
+  countLabel,
+  countTicks,
+  daysCounted,
+  donutArcs,
+  foldSlices,
+  nearestPoint,
+  niceTicks,
+  sharePercent,
+  spread,
+} from "./charts.ts";
 
 const row = (category: Parameters<typeof foldSlices>[0][number]["category"], amount_minor: number) => ({
   category,
@@ -62,4 +73,26 @@ test("labels read in Indian units and shares never round a sliver to nothing", (
 test("a running month averages over the days so far, a past month over all of it", () => {
   assert.equal(daysCounted("2026-10-01", "2026-10-31", "2026-10-15"), 15);
   assert.equal(daysCounted("2026-09-01", "2026-09-30", "2026-10-15"), 30);
+});
+
+test("count axes use whole steps, in full below 10,000 and compact above", () => {
+  assert.deepEqual(countTicks(0), [0]);
+  assert.deepEqual(countTicks(3), [0, 1, 2, 3]);
+  assert.deepEqual(countTicks(7), [0, 2, 4, 6, 8]);
+  assert.deepEqual(countTicks(9), [0, 5, 10]);
+  assert.deepEqual(countTicks(100), [0, 25, 50, 75, 100]);
+  assert.ok(countTicks(37).every(Number.isInteger));
+  assert.equal(countLabel(2500, 5000), "2,500");
+  assert.equal(countLabel(12000, 20000), "12K");
+  assert.equal(countLabel(120000, 200000), "1.2L");
+});
+
+test("line points spread edge to edge and the pointer finds the nearest", () => {
+  assert.deepEqual(spread(1), [0.5]);
+  assert.deepEqual(spread(3), [0, 0.5, 1]);
+  assert.equal(nearestPoint(0.24, 3), 0);
+  assert.equal(nearestPoint(0.26, 3), 1);
+  assert.equal(nearestPoint(1.4, 3), 2);
+  assert.equal(nearestPoint(-0.2, 3), 0);
+  assert.equal(nearestPoint(0.7, 1), 0);
 });

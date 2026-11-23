@@ -243,7 +243,7 @@ def summarize(steps: list[Step]) -> list[Funnel]:
     return sorted(rows, key=lambda row: (row.direct, -row.opened, -row.signed_up))
 
 
-def _first_records(user_ids: Select) -> Subquery:
+def first_records(user_ids: Select) -> Subquery:
     """Each listed household's earliest still-confirmed record."""
     return (
         select(Transaction.user_id, func.min(Transaction.created_at).label("at"))
@@ -263,7 +263,7 @@ def funnel(session: Session, since: datetime) -> list[Funnel]:
     visited = select(SignupVisit.user_id).where(
         SignupVisit.created_at >= since, SignupVisit.user_id.is_not(None)
     )
-    firsts = _first_records(visited)
+    firsts = first_records(visited)
     steps = [
         Step(*row)
         for row in session.execute(
@@ -287,7 +287,7 @@ def funnel(session: Session, since: datetime) -> list[Funnel]:
     direct_users = select(User.id).where(
         User.joined_via.is_not(None), User.created_at >= since, User.id.not_in(claimed)
     )
-    direct_firsts = _first_records(direct_users)
+    direct_firsts = first_records(direct_users)
     steps += [
         Step(None, None, None, None, None, created, agreed, first)
         for created, agreed, first in session.execute(

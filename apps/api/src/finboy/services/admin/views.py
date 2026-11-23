@@ -227,6 +227,67 @@ class Journey(BaseModel):
     first_record: datetime | None
 
 
+GrowthPeriod = Literal["30d", "12w", "12m"]
+GrowthUnit = Literal["day", "week", "month"]
+
+
+class GrowthPoint(BaseModel):
+    """One IST day, week (from Monday) or month of self-serve households (docs/admin-growth)."""
+
+    start: date
+    end: date
+    partial: bool  # the running one, counted so far
+    joined: int  # agreed
+    left: int  # deleted their account or were erased
+    households: int  # with FinBoy at its end, or now
+    active: int  # sent a WhatsApp message or saved a record
+    records: int  # records saved, confirmed or waiting for a check
+    recording: int  # households that saved one
+
+
+class GrowthSummary(BaseModel):
+    joined: int
+    joined_before: int  # in the same length of time just before
+    left: int
+    households: int
+    active_week: int  # active in the last 7 days, today included
+    activated: int  # of `joined`, the households that have made a first record
+    minutes_to_record: float | None  # their median, from sign-up to the first record
+
+
+class GrowthFunnel(BaseModel):
+    """Page visits in the period and what came of them; `direct_*` came with no visit."""
+
+    opened: int
+    tapped: int
+    signed_up: int
+    agreed: int
+    first_record: int
+    direct_signed_up: int
+    direct_agreed: int
+    direct_first_record: int
+
+
+class GrowthCohort(BaseModel):
+    """Households that agreed in one week or month, and how many were active in each week or
+    month from then; the last is the running one, so far."""
+
+    start: date
+    households: int
+    active: list[int]
+
+
+class Growth(BaseModel):
+    period: GrowthPeriod
+    unit: GrowthUnit
+    cohort_unit: Literal["week", "month"]
+    today: date
+    summary: GrowthSummary
+    points: list[GrowthPoint]
+    funnel: GrowthFunnel
+    cohorts: list[GrowthCohort]
+
+
 class Overview(BaseModel):
     billing_enabled: bool
     households: dict[str, int]

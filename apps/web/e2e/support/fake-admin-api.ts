@@ -31,6 +31,82 @@ const DAY = 86_400_000;
 const at = (daysAgo: number) => new Date(Date.parse(NOW) - daysAgo * DAY).toISOString();
 const uuid = (prefix: string, index: number) => `${prefix}-0000-4000-8000-${index.toString(16).padStart(12, "0")}`;
 
+const addDays = (day: string, days: number) => {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+/**
+ * Synthetic growth (docs/admin-growth/contract.md) for the double's today, 5 November 2026 IST.
+ * The first self-serve household agreed on Monday 12 October, so earlier periods are left out,
+ * as the real API leaves them out.
+ */
+function growthFor(asked: string | null) {
+  const period = asked === "12w" || asked === "12m" ? asked : "30d";
+  const today = "2026-11-05";
+  const unit = period === "12w" ? "week" : period === "12m" ? "month" : "day";
+  const starts =
+    unit === "day"
+      ? Array.from({ length: 25 }, (_, index) => addDays("2026-10-12", index))
+      : unit === "week"
+        ? ["2026-10-12", "2026-10-19", "2026-10-26", "2026-11-02"]
+        : ["2026-10-01", "2026-11-01"];
+  const ends = starts.map((start) =>
+    unit === "day" ? start : unit === "week" ? addDays(start, 6) : start.startsWith("2026-10") ? "2026-10-31" : "2026-11-30",
+  );
+  const joinedBy = unit === "day" ? starts.map((_, index) => (index === 10 ? 3 : index % 3 === 0 ? 1 : 0)) : unit === "week" ? [3, 5, 2, 1] : [9, 2];
+  const leftBy = unit === "day" ? starts.map((_, index) => (index === 15 ? 1 : 0)) : unit === "week" ? [0, 0, 1, 0] : [1, 0];
+  let households = 0;
+  const points = starts.map((start, index) => {
+    households += (joinedBy[index] ?? 0) - (leftBy[index] ?? 0);
+    const active = Math.max(0, Math.min(households, Math.round(households * 0.6) - (index % 4 === 0 ? 1 : 0)));
+    return {
+      start,
+      end: ends[index] ?? start,
+      partial: start <= today && today <= (ends[index] ?? start),
+      joined: joinedBy[index] ?? 0,
+      left: leftBy[index] ?? 0,
+      households,
+      active,
+      records: active * 3 + (index % 5),
+      recording: active,
+    };
+  });
+  const joined = joinedBy.reduce((sum, value) => sum + value, 0);
+  const left = leftBy.reduce((sum, value) => sum + value, 0);
+  return {
+    period,
+    unit,
+    cohort_unit: unit === "month" ? "month" : "week",
+    today,
+    summary: { joined, joined_before: 0, left, households, active_week: 6, activated: 6, minutes_to_record: 4.5 },
+    points,
+    funnel: {
+      opened: 363,
+      tapped: 48,
+      signed_up: 15,
+      agreed: 11,
+      first_record: 6,
+      direct_signed_up: 2,
+      direct_agreed: 2,
+      direct_first_record: 1,
+    },
+    cohorts:
+      unit === "month"
+        ? [
+            { start: "2026-10-01", households: 9, active: [9, 5] },
+            { start: "2026-11-01", households: 2, active: [2] },
+          ]
+        : [
+            { start: "2026-10-12", households: 3, active: [3, 2, 1, 1] },
+            { start: "2026-10-19", households: 5, active: [5, 3, 2] },
+            { start: "2026-10-26", households: 2, active: [2, 1] },
+            { start: "2026-11-02", households: 1, active: [1] },
+          ],
+  };
+}
+
 export const adminIds = {
   family: uuid("a1b2c3d4", 1),
   pending: uuid("b2c3d4e5", 2),
@@ -415,6 +491,7 @@ export class FakeAdminApi {
       this.record("payment_reconciled", String(payment.household_id), { payment: String(payment.id) });
       return ok(payment);
     }
+    if (path === "/api/v1/admin/growth") return ok(growthFor(query.get("period")));
     if (path === "/api/v1/admin/signups") return ok(this.signups());
     if (path === "/api/v1/admin/signups/tidy" && method === "POST") {
       this.record("signups_tidied", null, { removed: this.stalePending });

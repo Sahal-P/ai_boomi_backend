@@ -6,34 +6,52 @@ import { compactMoney, niceTicks } from "@/lib/charts";
 import { cn } from "@/lib/utils";
 
 export type ColumnSeries = { key: string; label: string; swatch: string };
-export type ColumnGroup = { key: string; label: string; title: string; values: number[]; emphasis: boolean };
+export type ColumnGroup = {
+  key: string;
+  /** Under the column; empty leaves the axis bare there, so many columns never crowd it. */
+  label: string;
+  title: string;
+  values: number[];
+  emphasis: boolean;
+  /** More lines for the tooltip, after the series. */
+  more?: { label: string; value: string }[];
+};
 
 /**
- * Paired columns on one ₹ axis: thin bars growing from the baseline with 4 px rounded tops, 2 px
- * apart, and a tooltip per month on hover or tap. The chosen month stays full strength and the
- * others recede. The table view is the accessible equivalent, so the drawing is hidden from
- * screen readers.
+ * Paired columns on one axis: thin bars growing from the baseline with 4 px rounded tops, 2 px
+ * apart, and a tooltip per group on hover or tap. Groups without emphasis recede until one is
+ * hovered. The table view is the accessible equivalent, so the drawing is hidden from screen
+ * readers. Values are money unless `format`, `tick` and `scale` say otherwise.
  */
 export function ColumnChart({
   series,
   groups,
   height = 208,
+  format = formatMoney,
+  tick = compactMoney,
+  scale = (max: number) => niceTicks(max, 4),
+  labelChosen = true,
 }: {
   series: ColumnSeries[];
   groups: ColumnGroup[];
   height?: number;
+  format?: (value: number) => string;
+  tick?: (value: number, top: number) => string;
+  scale?: (max: number) => number[];
+  /** Bold the labels of groups with emphasis (Reports' chosen month); off, every label is quiet. */
+  labelChosen?: boolean;
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const max = Math.max(0, ...groups.flatMap((group) => group.values));
-  const ticks = niceTicks(max, 4);
+  const ticks = scale(max);
   const top = ticks[ticks.length - 1] || 1;
   return (
     <div aria-hidden="true" className="select-none" onPointerLeave={() => setHover(null)}>
       <div className="relative ml-11" style={{ height }}>
-        {ticks.map((tick) => (
-          <div key={tick} className="absolute inset-x-0 border-t border-ink/10" style={{ bottom: `${(tick / top) * 100}%` }}>
+        {ticks.map((value) => (
+          <div key={value} className="absolute inset-x-0 border-t border-ink/10" style={{ bottom: `${(value / top) * 100}%` }}>
             <span className="absolute top-0 -left-11 w-9 -translate-y-1/2 text-right text-[11px] text-ink-soft tabular-nums">
-              {compactMoney(tick)}
+              {tick(value, top)}
             </span>
           </div>
         ))}
@@ -44,7 +62,7 @@ export function ColumnChart({
             return (
               <div
                 key={group.key}
-                className="relative flex h-full flex-1 cursor-default items-end justify-center gap-[2px] px-1"
+                className="relative flex h-full flex-1 cursor-default items-end justify-center gap-[2px] px-px"
                 onPointerEnter={() => setHover(group.key)}
                 onClick={() => setHover(on ? null : group.key)}
               >
@@ -58,7 +76,7 @@ export function ColumnChart({
                     )}
                     style={{
                       height: `${(Math.max(0, value) / top) * 100}%`,
-                      animationDelay: `${groupIndex * 60 + index * 30}ms`,
+                      animationDelay: `${Math.min(groupIndex * 60, 600) + index * 30}ms`,
                     }}
                   />
                 ))}
@@ -66,9 +84,9 @@ export function ColumnChart({
                   <div
                     className={cn(
                       "glass pointer-events-none absolute bottom-full z-10 mb-2 w-max min-w-40 rounded-xl px-3 py-2 text-left text-xs",
-                      groupIndex === 0
+                      groupIndex < groups.length / 3
                         ? "left-0"
-                        : groupIndex === groups.length - 1
+                        : groupIndex >= (groups.length * 2) / 3
                           ? "right-0"
                           : "left-1/2 -translate-x-1/2",
                     )}
@@ -79,8 +97,14 @@ export function ColumnChart({
                         <span className={cn("size-2 shrink-0 rounded-full", item.swatch)} />
                         {item.label}
                         <span className="ml-auto pl-3 font-semibold text-ink tabular-nums">
-                          {formatMoney(group.values[index] ?? 0)}
+                          {format(group.values[index] ?? 0)}
                         </span>
+                      </p>
+                    ))}
+                    {group.more?.map((line) => (
+                      <p key={line.label} className="mt-1 flex items-center gap-2 pl-4 text-ink-soft">
+                        {line.label}
+                        <span className="ml-auto pl-3 font-semibold text-ink tabular-nums">{line.value}</span>
                       </p>
                     ))}
                   </div>
@@ -94,7 +118,10 @@ export function ColumnChart({
         {groups.map((group) => (
           <span
             key={group.key}
-            className={cn("flex-1 text-center text-xs", group.emphasis ? "font-semibold text-ink" : "text-ink-soft")}
+            className={cn(
+              "flex-1 text-center text-xs whitespace-nowrap",
+              labelChosen && group.emphasis ? "font-semibold text-ink" : "text-ink-soft",
+            )}
           >
             {group.label}
           </span>

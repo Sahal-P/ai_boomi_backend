@@ -3,6 +3,7 @@ import { afterEach, test } from "node:test";
 import {
   actOnHousehold,
   adminSignIn,
+  getGrowth,
   getHousehold,
   getMessageMedia,
   getMessages,
@@ -196,4 +197,61 @@ test("where sign-ups came from is read for the chosen period, and an older API s
   // Tags are only what FinBoy keeps: no click IDs or free text.
   answer(200, { ...signups, sources: [{ ...reel, campaign: "IwAR0 click id" }], sources_days: 30 });
   await assert.rejects(getSignups(), invalid("invalid_response"));
+});
+
+const growth = {
+  period: "12w",
+  unit: "week",
+  cohort_unit: "week",
+  today: "2026-11-24",
+  summary: {
+    joined: 11,
+    joined_before: 4,
+    left: 1,
+    households: 14,
+    active_week: 9,
+    activated: 6,
+    minutes_to_record: 4.5,
+  },
+  points: [
+    {
+      start: "2026-11-23",
+      end: "2026-11-29",
+      partial: true,
+      joined: 3,
+      left: 0,
+      households: 14,
+      active: 9,
+      records: 41,
+      recording: 7,
+    },
+  ],
+  funnel: {
+    opened: 363,
+    tapped: 48,
+    signed_up: 15,
+    agreed: 11,
+    first_record: 6,
+    direct_signed_up: 2,
+    direct_agreed: 2,
+    direct_first_record: 1,
+  },
+  cohorts: [{ start: "2026-11-16", households: 5, active: [5, 3] }],
+};
+
+test("growth is read for its period, as counts and calendar days only", async () => {
+  const seen = answer(200, growth);
+  const result = await getGrowth("12w");
+  assert.match(seen[0]?.url ?? "", /\/api\/v1\/admin\/growth\?period=12w$/);
+  assert.equal(result.points[0]?.partial, true);
+  assert.deepEqual(result.cohorts[0]?.active, [5, 3]);
+  // Anything else is refused: a time where a day belongs, a negative count or another period.
+  for (const wrong of [
+    { ...growth, today: "2026-11-24T10:00:00Z" },
+    { ...growth, summary: { ...growth.summary, joined: -1 } },
+    { ...growth, period: "7d" },
+  ]) {
+    answer(200, wrong);
+    await assert.rejects(getGrowth("12w"), invalid("invalid_response"));
+  }
 });

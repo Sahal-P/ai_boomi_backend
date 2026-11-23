@@ -77,3 +77,34 @@ export function daysCounted(start: string, end: string, asOf: string): number {
   const days = Math.round((Date.parse(`${last}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000) + 1;
   return Math.max(1, days);
 }
+
+/**
+ * Whole-number axis steps (1, 2 or 5 × 10ⁿ, and 2.5 × 10ⁿ from 25 up) from 0 to at least `max`,
+ * about `count` of them: counts are never drawn against a half.
+ */
+export function countTicks(max: number, count = 4): number[] {
+  if (max <= 0) return [0];
+  const raw = Math.max(1, max / count);
+  const power = 10 ** Math.floor(Math.log10(raw));
+  const factors = power >= 10 ? [1, 2, 2.5, 5, 10] : [1, 2, 5, 10];
+  const step = factors.map((factor) => factor * power).find((value) => value >= raw) ?? 10 * power;
+  return Array.from({ length: Math.ceil(max / step) + 1 }, (_, index) => index * step);
+}
+
+const compactNumber = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 });
+
+/** A count on an axis reaching `top`: in full below 10,000 (2,500), compact from there (12K, 1.2L). */
+export const countLabel = (value: number, top: number) =>
+  top < 10_000 ? value.toLocaleString("en-IN") : compactNumber.format(value);
+
+/** Where each of `count` points sits across a chart, from 0 to 1; a lone point sits in the middle. */
+export function spread(count: number): number[] {
+  if (count === 1) return [0.5];
+  return Array.from({ length: count }, (_, index) => index / (count - 1));
+}
+
+/** The nearest of `count` spread points to `x` (0 to 1 across the chart). */
+export function nearestPoint(x: number, count: number): number {
+  if (count <= 1) return 0;
+  return Math.min(count - 1, Math.max(0, Math.round(x * (count - 1))));
+}

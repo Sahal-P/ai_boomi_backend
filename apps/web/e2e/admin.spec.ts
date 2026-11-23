@@ -186,6 +186,33 @@ test("give Premium days, create a pay link shown once, turn AutoPay off", async 
   await expect(page.getByRole("button", { name: "Turn off AutoPay" })).toHaveCount(0);
 });
 
+test("growth shows households joining, staying and saving records, as charts or tables", async ({ page }) => {
+  await page.goto("/admin/growth");
+  await expect(page.getByRole("heading", { level: 1, name: "Growth" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Period" }).getByRole("button", { name: "30 days" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByText("Made a first record", { exact: true }).first()).toBeVisible();
+  const households = page.getByRole("region", { name: "Households" });
+  // The table is always there for screen readers, and "Show as table" puts it in the chart's place.
+  await expect(households.getByRole("table", { name: "Households and active households by day" })).toBeAttached();
+  await households.getByRole("button", { name: "Show as table" }).click();
+  await expect(households.getByRole("table")).toBeVisible();
+  await expect(households.getByRole("row", { name: /Thu, 5 Nov \(so far\)/ })).toBeVisible();
+  const funnel = page.getByRole("region", { name: "From page to first record" });
+  await expect(funnel).toContainText("13% of the step before");
+  await expect(funnel.getByRole("link", { name: "By source" })).toHaveAttribute("href", "/admin/signups");
+
+  await page.getByRole("button", { name: "12 weeks" }).click();
+  await expect(page).toHaveURL(/\/admin\/growth\?period=12w$/);
+  const back = page.getByRole("region", { name: "Coming back" });
+  await expect(back.getByRole("columnheader", { name: "Week 3" })).toBeVisible();
+  await expect(back.getByRole("row", { name: /Week of 19 Oct/ })).toContainText("60%");
+  await page.getByRole("button", { name: "12 months" }).click();
+  await expect(back.getByRole("columnheader", { name: "Month 1" })).toBeVisible();
+});
+
 test("re-check a payment FinBoy hasn't heard back about", async ({ page }) => {
   await page.goto("/admin/payments");
   await expect(page.getByRole("heading", { level: 1, name: "Payments" })).toBeVisible();
@@ -264,6 +291,8 @@ test("a lost admin session sends the browser to sign in", async ({ page, api }) 
 test("every admin page has a task title, one heading and no sideways scroll", async ({ page }) => {
   for (const [path, title] of [
     ["/admin", "Overview · FinBoy admin"],
+    ["/admin/growth", "Growth · FinBoy admin"],
+    ["/admin/growth?period=12m", "Growth · FinBoy admin"],
     ["/admin/households", "Households · FinBoy admin"],
     [`/admin/households/messages?household=${adminIds.family}`, "Messages · FinBoy admin"],
     ["/admin/payments", "Payments · FinBoy admin"],

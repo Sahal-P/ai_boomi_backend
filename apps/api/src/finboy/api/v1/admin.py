@@ -19,7 +19,7 @@ from finboy.api.deps import DB, AdminAccess, CurrentAdmin
 from finboy.core.errors import AccessError
 from finboy.db.models.admin import AdminSession, AdminUser
 from finboy.services.accounts.login import device_label
-from finboy.services.admin import actions, audit, households, messages, overview
+from finboy.services.admin import actions, audit, growth, households, messages, overview
 from finboy.services.admin import auth as admin_auth
 from finboy.services.admin import feedback as feedback_admin
 from finboy.services.admin.actions import Actor
@@ -29,6 +29,8 @@ from finboy.services.admin.views import (
     CreatedAdmin,
     Done,
     EraseInput,
+    Growth,
+    GrowthPeriod,
     HouseholdDetail,
     HouseholdPage,
     Kind,
@@ -432,6 +434,12 @@ def signup_tidy(
 ) -> SignupCounts:
     actions.tidy(session, _actor(request, admin))
     return overview.signups(session, request.app.state.settings, _now(), days)
+
+
+@router.get("/growth", response_model=Growth)
+def growth_view(session: DB, _admin: CurrentAdmin, period: GrowthPeriod = "30d") -> Growth:
+    """How self-serve households joined, stayed and used FinBoy (docs/admin-growth)."""
+    return growth.growth(session, period, _now())
 
 
 @router.get("/admins", response_model=list[AdminRow])

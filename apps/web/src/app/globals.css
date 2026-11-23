@@ -48,6 +48,13 @@
   --color-chart-rest: var(--chart-rest);
   --color-chart-in: var(--chart-in);
   --color-chart-out: var(--chart-out);
+  --color-chart-seq-1: var(--chart-seq-1);
+  --color-chart-seq-2: var(--chart-seq-2);
+  --color-chart-seq-3: var(--chart-seq-3);
+  --color-chart-seq-4: var(--chart-seq-4);
+  --color-chart-seq-5: var(--chart-seq-5);
+  --color-chart-seq-6: var(--chart-seq-6);
+  --color-chart-seq-7: var(--chart-seq-7);
   --color-wa-wallpaper: var(--wa-wallpaper);
   --color-wa-bar: var(--wa-bar);
   --color-wa-out: var(--wa-out);
@@ -121,10 +128,21 @@
   --animate-grow-x: grow-x 0.9s var(--ease-out-expo) both;
   --animate-grow-y: grow-y 0.9s var(--ease-out-expo) both;
   --animate-sweep: sweep 1.1s var(--ease-out-expo) both;
+  /* Lines draw in from the left (admin Growth). */
+  --animate-reveal-x: reveal-x 1s var(--ease-out-expo) both;
 
   @keyframes grow-x {
     from {
       transform: scaleX(0);
+    }
+  }
+  /* The clip keeps 12 px of room, so end dots and strokes at the edge are never cut. */
+  @keyframes reveal-x {
+    from {
+      clip-path: inset(-12px 100% -12px -12px);
+    }
+    to {
+      clip-path: inset(-12px);
     }
   }
   @keyframes grow-y {
@@ -256,6 +274,16 @@
   --chart-rest: #9a9ea6;
   --chart-in: #2a78d6;
   --chart-out: #b87800;
+  /* One blue ramp for magnitude and order (admin Growth, docs/admin-growth): the retention
+     grid uses all seven steps, ink text on 1–4 (≥ 5.24:1) and white on 5–7 (≥ 5.39:1); the
+     funnel uses steps 3–7, an ordinal ramp whose light end is 2.02:1 on glass. */
+  --chart-seq-1: #cde2fb;
+  --chart-seq-2: #9ec5f4;
+  --chart-seq-3: #6da7ec;
+  --chart-seq-4: #3987e5;
+  --chart-seq-5: #256abf;
+  --chart-seq-6: #184f95;
+  --chart-seq-7: #0d366b;
 
   /* WhatsApp's own light theme (Android), only where a WhatsApp chat is drawn: the landing's
      chat preview and the phone in MoneyScene. Bubbles, greys and greens are sampled from Meta's

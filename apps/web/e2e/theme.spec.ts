@@ -192,6 +192,8 @@ test.describe("the admin panel", () => {
   for (const path of [
     "/admin/login",
     "/admin",
+    "/admin/growth",
+    "/admin/growth?period=12w",
     "/admin/households",
     `/admin/households?selected=${adminIds.family}`,
     "/admin/payments",

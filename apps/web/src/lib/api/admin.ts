@@ -261,6 +261,53 @@ const signupSchema = z.object({
 });
 export type SignupCounts = z.infer<typeof signupSchema>;
 
+// Growth over time (docs/admin-growth/contract.md): self-serve households by IST day, week or month.
+const calendarDay = z.iso.date();
+export const GROWTH_PERIODS = ["30d", "12w", "12m"] as const;
+export type GrowthPeriod = (typeof GROWTH_PERIODS)[number];
+const growthPointSchema = z.object({
+  start: calendarDay,
+  end: calendarDay,
+  partial: z.boolean(),
+  joined: count,
+  left: count,
+  households: count,
+  active: count,
+  records: count,
+  recording: count,
+});
+const growthSchema = z.object({
+  period: z.enum(GROWTH_PERIODS),
+  unit: z.enum(["day", "week", "month"]),
+  cohort_unit: z.enum(["week", "month"]),
+  today: calendarDay,
+  summary: z.object({
+    joined: count,
+    joined_before: count,
+    left: count,
+    households: count,
+    active_week: count,
+    activated: count,
+    minutes_to_record: minutes,
+  }),
+  points: z.array(growthPointSchema).max(31),
+  funnel: z.object({
+    opened: count,
+    tapped: count,
+    signed_up: count,
+    agreed: count,
+    first_record: count,
+    direct_signed_up: count,
+    direct_agreed: count,
+    direct_first_record: count,
+  }),
+  cohorts: z.array(z.object({ start: calendarDay, households: count, active: z.array(count).max(13) })).max(13),
+});
+export type Growth = z.infer<typeof growthSchema>;
+export type GrowthPoint = Growth["points"][number];
+export type GrowthCohort = Growth["cohorts"][number];
+export type GrowthFunnel = Growth["funnel"];
+
 const overviewSchema = z.object({
   billing_enabled: z.boolean(),
   households: counts,
@@ -441,6 +488,8 @@ export const getSignups = (signal?: AbortSignal, days: SourceDays = 30) =>
   requestJson(`${ADMIN}/signups${query({ days })}`, signupSchema, { signal });
 export const tidySignups = (days: SourceDays = 30) =>
   requestJson(`${ADMIN}/signups/tidy${query({ days })}`, signupSchema, post());
+export const getGrowth = (period: GrowthPeriod, signal?: AbortSignal) =>
+  requestJson(`${ADMIN}/growth${query({ period })}`, growthSchema, { signal });
 
 export const listAdmins = (signal?: AbortSignal) => requestJson(`${ADMIN}/admins`, z.array(adminRowSchema), { signal });
 export const addAdmin = (email: string) => requestJson(`${ADMIN}/admins`, createdAdminSchema, post({ email }));
@@ -456,6 +505,7 @@ export const getAudit = (offset: number, signal?: AbortSignal) =>
 
 const ADMIN_PATHS = [
   "/admin",
+  "/admin/growth",
   "/admin/households",
   "/admin/households/messages",
   "/admin/payments",

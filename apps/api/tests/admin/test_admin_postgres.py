@@ -6,7 +6,8 @@ import io
 import sys
 from collections import Counter
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -16,14 +17,16 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from finboy.core.clock import today_ist
+from finboy.core.clock import IST, today_ist
 from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.core.errors import AccessError
 from finboy.db.models.admin import AdminEvent, AdminSession, AdminUser
 from finboy.db.models.billing import BillingPayment
 from finboy.db.models.core import User
+from finboy.db.models.ledger import Transaction
 from finboy.db.models.mail import AuditEvent
-from finboy.db.models.whatsapp import WhatsAppBinding
+from finboy.db.models.whatsapp import WhatsAppBinding, WhatsAppReceipt
+from finboy.services.accounts.households import erase_household
 from finboy.services.admin import actions, cli
 from finboy.services.admin.households import short
 from finboy.services.billing import links
@@ -488,3 +491,122 @@ def test_downgrade_refuses_while_admins_or_suspensions_remain(world: World) -> N
             transaction.rollback()
     with pg() as session:
         assert session.get(AdminUser, me) is not None
+
+
+def test_growth_counts_self_serve_households_by_ist_day(world: World, api: FastAPI) -> None:
+    """Changes against what the shared database already holds: two self-serve households
+    (one erased), a pilot and a pending sign-up, with messages and records either side of IST
+    midnight."""
+    _, pg = world
+    create_admin(pg, ADMIN)
+    mine = signed_in(api, ADMIN)
+    now = datetime.now(UTC)
+    today = now.astimezone(IST).date()
+    midnight = datetime.combine(today, time(), IST)
+
+    def read(period: str) -> dict[str, Any]:
+        response = mine.get(f"/api/v1/admin/growth?period={period}")
+        assert response.status_code == 200
+        assert "Synthetic Household" not in response.text
+        return response.json()
+
+    def by_start(body: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        return {point["start"]: point for point in body["points"]}
+
+    before = {period: read(period) for period in ("30d", "12w", "12m")}
+    regular = household(pg, joined_days_ago=10, phone="919812300011")
+    leaving = household(pg, joined_days_ago=5)
+    pilot = household(pg, kind="pilot", joined_days_ago=10, phone="919812300012")
+    household(pg, kind="pending", joined_days_ago=1)
+    with pg() as session:
+        binding = dict(
+            session.execute(
+                select(WhatsAppBinding.user_id, WhatsAppBinding.id).where(
+                    WhatsAppBinding.user_id.in_([regular, pilot])
+                )
+            ).all()
+        )
+        for user_id, at in (
+            (regular, midnight - timedelta(minutes=10)),  # yesterday, IST
+            (regular, midnight + timedelta(minutes=10)),  # today, IST
+            (pilot, midnight + timedelta(minutes=20)),  # left out
+        ):
+            session.add(
+                WhatsAppReceipt(
+                    binding_id=binding[user_id],
+                    inbound_message_id="wamid." + uuid4().hex,
+                    content_hash="c" * 64,
+                    kind="text",
+                    state="completed",
+                    provider_at=at,
+                    received_at=at,
+                )
+            )
+        for status, at in (
+            ("confirmed", midnight - timedelta(minutes=5)),
+            ("rejected", midnight + timedelta(minutes=15)),  # activity, but not saved
+        ):
+            session.add(
+                Transaction(
+                    user_id=regular,
+                    direction="out",
+                    kind="purchase",
+                    amount_minor=2000,
+                    merchant="Synthetic tea stall",
+                    category="food_dining",
+                    occurred_at=at,
+                    confidence=Decimal("0.950"),
+                    confidence_factors={},
+                    status=status,
+                    fingerprint=uuid4().hex,
+                    created_at=at,
+                )
+            )
+        session.commit()
+    with pg() as session:
+        erase_household(session, leaving)
+        session.commit()
+    after = {period: read(period) for period in ("30d", "12w", "12m")}
+
+    old, new = before["30d"]["summary"], after["30d"]["summary"]
+    assert new["joined"] - old["joined"] == 2
+    assert new["left"] - old["left"] == 1
+    assert new["households"] - old["households"] == 1
+    assert new["active_week"] - old["active_week"] == 1
+    assert new["activated"] - old["activated"] == 1
+
+    zero = {"joined": 0, "left": 0, "active": 0, "records": 0, "recording": 0}
+
+    def change(period: str, day: date) -> dict[str, int]:
+        found = [
+            (by_start(after[period]).get(start), by_start(before[period]).get(start, zero))
+            for start in by_start(after[period])
+            if start <= day.isoformat() <= by_start(after[period])[start]["end"]
+        ]
+        assert len(found) == 1
+        new_point, old_point = found[0]
+        assert new_point is not None
+        return {key: new_point[key] - old_point[key] for key in zero}
+
+    yesterday = today - timedelta(days=1)
+    assert change("30d", yesterday) == {
+        "joined": 0,
+        "left": 0,
+        "active": 1,
+        "records": 1,
+        "recording": 1,
+    }
+    assert change("30d", today)["active"] == 1 and change("30d", today)["records"] == 0
+    assert change("30d", today)["left"] == 1
+    assert change("30d", (now - timedelta(days=10)).astimezone(IST).date())["joined"] == 1
+    for period in ("12w", "12m"):
+        assert change(period, today)["active"] == 1
+    joined_week = (now - timedelta(days=10)).astimezone(IST).date()
+    cohorts = {
+        cohort["start"]: cohort["households"]
+        for cohort in after["12w"]["cohorts"]
+        if cohort["start"] <= joined_week.isoformat()
+    }
+    earlier = {c["start"]: c["households"] for c in before["12w"]["cohorts"]}
+    newest = max(cohorts)
+    assert cohorts[newest] - earlier.get(newest, 0) == 1
