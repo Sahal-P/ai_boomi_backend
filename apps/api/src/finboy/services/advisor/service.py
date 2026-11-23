@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from time import perf_counter
 from typing import Any, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from openai import OpenAI
 from pydantic import BaseModel, ConfigDict
@@ -29,6 +29,7 @@ from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.core.languages import DisplayStyle, Language
 from finboy.services import model_response
+from finboy.services.advisor import changes as record_changes
 from finboy.services.advisor import grounding, history, memory, prompt, snapshot, summaries, tools
 from finboy.services.advisor.client import client_for
 from finboy.services.assistant import service as assistant
@@ -56,6 +57,9 @@ RECORD_TOOLS = frozenset(
         "budgets_and_goal",
         "compare",
         "afford_monthly",
+        "other_payees",
+        "spending_review",
+        "propose_changes",
     }
 )
 NATIVE = {"hi": re.compile(r"[ऀ-ॿ]"), "ml": re.compile(r"[ഀ-ൿ]")}
@@ -174,7 +178,9 @@ def _uses_records(
     return bool((quoted - from_guides) & snapshot)
 
 
-def _log(outcome: str, channel: str, started: float, used: list[str], changes: int = 0) -> None:
+def _log(
+    outcome: str, channel: str, started: float, used: list[str], changes: int = 0, proposed: int = 0
+) -> None:
     logger.info(
         "advisor.answered",
         extra={
@@ -183,6 +189,7 @@ def _log(outcome: str, channel: str, started: float, used: list[str], changes: i
             "count": len(used),
             "tools": ",".join(sorted(set(used))),
             "memory_changes": changes,
+            "record_changes": proposed,
             "latency_ms": round((perf_counter() - started) * 1000),
         },
     )
@@ -371,6 +378,7 @@ def advise(
         if memory_on
         else []
     )
+    answer_id = uuid4()
     kept = history.save_turn(
         session,
         user_id=user_id,
@@ -381,6 +389,26 @@ def advise(
         language=language,
         tool_names=result.tools,
         now=now,
+        answer_id=answer_id,
+    )
+    session.flush()
+    # Changes it proposed wait for the household's tap (docs/advisor-edits-round/contract.md).
+    proposal = ctx.proposal if reply.policy == "answer" else None
+    change_set = (
+        record_changes.view(
+            record_changes.propose(
+                session,
+                user_id=user_id,
+                channel=channel,
+                message_id=answer_id,
+                proposal=proposal,
+                now=now,
+            ),
+            version,
+            now,
+        )
+        if proposal is not None
+        else None
     )
     session.commit()
     summaries.schedule(session.get_bind(), settings, user_id, kept.id)
@@ -390,7 +418,14 @@ def advise(
         warnings = ["incomplete_coverage"] + (["pending_review_items"] if waiting else [])
     evidence = list({row.id: row for row in result.evidence}.values())
     outcome = "repaired" if result.repaired else "answered"
-    _log(outcome, channel, started, result.tools, len(changes))
+    _log(
+        outcome,
+        channel,
+        started,
+        result.tools,
+        len(changes),
+        change_set.count if change_set else 0,
+    )
     return AssistantAnswer(
         data_version=version,
         intent="advisor",
@@ -409,5 +444,6 @@ def advise(
         memory_changes=changes,
         follow_ups=[item.strip()[:120] for item in reply.follow_ups if item.strip()][:3],
         sources=sources,
+        change_set=change_set,
         **_style(style),
     )

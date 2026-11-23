@@ -581,5 +581,126 @@
         "annual_interest_percent": 10
       }
     }
+  },
+  {
+    "id": "en-sort-other",
+    "language": "en",
+    "edits": true,
+    "turns": [
+      "Categorise all my Other payments into the right categories"
+    ],
+    "expect": {
+      "policy": "answer",
+      "proposes": true,
+      "groups": [
+        "category"
+      ],
+      "reads": [
+        "other_payees",
+        "plan_changes"
+      ]
+    }
+  },
+  {
+    "id": "hi-sort-other",
+    "language": "hi",
+    "edits": true,
+    "turns": [
+      "मेरे Other वाले सारे भुगतान सही श्रेणी में डाल दो"
+    ],
+    "expect": {
+      "policy": "answer",
+      "proposes": true,
+      "groups": [
+        "category"
+      ]
+    }
+  },
+  {
+    "id": "en-where-improve",
+    "language": "en",
+    "edits": true,
+    "turns": [
+      "Where should I improve my spending this month?"
+    ],
+    "expect": {
+      "policy": "answer",
+      "proposes": false,
+      "reads": [
+        "own_transfers"
+      ]
+    }
+  },
+  {
+    "id": "en-what-is-other",
+    "language": "en",
+    "edits": true,
+    "turns": [
+      "What are my Other payments this month?"
+    ],
+    "expect": {
+      "policy": "answer",
+      "proposes": false
+    }
+  },
+  {
+    "id": "en-own-transfer",
+    "language": "en",
+    "edits": true,
+    "turns": [
+      "The SBI self transfer payments are moves to my own account, not spending. Fix them."
+    ],
+    "expect": {
+      "policy": "answer",
+      "proposes": true,
+      "groups": [
+        "own_transfer"
+      ]
+    }
+  },
+  {
+    "id": "en-rename-unknown",
+    "language": "en",
+    "edits": true,
+    "turns": [
+      "The Unknown 93 payment was to my milkman. Rename it to Milkman."
+    ],
+    "expect": {
+      "policy": "answer",
+      "proposes": true,
+      "groups": [
+        "rename"
+      ]
+    }
+  },
+  {
+    "id": "en-food-budget",
+    "language": "en",
+    "edits": true,
+    "turns": [
+      "Set my food budget to 6000 a month"
+    ],
+    "expect": {
+      "policy": "answer",
+      "proposes": true,
+      "groups": [
+        "budget"
+      ]
+    }
+  },
+  {
+    "id": "hinglish-savings-goal",
+    "language": "hinglish",
+    "edits": true,
+    "turns": [
+      "Mera savings goal 3000 rupaye mahina kar do"
+    ],
+    "expect": {
+      "policy": "answer",
+      "proposes": true,
+      "groups": [
+        "savings_goal"
+      ]
+    }
   }
 ]

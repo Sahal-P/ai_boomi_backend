@@ -20,6 +20,7 @@ from finboy.db.models.advisor import (
     HouseholdMemory,
 )
 from finboy.db.models.billing import BillingProfile, Subscription
+from finboy.db.models.changes import RecordChangeSet
 from finboy.db.models.core import User
 from finboy.db.models.ledger import (
     Commitment,
@@ -154,6 +155,9 @@ def remove_household_data(
     counts["feedback"] = feedback.remove_all(session, settings, user_id)
     # Where it came from stays only as an anonymous count (docs/ad-journey-round/contract.md).
     counts["signup_visits"] = visits.unlink(session, user_id)
+    # Changes Ask proposed, with the payee names and values they kept for Undo (advisor edits);
+    # their WhatsApp cards go with them.
+    remove("record_change_sets", delete(RecordChangeSet).where(RecordChangeSet.user_id == user_id))
 
     # The coach's sent-nudge claims (advisor phase 3); the bindings would cascade to them too.
     remove("advisor_nudges", delete(AdvisorNudge).where(AdvisorNudge.user_id == user_id))

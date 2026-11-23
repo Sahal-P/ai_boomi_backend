@@ -117,7 +117,7 @@ class WhatsAppPrompt(Base):
         CheckConstraint(
             "purpose IN ('consent','confirm','change_amount','undo','due_paid','due_repeat',"
             "'reminder_opt_in','web_login','link','saved','pick_item','pick_category',"
-            "'checkin_opt_in','coach_opt_in')",
+            "'checkin_opt_in','coach_opt_in','advisor_changes','advisor_undo')",
             name="purpose",
         ),
         CheckConstraint("state IN ('open','answered','expired','superseded')", name="state"),
@@ -138,6 +138,11 @@ class WhatsAppPrompt(Base):
     )
     login_request_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("login_requests.id", ondelete="CASCADE"), index=True
+    )
+    # The advisor's proposed or applied changes this card applies or undoes
+    # (docs/advisor-edits-round/contract.md).
+    change_set_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("record_change_sets.id", ondelete="CASCADE"), index=True
     )
     # The message of several saved items this item's card belongs to (its "Undo all").
     group_id: Mapped[UUID | None] = mapped_column(

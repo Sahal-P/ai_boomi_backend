@@ -399,3 +399,17 @@ finboy_signup, migration `0023_signup_visits`. A visit keeps only cleaned utm ta
 language, coarse browser and phone classes and times: no IP address, cookie, device ID, User-Agent or
 click ID. Visits that lead nowhere go after 90 days, and erasure unlinks them. Logs never carry a ref.
 
+
+## Advisor edits round — 23 November 2026
+
+From feat/finboy-ad-journey 047213e the human asked that Ask analyse every payment properly and be
+allowed to fix records: it shows the exact changes, one tap applies them all and one Undo puts them
+back, on the web and on WhatsApp. Ask may change categories (one payment or every payment to a
+payee), mark own-account transfers so they stop counting as spending, rename payees (remembered for
+their next entries) and set budgets and the savings goal. Amounts, dates and deleting stay on the
+Transactions page. `docs/advisor-edits-round/contract.md` supersedes "Ask reads records through
+read-only tools" and "WhatsApp never confirms, edits or deletes records" only as documented there.
+One agent on feat/finboy-advisor-edits, loopback 8161/3161, disposable finboy_signup, migration
+`0024_record_changes`. `ADVISOR_EDITS_ENABLED` stays false until `pnpm eval:advisor` passes live and
+the human approves the release. WhatsApp never merges or deletes records; logs carry counts, never
+payees or amounts; admins never see change sets.

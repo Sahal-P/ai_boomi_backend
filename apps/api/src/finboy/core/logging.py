@@ -31,6 +31,8 @@ class JsonFormatter(logging.Formatter):
             # Advisor: tool names it called and how many memories changed, never their content.
             "tools",
             "memory_changes",
+            # Advisor edits: how many record changes were proposed, applied or put back.
+            "record_changes",
             # Billing: FinBoy's own payment ID and PayU's short outcome code, never its message.
             "payment_id",
             "code",

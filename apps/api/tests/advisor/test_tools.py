@@ -200,7 +200,11 @@ def test_a_web_search_that_fails_or_finds_nothing_is_said_plainly() -> None:
 
 def test_every_tool_has_a_strict_schema() -> None:
     settings = make_settings().model_copy(
-        update={"knowledge_enabled": True, "advisor_web_search_enabled": True}
+        update={
+            "knowledge_enabled": True,
+            "advisor_web_search_enabled": True,
+            "advisor_edits_enabled": True,
+        }
     )
     definitions = tools.definitions(settings)
     assert [item["function"]["name"] for item in definitions] == [t.name for t in tools.TOOLS]

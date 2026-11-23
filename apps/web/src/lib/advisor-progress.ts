@@ -13,6 +13,9 @@ const labels = new Map<string, string>([
   ["search_past_chats", "Looking through your earlier chats…"],
   ["search_knowledge", "Reading FinBoy's money guides…"],
   ["search_web", "Searching the web…"],
+  ["other_payees", "Looking at your Other payments…"],
+  ["spending_review", "Reviewing your month…"],
+  ["propose_changes", "Preparing the changes…"],
 ]);
 
 /** The words for a step; an unknown or missing step reads as "Thinking…". */

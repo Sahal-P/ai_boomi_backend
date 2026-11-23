@@ -1004,3 +1004,29 @@ There is no flag: visits are recorded once the web is pushed.
 **Rollback:** redeploy the previous release. The `signup_visits` table can stay. Migration `0023`
 downgrades by dropping it, since visits are anonymous counts.
 
+
+## Advisor edits release
+
+`feat/finboy-advisor-edits` ([contract](advisor-edits-round/contract.md)) adds:
+- migration `0024_record_changes` (`record_change_sets`, `whatsapp_prompts.change_set_id`, two card
+  purposes, `merchant_categories.display_name` with `category` now optional);
+- the read tools `other_payees` and `spending_review`, and paging in `find_payments`;
+- `propose_changes` and Apply behind `ADVISOR_EDITS_ENABLED` (default false);
+- `POST /api/v1/assistant/changes/{id}/apply|undo|dismiss`, the web Ask card and the WhatsApp card;
+- remembered payee names in diary saves, statement imports and quick add.
+
+**Release** (with the human's approval at the time):
+1. Backend first: a validated backup, `alembic upgrade head` for `0024`, a drift check, switch and
+   health. The read tools go live with it; proposals stay off.
+2. Push main. "FinBoy fast deploy" builds and deploys the web, with the card and the privacy line.
+3. Run `pnpm eval:advisor` with production's answer provider on the server (the local run used
+   OpenAI). When it passes, set `ADVISOR_EDITS_ENABLED=true` in `/etc/finboy/production.env` and
+   restart `finboy.service`.
+
+**Check** on the owner's household, web and WhatsApp: "categorise my Other payments" shows the card;
+Apply moves them on Transactions and Reports; Undo puts them back; reopening the chat keeps the
+state.
+
+**Rollback:** set `ADVISOR_EDITS_ENABLED=false` (Apply stops; Undo and Not now still work), or
+redeploy the previous release. Migration `0024` downgrades only when no change sets or remembered
+names remain.

@@ -21,7 +21,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from finboy.db.models.ledger import EmailSource, SourceEvent, Transaction
-from finboy.db.models.money import MerchantCategory
 from finboy.db.models.statements import StatementImport
 from finboy.services.ingestion.pipeline import _user_lock
 from finboy.services.ingestion.types import Category, Event
@@ -29,7 +28,7 @@ from finboy.services.ledger.categories import INCOME_CATEGORIES, category_for, n
 from finboy.services.ledger.confidence import confidence_for
 from finboy.services.ledger.matching import choose_match, direction, kind
 from finboy.services.ledger.persist import _fingerprint, as_event, attach_evidence, refresh_links
-from finboy.services.money.merchants import merchant_key
+from finboy.services.money import merchants
 from finboy.services.statements.gpay import Row, Statement
 
 SOURCE = "gpay_statement"
@@ -279,13 +278,8 @@ def save_statement(
         if keys
         else set()
     )
-    memory = dict(
-        session.execute(
-            select(MerchantCategory.merchant_key, MerchantCategory.category).where(
-                MerchantCategory.user_id == user_id
-            )
-        ).all()
-    )
+    # The household's choices for each payee: its category, and the name it gave it.
+    memory = merchants.memory(session, user_id)
     ledger = _Ledger.load(session, user_id)
     counts: Counter[str] = Counter()
     sources: list[EmailSource] = []
@@ -297,7 +291,7 @@ def save_statement(
         if key in known:
             counts["already"] += 1
             continue
-        category = row_category(row, memory.get(merchant_key(row.name) or ""))
+        category = row_category(row, memory.category(row.name))
         event = row_event(row, category)
         source = EmailSource(
             id=uuid4(),
@@ -351,6 +345,10 @@ def save_statement(
             ledger.transactions[repeat] if repeat is not None else first.get(":".join(base[:4]))
         )
         transaction = _new_transaction(user_id, event, category, possible)
+        # Matching keeps the statement's own name; only the new record takes the chosen one.
+        renamed = memory.name(row.name)
+        if renamed is not None:
+            transaction.merchant = renamed
         first.setdefault(":".join(base[:4]), transaction)
         source_event.transaction_id = transaction.id
         source_event.origin_transaction_id = transaction.id

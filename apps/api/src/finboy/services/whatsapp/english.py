@@ -609,3 +609,33 @@ DUE_ON_ITS_OWN = "Send the due on its own, like: Rent 5000 on 5 January."
 
 def due_already(amount_minor: int, due: date) -> str:
     return f"⚠️ You already saved {money(amount_minor)} for {date_label(due)}."
+
+
+# Changes Ask proposed (docs/advisor-edits-round/contract.md), applied only on a tap.
+CHANGE_PAYMENTS = ("payment", "payments")
+CHANGE_OWN = "Own account, not spending"
+CHANGE_RENAME = "New name"
+CHANGE_BUDGET = "{label} budget"
+CHANGE_GOAL = "Savings goal"
+CHANGE_MONTHLY = "{amount} a month"
+CHANGE_REMOVED = "removed"
+CHANGES_TITLE = "✏️ FinBoy can make these changes:"
+CHANGES_KEPT = "🔒 {count} you set yourself stay as they are."
+CHANGES_MORE = "+{count} more on the FinBoy website."
+CHANGES_ASK = "Nothing changes until you tap Apply."
+APPLY = "✅ Apply {count}"
+NOT_NOW = "❌ Not now"
+CHANGES_DECLINED = "👍 OK, nothing changed."
+CHANGES_EXPIRED = "⌛ These changes have expired, so nothing changed. Ask FinBoy again."
+CHANGES_OFF = "Changes from Ask are switched off right now. Nothing changed."
+CHANGES_UNDONE = "↩️ Put back as it was."
+CHANGES_UNDO_KEPT = "{count} changed since stay as they are."
+
+
+def changes_applied(count: int, remembered: bool) -> str:
+    text = f"✅ Done: {count} {'change' if count == 1 else 'changes'} made."
+    return text + (" FinBoy will remember these payees." if remembered else "")
+
+
+def changes_applied_speech(count: int) -> str:
+    return f"Done. {count} {'change' if count == 1 else 'changes'} made."

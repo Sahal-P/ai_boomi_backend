@@ -6,7 +6,7 @@ hasn't set itself, locks it there as the household's choice, and teaches merchan
 """
 
 from collections import defaultdict
-from datetime import datetime, time
+from datetime import date, datetime, time
 from typing import Literal
 from uuid import UUID
 
@@ -117,6 +117,93 @@ def unsorted_payees(session: Session, *, user_id: UUID, period: PeriodSpec) -> P
     )
     return PayeeList(
         items=items[:LIMIT], spent_minor=spent, unsorted_minor=unsorted, data_version=version
+    )
+
+
+class OtherPayee(BaseModel):
+    name: str
+    count: int
+    amount_minor: int
+    latest: date
+    remembered: str | None = None  # the category remembered for the payee, if any
+
+
+class OtherPayees(BaseModel):
+    """What Ask reads to sort "Other" (docs/advisor-edits-round/contract.md)."""
+
+    items: list[OtherPayee]  # largest first, at most LIMIT
+    payees: int  # named payees with payments in "Other", listed or not
+    spent_minor: int
+    other_minor: int
+    other_count: int
+    # Unknown or hidden names, which may be several people: sorted one payment at a time.
+    unnamed_count: int
+    unnamed_minor: int
+    # Categorised "transfer" but not marked as an own-account move, so still counted as spending.
+    transfer_count: int
+    transfer_minor: int
+
+
+def other_payees(session: Session, *, user_id: UUID, period: PeriodSpec) -> OtherPayees:
+    """Spending payees still in "Other", grouped as `unsorted_payees` groups them."""
+    lock_snapshot(session, user_id)
+    start, end = period_dates(period, today_ist())
+    rows = session.execute(
+        select(
+            Transaction.merchant,
+            Transaction.category,
+            Transaction.amount_minor,
+            Transaction.occurred_at,
+        ).where(
+            Transaction.user_id == user_id,
+            Transaction.dataset == "household",
+            Transaction.status == "confirmed",
+            Transaction.direction == "out",
+            Transaction.kind != "transfer",
+            Transaction.occurred_at >= datetime.combine(start, time.min, IST),
+            Transaction.occurred_at <= datetime.combine(end, time.max, IST),
+        )
+    )
+    spent = other = count = unnamed = unnamed_count = moved = moved_count = 0
+    groups: dict[str, list[tuple[str, int, datetime]]] = defaultdict(list)
+    for name, category, amount, occurred_at in rows:
+        spent += amount
+        if category == "transfer":
+            moved, moved_count = moved + amount, moved_count + 1
+        if category != "other":
+            continue
+        other, count = other + amount, count + 1
+        key = merchants.merchant_key(name)
+        if key is None:
+            unnamed, unnamed_count = unnamed + amount, unnamed_count + 1
+        else:
+            groups[key].append((name, amount, occurred_at))
+    memory = merchants.memory(session, user_id)
+    items = sorted(
+        (
+            OtherPayee(
+                name=max(
+                    {n for n, _, _ in group}, key=lambda n: (sum(m == n for m, _, _ in group), n)
+                ),
+                count=len(group),
+                amount_minor=sum(amount for _, amount, _ in group),
+                latest=max(at for _, _, at in group).astimezone(IST).date(),
+                remembered=memory.category(group[0][0]),
+            )
+            for group in groups.values()
+        ),
+        key=lambda payee: (-payee.amount_minor, payee.name),
+    )
+    return OtherPayees(
+        items=items[:LIMIT],
+        payees=len(items),
+        spent_minor=spent,
+        other_minor=other,
+        other_count=count,
+        unnamed_count=unnamed_count,
+        unnamed_minor=unnamed,
+        transfer_count=moved_count,
+        transfer_minor=moved,
     )
 
 

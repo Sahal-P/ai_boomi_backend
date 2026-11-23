@@ -6,8 +6,11 @@ periods, categories and payees, never whose records are read. Sums, differences 
 are computed here, never by the model. A bad argument returns an error the model can correct.
 search_web is the one tool that reads outside FinBoy: public prices and rates, from a question
 that carries none of the household's amounts (docs/names-search-round/contract.md).
+propose_changes is the one tool that prepares a change, and it changes nothing itself: the checked
+proposal is shown to the household, who apply it with a tap (docs/advisor-edits-round).
 """
 
+import calendar
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -26,10 +29,11 @@ from finboy.core.config import Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.db.models.ledger import Category
 from finboy.services import providers
-from finboy.services.advisor import embeddings, grounding, history, knowledge, web_search
+from finboy.services.advisor import changes, embeddings, grounding, history, knowledge, web_search
 from finboy.services.assistant.language import money
-from finboy.services.money import budgets, engine, insights
+from finboy.services.money import budgets, engine, insights, payees
 from finboy.services.money.engine import PeriodSpec, TransactionView
+from finboy.services.whatsapp import english
 
 PeriodKind = Literal[
     "today",
@@ -44,6 +48,10 @@ PeriodKind = Literal[
 ]
 CATEGORIES: tuple[str, ...] = get_args(Category)
 MAX_PAYMENTS = 20
+MAX_OFFSET = 180  # find_payments counts the latest 200
+# A spending review's fixed costs and saving; the rest of spending is flexible.
+FIXED = ("rent", "loan_emi", "utilities", "subscriptions", "phone_recharge", "education", "fees")
+SAVING = ("investments",)
 MAX_DAYS_AHEAD = 366  # a due next March or next year's January is still a due
 
 
@@ -94,6 +102,10 @@ class FindPaymentsArgs(BaseModel):
     category: str | None = Field(description="One of the closed category names, or null")
     direction: Literal["out", "in", "any"] = Field(description="out: paid; in: received")
     limit: int | None = Field(description="How many to list, 1 to 20 (default 10)")
+    offset: int | None = Field(
+        default=None,  # strict schemas still ask for it; older callers may leave it out
+        description="How many of the newest to skip, to list the next ones (default 0)",
+    )
 
 
 class PayeesAndPeopleArgs(BaseModel):
@@ -102,6 +114,62 @@ class PayeesAndPeopleArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     period: ToolPeriod
+
+
+class OtherPayeesArgs(BaseModel):
+    """Payees whose spending is still in "Other", grouped by payee with their payments, total and
+    latest date, largest first, and payments categorised "transfer" that still count as
+    spending. Use it to see or sort their Other payments; last_n_months with 12 covers most."""
+
+    model_config = ConfigDict(extra="forbid")
+    period: ToolPeriod
+
+
+class SpendingReviewArgs(BaseModel):
+    """One month's spending sorted for a review, computed by code: flexible spending by category
+    against its usual level in the three months before, fixed costs, saving, "Other", payments
+    categorised "transfer" that still count as spending, moves between their own accounts (not
+    spending), regular payments and money with people. Use it for where they can improve."""
+
+    model_config = ConfigDict(extra="forbid")
+    period: ToolPeriod | None = Field(description="A month; null for this month")
+
+
+class ChangeArgs(BaseModel):
+    """One change. payee_category: every spending payment to a payee. record_category: one
+    payment. own_transfer: a payee's payments, or one payment, are moves between their own
+    accounts and stop counting as spending. rename_payee: a payee's name, or one payment's.
+    budget: a monthly budget. savings_goal: the monthly savings goal."""
+
+    model_config = ConfigDict(extra="forbid")
+    type: changes.ChangeType
+    payee: str | None = Field(
+        description="Every payment to a payee: the name exactly as a tool listed it"
+    )
+    ref: str | None = Field(
+        description="One payment: its ref from find_payments in this answer, like p3"
+    )
+    category: str | None = Field(
+        description=(
+            "payee_category, record_category: the new category; budget: a category, or total "
+            "for all spending"
+        )
+    )
+    new_name: str | None = Field(description="rename_payee: the name to use, 1 to 60 characters")
+    monthly_rupees: float | None = Field(
+        description="budget, savings_goal: the monthly amount the person said"
+    )
+    remove: bool | None = Field(description="budget, savings_goal: true to remove it")
+
+
+class ProposeChangesArgs(BaseModel):
+    """Propose changes to their records for them to approve with one tap: categories, moves
+    between their own accounts (which then stop counting as spending), payee names, budgets and
+    the savings goal. Nothing changes until they tap Apply, and one Undo puts it all back. Call
+    it only when they ask for a change; a new call replaces the earlier proposal."""
+
+    model_config = ConfigDict(extra="forbid")
+    changes: list[ChangeArgs] = Field(description="1 to 80 changes")
 
 
 class DuesArgs(BaseModel):
@@ -210,6 +278,10 @@ class Context:
     # Pages search_web cited in this chat turn ("web-1", …), for citing, and their numbers.
     pages: dict[str, web_search.Page] = field(default_factory=dict)
     found: set[Decimal] = field(default_factory=set)
+    # Short refs for the payments find_payments listed in this answer ("p1", …), for changes.
+    refs: dict[str, UUID] = field(default_factory=dict)
+    # The latest checked proposal from propose_changes, saved with the answer.
+    proposal: changes.Proposal | None = None
 
 
 @dataclass
@@ -237,6 +309,9 @@ class Toolbox(Protocol):
     def knowledge(self, query: str) -> list[knowledge.Hit]: ...
     def past_chats(self, query: str) -> list[history.ChatHit]: ...
     def search_web(self, question: str) -> web_search.Found: ...
+    def other_payees(self, period: PeriodSpec) -> payees.OtherPayees: ...
+    def own_transfers(self, period: PeriodSpec) -> engine.TransferTotal: ...
+    def plan_changes(self, proposed: list[changes.Change]) -> changes.Plan: ...
 
 
 @dataclass
@@ -324,6 +399,15 @@ class EngineToolbox:
             raise ProviderUnavailable
         self.session.rollback()  # never hold the engine's read lock over a network call
         return web_search.search(question, self.settings)
+
+    def other_payees(self, period: PeriodSpec) -> payees.OtherPayees:
+        return payees.other_payees(self.session, user_id=self.user_id, period=period)
+
+    def own_transfers(self, period: PeriodSpec) -> engine.TransferTotal:
+        return engine.own_transfers(self.session, user_id=self.user_id, period=period)
+
+    def plan_changes(self, proposed: list[changes.Change]) -> changes.Plan:
+        return changes.plan(changes.load(self.session, self.user_id), proposed)
 
 
 def _date(value: str | None, name: str) -> date:
@@ -455,11 +539,14 @@ def _find(box: Toolbox, args: FindPaymentsArgs, ctx: Context) -> tuple[dict[str,
     limit = args.limit or 10
     if not 1 <= limit <= MAX_PAYMENTS:
         raise ToolError(f"limit must be from 1 to {MAX_PAYMENTS}")
+    offset = args.offset or 0
+    if not 0 <= offset <= MAX_OFFSET:
+        raise ToolError(f"offset must be from 0 to {MAX_OFFSET}")
     found = box.find_transactions(spec, _category(args.category), payee)
     rows = [row for row in found if args.direction == "any" or row.direction == args.direction]
     out = sum(row.amount_minor for row in rows if row.direction == "out")
     back = sum(row.amount_minor for row in rows if row.direction == "in")
-    shown = rows[:limit]
+    shown = rows[offset : offset + limit]
     return (
         {
             "period": _period_label(start, end),
@@ -467,19 +554,33 @@ def _find(box: Toolbox, args: FindPaymentsArgs, ctx: Context) -> tuple[dict[str,
             "only_the_latest_200_counted": len(found) >= 200,
             "total_paid": money(out),
             "total_received": money(back),
+            "offset": offset,
+            "remaining": max(len(rows) - offset - len(shown), 0),
             "listed": [
                 {
+                    "ref": _ref(ctx, row.id),
                     "date": row.occurred_at.astimezone(IST).date().isoformat(),
                     "payee": row.merchant,
                     "amount": money(row.amount_minor),
                     "direction": row.direction,
                     "category": row.category,
+                    "own_account_move": row.kind == "transfer",
                 }
                 for row in shown
             ],
         },
         shown,
     )
+
+
+def _ref(ctx: Context, record_id: UUID) -> str:
+    """A short, stable ref for a listed payment, so the model never handles record IDs."""
+    for ref, known in ctx.refs.items():
+        if known == record_id:
+            return ref
+    ref = f"p{len(ctx.refs) + 1}"
+    ctx.refs[ref] = record_id
+    return ref
 
 
 def _payees(box: Toolbox, args: PayeesAndPeopleArgs, ctx: Context) -> dict[str, Any]:
@@ -541,6 +642,147 @@ def _payees(box: Toolbox, args: PayeesAndPeopleArgs, ctx: Context) -> dict[str, 
             "amount": money(found.small.amount_minor),
             "per_month": money(found.small.per_month_minor),
         },
+    }
+
+
+def _other_payees(box: Toolbox, args: OtherPayeesArgs, ctx: Context) -> dict[str, Any]:
+    spec = to_spec(args.period, ctx.today)
+    start, end = engine.period_dates(spec, ctx.today)
+    found = box.other_payees(spec)
+    return {
+        "period": _period_label(start, end),
+        "spending": money(found.spent_minor),
+        "in_other": money(found.other_minor),
+        "payments_in_other": found.other_count,
+        "share_of_spending": _percent(found.other_minor, found.spent_minor),
+        "payees": [
+            {
+                "payee": item.name,
+                "payments": item.count,
+                "total": money(item.amount_minor),
+                "latest": item.latest.isoformat(),
+                "remembered_category": item.remembered,
+            }
+            for item in found.items
+        ],
+        "payees_found": found.payees,
+        "payees_listed": len(found.items),
+        "unknown_or_hidden_names": {
+            "payments": found.unnamed_count,
+            "total": money(found.unnamed_minor),
+            "note": "May be several people: list them with find_payments and change one by ref",
+        },
+        "categorised_transfer_still_counted_as_spending": {
+            "payments": found.transfer_count,
+            "total": money(found.transfer_minor),
+        },
+    }
+
+
+def _average(total: int, months: int) -> int:
+    return int((Decimal(total) / months).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def _review(box: Toolbox, args: SpendingReviewArgs, ctx: Context) -> dict[str, Any]:
+    today = ctx.today
+    spec = PeriodSpec() if args.period is None else to_spec(args.period, today)
+    start, end = engine.period_dates(spec, today)
+    if start.day != 1 or end != start.replace(day=calendar.monthrange(start.year, start.month)[1]):
+        raise ToolError("spending_review takes one month: this_month, last_month or month")
+    summary = box.money_summary(spec)
+    earlier = [
+        box.money_summary(PeriodSpec(kind="month", year=first.year, month=first.month))
+        for first in (_first_of_month(start, back) for back in (1, 2, 3))
+    ]
+    counted = [item for item in earlier if item.outflow_transaction_count]
+    usual: dict[str, int] = {}
+    for item in counted:
+        for row in item.categories:
+            usual[row.category] = usual.get(row.category, 0) + row.amount_minor
+    found = box.insights(spec)
+    own = box.own_transfers(spec)
+    spent = summary.confirmed_outflows_minor
+
+    def flexible(item: engine.CategoryTotal) -> dict[str, Any]:
+        if not counted:
+            return {"category": item.category, "amount": money(item.amount_minor)}
+        average = _average(usual.get(item.category, 0), len(counted))
+        change = item.amount_minor - average
+        return {
+            "category": item.category,
+            "amount": money(item.amount_minor),
+            "payments": item.transaction_count,
+            "usual_per_month": money(average),
+            "change": ("up " if change > 0 else "down " if change < 0 else "") + money(abs(change)),
+            "percent_change": _percent(change, average),
+        }
+
+    spending = [item for item in summary.categories if item.amount_minor > 0]
+    other = next((item for item in spending if item.category == "other"), None)
+    moved = next((item for item in spending if item.category == "transfer"), None)
+    fixed = [item for item in spending if item.category in FIXED]
+    running = start <= today <= end
+    return {
+        "month": _period_label(start, end),
+        "still_running": running,
+        "days_counted": (today - start).days + 1 if running else None,
+        "spending": money(spent),
+        "money_in": money(summary.tracked_income_minor),
+        "months_averaged": len(counted),
+        "flexible_spending": [
+            flexible(item)
+            for item in spending
+            if item.category not in {*FIXED, *SAVING, "other", "transfer"}
+        ],
+        "fixed_costs": [
+            {"category": item.category, "amount": money(item.amount_minor)} for item in fixed
+        ],
+        "fixed_total": money(sum(item.amount_minor for item in fixed)),
+        "saving": [
+            {"category": item.category, "amount": money(item.amount_minor)}
+            for item in spending
+            if item.category in SAVING
+        ],
+        "other_not_sorted": {
+            "amount": money(other.amount_minor),
+            "payments": other.transaction_count,
+            "share_of_spending": _percent(other.amount_minor, spent),
+        }
+        if other
+        else None,
+        "categorised_transfer_still_counted": {
+            "amount": money(moved.amount_minor),
+            "payments": moved.transaction_count,
+            "note": "Counted as spending: ask whether these are moves between their own accounts",
+        }
+        if moved
+        else None,
+        "own_account_moves_not_spending": {
+            "amount": money(own.amount_minor),
+            "payments": own.count,
+        },
+        "regular_payments": [
+            {
+                "name": item.name,
+                "usual_amount": money(item.usual_minor),
+                "next_expected": item.next_expected.isoformat(),
+            }
+            for item in found.regular[:5]
+        ],
+        "regular_payments_per_month": money(found.regular_monthly_minor),
+        "money_with_people": [
+            {
+                "name": person.name,
+                "they_sent_to_person": money(person.sent_minor),
+                "person_sent_back": money(person.received_minor),
+            }
+            for person in found.people[:3]
+        ],
+        "entries_waiting_for_review": summary.pending_review_count,
+        "note": (
+            "Improve flexible spending that grew. Fixed costs, saving and moves between their own "
+            "accounts are not where to cut first. A running month is set against whole months."
+        ),
     }
 
 
@@ -744,6 +986,96 @@ def _plan(box: Toolbox, args: PlanNumbersArgs, ctx: Context) -> dict[str, Any]:
     }
 
 
+def _minor(value: float | None) -> int:
+    try:
+        minor = int((Decimal(str(value)) * 100).to_integral_value(rounding=ROUND_HALF_UP))
+    except ArithmeticError, TypeError, ValueError:
+        raise ToolError("monthly_rupees must be a number") from None
+    if not 0 < minor <= budgets.MAX_MINOR:
+        raise ToolError("monthly_rupees must be from ₹1 to ₹1 crore")
+    return minor
+
+
+def _change(item: ChangeArgs, ctx: Context) -> changes.Change:
+    """One change, checked for what code can tell without the records."""
+    if item.type in {"budget", "savings_goal"}:
+        amount = None
+        if not item.remove:
+            amount = _minor(item.monthly_rupees)
+            if amount not in ctx.said:
+                raise ToolError("use only a monthly amount the person said; otherwise ask them")
+        if item.type == "savings_goal":
+            return changes.Change(type="savings_goal", amount_minor=amount)
+        named = (item.category or "").strip().lower()
+        category = "total" if named in {"total", "overall"} else _category(item.category)
+        if category is None:
+            raise ToolError("a budget needs a spending category, or total for all spending")
+        return changes.Change(type="budget", category=category, amount_minor=amount)
+    target: dict[str, Any]
+    if item.ref:
+        record_id = ctx.refs.get(item.ref.strip().lower())
+        if record_id is None:
+            raise ToolError("ref must be one find_payments listed in this answer, like p3")
+        target = {"record_id": record_id}
+    else:
+        payee = " ".join((item.payee or "").split())
+        if not payee or len(payee) > 160:
+            raise ToolError("give the payee's name as a tool listed it, or one payment's ref")
+        target = {"payee": payee}
+    if item.type == "payee_category" and "payee" not in target:
+        raise ToolError("payee_category is for a payee; use record_category for one payment")
+    if item.type == "record_category" and "record_id" not in target:
+        raise ToolError("record_category needs a ref; use payee_category for a payee")
+    if item.type in {"payee_category", "record_category"}:
+        category = _category(item.category)
+        if category is None:
+            raise ToolError("category is needed")
+        if category == "transfer":
+            raise ToolError(
+                "for moves between their own accounts use own_transfer; for money to people use "
+                "friends, remittance or family_events"
+            )
+        return changes.Change(type=item.type, category=category, **target)
+    if item.type == "own_transfer":
+        return changes.Change(type="own_transfer", **target)
+    name = changes.clean_name(item.new_name)
+    if name is None:
+        raise ToolError("new_name must be 1 to 60 characters, and not Unknown")
+    return changes.Change(type="rename_payee", new_name=name, **target)
+
+
+def _propose(box: Toolbox, args: ProposeChangesArgs, ctx: Context) -> dict[str, Any]:
+    if not 1 <= len(args.changes) <= changes.MAX_CHANGES:
+        raise ToolError(f"propose 1 to {changes.MAX_CHANGES} changes")
+    built: list[changes.Change] = []
+    problems: list[str] = []
+    for number, item in enumerate(args.changes, start=1):
+        try:
+            built.append(_change(item, ctx))
+        except ToolError as error:
+            problems.append(f"change {number}: {error}")
+    found = None if problems else box.plan_changes(built)
+    if found is not None:
+        problems = found.problems
+    if found is None or problems:
+        raise ToolError(
+            "Nothing was proposed. Fix these and call again: " + "; ".join(problems[:6])
+        )
+    if found.count == 0:
+        raise ToolError("Nothing would change: those payments, budgets and goal already look so")
+    ctx.proposal = changes.Proposal(built, found)
+    return {
+        "proposed": found.count,
+        "shown_to_them": [changes.line(group, english) for group in found.groups],
+        "left_as_they_set_it": found.kept,
+        "note": (
+            "Nothing has changed yet. FinBoy shows these lines with Apply and Not now buttons. "
+            "Describe the proposal in a line or two with these figures, say nothing changes "
+            "until they tap Apply, and never say it is done."
+        ),
+    }
+
+
 def _search_knowledge(box: Toolbox, args: SearchKnowledgeArgs, ctx: Context) -> dict[str, Any]:
     query = args.query.strip()
     if not query or len(query) > 300:
@@ -816,6 +1148,8 @@ TOOLS: tuple[Tool, ...] = (
     Tool("category_spending", CategorySpendingArgs, _category_spending),
     Tool("find_payments", FindPaymentsArgs, _find),
     Tool("payees_and_people", PayeesAndPeopleArgs, _payees),
+    Tool("other_payees", OtherPayeesArgs, _other_payees),
+    Tool("spending_review", SpendingReviewArgs, _review),
     Tool("dues", DuesArgs, _dues),
     Tool("budgets_and_goal", BudgetsAndGoalArgs, _budgets),
     Tool("compare", CompareArgs, _compare),
@@ -824,18 +1158,21 @@ TOOLS: tuple[Tool, ...] = (
     Tool("search_past_chats", SearchPastChatsArgs, _search_past_chats),
     Tool("search_knowledge", SearchKnowledgeArgs, _search_knowledge),
     Tool("search_web", SearchWebArgs, _search_web),
+    Tool("propose_changes", ProposeChangesArgs, _propose),
 )
 BY_NAME = {tool.name: tool for tool in TOOLS}
 
 
 def offered(settings: Settings | None) -> tuple[Tool, ...]:
-    """The tools the model may call: the guides only while the library is released, and web
-    search only while it is released and configured."""
+    """The tools the model may call: the guides only while the library is released, web search
+    only while it is released and configured, and proposals only while edits are released."""
     hidden = set()
     if settings is None or not settings.knowledge_enabled:
         hidden.add("search_knowledge")
     if settings is None or providers.web_search(settings) != "configured":
         hidden.add("search_web")
+    if settings is None or not settings.advisor_edits_enabled:
+        hidden.add("propose_changes")
     return tuple(tool for tool in TOOLS if tool.name not in hidden)
 
 

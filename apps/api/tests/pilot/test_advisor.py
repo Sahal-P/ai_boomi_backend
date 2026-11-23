@@ -1,12 +1,23 @@
 """WhatsApp with the advisor on: questions and chat for every household, memory commands."""
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from finboy.core.clock import today_ist
+from finboy.db.models.changes import RecordChangeSet
+from finboy.db.models.whatsapp import WhatsAppPrompt
+from finboy.services.advisor import changes as record_changes
 from finboy.services.advisor import memory
-from finboy.services.assistant.models import AnswerSource, AssistantAnswer, MemoryChange
+from finboy.services.assistant.models import (
+    AnswerSource,
+    AssistantAnswer,
+    ChangeGroup,
+    MemoryChange,
+)
 from finboy.services.whatsapp import english, hindi, pilot
 from finboy.services.whatsapp.capture import Capture
 from finboy.services.whatsapp.statement import Statement
+from sqlalchemy import select
 
 
 @pytest.fixture
@@ -160,3 +171,120 @@ def test_web_pages_are_named_apart_from_the_guides() -> None:
         + "\n\n"
         + english.WEB.format(guides="Bike prices https://bikes.example")
     )
+
+
+# Changes the advisor proposed (docs/advisor-edits-round/contract.md): a card, applied on a tap.
+
+
+def _proposed(household, **values):
+    now = datetime.now(UTC)
+    groups = [
+        ChangeGroup(
+            kind="category",
+            category="travel",
+            names=["REDBUS", "Indian Railways"],
+            payments=2,
+            amount_minor=178220,
+        )
+    ]
+    row = RecordChangeSet(
+        user_id=household.user_id,
+        channel="whatsapp",
+        state="proposed",
+        changes=[{"type": "payee_category", "payee": "REDBUS", "category": "travel"}],
+        summary={"count": 2, "groups": [g.model_dump(mode="json") for g in groups], "kept": 1},
+        created_at=now,
+        expires_at=now + timedelta(hours=24),
+        **values,
+    )
+    household.session.add(row)
+    household.session.commit()
+    return row
+
+
+@pytest.fixture
+def proposing(household, monkeypatch):
+    household.settings = household.settings.model_copy(
+        update={"advisor_enabled": True, "advisor_edits_enabled": True}
+    )
+    row = _proposed(household)
+
+    def advise(_session, **_kwargs) -> AssistantAnswer:
+        return AssistantAnswer(
+            intent="advisor",
+            policy="answer",
+            display_text="मैं 2 भुगतान यात्रा में डाल सकता हूँ।",
+            speech_text="मैं 2 भुगतान यात्रा में डाल सकता हूँ।",
+            speech_language="hi",
+            facts=[],
+            simulation=None,
+            evidence_transactions=[],
+            warnings=[],
+            change_set=record_changes.view(row),
+        )
+
+    monkeypatch.setattr(pilot.advisor, "advise", advise)
+    return row
+
+
+def test_proposed_changes_come_as_a_card_and_change_nothing_until_a_tap(household, proposing):
+    assert household.say("मेरे Other भुगतान ठीक करो") is None
+    reply, card = household.texts()
+    assert reply.startswith("मैं 2 भुगतान") and card.startswith(hindi.CHANGES_TITLE)
+    assert "• यात्रा · REDBUS, Indian Railways · 2 भुगतान · ₹1,782.20" in card
+    assert hindi.CHANGES_KEPT.format(count=1) in card and card.endswith(hindi.CHANGES_ASK)
+    assert [title for _, title in household.buttons()] == [
+        hindi.APPLY.format(count=2),
+        hindi.NOT_NOW,
+    ]
+    prompt = household.session.scalar(
+        select(WhatsAppPrompt).where(WhatsAppPrompt.purpose == "advisor_changes")
+    )
+    assert prompt is not None and prompt.change_set_id == proposing.id
+    household.session.refresh(proposing)
+    assert proposing.state == "proposed"
+
+
+def test_not_now_closes_the_proposal(household, proposing):
+    household.say("मेरे Other भुगतान ठीक करो")
+    assert household.tap("notnow") is None
+    assert household.texts()[-1] == hindi.CHANGES_DECLINED
+    household.session.refresh(proposing)
+    assert proposing.state == "declined"
+    assert household.tap("notnow", button=household.buttons()[1][0]) == "prompt_answered"
+
+
+def test_apply_then_undo_answer_with_counts(household, proposing, monkeypatch):
+    done: list[str] = []
+
+    def applied(_session, *, user_id, change_set_id):
+        assert (user_id, change_set_id) == (household.user_id, proposing.id)
+        done.append("apply")
+        return record_changes.view(proposing).model_copy(
+            update={"state": "applied", "remembered": 2}
+        )
+
+    def undone(_session, *, user_id, change_set_id):
+        done.append("undo")
+        return record_changes.view(proposing).model_copy(update={"state": "undone", "skipped": 1})
+
+    monkeypatch.setattr(pilot.record_changes, "apply", applied)
+    monkeypatch.setattr(pilot.record_changes, "undo", undone)
+    household.say("मेरे Other भुगतान ठीक करो")
+    assert household.tap("apply") is None
+    assert household.texts()[-1] == hindi.changes_applied(2, True)
+    assert [title for _, title in household.buttons()] == [hindi.UNDO]
+    assert household.tap("undo") is None
+    assert household.texts()[-1] == hindi.CHANGES_UNDONE + " " + hindi.CHANGES_UNDO_KEPT.format(
+        count=1
+    )
+    assert done == ["apply", "undo"]
+
+
+def test_apply_waits_while_edits_are_switched_off(household, proposing):
+    household.say("मेरे Other भुगतान ठीक करो")
+    household.settings = household.settings.model_copy(update={"advisor_edits_enabled": False})
+    assert household.tap("apply") == "disabled"
+    assert household.texts()[-1] == hindi.CHANGES_OFF
+    household.session.refresh(proposing)
+    assert proposing.state == "proposed"

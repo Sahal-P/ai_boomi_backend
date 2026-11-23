@@ -15,7 +15,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from types import ModuleType
-from typing import get_args
+from typing import Any, get_args
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
@@ -35,11 +35,12 @@ from finboy.db.models.whatsapp import (
     WhatsAppReceipt,
 )
 from finboy.services.accounts import households
+from finboy.services.advisor import changes as record_changes
 from finboy.services.advisor import memory as advisor_memory
 from finboy.services.advisor import service as advisor
 from finboy.services.assistant import service as assistant
 from finboy.services.assistant.language import money
-from finboy.services.assistant.models import AssistantAnswer
+from finboy.services.assistant.models import AssistantAnswer, ChangeSetView
 from finboy.services.conversations import store
 from finboy.services.ingestion import dates
 from finboy.services.ingestion.hindi_numbers import only_amount
@@ -634,9 +635,16 @@ def _unsure(conversation: Conversation, row: Transaction) -> str | None:
 
 
 def _confirm(conversation: Conversation, row: Transaction) -> UUID | None:
-    """Save a record under the payee's remembered category; None when it moved on meanwhile."""
+    """Save a record under the payee's remembered category and name; None when it moved on
+    meanwhile."""
     session, user_id = conversation.session, conversation.binding.user_id
     remembered = merchants.remembered(session, user_id, row.merchant)
+    name = merchants.remembered_name(session, user_id, row.merchant)
+    values: dict[str, Any] = {}
+    if remembered is not None and remembered != row.category:
+        values["category"] = remembered
+    if name is not None and name != row.merchant:
+        values["merchant"] = name
     try:
         result = decisions.decide(
             session,
@@ -644,9 +652,7 @@ def _confirm(conversation: Conversation, row: Transaction) -> UUID | None:
             transaction_id=row.id,
             request=decisions.DecisionRequest(
                 action="confirm",
-                correction=Correction(category=remembered)
-                if remembered is not None and remembered != row.category
-                else None,
+                correction=Correction(**values) if values else None,
                 expected_version=data_version(session, user_id),
             ),
         )
@@ -1145,7 +1151,118 @@ def _advise(conversation: Conversation, text: str) -> str | None:
     sent = conversation.send(response if len(response) <= 4096 else conversation.words.UNAVAILABLE)
     if sent and 1 <= len(answer.speech_text) <= 600:
         conversation.speak(answer.speech_text, answer.speech_language)
+    if sent and answer.change_set is not None and answer.change_set.state == "proposed":
+        sent = _offer_changes(conversation, answer.change_set)
     return conversation.done(sent)
+
+
+def changes_text(change_set: ChangeSetView, words: Any) -> str:
+    """The proposal card's body: the lines that fit WhatsApp's 1,024 characters, then a pointer
+    to the website for the rest."""
+    tail = [words.CHANGES_KEPT.format(count=change_set.kept)] if change_set.kept else []
+    tail.append(words.CHANGES_ASK)
+    lines = [words.CHANGES_TITLE]
+    room = 1024 - len("\n".join(tail)) - 80  # what the "+N more" line and a short note need
+    for index, group in enumerate(change_set.groups):
+        line = "• " + record_changes.line(group, words)
+        if len("\n".join([*lines, line])) > room:
+            lines.append(words.CHANGES_MORE.format(count=len(change_set.groups) - index))
+            break
+        lines.append(line)
+    return "\n".join([*lines, "", *tail])
+
+
+def _offer_changes(conversation: Conversation, change_set: ChangeSetView) -> bool:
+    """Apply or Not now for changes the advisor proposed (docs/advisor-edits-round/contract.md):
+    nothing changes until the tap."""
+    session, words = conversation.session, conversation.words
+    prompt = prompts.open_prompt(
+        session, conversation.binding, "advisor_changes", change_set_id=change_set.id
+    )
+    session.commit()
+    return conversation.send(
+        changes_text(change_set, words),
+        [
+            (prompts.button(prompt, "apply"), words.APPLY.format(count=change_set.count)),
+            (prompts.button(prompt, "notnow"), words.NOT_NOW),
+        ],
+    )
+
+
+# Why a change card could not act, and the receipt outcome each is recorded as.
+_REFUSED = {
+    "changes_expired": ("CHANGES_EXPIRED", "prompt_expired"),
+    "changes_closed": ("TAP_ANSWERED", "prompt_answered"),
+    "changes_unavailable": ("CHANGES_OFF", "disabled"),
+}
+
+
+def _changes_refused(conversation: Conversation, prompt_id: UUID, code: str) -> str | None:
+    session = conversation.session
+    session.rollback()
+    stale = session.get(WhatsAppPrompt, prompt_id, with_for_update=True)
+    if stale is not None and stale.state in {"open", "answered"}:
+        stale.state = "expired"
+    session.commit()
+    name, outcome = _REFUSED.get(code, ("CHANGED", "record_changed"))
+    return conversation.done(conversation.send(getattr(conversation.words, name)), outcome)
+
+
+def _apply_changes(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str) -> str | None:
+    session, binding, words = conversation.session, conversation.binding, conversation.words
+    prompt_id, change_set_id = prompt.id, prompt.change_set_id
+    if change_set_id is None:
+        return _changes_refused(conversation, prompt_id, "changes_closed")
+    if not conversation.settings.advisor_edits_enabled:
+        return _changes_refused(conversation, prompt_id, "changes_unavailable")
+    prompts.answer(prompt)
+    try:
+        result = record_changes.apply(session, user_id=binding.user_id, change_set_id=change_set_id)
+    except TaskError as error:
+        return _changes_refused(conversation, prompt_id, error.code)
+    undo = prompts.open_prompt(session, binding, "advisor_undo", change_set_id=change_set_id)
+    session.commit()
+    sent = conversation.send(
+        words.changes_applied(result.count, result.remembered > 0),
+        [(prompts.button(undo, "undo"), words.UNDO)],
+    )
+    if sent:
+        conversation.speak(words.changes_applied_speech(result.count))
+    return conversation.done(sent)
+
+
+def _dismiss_changes(
+    conversation: Conversation, prompt: WhatsAppPrompt, _choice: str
+) -> str | None:
+    session, prompt_id, change_set_id = conversation.session, prompt.id, prompt.change_set_id
+    if change_set_id is None:
+        return _changes_refused(conversation, prompt_id, "changes_closed")
+    prompts.answer(prompt)
+    try:
+        record_changes.decline(
+            session, user_id=conversation.binding.user_id, change_set_id=change_set_id
+        )
+    except TaskError as error:
+        return _changes_refused(conversation, prompt_id, error.code)
+    return conversation.done(conversation.send(conversation.words.CHANGES_DECLINED))
+
+
+def _undo_changes(conversation: Conversation, prompt: WhatsAppPrompt, _choice: str) -> str | None:
+    session, words = conversation.session, conversation.words
+    prompt_id, change_set_id = prompt.id, prompt.change_set_id
+    if change_set_id is None:
+        return _changes_refused(conversation, prompt_id, "changes_closed")
+    prompts.answer(prompt)
+    try:
+        result = record_changes.undo(
+            session, user_id=conversation.binding.user_id, change_set_id=change_set_id
+        )
+    except TaskError as error:
+        return _changes_refused(conversation, prompt_id, error.code)
+    text = words.CHANGES_UNDONE
+    if result.skipped:
+        text += " " + words.CHANGES_UNDO_KEPT.format(count=result.skipped)
+    return conversation.done(conversation.send(text))
 
 
 def _record_money(conversation: Conversation, reading: statement.Statement) -> str | None:
@@ -1971,4 +2088,7 @@ HANDLERS: dict[tuple[str, str], Callable[[Conversation, WhatsAppPrompt, str], st
     ("checkin_opt_in", "nocheckin"): cfo.checkin_choice,
     ("coach_opt_in", "coach"): coaching.choice,
     ("coach_opt_in", "nocoach"): coaching.choice,
+    ("advisor_changes", "apply"): _apply_changes,
+    ("advisor_changes", "notnow"): _dismiss_changes,
+    ("advisor_undo", "undo"): _undo_changes,
 }

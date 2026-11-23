@@ -38,7 +38,7 @@ def connection() -> Iterator[Connection]:
 def test_postgres_phase1_schema_and_seed(connection: Connection) -> None:
     assert connection.scalar(text("SELECT 1")) == 1
     head = connection.scalar(text("SELECT version_num FROM alembic_version"))
-    assert head == "0023_signup_visits"
+    assert head == "0024_record_changes"
     assert set(inspect(connection).get_table_names()) == {"alembic_version", *Base.metadata.tables}
     assert connection.scalar(select(User.display_name).where(User.id == LOCAL_USER_ID)) == "Arun"
 

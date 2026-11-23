@@ -286,6 +286,7 @@ export function AssistantScreen() {
                   onAskAgain={() => assistant.ask(turn.question)}
                   followUps={last && turn.state === "answered" ? (turn.answer?.follow_ups ?? []) : []}
                   onFollowUp={(question) => submit(question)}
+                  onChangeSet={(next) => assistant.changed(turn.id, next)}
                 />
               );
             })}

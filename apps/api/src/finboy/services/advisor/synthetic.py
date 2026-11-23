@@ -17,8 +17,8 @@ from finboy.core.clock import IST, today_ist
 from finboy.core.config import LOCAL_USER_ID
 from finboy.db.base import Base
 from finboy.db.models import User
-from finboy.services.advisor import coach, history, knowledge, web_search
-from finboy.services.money import budgets, engine, insights
+from finboy.services.advisor import changes, coach, history, knowledge, web_search
+from finboy.services.money import budgets, engine, insights, merchants, payees
 from finboy.services.money.engine import (
     CategoryTotal,
     CommitmentView,
@@ -88,7 +88,16 @@ def _summary(period: PeriodSpec, *, last_month: bool = False) -> MoneySummary:
         categories=[
             CategoryTotal(category="food_dining", amount_minor=food, transaction_count=6),
             CategoryTotal(category="groceries", amount_minor=groceries, transaction_count=4),
-        ],
+        ]
+        + (
+            []
+            if last_month
+            else [
+                # Categorised "transfer" but still counted as spending, and payments in "Other".
+                CategoryTotal(category="transfer", amount_minor=445000, transaction_count=2),
+                CategoryTotal(category="other", amount_minor=262220, transaction_count=4),
+            ]
+        ),
         evidence_transaction_ids=[],
     )
 
@@ -119,6 +128,26 @@ class SyntheticHousehold:
             payment("Ramesh milkman", 6000, category="groceries"),
             payment("Acme Pvt Ltd", 3000000, out=False, category="salary"),
         ]
+        # Payments still to sort (docs/advisor-edits-round): listed when asked for by category or
+        # name, so the other lists and their totals stay as they were.
+        self.others = [
+            payment("REDBUS", 120000, category="other"),
+            payment("Indian Railways", 58220, category="other"),
+            payment("Apollo Pharmacy", 34000, category="other"),
+            payment("Unknown 93", 50000, category="other"),
+            payment("SBI self transfer", 200000, category="transfer"),
+            payment("SBI self transfer", 245000, category="transfer"),
+        ]
+        self.ledger = changes.Ledger(
+            rows={
+                row.id: changes.Row(
+                    row.id, row.direction, row.kind, row.merchant, row.category, row.amount_minor
+                )
+                for row in [*self.payments, *self.others]
+            },
+            budgets={"food_dining": 500000},
+            goal=500000,
+        )
 
     def money_summary(self, period: PeriodSpec) -> MoneySummary:
         self.reads.append("money_summary")
@@ -133,9 +162,12 @@ class SyntheticHousehold:
         self, period: PeriodSpec, category: str | None, merchant: str | None
     ) -> list[TransactionView]:
         self.reads.append("find_transactions")
+        rows = self.payments
+        if category in {"other", "transfer"} or merchant is not None:
+            rows = [*self.payments, *self.others]
         return [
             row
-            for row in self.payments
+            for row in rows
             if (category is None or row.category == category)
             and (merchant is None or merchant.casefold() in row.merchant.casefold())
         ]
@@ -227,6 +259,36 @@ class SyntheticHousehold:
     def search_web(self, question: str) -> web_search.Found:
         self.reads.append("search_web")
         return SEARCH_FOUND
+
+    def other_payees(self, period: PeriodSpec) -> payees.OtherPayees:
+        self.reads.append("other_payees")
+        other = [row for row in self.others if row.category == "other"]
+        named = [row for row in other if merchants.merchant_key(row.merchant)]
+        moved = [row for row in self.others if row.category == "transfer"]
+        return payees.OtherPayees(
+            items=[
+                payees.OtherPayee(
+                    name=row.merchant, count=1, amount_minor=row.amount_minor, latest=today_ist()
+                )
+                for row in sorted(named, key=lambda row: -row.amount_minor)
+            ],
+            payees=len(named),
+            spent_minor=1842050,
+            other_minor=sum(row.amount_minor for row in other),
+            other_count=len(other),
+            unnamed_count=len(other) - len(named),
+            unnamed_minor=sum(row.amount_minor for row in other if row not in named),
+            transfer_count=len(moved),
+            transfer_minor=sum(row.amount_minor for row in moved),
+        )
+
+    def own_transfers(self, period: PeriodSpec) -> engine.TransferTotal:
+        self.reads.append("own_transfers")
+        return engine.TransferTotal(count=1, amount_minor=1500000)
+
+    def plan_changes(self, proposed: list[changes.Change]) -> changes.Plan:
+        self.reads.append("plan_changes")
+        return changes.plan(self.ledger, proposed)
 
 
 # Phase 3: a Sunday after the 20th, when every kind of coach nudge can come up.

@@ -45,15 +45,23 @@ class Budget(Base):
 
 
 class MerchantCategory(Base):
-    """The category a household last chose for a payee, applied to that payee's next entries."""
+    """What a household chose for a payee, applied to that payee's next entries: its category,
+    and since the advisor edits round the name it goes by (either may be unset)."""
 
     __tablename__ = "merchant_categories"
-    __table_args__ = (CheckConstraint(f"category IN ({CATEGORIES})", name="category"),)
+    __table_args__ = (
+        CheckConstraint(f"category IN ({CATEGORIES})", name="category"),
+        CheckConstraint(
+            "category IS NOT NULL OR display_name IS NOT NULL", name="remembers_something"
+        ),
+        CheckConstraint("length(display_name) BETWEEN 1 AND 60", name="display_name"),
+    )
 
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     # services/money/merchants.py: case-folded, spaces collapsed, at most 80 characters.
     merchant_key: Mapped[str] = mapped_column(Text, primary_key=True)
-    category: Mapped[str] = mapped_column(Text)
+    category: Mapped[str | None] = mapped_column(Text)
+    display_name: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

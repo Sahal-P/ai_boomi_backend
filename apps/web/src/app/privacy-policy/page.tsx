@@ -53,6 +53,12 @@ export default function PrivacyPolicyPage() {
           Memory page.
         </li>
         <li>
+          Changes Ask FinBoy offers to make to your records (categories, payee names, payments
+          between your own accounts, budgets and the savings goal), and, once you apply them, what
+          each changed field was before and after, so one Undo can put them back. Nothing changes
+          until you tap Apply. They are deleted with your account.
+        </li>
+        <li>
           Records of your choices (confirm, change, undo), consent and reminder settings, daily
           usage counts, and a short history of account events. These never contain amounts,
           names or messages.

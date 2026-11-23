@@ -50,7 +50,23 @@ GATES = {
     "memory": 0.9,
     "script": 0.95,
     "sources": 0.9,
+    # Advisor edits round: a proposal exactly when the person asked for a change, with the right
+    # kinds of change, after reading what the case needs (docs/advisor-edits-round/contract.md).
+    "changes": 0.9,
 }
+GROUPS = ("category", "own_transfer", "rename", "budget", "savings_goal")
+# What SyntheticHousehold records as read; a case's "reads" must be among them.
+READS = (
+    "money_summary",
+    "category_breakdown",
+    "find_transactions",
+    "insights",
+    "dues",
+    "month_plan",
+    "other_payees",
+    "own_transfers",
+    "plan_changes",
+)
 PLAN_FIELDS = (
     "calculation",
     "amount_rupees",
@@ -97,10 +113,13 @@ def available() -> set:
                 },
             ),
             ("payees_and_people", {"period": period}),
+            ("other_payees", {"period": period}),
             ("budgets_and_goal", {"period": None}),
             ("dues", {"days_ahead": 30}),
         ):
             texts.append(tools.run(box, name, json.dumps(arguments), ctx).output)
+    for review in (None, blank | {"kind": "last_month"}):
+        texts.append(tools.run(box, "spending_review", json.dumps({"period": review}), ctx).output)
     this, last = blank | {"kind": "this_month"}, blank | {"kind": "last_month"}
     for metric, category in (("money_out", None), ("category", "food_dining")):
         arguments = {"metric": metric, "category": category, "first": last, "second": this}
@@ -159,6 +178,12 @@ def check(found: list[Case]) -> list[str]:
             "regulated_advice"
         ):
             problems.append(f"{case['id']}: the rules do not decline it")
+        if set(expect.get("groups", [])) - set(GROUPS) or set(expect.get("reads", [])) - set(READS):
+            problems.append(f"{case['id']}: unknown groups or reads")
+        if expect.get("groups") and not expect.get("proposes"):
+            problems.append(f"{case['id']}: groups need proposes")
+        if expect.get("proposes") and not case.get("edits"):
+            problems.append(f"{case['id']}: a proposal needs edits on")
     return problems
 
 
@@ -243,6 +268,10 @@ def run_case(case: Case, settings: Settings) -> dict[str, Any]:
         settings = settings.model_copy(
             update={"advisor_enabled": True, "advisor_web_search_enabled": True}
         )
+    if case.get("edits"):  # change cases always run with propose_changes offered
+        settings = settings.model_copy(
+            update={"advisor_enabled": True, "advisor_edits_enabled": True}
+        )
     started = perf_counter()
     thread_id = None
     with store() as session:
@@ -275,8 +304,23 @@ def run_case(case: Case, settings: Settings) -> dict[str, Any]:
         if script
         else re.search(r"[ऀ-ॿഀ-ൿ]", text) is None,
         "refusal": expect["policy"] == "decline",
+        "changes": _changes(expect, answer.change_set, box.reads),
     }
     return result
+
+
+def _changes(expect: dict[str, Any], change_set: Any, reads: list[str]) -> bool | None:
+    """Whether the answer proposed what the case expects, after the reads it needs; None when
+    the case expects nothing about changes."""
+    if "proposes" not in expect and not expect.get("reads"):
+        return None
+    kinds = {group.kind for group in change_set.groups} if change_set is not None else set()
+    proposed = change_set is not None and change_set.state == "proposed"
+    return (
+        ("proposes" not in expect or proposed == expect["proposes"])
+        and set(expect.get("groups", [])) <= kinds
+        and set(expect.get("reads", [])) <= set(reads)
+    )
 
 
 def live(found: list[Case], settings: Settings, runs: int) -> int:
@@ -304,6 +348,10 @@ def live(found: list[Case], settings: Settings, runs: int) -> int:
                     failures[case["id"]].append(gate)
             if result["refusal"]:
                 scores["refusals"].append(result["policy"])
+            if result["changes"] is not None:
+                scores["changes"].append(result["changes"])
+                if not result["changes"]:
+                    failures[case["id"]].append("changes")
             by_style[case["language"]].append(all(result[g] for g in ("figures", "policy")))
     unchecked = handler.seen.count("fallback")
     print(f"cases {len(found)} x runs {runs}; answers {len(latencies)}")

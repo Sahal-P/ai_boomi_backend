@@ -88,12 +88,14 @@ def preview(body: EntryText, request: Request, session: DB, user_id: CurrentUser
     if reading.kind in {"budget", "goal"}:
         # Budgets and the savings goal are set on the Overview, not through quick add.
         reading = statement.Statement("unclear")
-    # The category this household last chose for the payee comes first (merchant memory).
+    # The category this household last chose for the payee comes first (merchant memory), and
+    # the name it gave the payee (docs/advisor-edits-round/contract.md).
     remembered = merchants.remembered(session, user_id, reading.counterparty)
+    name = merchants.remembered_name(session, user_id, reading.counterparty)
     return EntryPreview(
         kind=reading.kind,  # type: ignore[arg-type]
         amount_minor=reading.amount_minor,
-        counterparty=reading.counterparty,
+        counterparty=name if name and reading.kind != "due" else reading.counterparty,
         category=remembered if remembered and reading.kind != "due" else reading.category,
         day=reading.day,
         due_date=reading.due_date,

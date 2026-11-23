@@ -18,6 +18,8 @@ CHOICES = frozenset(
     | {"amount", "category", "putback", "undoall", "fixone", "fix", "checkin", "nocheckin"}
     # The coach's opt-in and stop (docs/advisor-round/contract.md, phase 3).
     | {"coach", "nocoach"}
+    # Changes Ask proposed (docs/advisor-edits-round/contract.md); their Undo is "undo".
+    | {"apply", "notnow"}
     | set(get_args(Category))
 )
 LIFETIME = {
@@ -36,6 +38,9 @@ LIFETIME = {
     "pick_category": timedelta(hours=1),
     "checkin_opt_in": timedelta(days=30),
     "coach_opt_in": timedelta(days=30),
+    # As long as the proposal itself; Undo works for a day, like a saved entry's.
+    "advisor_changes": timedelta(days=1),
+    "advisor_undo": timedelta(days=1),
 }
 # Several messages of saved items may be open at once; each keeps its own Undo all / Fix one.
 # Every coach nudge's "Stop coaching" keeps working too, so stopping never says "expired".
@@ -85,6 +90,7 @@ def open_prompt(
     fingerprint: str | None = None,
     login_request_id: UUID | None = None,
     group_id: UUID | None = None,
+    change_set_id: UUID | None = None,
 ) -> WhatsAppPrompt:
     """Open a choice; an older open card for the same purpose and record stops working."""
     now = datetime.now(UTC)
@@ -111,6 +117,7 @@ def open_prompt(
         decision_id=decision_id,
         login_request_id=login_request_id,
         group_id=group_id,
+        change_set_id=change_set_id,
         fingerprint=fingerprint,
         state="open",
         created_at=now,
@@ -192,7 +199,7 @@ SAME_MESSAGE = timedelta(seconds=5)
 # Other open choices: when one of these is newer, a typed reply is not for an older card.
 _CHOICES = frozenset(
     {"due_paid", "due_repeat", "reminder_opt_in", "pick_item", "pick_category"}
-    | {"checkin_opt_in", "coach_opt_in"}
+    | {"checkin_opt_in", "coach_opt_in", "advisor_changes", "advisor_undo"}
 )
 
 

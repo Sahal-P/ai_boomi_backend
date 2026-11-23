@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { answerSchema, askQuestion, askQuestionStream, getThread, listThreads, readEvents } from "./assistant.ts";
+import {
+  answerSchema,
+  applyChanges,
+  askQuestion,
+  askQuestionStream,
+  dismissChanges,
+  getThread,
+  listThreads,
+  readEvents,
+  undoChanges,
+} from "./assistant.ts";
 import { ApiError } from "./http.ts";
 import { deleteMemories, editMemory, listMemories, setMemoryEnabled } from "./memory.ts";
 
@@ -214,4 +224,56 @@ test("web pages are sources too; a source without a kind is a guide", () => {
   assert.equal(answerSchema.parse({ ...answer, sources: [page] }).sources[0]?.kind, "web");
   assert.equal(answerSchema.parse({ ...answer, sources: [{ id: "pm-kisan", title: "PM-KISAN" }] }).sources[0]?.kind, "guide");
   assert.equal(answerSchema.safeParse({ ...answer, sources: [{ ...page, kind: "ad" }] }).success, false);
+});
+
+const CHANGES = "9b2f4c1e-5d6a-4e7b-8c9d-0e1f2a3b4c5d";
+const changeSet = {
+  id: CHANGES,
+  state: "proposed",
+  count: 3,
+  groups: [
+    {
+      kind: "category",
+      category: "travel",
+      names: ["REDBUS", "Indian Railways"],
+      more_names: 0,
+      new_name: null,
+      payments: 2,
+      amount_minor: 178220,
+      before_minor: null,
+      after_minor: null,
+    },
+    { kind: "budget", category: "food_dining", payments: 0, amount_minor: 0, before_minor: 400000, after_minor: 500000 },
+  ],
+  kept: 1,
+  skipped: 0,
+  expires_at: "2026-11-24T09:00:00Z",
+  applied_at: null,
+  undone_at: null,
+  data_version: null,
+};
+
+test("an answer carries the changes it proposed, and older answers carry none", () => {
+  const parsed = answerSchema.parse({ ...answer, change_set: changeSet });
+  assert.equal(parsed.change_set?.groups[1]?.after_minor, 500000);
+  assert.deepEqual(parsed.change_set?.groups[1]?.names, []);
+  assert.equal(answerSchema.parse(answer).change_set, null);
+  assert.equal(answerSchema.safeParse({ ...answer, change_set: { ...changeSet, state: "done" } }).success, false);
+});
+
+test("changes are applied, undone and dismissed by their id, and a malformed reply is refused", async () => {
+  const calls = record({ ...changeSet, state: "applied", applied_at: "2026-11-23T09:05:00Z" });
+  assert.equal((await applyChanges(CHANGES)).state, "applied");
+  await undoChanges(CHANGES);
+  await dismissChanges(CHANGES);
+  assert.deepEqual(
+    calls.map((call) => [call.method, call.url]),
+    [
+      ["POST", `/assistant/changes/${CHANGES}/apply`],
+      ["POST", `/assistant/changes/${CHANGES}/undo`],
+      ["POST", `/assistant/changes/${CHANGES}/dismiss`],
+    ],
+  );
+  record({ ...changeSet, count: -1 });
+  await assert.rejects(applyChanges(CHANGES), ApiError);
 });

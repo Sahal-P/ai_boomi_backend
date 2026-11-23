@@ -7,7 +7,7 @@ from typing import Literal, get_args
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 from finboy.core.clock import IST, today_ist
@@ -280,6 +280,30 @@ def find_transactions(
         )
     )
     return transaction_views(session, rows, user_id=user_id)
+
+
+class TransferTotal(BaseModel):
+    """Confirmed moves out to the household's own accounts: never spending."""
+
+    count: int = Field(ge=0)
+    amount_minor: int = Field(ge=0)
+
+
+def own_transfers(session: Session, *, user_id: UUID, period: PeriodSpec) -> TransferTotal:
+    lock_snapshot(session, user_id)
+    start, end = period_dates(period, today_ist())
+    count, amount = session.execute(
+        select(func.count(), func.coalesce(func.sum(Transaction.amount_minor), 0)).where(
+            Transaction.user_id == user_id,
+            Transaction.dataset == "household",
+            Transaction.status == "confirmed",
+            Transaction.direction == "out",
+            Transaction.kind == "transfer",
+            Transaction.occurred_at >= datetime.combine(start, time.min, IST),
+            Transaction.occurred_at <= datetime.combine(end, time.max, IST),
+        )
+    ).one()
+    return TransferTotal(count=count, amount_minor=int(amount))
 
 
 def simulate_monthly_commitment(

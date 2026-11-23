@@ -137,6 +137,10 @@ class Settings(BaseSettings):
     # Names and search round (docs/names-search-round/contract.md): public prices and loan rates
     # from OpenAI's web search, whichever model answers. Off until the human releases it.
     advisor_web_search_enabled: bool = False
+    # Advisor edits round (docs/advisor-edits-round/contract.md): Ask proposes category,
+    # own-transfer, payee-name, budget and goal changes, applied only on the household's tap and
+    # undone in one step. Off until the human releases it; Ask then only reads.
+    advisor_edits_enabled: bool = False
     # Phase 3: the proactive coach. Opted-in WhatsApp households hear at most one nudge a day and
     # Home shows "For you". Off until the human releases it; it also needs ADVISOR_ENABLED.
     coach_enabled: bool = False

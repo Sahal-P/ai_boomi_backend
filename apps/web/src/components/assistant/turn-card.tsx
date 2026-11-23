@@ -3,6 +3,7 @@
 import { BookOpen, Brain, Check, ChevronDown, Copy, ExternalLink, Globe, Pause, Play, RotateCcw, Square, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ChangesCard } from "@/components/assistant/changes-card";
 import { RevealText } from "@/components/assistant/reveal-text";
 import { styleLabels } from "@/components/assistant/composer";
 import { BrandMark } from "@/components/brand";
@@ -17,6 +18,7 @@ import {
   SPEECH_LIMITS,
   type Answer,
   type AnswerSource,
+  type ChangeSet,
   type DisplayStyle,
   type MemoryChange,
 } from "@/lib/api/assistant";
@@ -179,6 +181,7 @@ export function TurnCard({
   busy,
   followUps = [],
   onFollowUp,
+  onChangeSet,
 }: {
   turn: Turn;
   currentStyle: DisplayStyle;
@@ -193,6 +196,8 @@ export function TurnCard({
   /** Suggested next questions, shown under the latest answer only. */
   followUps?: string[];
   onFollowUp?: (question: string) => void;
+  /** Changes this answer proposed were applied, undone or dismissed (advisor edits round). */
+  onChangeSet?: (next: ChangeSet) => void;
 }) {
   const answer = turn.answer;
   // Reveal word by word only an answer that arrives while you watch, not one you come back to.
@@ -263,6 +268,9 @@ export function TurnCard({
                     </div>
                   ))}
                 </dl>
+              )}
+              {answer.change_set && (
+                <ChangesCard changeSet={answer.change_set} onChange={(next) => onChangeSet?.(next)} />
               )}
               {answer.warnings.length > 0 && (
                 <ul className="list-disc space-y-1 pl-5 text-sm text-amber-900" lang={lang}>

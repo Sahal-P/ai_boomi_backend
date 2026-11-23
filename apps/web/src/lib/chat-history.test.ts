@@ -9,6 +9,7 @@ const message = (id: number, role: "user" | "assistant", text: string, language:
   text,
   language,
   created_at: `2026-11-07T04:3${id}:00Z`,
+  change_set: null,
 });
 
 test("a saved chat becomes turns, newest first, in the script it was written in", () => {
@@ -58,4 +59,38 @@ test("a message FinBoy sent first is shown as its own, without a question", () =
     ],
   );
   assert.equal(turns[1]?.state, "answered");
+});
+
+test("an answer that proposed changes keeps them, with their state, when the chat reopens", () => {
+  const changeSet = {
+    id: "9b2f4c1e-5d6a-4e7b-8c9d-0e1f2a3b4c5d",
+    state: "applied" as const,
+    count: 2,
+    groups: [
+      {
+        kind: "category" as const,
+        category: "travel",
+        names: ["REDBUS", "Indian Railways"],
+        more_names: 0,
+        new_name: null,
+        payments: 2,
+        amount_minor: 178220,
+        before_minor: null,
+        after_minor: null,
+      },
+    ],
+    kept: 0,
+    remembered: 2,
+    skipped: 0,
+    expires_at: "2026-11-08T04:32:00Z",
+    applied_at: "2026-11-07T04:33:00Z",
+    undone_at: null,
+    data_version: null,
+  };
+  const [turn] = historyTurns(
+    [message(1, "user", "Sort my Other payments"), { ...message(2, "assistant", "Two can move to travel."), change_set: changeSet }],
+    THREAD,
+  );
+  assert.equal(turn?.answer?.change_set?.state, "applied");
+  assert.equal(turn?.answer?.change_set?.groups[0]?.amount_minor, 178220);
 });

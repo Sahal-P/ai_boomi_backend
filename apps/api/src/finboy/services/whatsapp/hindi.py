@@ -565,3 +565,33 @@ DUE_ON_ITS_OWN = "बकाया अलग से भेजिए, जैसे
 
 def due_already(amount_minor: int, due: date) -> str:
     return f"⚠️ आपने {money(amount_minor)} {date_label(due)} के लिए पहले ही सेव किया है।"
+
+
+# Ask के सुझाए बदलाव (docs/advisor-edits-round/contract.md): बटन दबाने पर ही होते हैं।
+CHANGE_PAYMENTS = ("भुगतान", "भुगतान")
+CHANGE_OWN = "अपना खाता, खर्च नहीं"
+CHANGE_RENAME = "नया नाम"
+CHANGE_BUDGET = "{label} का बजट"
+CHANGE_GOAL = "बचत का लक्ष्य"
+CHANGE_MONTHLY = "हर महीने {amount}"
+CHANGE_REMOVED = "हटेगा"
+CHANGES_TITLE = "✏️ FinBoy ये बदलाव कर सकता है:"
+CHANGES_KEPT = "🔒 जो {count} आपने खुद रखे, वे वैसे ही रहेंगे।"
+CHANGES_MORE = "+{count} और, FinBoy वेबसाइट पर।"
+CHANGES_ASK = "“लागू करें” दबाने तक कुछ नहीं बदलेगा।"
+APPLY = "✅ लागू करें {count}"
+NOT_NOW = "❌ अभी नहीं"
+CHANGES_DECLINED = "👍 ठीक है, कुछ नहीं बदला।"
+CHANGES_EXPIRED = "⌛ इन बदलावों का समय निकल गया, इसलिए कुछ नहीं बदला। FinBoy से फिर पूछिए।"
+CHANGES_OFF = "Ask से बदलाव अभी बंद हैं। कुछ नहीं बदला।"
+CHANGES_UNDONE = "↩️ पहले जैसा कर दिया।"
+CHANGES_UNDO_KEPT = "जो {count} बाद में बदले गए, वे वैसे ही रहेंगे।"
+
+
+def changes_applied(count: int, remembered: bool) -> str:
+    text = f"✅ हो गया: {count} बदलाव किए।"
+    return text + (" FinBoy इन नामों को याद रखेगा।" if remembered else "")
+
+
+def changes_applied_speech(count: int) -> str:
+    return f"हो गया। {count} बदलाव किए।"

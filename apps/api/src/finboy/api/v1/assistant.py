@@ -21,11 +21,17 @@ from finboy.core.clock import today_ist
 from finboy.core.errors import ErrorDetail, ErrorResponse, error_response
 from finboy.db.session import get_session
 from finboy.services.accounts import usage
+from finboy.services.advisor import changes as record_changes
 from finboy.services.advisor import history
 from finboy.services.advisor.service import advise
 from finboy.services.advisor.suggestions import suggestions
 from finboy.services.advisor.tools import EngineToolbox
-from finboy.services.assistant.models import AskRequest, AssistantAnswer, SpeakRequest
+from finboy.services.assistant.models import (
+    AskRequest,
+    AssistantAnswer,
+    ChangeSetView,
+    SpeakRequest,
+)
 from finboy.services.assistant.service import answer_question
 from finboy.services.conversations import store
 from finboy.services.money.compat import simulation_response
@@ -33,6 +39,7 @@ from finboy.services.speech.media import InvalidAudio
 from finboy.services.speech.models import Transcript
 from finboy.services.speech.multipart import read_upload
 from finboy.services.speech.service import synthesize_speech, transcribe_audio
+from finboy.services.ux.state import TaskError
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 logger = logging.getLogger(__name__)
@@ -59,6 +66,8 @@ class ThreadMessage(BaseModel):
     text: str
     language: Literal["en", "hi", "ml"] | None
     created_at: datetime
+    # Changes this answer proposed and what became of them (docs/advisor-edits-round).
+    change_set: ChangeSetView | None = None
 
 
 class ThreadDetail(BaseModel):
@@ -298,6 +307,9 @@ def get_thread(
     except LookupError:
         session.rollback()
         return _thread_missing(request)
+    proposed = record_changes.for_messages(
+        session, user_id, [row.id for row in rows if row.role == "assistant"]
+    )
     detail = ThreadDetail(
         thread=ThreadSummary(
             id=thread.id,
@@ -307,7 +319,17 @@ def get_thread(
             last_at=thread.last_at,
             messages=len(rows),
         ),
-        messages=[ThreadMessage.model_validate(row, from_attributes=True) for row in rows],
+        messages=[
+            ThreadMessage(
+                id=row.id,
+                role=row.role,  # type: ignore[arg-type]
+                text=row.text,
+                language=row.language,  # type: ignore[arg-type]
+                created_at=row.created_at,
+                change_set=proposed.get(row.id),
+            )
+            for row in rows
+        ],
     )
     session.rollback()
     return detail
@@ -332,6 +354,35 @@ def delete_threads(request: Request, session: DB, user_id: CurrentUser) -> Delet
     deleted = history.delete_all(session, user_id)
     session.commit()
     return Deleted(deleted=deleted)
+
+
+@router.post("/changes/{change_set_id}/apply", response_model=ChangeSetView)
+def apply_changes(
+    change_set_id: UUID, request: Request, response: Response, session: DB, user_id: CurrentUser
+) -> ChangeSetView:
+    """Apply what Ask proposed, to the records as they are now (docs/advisor-edits-round)."""
+    response.headers["Cache-Control"] = "no-store"
+    if not request.app.state.settings.advisor_edits_enabled:
+        raise TaskError("changes_unavailable")
+    return record_changes.apply(session, user_id=user_id, change_set_id=change_set_id)
+
+
+@router.post("/changes/{change_set_id}/undo", response_model=ChangeSetView)
+def undo_changes(
+    change_set_id: UUID, response: Response, session: DB, user_id: CurrentUser
+) -> ChangeSetView:
+    """Put back what applying changed, wherever nothing changed it since."""
+    response.headers["Cache-Control"] = "no-store"
+    return record_changes.undo(session, user_id=user_id, change_set_id=change_set_id)
+
+
+@router.post("/changes/{change_set_id}/dismiss", response_model=ChangeSetView)
+def dismiss_changes(
+    change_set_id: UUID, response: Response, session: DB, user_id: CurrentUser
+) -> ChangeSetView:
+    """Not now: the proposal closes and nothing changes."""
+    response.headers["Cache-Control"] = "no-store"
+    return record_changes.decline(session, user_id=user_id, change_set_id=change_set_id)
 
 
 @router.get("/suggestions", response_model=Suggestions)

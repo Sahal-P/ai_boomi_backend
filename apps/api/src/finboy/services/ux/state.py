@@ -43,6 +43,13 @@ class TaskError(Exception):
             409,
             "Mixed sample evidence is isolated. Use source-aware recovery before reviewing.",
         ),
+        # Changes the advisor proposed (docs/advisor-edits-round/contract.md).
+        "changes_expired": (409, "These changes have expired. Nothing was changed; ask again."),
+        "changes_closed": (409, "These changes were already applied, undone or dismissed."),
+        "changes_unavailable": (
+            409,
+            "Changes from Ask are switched off right now. Nothing was changed.",
+        ),
     }
 
     def __init__(self, code: str) -> None:

@@ -1,6 +1,6 @@
 """Frozen assistant HTTP and service contracts; Agent 3 implements behavior."""
 
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -45,6 +45,40 @@ class AnswerSource(BaseModel):
     kind: Literal["guide", "web"] = "guide"
 
 
+class ChangeGroup(BaseModel):
+    """One line of an advisor proposal (docs/advisor-edits-round/contract.md), computed by code:
+    payments moving to a category, own-account transfers, a payee renamed, a budget or the goal."""
+
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["category", "own_transfer", "rename", "budget", "savings_goal"]
+    # category: the new category; budget: what the budget is for (a category or "total").
+    category: str | None = None
+    names: list[str] = Field(default_factory=list)  # the payees, at most three
+    more_names: int = 0
+    new_name: str | None = None  # rename
+    payments: int = 0
+    amount_minor: int = 0  # the payments' total
+    before_minor: int | None = None  # budget, savings_goal: per month now (None: none set)
+    after_minor: int | None = None  # budget, savings_goal: per month after (None: removed)
+
+
+class ChangeSetView(BaseModel):
+    """Changes the advisor proposed, and whether the household applied, undid or dismissed them."""
+
+    model_config = ConfigDict(extra="forbid")
+    id: UUID
+    state: Literal["proposed", "applied", "undone", "declined", "expired"]
+    count: int  # payments changed, plus budgets and the goal
+    groups: list[ChangeGroup]
+    kept: int = 0  # payments the household set itself, left as they are
+    remembered: int = 0  # payees whose category or name FinBoy keeps for their next entries
+    skipped: int = 0  # changed since: not applied, or not put back by Undo
+    expires_at: datetime
+    applied_at: datetime | None = None
+    undone_at: datetime | None = None
+    data_version: str | None = None
+
+
 class AssistantAnswer(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     data_version: str = "0"
@@ -69,6 +103,8 @@ class AssistantAnswer(BaseModel):
     memory_changes: list[MemoryChange] = Field(default_factory=list)
     follow_ups: list[str] = Field(default_factory=list)
     sources: list[AnswerSource] = Field(default_factory=list)
+    # Advisor edits round (additive): changes proposed with this answer, applied only on a tap.
+    change_set: ChangeSetView | None = None
 
 
 class AskRequest(BaseModel):

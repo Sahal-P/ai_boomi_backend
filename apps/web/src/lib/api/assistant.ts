@@ -13,6 +13,34 @@ const evidenceSchema = baseTransactionSchema.extend(
     .partial().shape,
 );
 
+// Advisor edits round: changes an answer proposed, applied only when the household taps Apply.
+const changeGroupSchema = z.object({
+  kind: z.enum(["category", "own_transfer", "rename", "budget", "savings_goal"]),
+  category: z.string().nullable().default(null),
+  names: z.array(z.string()).default([]),
+  more_names: z.number().int().nonnegative().default(0),
+  new_name: z.string().nullable().default(null),
+  payments: z.number().int().nonnegative().default(0),
+  amount_minor: z.number().int().default(0),
+  before_minor: z.number().int().nullable().default(null),
+  after_minor: z.number().int().nullable().default(null),
+});
+export const changeSetSchema = z.object({
+  id: z.uuid(),
+  state: z.enum(["proposed", "applied", "undone", "declined", "expired"]),
+  count: z.number().int().nonnegative(),
+  groups: z.array(changeGroupSchema),
+  kept: z.number().int().nonnegative().default(0),
+  remembered: z.number().int().nonnegative().default(0),
+  skipped: z.number().int().nonnegative().default(0),
+  expires_at: z.iso.datetime({ offset: true }),
+  applied_at: z.iso.datetime({ offset: true }).nullable().default(null),
+  undone_at: z.iso.datetime({ offset: true }).nullable().default(null),
+  data_version: opaque.nullable().default(null),
+});
+export type ChangeSet = z.infer<typeof changeSetSchema>;
+export type ChangeGroup = ChangeSet["groups"][number];
+
 export const answerSchema = z.object({
   intent: z.string(),
   policy: z.enum(["answer", "decline", "clarify"]),
@@ -65,6 +93,7 @@ export const answerSchema = z.object({
       }),
     )
     .default([]),
+  change_set: changeSetSchema.nullable().default(null),
 });
 export type Answer = z.infer<typeof answerSchema>;
 export type MemoryChange = Answer["memory_changes"][number];
@@ -221,6 +250,7 @@ const messageSchema = z.object({
   text: z.string(),
   language: z.enum(["en", "hi", "ml"]).nullable(),
   created_at: z.iso.datetime({ offset: true }),
+  change_set: changeSetSchema.nullable().default(null),
 });
 export type ChatMessage = z.infer<typeof messageSchema>;
 
@@ -248,6 +278,17 @@ export const deleteThreads = () =>
   requestJson("/api/v1/assistant/threads", z.object({ deleted: z.number().int() }), {
     method: "DELETE",
   });
+
+const changeAction = (id: string, action: "apply" | "undo" | "dismiss") =>
+  requestJson(`/api/v1/assistant/changes/${encodeURIComponent(id)}/${action}`, changeSetSchema, {
+    method: "POST",
+  });
+/** Apply what Ask proposed, to the records as they are now. */
+export const applyChanges = (id: string) => changeAction(id, "apply");
+/** Put back what applying changed, wherever nothing changed it since. */
+export const undoChanges = (id: string) => changeAction(id, "undo");
+/** Not now: the proposal closes and nothing changes. */
+export const dismissChanges = (id: string) => changeAction(id, "dismiss");
 
 /** Starter questions chosen from the household's own figures (no model call). */
 export const getSuggestions = (signal?: AbortSignal) =>

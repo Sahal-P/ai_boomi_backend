@@ -11,8 +11,9 @@ from finboy.core.clock import today_ist
 from finboy.core.config import LOCAL_USER_ID, Settings
 from finboy.core.errors import ProviderUnavailable
 from finboy.db.models import User
+from finboy.db.models.changes import RecordChangeSet
 from finboy.db.models.ledger import Commitment, EmailSource, ReviewDecision, Transaction
-from finboy.db.models.money import MerchantCategory
+from finboy.db.models.money import Budget, MerchantCategory
 from finboy.db.models.whatsapp import (
     WhatsAppBinding,
     WhatsAppDelivery,
@@ -21,9 +22,11 @@ from finboy.db.models.whatsapp import (
     WhatsAppReminder,
 )
 from finboy.db.session import build_engine
+from finboy.services.advisor import changes as record_changes
+from finboy.services.advisor.changes import Change
 from finboy.services.money.engine import PeriodSpec, money_summary
 from finboy.services.pilot import households, report
-from finboy.services.whatsapp import hindi, pilot, processor
+from finboy.services.whatsapp import hindi, pilot, processor, prompts
 from finboy.services.whatsapp.config import ChannelConfig
 from finboy.services.whatsapp.events import InboundQuestion, Status
 from finboy.services.whatsapp.receipts import admit
@@ -382,3 +385,72 @@ def test_erasure_leaves_nothing_of_the_household_and_never_touches_the_owner(
             )
             == owner_records
         )
+
+
+def test_advisor_changes_apply_on_a_tap_reach_the_next_entry_and_undo(pg, phone: Phone) -> None:
+    """docs/advisor-edits-round/contract.md: a proposal changes nothing until Apply; the next
+    entry for the renamed payee arrives under its new name; one Undo puts the rest back."""
+    (saved,) = phone.say("दूधवाले को 500 नकद दिए")
+    phone.settings = phone.settings.model_copy(update={"advisor_edits_enabled": True})
+    proposed = [
+        Change(type="rename_payee", payee="दूधवाले", new_name="Ramesh milkman"),
+        Change(type="budget", category="groceries", amount_minor=200000),
+    ]
+    with pg() as session:
+        first = session.scalars(
+            select(Transaction).where(Transaction.user_id == phone.user_id)
+        ).one()
+        found = record_changes.plan(record_changes.load(session, phone.user_id), proposed)
+        row = record_changes.propose(
+            session,
+            user_id=phone.user_id,
+            channel="whatsapp",
+            message_id=None,
+            proposal=record_changes.Proposal(proposed, found),
+        )
+        binding = session.scalars(
+            select(WhatsAppBinding).where(WhatsAppBinding.user_id == phone.user_id)
+        ).one()
+        prompt = prompts.open_prompt(session, binding, "advisor_changes", change_set_id=row.id)
+        card = {"buttons": [(prompts.button(prompt, "apply"), "Apply")]}
+        change_set_id = row.id
+        session.commit()
+        assert session.get(Transaction, first.id).merchant == "दूधवाले"  # nothing before Apply
+
+    (done,) = phone.tap([card], "apply")
+    assert done["text"] == hindi.changes_applied(2, True)
+    assert [title for _, title in done["buttons"]] == [hindi.UNDO]
+    with pg() as session:
+        assert session.get(Transaction, first.id).merchant == "Ramesh milkman"
+        limit = session.scalar(
+            select(Budget.limit_minor).where(
+                Budget.user_id == phone.user_id, Budget.category == "groceries"
+            )
+        )
+        assert limit == 200000
+
+    phone.say("दूधवाले को 500 नकद दिए")
+    with pg() as session:
+        second = session.scalars(
+            select(Transaction).where(
+                Transaction.user_id == phone.user_id, Transaction.id != first.id
+            )
+        ).one()
+        assert (second.merchant, second.status) == ("Ramesh milkman", "confirmed")
+
+    (undone,) = phone.tap([done], "undo")
+    assert undone["text"] == hindi.CHANGES_UNDONE
+    with pg() as session:
+        assert session.get(Transaction, first.id).merchant == "दूधवाले"
+        assert session.get(Transaction, second.id).merchant == "Ramesh milkman"  # made since
+        assert session.get(RecordChangeSet, change_set_id).state == "undone"
+        assert (
+            session.scalar(
+                select(func.count()).select_from(Budget).where(Budget.user_id == phone.user_id)
+            )
+            == 0
+        )
+    # A second tap on the spent card changes nothing and says so.
+    (again,) = phone.tap([card], "apply")
+    assert again["text"] == hindi.TAP_ANSWERED
+    assert phone.receipt_errors()[-1] == "prompt_answered"

@@ -575,3 +575,33 @@ DUE_ON_ITS_OWN = "അടയ്ക്കാനുള്ളത് വേറെ അ
 
 def due_already(amount_minor: int, due: date) -> str:
     return f"⚠️ {money(amount_minor)} {date_label(due)}-ന് ഇതിനകം സേവ് ചെയ്തിട്ടുണ്ട്."
+
+
+# Ask നിർദ്ദേശിച്ച മാറ്റങ്ങൾ (docs/advisor-edits-round/contract.md): ബട്ടൺ അമർത്തിയാൽ മാത്രം.
+CHANGE_PAYMENTS = ("പേയ്മെന്റ്", "പേയ്മെന്റുകൾ")
+CHANGE_OWN = "സ്വന്തം അക്കൗണ്ട്, ചെലവല്ല"
+CHANGE_RENAME = "പുതിയ പേര്"
+CHANGE_BUDGET = "{label} ബജറ്റ്"
+CHANGE_GOAL = "സമ്പാദ്യ ലക്ഷ്യം"
+CHANGE_MONTHLY = "മാസം {amount}"
+CHANGE_REMOVED = "നീക്കും"
+CHANGES_TITLE = "✏️ FinBoy-ക്ക് ഈ മാറ്റങ്ങൾ വരുത്താം:"
+CHANGES_KEPT = "🔒 നിങ്ങൾ തന്നെ വച്ച {count} എണ്ണം അതുപോലെ തുടരും."
+CHANGES_MORE = "+{count} കൂടി FinBoy വെബ്സൈറ്റിൽ."
+CHANGES_ASK = "“മാറ്റുക” അമർത്തുന്നതുവരെ ഒന്നും മാറില്ല."
+APPLY = "✅ മാറ്റുക {count}"
+NOT_NOW = "❌ ഇപ്പോൾ വേണ്ട"
+CHANGES_DECLINED = "👍 ശരി, ഒന്നും മാറ്റിയില്ല."
+CHANGES_EXPIRED = "⌛ ഈ മാറ്റങ്ങളുടെ സമയം കഴിഞ്ഞു, ഒന്നും മാറ്റിയില്ല. FinBoy-യോട് വീണ്ടും ചോദിക്കൂ."
+CHANGES_OFF = "Ask-ൽ നിന്നുള്ള മാറ്റങ്ങൾ ഇപ്പോൾ ഓഫാണ്. ഒന്നും മാറ്റിയില്ല."
+CHANGES_UNDONE = "↩️ പഴയതുപോലെ ആക്കി."
+CHANGES_UNDO_KEPT = "പിന്നീട് മാറ്റിയ {count} എണ്ണം അതുപോലെ തുടരും."
+
+
+def changes_applied(count: int, remembered: bool) -> str:
+    text = f"✅ കഴിഞ്ഞു: {count} മാറ്റങ്ങൾ വരുത്തി."
+    return text + (" FinBoy ഈ പേരുകൾ ഓർത്തുവയ്ക്കും." if remembered else "")
+
+
+def changes_applied_speech(count: int) -> str:
+    return f"കഴിഞ്ഞു. {count} മാറ്റങ്ങൾ വരുത്തി."

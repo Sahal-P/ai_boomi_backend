@@ -29,6 +29,8 @@ EVENTS = frozenset(
         "pilot.enrolled",
         "pilot.erased",
         "account.deleted",
+        "advisor.changes_applied",
+        "advisor.changes_undone",
     }
 )
 METADATA = {

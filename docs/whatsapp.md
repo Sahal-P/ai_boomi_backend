@@ -640,3 +640,21 @@ See [the ad journey contract](ad-journey-round/contract.md).
 - **The first saved card** of a household with no earlier records adds `FIRST_SAVED` once: the
   "this month" and budget hints. A later card or a household with earlier records gets none.
 
+
+## Changes Ask proposes (23 November 2026)
+
+See [the advisor edits contract](advisor-edits-round/contract.md).
+
+- **The card.** When an advisor answer proposes changes, `_advise` sends the reply, then a card
+  (`_offer_changes`, purpose `advisor_changes`, one day): the lines that fit WhatsApp's 1,024
+  characters, "+N more on the FinBoy website." for the rest, how many payments the household set
+  itself stay, and "Nothing changes until you tap Apply." Buttons: "✅ Apply N" and "❌ Not now".
+- **Apply** (`changes.apply`) works the changes out again against the records as they are now. The
+  reply says how many changed, adds that FinBoy will remember the payees when it does, and carries
+  "↩️ Undo" (purpose `advisor_undo`, one day). The spoken twin says only the count.
+- **Undo** puts back what is still as Apply left it and says how many changed since stay.
+- **Refusals** reuse receipt outcomes: an expired proposal `prompt_expired`, an answered card
+  `prompt_answered`, edits switched off (`ADVISOR_EDITS_ENABLED=false`) `disabled`.
+- **Remembered names.** A payee renamed through Ask keeps the new name for its next diary entries:
+  `_confirm` applies `merchants.remembered_name` with the remembered category.
+- WhatsApp still never merges or deletes records.

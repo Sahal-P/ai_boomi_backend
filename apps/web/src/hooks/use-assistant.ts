@@ -1,7 +1,14 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { askQuestion, askQuestionStream, getThread, styles, type DisplayStyle } from "@/lib/api/assistant";
+import {
+  askQuestion,
+  askQuestionStream,
+  getThread,
+  styles,
+  type ChangeSet,
+  type DisplayStyle,
+} from "@/lib/api/assistant";
 import { isAbort } from "@/lib/api/http";
 import { historyTurns } from "@/lib/chat-history";
 import {
@@ -97,6 +104,11 @@ export function useAssistant({ stream = false }: { stream?: boolean } = {}) {
     },
     cancel() {
       inflight?.controller.abort();
+    },
+    /** Keeps the changes an answer proposed in step with Apply, Undo or Not now. */
+    changed(id: string, next: ChangeSet) {
+      const turn = turns.find((item) => item.id === id);
+      if (turn?.answer) updateTurn(id, { answer: { ...turn.answer, change_set: next } });
     },
     clear() {
       inflight?.controller.abort();

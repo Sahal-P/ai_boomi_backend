@@ -8,7 +8,7 @@ and answers are kept: never audio, photos or diary messages.
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
@@ -100,8 +100,10 @@ def save_turn(
     language: str,
     tool_names: list[str],
     now: datetime,
+    answer_id: UUID | None = None,
 ) -> AdvisorThread:
-    """The question and its answer, in the thread they belong to (created when new)."""
+    """The question and its answer, in the thread they belong to (created when new). The answer
+    takes `answer_id` when given, so changes it proposed can point at it."""
     if thread is None:
         thread = AdvisorThread(
             user_id=user_id,
@@ -124,6 +126,7 @@ def save_turn(
                 created_at=now,
             ),
             AdvisorMessage(
+                id=answer_id or uuid4(),
                 thread_id=thread.id,
                 user_id=user_id,
                 role="assistant",

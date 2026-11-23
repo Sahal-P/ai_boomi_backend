@@ -8,8 +8,16 @@ function scriptOf(text: string): Answer["display_script"] {
   return "Latn";
 }
 
-/** An earlier answer as the turn card shows it: its words only, without speech or evidence. */
-export function historyAnswer(text: string, language: ChatMessage["language"], threadId: string): Answer {
+/**
+ * An earlier answer as the turn card shows it: its words, and any changes it proposed with their
+ * state, without speech or evidence.
+ */
+export function historyAnswer(
+  text: string,
+  language: ChatMessage["language"],
+  threadId: string,
+  changeSet: ChatMessage["change_set"] = null,
+): Answer {
   const lang = language ?? "en";
   return {
     intent: "advisor",
@@ -33,6 +41,7 @@ export function historyAnswer(text: string, language: ChatMessage["language"], t
     memory_changes: [],
     follow_ups: [],
     sources: [],
+    change_set: changeSet,
   };
 }
 
@@ -54,7 +63,7 @@ export function historyTurns(messages: ChatMessage[], threadId: string): Turn[] 
         style: "auto",
         askedAt: Date.parse(question.created_at),
         state: "answered",
-        answer: historyAnswer(question.text, question.language, threadId),
+        answer: historyAnswer(question.text, question.language, threadId, question.change_set),
         problem: null,
       });
       continue;
@@ -66,7 +75,7 @@ export function historyTurns(messages: ChatMessage[], threadId: string): Turn[] 
       style: "auto",
       askedAt: Date.parse(question.created_at),
       state: answered ? "answered" : "failed",
-      answer: answered ? historyAnswer(reply.text, reply.language, threadId) : null,
+      answer: answered ? historyAnswer(reply.text, reply.language, threadId, reply.change_set) : null,
       problem: answered
         ? null
         : { title: "No answer was saved", detail: "Ask it again.", reference: null, kind: "unknown", code: null },
